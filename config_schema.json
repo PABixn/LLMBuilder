@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/llm-builder.schema.json",
+  "$id": "https://practiqai.com/llm-builder/1.0.0/schema.json",
   "title": "LLM Builder Specification",
   "type": "object",
   "additionalProperties": false,
@@ -117,7 +117,14 @@
         "linear": {
           "type": "object",
           "additionalProperties": false,
-          "description": "A linear layer. (Exact in/out shapes are resolved by the worker based on position and context.)"
+          "description": "A linear layer. (Exact in/out shapes are resolved by the worker based on position and context.)",
+          "required": ["bias"],
+          "properties": {
+            "bias": {
+              "type": "boolean",
+              "description": "Whether the linear layer includes a bias term."
+            }
+          }
         }
       }
     },
