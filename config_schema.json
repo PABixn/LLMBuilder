@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/llm-builder.schema.json",
+  "title": "LLM Builder Specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["context_length", "n_embd", "weight_tying", "blocks"],
+  "properties": {
+    "context_length": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum context length (sequence length)."
+    },
+    "n_embd": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Model embedding width."
+    },
+    "weight_tying": {
+      "type": "boolean",
+      "default": true,
+      "description": "If true: lm_head weights are tied to token embeddings."
+    },
+    "blocks": {
+      "type": "array",
+      "minItems": 1,
+      "description": "A sequence of blocks. Each block is an ordered list of components (attention/mlp/norm/activation) in any combination.",
+      "items": { "$ref": "#/$defs/block" }
+    }
+  },
+  "$defs": {
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["components"],
+      "properties": {
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/component" }
+        }
+      }
+    },
+
+    "component": {
+      "description": "One step in a block. Use multiple components to place norms/activations between attention and mlp, or to build unconventional layouts.",
+      "oneOf": [
+        { "$ref": "#/$defs/attention_component" },
+        { "$ref": "#/$defs/mlp_component" },
+        { "$ref": "#/$defs/norm_component" },
+        { "$ref": "#/$defs/activation_component" }
+      ]
+    },
+
+    "attention_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attention"],
+      "properties": {
+        "attention": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["head_dim"],
+          "properties": {
+            "head_dim": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Per-head dimension."
+            }
+          }
+        }
+      }
+    },
+
+    "mlp_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mlp"],
+      "properties": {
+        "mlp": { "$ref": "#/$defs/mlp" }
+      }
+    },
+
+    "mlp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["multiplier", "sequence"],
+      "properties": {
+        "multiplier": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 4,
+          "description": "Hidden size multiplier vs n_embd (e.g., 4 means hidden=4*n_embd)."
+        },
+        "sequence": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Ordered steps inside the MLP. Steps can be linear, activation, or norm; repeat as needed.",
+          "items": { "$ref": "#/$defs/mlp_step" }
+        }
+      }
+    },
+
+    "mlp_step": {
+      "oneOf": [
+        { "$ref": "#/$defs/linear_step" },
+        { "$ref": "#/$defs/activation_component" },
+        { "$ref": "#/$defs/norm_component" }
+      ]
+    },
+
+    "linear_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["linear"],
+      "properties": {
+        "linear": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "A linear layer. (Exact in/out shapes are resolved by the worker based on position and context.)"
+        }
+      }
+    },
+
+    "activation_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["activation"],
+      "properties": {
+        "activation": { "$ref": "#/$defs/activation" }
+      }
+    },
+
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["relu", "squared_relu", "swiglu", "tanh"]
+        }
+      }
+    },
+
+    "norm_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["norm"],
+      "properties": {
+        "norm": { "$ref": "#/$defs/norm" }
+      }
+    },
+
+    "norm": {
+      "description": "RMSNorm (optionally learnable gamma) or LayerNorm.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "learnable_gamma"],
+          "properties": {
+            "type": { "const": "rmsnorm" },
+            "learnable_gamma": {
+              "type": "boolean",
+              "description": "If false, RMSNorm uses fixed gamma (no learnable scale)."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "const": "layernorm" }
+          }
+        }
+      ]
+    }
+  }
+}
