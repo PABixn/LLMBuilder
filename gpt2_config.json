@@ -1,0 +1,211 @@
+{
+  "context_length": 1024,
+  "n_embd": 768,
+  "weight_tying": true,
+  "blocks": [
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "components": [
+        { "norm": { "type": "layernorm" } },
+        { "attention": { "head_dim": 64 } },
+        { "norm": { "type": "layernorm" } },
+        {
+          "mlp": {
+            "multiplier": 4,
+            "sequence": [
+              { "linear": { "bias": true } },
+              { "activation": { "type": "relu" } },
+              { "linear": { "bias": true } }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
