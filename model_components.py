@@ -23,17 +23,17 @@ class MLP(nn.Module):
                 else:
                     in_dim *= config.multiplier
                     out_dim *= config.multiplier
-
-                self.layer.append(nn.Linear(in_dim, out_dim, bias=lay.linear.bias))
+                self.layer.append(nn.Linear(int(in_dim), int(out_dim), bias=lay.linear.bias))
                 current_dim = out_dim
 
-            if isinstance(lay, NormComponent):
+            elif isinstance(lay, NormComponent):
                 self.layer.append(get_norm(lay.norm, current_dim))
 
-            if isinstance(lay, ActivationComponent):
+            elif isinstance(lay, ActivationComponent):
                 self.layer.append(get_activation(lay.activation.type))
 
-            raise ValueError(f"Unknown MLP layer type: {type(lay)}")
+            else:
+                raise ValueError(f"Unknown MLP layer type: {type(lay)}")
 
     def forward(self, x):
         for layer in self.layer:
