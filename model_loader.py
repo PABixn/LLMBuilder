@@ -10,7 +10,7 @@ class StrictModel(BaseModel):
 
 
 class Attention(StrictModel):
-    head_dim: Annotated[int, Field(gt=0)]
+    n_head: Annotated[int, Field(gt=0)]
 
 
 class Linear(StrictModel):

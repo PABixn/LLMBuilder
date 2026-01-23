@@ -60,12 +60,12 @@
         "attention": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["head_dim"],
+          "required": ["n_head"],
           "properties": {
-            "head_dim": {
+            "n_head": {
               "type": "integer",
               "minimum": 1,
-              "description": "Per-head dimension."
+              "description": "Number of attention heads."
             }
           }
         }

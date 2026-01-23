@@ -6,7 +6,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -23,7 +23,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -40,7 +40,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -57,7 +57,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -74,7 +74,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -91,7 +91,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -108,7 +108,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -125,7 +125,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -142,7 +142,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -159,7 +159,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -176,7 +176,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
@@ -193,7 +193,7 @@
     {
       "components": [
         { "norm": { "type": "layernorm" } },
-        { "attention": { "head_dim": 64 } },
+        { "attention": { "n_head": 12 } },
         { "norm": { "type": "layernorm" } },
         {
           "mlp": {
