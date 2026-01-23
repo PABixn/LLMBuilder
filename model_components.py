@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import model_loader
 from model_loader import *
 
 class MLP(nn.Module):
@@ -10,7 +11,7 @@ class MLP(nn.Module):
 
         self.layer = nn.ModuleList()
 
-        current_dim = dim
+        current_dim: int = dim
 
         for idx, lay in enumerate(config.sequence):
             if isinstance(lay, LinearStep):
@@ -27,7 +28,7 @@ class MLP(nn.Module):
                 current_dim = out_dim
 
             elif isinstance(lay, NormComponent):
-                self.layer.append(get_norm(lay.norm, current_dim))
+                self.layer.append(get_norm(lay.norm, int(current_dim)))
 
             elif isinstance(lay, ActivationComponent):
                 self.layer.append(get_activation(lay.activation.type))
@@ -41,35 +42,35 @@ class MLP(nn.Module):
         return x
 
 class RMSNorm(nn.Module):
-    def __init__(self, config: RMSNorm, dim, eps=1e-6):
+    def __init__(self, config: model_loader.RMSNorm, dim: int, eps=1e-6):
         super().__init__()
         self.config = config
 
         self.eps = eps
 
-        if RMSNorm.learnable_gamma:
+        if config.learnable_gamma:
             self.weight = nn.Parameter(torch.ones(dim))
 
     def forward(self, x):
-        if RMSNorm.learnable_gamma:
+        if self.config.learnable_gamma:
             return F.rms_norm(x, (x.size(-1),), weight=self.weight, eps=self.eps)
         else:
             return F.rms_norm(x, (x.size(-1),), eps=self.eps)
 
 def get_norm(norm: Norm, dim: int) -> nn.Module:
-    if isinstance(norm, RMSNorm):
+    if isinstance(norm, model_loader.RMSNorm):
         return RMSNorm(norm, dim)
     if isinstance(norm, LayerNorm):
         return nn.LayerNorm(dim)
     raise ValueError(f"Unknown norm config: {type(norm)}")
 
-def get_activation(act: str) -> nn.modules.activation:
+def get_activation(act: str) -> nn.Module:
     if act == "gelu":
         return nn.GELU(approximate="tanh")
     if act == "relu":
         return nn.ReLU()
     if act == "squared_relu":
-        return nn.ReLU().square()
+        return SquaredReLU()
     if act == "silu":
         return nn.SiLU()
     if act == "tanh":
@@ -77,3 +78,7 @@ def get_activation(act: str) -> nn.modules.activation:
     if act == "sigmoid":
         return nn.Sigmoid()
     raise ValueError(f"Unknown activation config: {act}")
+
+class SquaredReLU(nn.Module):
+    def forward(self, x):
+        return F.relu(x).square()
