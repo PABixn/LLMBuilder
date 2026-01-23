@@ -145,7 +145,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["relu", "squared_relu", "swiglu", "tanh"]
+          "enum": ["gelu", "relu", "squared_relu", "silu", "tanh", "sigmoid"]
         }
       }
     },
