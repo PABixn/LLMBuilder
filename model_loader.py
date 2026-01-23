@@ -18,7 +18,7 @@ class Linear(StrictModel):
 
 
 class Activation(StrictModel):
-    type: Literal["relu", "squared_relu", "swiglu", "tanh"]
+    type: Literal["gelu", "relu", "squared_relu", "silu", "tanh", "sigmoid"]
 
 
 class RMSNorm(StrictModel):
