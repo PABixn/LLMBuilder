@@ -41,25 +41,38 @@ class MLP(nn.Module):
             x = layer(x)
         return x
 
-class RMSNorm(nn.Module):
-    def __init__(self, config: model_loader.RMSNorm, dim: int, eps=1e-6):
+class LearnableRMSNorm(nn.Module):
+    def __init__(self, dim: int, eps=1e-6):
         super().__init__()
-        self.config = config
 
         self.eps = eps
 
-        if config.learnable_gamma:
-            self.weight = nn.Parameter(torch.ones(dim))
+        self.weight = nn.Parameter(torch.ones(dim))
 
     def forward(self, x):
-        if self.config.learnable_gamma:
-            return F.rms_norm(x, (x.size(-1),), weight=self.weight, eps=self.eps)
-        else:
-            return F.rms_norm(x, (x.size(-1),), eps=self.eps)
+        return F.rms_norm(x, (x.size(-1),), weight=self.weight, eps=self.eps)
+
+class StaticRMSNorm(nn.Module):
+    def __init__(self, eps=1e-6):
+        super().__init__()
+
+        self.eps = eps
+
+    def forward(self, x):
+        return F.rms_norm(x, (x.size(-1),), eps=self.eps)
+
+class SquaredReLU(nn.Module):
+    def forward(self, x):
+        return F.relu(x).square()
+
 
 def get_norm(norm: Norm, dim: int) -> nn.Module:
     if isinstance(norm, model_loader.RMSNorm):
-        return RMSNorm(norm, dim)
+        if norm.learnable_gamma:
+            return LearnableRMSNorm(dim)
+        else:
+            return StaticRMSNorm()
+
     if isinstance(norm, LayerNorm):
         return nn.LayerNorm(dim)
     raise ValueError(f"Unknown norm config: {type(norm)}")
@@ -78,7 +91,3 @@ def get_activation(act: str) -> nn.Module:
     if act == "sigmoid":
         return nn.Sigmoid()
     raise ValueError(f"Unknown activation config: {act}")
-
-class SquaredReLU(nn.Module):
-    def forward(self, x):
-        return F.relu(x).square()
