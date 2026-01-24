@@ -31,6 +31,26 @@ class ConfigurableGPT(nn.Module):
         for lay in config.blocks:
             self.transformer.h.append(ConfigurableBlock(config.n_embd, attn_idx, lay))
 
+    def forward(self, idx, targets=None, kv_cache=None, loss_reduction="mean"):
+        x = self.transformer.wte(idx)
+        x = self.in_norm(x)
+
+        for block in self.transformer.h:
+            x = block(x, kv_cache)
+
+        x = self.out_norm(x)
+
+        softcap = 15
+        logits = self.lm_head(x)
+        logits = logits.float()
+        logits = softcap * torch.tanh(logits / softcap)
+
+        if targets is not None:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1, reduction=loss_reduction)
+            return loss
+        else:
+            return logits
+
     def tie_weights(self):
         self.transformer.wte.weight = self.lm_head.weight
 
@@ -92,23 +112,6 @@ class CausalSelfAttention(nn.Module):
         self.k_norm = LearnableRMSNorm(self.head_dim)
         self._rope_cache = {}
 
-    def _precompute_rotary_embeddings(self, seq_len: int, device: torch.device, dtype: torch.dtype, base=10000):
-        key = (seq_len, device.type, device.index, dtype)
-        cached = self._rope_cache.get(key)
-        if cached is not None:
-            return cached
-
-        channel_range = torch.arange(0, self.head_dim, 2, dtype=dtype, device=device)
-        inv_freq = 1.0 / (base ** (channel_range / self.head_dim))
-
-        t = torch.arange(seq_len, dtype=dtype, device=device)
-        freqs = torch.outer(t, inv_freq)
-        cos, sin = freqs.cos(), freqs.sin()
-        cos, sin = cos.bfloat16(), sin.bfloat16()
-        cos, sin = cos[None, :, None, :], sin[None, :, None, :]
-
-        return cos, sin
-
     def forward(self, x, kv_cache: KVCache):
         B, T, C = x.size()
 
@@ -116,7 +119,10 @@ class CausalSelfAttention(nn.Module):
         k = self.c_k(x).view(B, T, self.n_kv_head, self.head_dim)
         v = self.c_v(x).view(B, T, self.n_kv_head, self.head_dim)
 
-        cos, sin = self._precompute_rotary_embeddings(T, x.device, x.dtype)
+        T0 = 0 if kv_cache is None else kv_cache.get_pos()
+        cos, sin = self._precompute_rotary_embeddings(T0 + T, x.device, x.dtype)
+        cos, sin = cos[:, T0:T0 + T], sin[:, T0:T0 + T]
+
         q, k = apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
         q, k = self.q_norm(q), self.k_norm(k)
         q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
@@ -145,6 +151,25 @@ class CausalSelfAttention(nn.Module):
         y = self.c_proj(y)
 
         return y
+
+    def _precompute_rotary_embeddings(self, seq_len: int, device: torch.device, dtype: torch.dtype, base=10000):
+        key = (seq_len, device.type, device.index, dtype)
+        cached = self._rope_cache.get(key)
+        if cached is not None:
+            return cached
+
+        channel_range = torch.arange(0, self.head_dim, 2, dtype=dtype, device=device)
+        inv_freq = 1.0 / (base ** (channel_range / self.head_dim))
+
+        t = torch.arange(seq_len, dtype=dtype, device=device)
+        freqs = torch.outer(t, inv_freq)
+        cos, sin = freqs.cos(), freqs.sin()
+        cos, sin = cos.bfloat16(), sin.bfloat16()
+        cos, sin = cos[None, :, None, :], sin[None, :, None, :]
+
+        self._rope_cache[key] = (cos, sin)
+
+        return cos, sin
 
 class ConfigurableMLP(nn.Module):
     def __init__(self, dim: int, config: MLP):
