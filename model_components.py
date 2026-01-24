@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import itertools as it
 
 import model_loader
 from kvcache import KVCache
@@ -24,23 +25,25 @@ class ConfigurableGPT(nn.Module):
 
         self.in_norm = LearnableRMSNorm(config.n_embd)
         self.out_norm = LearnableRMSNorm(config.n_embd)
+        
+        attn_idx = it.count()
 
-
+        for lay in config.blocks:
+            self.transformer.h.append(ConfigurableBlock(config.n_embd, attn_idx, lay))
 
     def tie_weights(self):
         self.transformer.wte.weight = self.lm_head.weight
 
 
 class ConfigurableBlock(nn.Module):
-    def __init__(self, dim, layer_idx, config: Block):
+    def __init__(self, dim, attn_idx: it.count, config: Block):
         super().__init__()
 
         self.layer = nn.ModuleList()
 
         for lay in config.components:
             if isinstance(lay, AttentionComponent):
-                self.layer.append(CausalSelfAttention(layer_idx, dim, lay.attention))
-                layer_idx += 1
+                self.layer.append(CausalSelfAttention(next(attn_idx), dim, lay.attention))
 
             elif isinstance(lay, MLPComponent):
                 self.layer.append(ConfigurableMLP(dim, lay.mlp))
@@ -64,10 +67,10 @@ class ConfigurableBlock(nn.Module):
         return x
 
 class CausalSelfAttention(nn.Module):
-    def __init__(self, layer_idx: int, dim: int, config: Attention):
+    def __init__(self, attn_idx: int, dim: int, config: Attention):
         super().__init__()
 
-        self.layer_idx = layer_idx
+        self.attn_idx = attn_idx
         self.n_head: int = config.n_head
         self.n_kv_head: int = config.n_kv_head
         self.n_embd = dim
@@ -119,7 +122,7 @@ class CausalSelfAttention(nn.Module):
         q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
 
         if kv_cache is not None:
-            k, v = kv_cache.insert_kv(self.layer_idx, k, v)
+            k, v = kv_cache.insert_kv(self.attn_idx, k, v)
 
         Tq = q.size(2)
         Tk = k.size(2)
@@ -183,12 +186,16 @@ class LearnableRMSNorm(nn.Module):
     def __init__(self, dim: int, eps=1e-6):
         super().__init__()
 
+        self.dim = dim
         self.eps = eps
 
         self.weight = nn.Parameter(torch.ones(dim))
 
     def forward(self, x):
         return F.rms_norm(x, (x.size(-1),), weight=self.weight, eps=self.eps)
+
+    def extra_repr(self) -> str:
+        return f"dim={self.dim}, eps={self.eps}"
 
 class StaticRMSNorm(nn.Module):
     def __init__(self, eps=1e-6):
@@ -198,6 +205,9 @@ class StaticRMSNorm(nn.Module):
 
     def forward(self, x):
         return F.rms_norm(x, (x.size(-1),), eps=self.eps)
+
+    def extra_repr(self) -> str:
+        return f"eps={self.eps}"
 
 class SquaredReLU(nn.Module):
     def forward(self, x):
