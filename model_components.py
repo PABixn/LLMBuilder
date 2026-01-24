@@ -6,6 +6,31 @@ import model_loader
 from kvcache import KVCache
 from model_loader import *
 
+class ConfigurableGPT(nn.Module):
+    def __init__(self, config: LLMConfig):
+        super().__init__()
+
+        self.config = config
+
+        self.transformer = nn.ModuleDict({
+            "wte": nn.Embedding(config.vocab_size, config.n_embd),
+            "h": nn.ModuleList()
+        })
+
+        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+
+        if config.weight_tying:
+            self.tie_weights()
+
+        self.in_norm = LearnableRMSNorm(config.n_embd)
+        self.out_norm = LearnableRMSNorm(config.n_embd)
+
+
+
+    def tie_weights(self):
+        self.transformer.wte.weight = self.lm_head.weight
+
+
 class ConfigurableBlock(nn.Module):
     def __init__(self, dim, layer_idx, config: Block):
         super().__init__()
@@ -28,10 +53,10 @@ class ConfigurableBlock(nn.Module):
             else:
                 raise ValueError(f"Unknown Block layer type: {type(lay)}")
 
-    def forward(self, x, cos_sin, kv_cache: KVCache):
+    def forward(self, x, kv_cache: KVCache):
         for layer in self.layer:
             if isinstance(layer, CausalSelfAttention):
-                x = x + layer(x, cos_sin, kv_cache)
+                x = x + layer(x, kv_cache)
             elif isinstance(layer, ConfigurableMLP):
                 x = x + layer(x)
             else:
@@ -52,6 +77,8 @@ class CausalSelfAttention(nn.Module):
 
         self.head_dim = self.n_embd // self.n_head
 
+        if self.head_dim % 2 != 0:
+            raise ValueError("Rotary embeddings require an even head_dim.")
 
         self.c_q = nn.Linear(self.n_embd, self.n_head * self.head_dim, bias=False)
         self.c_k = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
@@ -60,15 +87,33 @@ class CausalSelfAttention(nn.Module):
 
         self.q_norm = LearnableRMSNorm(self.head_dim)
         self.k_norm = LearnableRMSNorm(self.head_dim)
+        self._rope_cache = {}
 
-    def forward(self, x, cos_sin, kv_cache: KVCache):
+    def _precompute_rotary_embeddings(self, seq_len: int, device: torch.device, dtype: torch.dtype, base=10000):
+        key = (seq_len, device.type, device.index, dtype)
+        cached = self._rope_cache.get(key)
+        if cached is not None:
+            return cached
+
+        channel_range = torch.arange(0, self.head_dim, 2, dtype=dtype, device=device)
+        inv_freq = 1.0 / (base ** (channel_range / self.head_dim))
+
+        t = torch.arange(seq_len, dtype=dtype, device=device)
+        freqs = torch.outer(t, inv_freq)
+        cos, sin = freqs.cos(), freqs.sin()
+        cos, sin = cos.bfloat16(), sin.bfloat16()
+        cos, sin = cos[None, :, None, :], sin[None, :, None, :]
+
+        return cos, sin
+
+    def forward(self, x, kv_cache: KVCache):
         B, T, C = x.size()
 
         q = self.c_q(x).view(B, T, self.n_head, self.head_dim)
         k = self.c_k(x).view(B, T, self.n_kv_head, self.head_dim)
         v = self.c_v(x).view(B, T, self.n_kv_head, self.head_dim)
 
-        cos, sin = cos_sin
+        cos, sin = self._precompute_rotary_embeddings(T, x.device, x.dtype)
         q, k = apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
         q, k = self.q_norm(q), self.k_norm(k)
         q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)

@@ -4,12 +4,17 @@
   "title": "LLM Builder Specification",
   "type": "object",
   "additionalProperties": false,
-  "required": ["context_length", "n_embd", "weight_tying", "blocks"],
+  "required": ["context_length", "n_embd", "vocab_size", "weight_tying", "blocks"],
   "properties": {
     "context_length": {
       "type": "integer",
       "minimum": 1,
       "description": "Maximum context length (sequence length)."
+    },
+    "vocab_size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Tokenizer vocabulary size."
     },
     "n_embd": {
       "type": "integer",

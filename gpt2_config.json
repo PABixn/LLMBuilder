@@ -1,5 +1,6 @@
 {
   "context_length": 1024,
+  "vocab_size": 50257,
   "n_embd": 768,
   "weight_tying": true,
   "blocks": [

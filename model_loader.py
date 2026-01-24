@@ -69,6 +69,7 @@ class Block(StrictModel):
 
 class LLMConfig(StrictModel):
     context_length: Annotated[int, Field(gt=0)]
+    vocab_size: Annotated[int, Field(gt=0)]
     n_embd: Annotated[int, Field(gt=0)]
     weight_tying: bool = True
     blocks: List[Block]
