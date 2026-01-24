@@ -6,13 +6,45 @@ import model_loader
 from kvcache import KVCache
 from model_loader import *
 
+class ConfigurableBlock(nn.Module):
+    def __init__(self, dim, layer_idx, config: Block):
+        super().__init__()
+
+        self.layer = nn.ModuleList()
+
+        for lay in config.components:
+            if isinstance(lay, AttentionComponent):
+                self.layer.append(CausalSelfAttention(layer_idx, dim, lay.attention))
+                layer_idx += 1
+
+            elif isinstance(lay, MLPComponent):
+                self.layer.append(ConfigurableMLP(dim, lay.mlp))
+
+            elif isinstance(lay, ActivationComponent):
+                self.layer.append(get_activation(lay.activation.type))
+
+            elif isinstance(lay, NormComponent):
+                self.layer.append(get_norm(lay.norm, dim))
+            else:
+                raise ValueError(f"Unknown Block layer type: {type(lay)}")
+
+    def forward(self, x, cos_sin, kv_cache: KVCache):
+        for layer in self.layer:
+            if isinstance(layer, CausalSelfAttention):
+                x = x + layer(x, cos_sin, kv_cache)
+            elif isinstance(layer, ConfigurableMLP):
+                x = x + layer(x)
+            else:
+                x = layer(x)
+        return x
+
 class CausalSelfAttention(nn.Module):
-    def __init__(self, layer_idx: int, dim: int, config: AttentionComponent):
+    def __init__(self, layer_idx: int, dim: int, config: Attention):
         super().__init__()
 
         self.layer_idx = layer_idx
-        self.n_head = config.attention.n_head
-        self.n_kv_head = config.attention.n_kv_head
+        self.n_head: int = config.n_head
+        self.n_kv_head: int = config.n_kv_head
         self.n_embd = dim
 
         assert self.n_embd % self.n_head == 0
@@ -66,7 +98,7 @@ class CausalSelfAttention(nn.Module):
 
         return y
 
-class MLP(nn.Module):
+class ConfigurableMLP(nn.Module):
     def __init__(self, dim: int, config: MLP):
         super().__init__()
 
