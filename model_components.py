@@ -3,7 +3,68 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import model_loader
+from kvcache import KVCache
 from model_loader import *
+
+class CausalSelfAttention(nn.Module):
+    def __init__(self, layer_idx: int, dim: int, config: AttentionComponent):
+        super().__init__()
+
+        self.layer_idx = layer_idx
+        self.n_head = config.attention.n_head
+        self.n_kv_head = config.attention.n_kv_head
+        self.n_embd = dim
+
+        assert self.n_embd % self.n_head == 0
+        assert self.n_kv_head <= self.n_head and self.n_head % self.n_kv_head == 0
+
+        self.head_dim = self.n_embd // self.n_head
+
+
+        self.c_q = nn.Linear(self.n_embd, self.n_head * self.head_dim, bias=False)
+        self.c_k = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
+        self.c_v = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
+        self.c_proj = nn.Linear(self.n_embd, self.n_embd, bias=False)
+
+        self.q_norm = LearnableRMSNorm(self.head_dim)
+        self.k_norm = LearnableRMSNorm(self.head_dim)
+
+    def forward(self, x, cos_sin, kv_cache: KVCache):
+        B, T, C = x.size()
+
+        q = self.c_q(x).view(B, T, self.n_head, self.head_dim)
+        k = self.c_k(x).view(B, T, self.n_kv_head, self.head_dim)
+        v = self.c_v(x).view(B, T, self.n_kv_head, self.head_dim)
+
+        cos, sin = cos_sin
+        q, k = apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
+        q, k = self.q_norm(q), self.k_norm(k)
+        q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+
+        if kv_cache is not None:
+            k, v = kv_cache.insert_kv(self.layer_idx, k, v)
+
+        Tq = q.size(2)
+        Tk = k.size(2)
+
+        enable_gqa = self.n_head != self.n_kv_head
+
+        if kv_cache is None or Tq == Tk:
+            y = F.scaled_dot_product_attention(q, k, v, is_causal=True, enable_gqa=enable_gqa)
+        elif Tq == 1:
+            y = F.scaled_dot_product_attention(q, k, v, is_causal=False, enable_gqa=enable_gqa)
+        else:
+            attn_mask = torch.zeros((Tq, Tk), dtype=torch.bool, device=q.device)
+            prefix_len = Tk - Tq
+            attn_mask[:, :prefix_len] = True
+            attn_mask[:, prefix_len:] = torch.tril(torch.ones((Tq, Tq), dtype=torch.bool, device=q.device))
+
+            y = F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask, enable_gqa=enable_gqa)
+
+        y = y.transpose(1, 2).contiguous().view(B, T, -1)
+        y = self.c_proj(y)
+
+        return y
 
 class MLP(nn.Module):
     def __init__(self, dim: int, config: MLP):
@@ -65,6 +126,18 @@ class SquaredReLU(nn.Module):
     def forward(self, x):
         return F.relu(x).square()
 
+
+def apply_rotary_emb(x, cos, sin):
+    assert x.ndim == 4
+
+    d = x.shape[3] // 2
+    x1, x2 = x[..., :d], x[..., d:]
+    y1 = x1 * cos + x2 * sin
+    y2 = x1 * (-sin) + x2 * cos
+    out = torch.cat([y1, y2], 3)
+    out = out.to(x.dtype)
+
+    return out
 
 def get_norm(norm: Norm, dim: int) -> nn.Module:
     if isinstance(norm, model_loader.RMSNorm):
