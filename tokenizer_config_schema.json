@@ -62,14 +62,40 @@
       "description": "Unknown token string for WordPiece."
     }
   },
-  "allOf": [
+  "oneOf": [
     {
-      "if": { "properties": { "tokenizer_type": { "const": "bpe" } } },
-      "then": { "required": ["byte_fallback"] }
+      "title": "BPE with byte fallback",
+      "properties": {
+        "tokenizer_type": { "const": "bpe" },
+        "byte_fallback": { "const": true }
+      },
+      "required": ["byte_fallback"],
+      "not": { "required": ["unk_token"] }
     },
     {
-      "if": { "properties": { "tokenizer_type": { "const": "wordpiece" } } },
-      "then": { "required": ["unk_token"] }
+      "title": "BPE without byte fallback",
+      "properties": {
+        "tokenizer_type": { "const": "bpe" },
+        "byte_fallback": { "const": false }
+      },
+      "required": ["byte_fallback", "unk_token"]
+    },
+    {
+      "title": "WordPiece",
+      "properties": {
+        "tokenizer_type": { "const": "wordpiece" }
+      },
+      "required": ["unk_token"],
+      "not": { "required": ["byte_fallback"] }
+    },
+    {
+      "title": "Unigram",
+      "properties": {
+        "tokenizer_type": { "const": "unigram" }
+      },
+      "not": {
+        "anyOf": [{ "required": ["byte_fallback"] }, { "required": ["unk_token"] }]
+      }
     }
   ]
 }

@@ -25,8 +25,14 @@ class TokenizerConfig(StrictModel):
         if self.tokenizer_type == "bpe":
             if self.byte_fallback is None:
                 raise ValueError("byte_fallback is required for bpe tokenizer_type")
-            if self.unk_token is not None:
-                raise ValueError("unk_token is only valid for wordpiece tokenizer_type")
+            if self.byte_fallback is False and self.unk_token is None:
+                raise ValueError(
+                    "unk_token is required when tokenizer_type is bpe and byte_fallback is false"
+                )
+            if self.byte_fallback is True and self.unk_token is not None:
+                raise ValueError(
+                    "unk_token is only valid for wordpiece or bpe with byte_fallback false"
+                )
         elif self.tokenizer_type == "wordpiece":
             if self.unk_token is None:
                 raise ValueError("unk_token is required for wordpiece tokenizer_type")
@@ -36,7 +42,9 @@ class TokenizerConfig(StrictModel):
             if self.byte_fallback is not None:
                 raise ValueError("byte_fallback is only valid for bpe tokenizer_type")
             if self.unk_token is not None:
-                raise ValueError("unk_token is only valid for wordpiece tokenizer_type")
+                raise ValueError(
+                    "unk_token is only valid for wordpiece or bpe with byte_fallback false"
+                )
         return self
 
 
