@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://practiqai.com/llm-builder/1.0.0/schema.json",
+  "$id": "https://practiqai.com/llm-builder/1.0.0/model-schema.json",
   "title": "LLM Builder Specification",
   "type": "object",
   "additionalProperties": false,
