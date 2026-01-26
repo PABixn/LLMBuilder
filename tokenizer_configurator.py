@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from typing import Dict
 
 from tokenizers.models import BPE, WordPiece, Unigram
@@ -9,15 +10,16 @@ from tokenizer_loader import TokenizerConfig
 from tokenizers import Tokenizer
 from collections import Counter
 
+@dataclass
 class TokenizerStats:
-    num_chars: int
-    num_tokens: int
-    token_per_char: float
-    vocab_size: int
-    num_used_tokens: int
-    num_unused_tokens: int
-    rare_tokens: Dict[int, int]
-    rare_token_fraction: Dict[int, float]
+    num_chars: int = 0
+    num_tokens: int = 0
+    token_per_char: float = 0.0
+    vocab_size: int = 0
+    num_used_tokens: int = 0
+    num_unused_tokens: int = 0
+    rare_tokens: Dict[int, int] = field(default_factory=dict)
+    rare_token_fraction: Dict[int, float] = field(default_factory=dict)
 
 class ConfigurableTokenizer:
     def __init__(self, config: TokenizerConfig):
@@ -58,7 +60,7 @@ class ConfigurableTokenizer:
 
         stats.vocab_size = vocab_size
         stats.num_used_tokens = num_used_tokens
-        stats.num_tokens = vocab_size - num_used_tokens
+        stats.num_unused_tokens = vocab_size - num_used_tokens
 
         threshold = 5
         num_rare = sum(1 for _id, c in freqs.items() if c < threshold)
@@ -66,6 +68,8 @@ class ConfigurableTokenizer:
 
         stats.rare_tokens[threshold] = num_rare
         stats.rare_token_fraction[threshold] = rare_fraction
+
+        return stats
 
 
     def get_tokenizer(self):
