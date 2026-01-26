@@ -1,3 +1,5 @@
+from typing import Dict
+
 from tokenizers.models import BPE, WordPiece, Unigram
 from tokenizers.pre_tokenizers import ByteLevel as ByteLevelPreTokenizer, Whitespace as WhitespacePreTokenizer, Metaspace as MetaspacePreTokenizer
 from tokenizers.decoders import ByteLevel as ByteLevelDecoder, WordPiece as WordpieceDecoder, Metaspace as MetaspaceDecoder
@@ -5,7 +7,17 @@ from tokenizers.trainers import BpeTrainer, WordPieceTrainer, UnigramTrainer
 
 from tokenizer_loader import TokenizerConfig
 from tokenizers import Tokenizer
+from collections import Counter
 
+class TokenizerStats:
+    num_chars: int
+    num_tokens: int
+    token_per_char: float
+    vocab_size: int
+    num_used_tokens: int
+    num_unused_tokens: int
+    rare_tokens: Dict[int, int]
+    rare_token_fraction: Dict[int, float]
 
 class ConfigurableTokenizer:
     def __init__(self, config: TokenizerConfig):
@@ -18,6 +30,43 @@ class ConfigurableTokenizer:
         self.tokenizer.train(["datasets/shake.txt"], self.trainer)
 
         self.tokenizer.save(self.config.name + ".json")
+
+    def eval_tokenizer_on_file(tokenizer: Tokenizer):
+        with open("datasets/shake.txt", "r", encoding="utf-8") as f:
+            text = f.read()
+
+        encoding = tokenizer.encode(text)
+        ids = encoding.ids
+
+        stats = TokenizerStats()
+
+        num_tokens = len(ids)
+        num_chars = len(text)
+
+        tokens_per_char = num_tokens / num_chars
+
+        stats.num_chars = num_chars
+        stats.num_tokens = num_tokens
+        stats.token_per_char = tokens_per_char
+
+        freqs = Counter(ids)
+
+        num_used_tokens = len(freqs)
+
+        vocab = tokenizer.get_vocab()
+        vocab_size = len(vocab)
+
+        stats.vocab_size = vocab_size
+        stats.num_used_tokens = num_used_tokens
+        stats.num_tokens = vocab_size - num_used_tokens
+
+        threshold = 5
+        num_rare = sum(1 for _id, c in freqs.items() if c < threshold)
+        rare_fraction = num_rare / num_used_tokens
+
+        stats.rare_tokens[threshold] = num_rare
+        stats.rare_token_fraction[threshold] = rare_fraction
+
 
     def get_tokenizer(self):
         tok = None
