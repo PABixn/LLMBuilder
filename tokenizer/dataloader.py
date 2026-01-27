@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, IterableDataset, get_worker_info
 
 from datasets import load_dataset
 
-from dataloader_config import (
+from tokenizer.dataloader_config import (
     DataloaderConfig,
     DatasetSpec,
     MixingConfig,

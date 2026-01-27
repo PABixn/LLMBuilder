@@ -3,9 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import itertools as it
 
-import model_loader
-from kvcache import KVCache
-from model_loader import *
+from model.loader import *
+from model.kvcache import KVCache
 
 class ConfigurableGPT(nn.Module):
     def __init__(self, config: LLMConfig):

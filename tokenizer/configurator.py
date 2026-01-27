@@ -1,14 +1,15 @@
 from dataclasses import dataclass, field
-from typing import Dict, Set, List, Union
+from typing import Dict, List
 
 from tokenizers.models import BPE, WordPiece, Unigram
 from tokenizers.pre_tokenizers import ByteLevel as ByteLevelPreTokenizer, Whitespace as WhitespacePreTokenizer, Metaspace as MetaspacePreTokenizer
 from tokenizers.decoders import ByteLevel as ByteLevelDecoder, WordPiece as WordpieceDecoder, Metaspace as MetaspaceDecoder
 from tokenizers.trainers import BpeTrainer, WordPieceTrainer, UnigramTrainer
 
-from tokenizer_loader import TokenizerConfig
-from dataloader_config import DataloaderConfig
-from tokenizer_dataloader import build_dataset
+from tokenizer.loader import TokenizerConfig
+from tokenizer.dataloader_config import DataloaderConfig
+from tokenizer.dataloader import build_dataset
+
 from tokenizers import Tokenizer
 from collections import Counter
 
@@ -42,7 +43,7 @@ class ConfigurableTokenizer:
 
     @staticmethod
     def eval_tokenizer_on_file(thresholds: List[int], tokenizer: Tokenizer):
-        with open("datasets/shake.txt", "r", encoding="utf-8") as f:
+        with open("../datasets/shake.txt", "r", encoding="utf-8") as f:
             text = f.read()
 
         encoding = tokenizer.encode(text)

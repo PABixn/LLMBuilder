@@ -122,22 +122,22 @@ Config is JSON and validated with `pydantic` in `dataloader_config.py`.
 ## Python usage
 
 ```python
-from dataloader_config import load_dataloader_config
-from tokenizer_dataloader import create_dataloader, build_dataset
+from tokenizer.dataloader_config import load_dataloader_config
+from tokenizer.dataloader import create_dataloader, build_dataset
 
 config = load_dataloader_config("my_dataloader_config.json")
 
 # Use the raw iterable dataset
 dataset = build_dataset(config)
 for sample in dataset:
-    print(sample)
-    break
+  print(sample)
+  break
 
 # Or wrap in a PyTorch DataLoader
 dataloader = create_dataloader(config, batch_size=4, num_workers=2, prefetch_factor=4)
 for batch in dataloader:
-    print(batch)
-    break
+  print(batch)
+  break
 ```
 
 ## Notes
