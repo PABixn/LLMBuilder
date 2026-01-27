@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Set, List
 
 from tokenizers.models import BPE, WordPiece, Unigram
 from tokenizers.pre_tokenizers import ByteLevel as ByteLevelPreTokenizer, Whitespace as WhitespacePreTokenizer, Metaspace as MetaspacePreTokenizer
@@ -33,7 +33,8 @@ class ConfigurableTokenizer:
 
         self.tokenizer.save(self.config.name + ".json")
 
-    def eval_tokenizer_on_file(tokenizer: Tokenizer):
+    @staticmethod
+    def eval_tokenizer_on_file(thresholds: List[int], tokenizer: Tokenizer):
         with open("datasets/shake.txt", "r", encoding="utf-8") as f:
             text = f.read()
 
@@ -62,12 +63,12 @@ class ConfigurableTokenizer:
         stats.num_used_tokens = num_used_tokens
         stats.num_unused_tokens = vocab_size - num_used_tokens
 
-        threshold = 5
-        num_rare = sum(1 for _id, c in freqs.items() if c < threshold)
-        rare_fraction = num_rare / num_used_tokens
+        for threshold in thresholds:
+            num_rare = sum(1 for _id, c in freqs.items() if c < threshold)
+            rare_fraction = num_rare / num_used_tokens
 
-        stats.rare_tokens[threshold] = num_rare
-        stats.rare_token_fraction[threshold] = rare_fraction
+            stats.rare_tokens[threshold] = num_rare
+            stats.rare_token_fraction[threshold] = rare_fraction
 
         return stats
 
