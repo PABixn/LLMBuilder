@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Set, List
+from typing import Dict, Set, List, Union
 
 from tokenizers.models import BPE, WordPiece, Unigram
 from tokenizers.pre_tokenizers import ByteLevel as ByteLevelPreTokenizer, Whitespace as WhitespacePreTokenizer, Metaspace as MetaspacePreTokenizer
@@ -7,6 +7,8 @@ from tokenizers.decoders import ByteLevel as ByteLevelDecoder, WordPiece as Word
 from tokenizers.trainers import BpeTrainer, WordPieceTrainer, UnigramTrainer
 
 from tokenizer_loader import TokenizerConfig
+from dataloader_config import DataloaderConfig
+from tokenizer_dataloader import build_dataset
 from tokenizers import Tokenizer
 from collections import Counter
 
@@ -28,9 +30,14 @@ class ConfigurableTokenizer:
         self.tokenizer = self.get_tokenizer()
         self.trainer = self.get_trainer()
 
-    def train_from_file(self):
-        self.tokenizer.train(["datasets/shake.txt"], self.trainer)
+    def train_from_file(self, filepaths: List[str]):
+        self.tokenizer.train(filepaths, self.trainer)
 
+        self.tokenizer.save(self.config.name + ".json")
+
+    def train_from_dataset(self, dataloader_config: DataloaderConfig):
+        dataset = build_dataset(dataloader_config)
+        self.tokenizer.train_from_iterator(dataset, self.trainer)
         self.tokenizer.save(self.config.name + ".json")
 
     @staticmethod
