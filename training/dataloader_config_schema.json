@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://practiqai.com/llm-builder/1.0.0/training-dataloader-schema.json",
+  "title": "Training Dataloader Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["datasets", "seq_len"],
+  "properties": {
+    "datasets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/dataset_spec" },
+      "description": "Ordered list of dataset specs to stream and interleave."
+    },
+    "seq_len": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Packed sequence length for training inputs/targets."
+    },
+    "add_bos": {
+      "type": "boolean",
+      "default": false,
+      "description": "Prepend a BOS token to each record before packing."
+    },
+    "add_eos": {
+      "type": "boolean",
+      "default": false,
+      "description": "Append an EOS token to each record before packing."
+    },
+    "bos_token": {
+      "type": ["string", "null"],
+      "description": "Tokenizer BOS token string (required if add_bos is true)."
+    },
+    "eos_token": {
+      "type": ["string", "null"],
+      "description": "Tokenizer EOS token string (required if add_eos is true)."
+    },
+    "pad_token": {
+      "type": ["string", "null"],
+      "description": "Tokenizer PAD token string (used for padding when drop_last is false)."
+    },
+    "drop_last": {
+      "type": "boolean",
+      "default": true,
+      "description": "Drop the final partial sequence instead of padding."
+    },
+    "token_dtype": {
+      "type": "string",
+      "enum": ["int64", "int32", "int16", "uint8"],
+      "default": "int64"
+    },
+    "pretokenize_batch_size": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1000
+    },
+    "cache_dir": {
+      "type": ["string", "null"],
+      "description": "Optional cache directory for pretokenized map-style datasets."
+    },
+    "mixing": {
+      "$ref": "#/$defs/mixing"
+    },
+    "normalization": {
+      "$ref": "#/$defs/normalization"
+    },
+    "record_separator": {
+      "type": "string",
+      "default": "",
+      "description": "String appended to every record before tokenization."
+    },
+    "shuffle": {
+      "oneOf": [
+        { "$ref": "#/$defs/shuffle" },
+        { "type": "boolean", "const": false }
+      ],
+      "description": "Optional global shuffle config; use false to disable."
+    },
+    "node_split": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable node-level dataset splitting for distributed training."
+    },
+    "node_rank": {
+      "type": ["integer", "null"],
+      "description": "Optional node rank override (defaults to RANK env var)."
+    },
+    "node_world_size": {
+      "type": ["integer", "null"],
+      "description": "Optional world size override (defaults to WORLD_SIZE env var)."
+    }
+  },
+  "$defs": {
+    "normalization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "normalize_newlines": { "type": "boolean", "default": true },
+        "collapse_whitespace": { "type": "boolean", "default": false },
+        "strip": { "type": "boolean", "default": true },
+        "lowercase": { "type": "boolean", "default": false },
+        "drop_empty": { "type": "boolean", "default": true }
+      }
+    },
+    "shuffle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "buffer_size": { "type": "integer", "minimum": 1, "default": 1000 },
+        "seed": {
+          "type": ["integer", "null"],
+          "description": "Optional RNG seed for deterministic shuffling."
+        }
+      }
+    },
+    "dataset_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Dataset name or HF builder (e.g., \"json\", \"text\")."
+        },
+        "config": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional dataset config name."
+        },
+        "split": {
+          "type": "string",
+          "minLength": 1,
+          "default": "train"
+        },
+        "streaming": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to stream the dataset (IterableDataset)."
+        },
+        "text_columns": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "default": ["text"]
+        },
+        "text_joiner": { "type": "string", "default": "\n" },
+        "weight": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 1.0
+        },
+        "filters": {
+          "type": "array",
+          "description": "List of [column, op, value] filter triplets.",
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": [
+              { "type": "string", "description": "Column name." },
+              { "type": "string", "description": "Operator string." },
+              { "description": "Filter value." }
+            ],
+            "additionalItems": false
+          }
+        },
+        "columns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional column subset to load from a dataset."
+        },
+        "data_files": {
+          "description": "Optional data_files spec for local or remote files."
+        },
+        "normalization": { "$ref": "#/$defs/normalization" },
+        "record_separator": {
+          "type": "string",
+          "description": "Per-dataset record separator override."
+        },
+        "shuffle": {
+          "oneOf": [
+            { "$ref": "#/$defs/shuffle" },
+            { "type": "boolean", "const": false }
+          ],
+          "description": "Optional per-dataset shuffle override; false disables."
+        }
+      }
+    },
+    "mixing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seed": { "type": ["integer", "null"] },
+        "exhausted_policy": {
+          "type": "string",
+          "enum": ["stop", "repeat", "drop"],
+          "default": "stop"
+        }
+      }
+    }
+  }
+}
