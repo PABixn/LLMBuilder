@@ -251,7 +251,7 @@ def apply_rotary_emb(x, cos, sin):
     return out
 
 def get_norm(norm: Norm, dim: int) -> nn.Module:
-    if isinstance(norm, model_loader.RMSNorm):
+    if isinstance(norm, RMSNorm):
         if norm.learnable_gamma:
             return LearnableRMSNorm(dim)
         else:
