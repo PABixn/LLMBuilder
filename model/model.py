@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,9 +21,6 @@ class ConfigurableGPT(nn.Module):
 
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
-        if config.weight_tying:
-            self.tie_weights()
-
         self.in_norm = LearnableRMSNorm(config.n_embd)
         self.out_norm = LearnableRMSNorm(config.n_embd)
         
@@ -29,6 +28,11 @@ class ConfigurableGPT(nn.Module):
 
         for lay in config.blocks:
             self.transformer.h.append(ConfigurableBlock(config.n_embd, attn_idx, lay))
+
+        self.apply(self._init_weights)
+
+        if config.weight_tying:
+            self.tie_weights()
 
     def forward(self, idx, targets=None, kv_cache=None, loss_reduction="mean"):
         x = self.transformer.wte(idx)
@@ -50,8 +54,23 @@ class ConfigurableGPT(nn.Module):
         else:
             return logits
 
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            fan_out = module.weight.size(0)
+            fan_in = module.weight.size(1)
+            std = 1.0 / math.sqrt(fan_in) * min(1.0, math.sqrt(fan_out / fan_in))
+            torch.nn.init.normal_(module.weight, mean=0.0, std=std)
+
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=1.0)
+        elif isinstance(module, LearnableRMSNorm):
+            torch.nn.init.ones_(module.weight)
+
     def tie_weights(self):
-        self.transformer.wte.weight = self.lm_head.weight
+        #self.transformer.wte.weight = self.lm_head.weight
+        self.lm_head.weight = self.transformer.wte.weight
 
 
 class ConfigurableBlock(nn.Module):

@@ -108,8 +108,9 @@ Config is JSON and validated with `pydantic` in `training/dataloader_config.py`.
 ```
 
 ## Python usage
+
 ```python
-from tokenizer.configurator import ConfigurableTokenizer
+from tokenizer.tokenizer import ConfigurableTokenizer
 from tokenizer.loader import load_tokenizer_config
 from training.dataloader_config import load_training_dataloader_config
 from training.dataloader import TrainingDataLoader
