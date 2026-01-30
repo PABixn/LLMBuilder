@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://practiqai.com/llm-builder/1.0.0/training-loop-schema.json",
+  "title": "Training Loop Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "max_steps",
+    "total_batch_size",
+    "seq_len",
+    "sample_every",
+    "sample_max_tokens",
+    "save_every",
+    "optimizer"
+  ],
+  "properties": {
+    "max_steps": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of optimizer steps to run."
+    },
+    "total_batch_size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Effective total batch size across all devices."
+    },
+    "seq_len": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Sequence length used for training."
+    },
+    "sample_every": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Steps between sampling runs."
+    },
+    "sample_max_tokens": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum tokens to generate when sampling."
+    },
+    "save_every": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Steps between saving checkpoints."
+    },
+    "optimizer": {
+      "$ref": "#/$defs/optimizer"
+    }
+  },
+  "$defs": {
+    "optimizer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lr", "weight_decay", "betas", "eps"],
+      "properties": {
+        "lr": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Optimizer learning rate."
+        },
+        "weight_decay": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Weight decay (L2 penalty)."
+        },
+        "betas": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1
+          },
+          "description": "Adam beta coefficients."
+        },
+        "eps": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Optimizer epsilon for numerical stability."
+        }
+      }
+    }
+  }
+}
