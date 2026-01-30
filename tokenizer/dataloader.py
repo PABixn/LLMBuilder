@@ -424,7 +424,7 @@ def build_dataset(config: DataloaderConfig | dict | str) -> StreamingTextDataset
     return StreamingTextDataset(resolved)
 
 
-def create_dataloader(
+def create_tokenizer_dataloader(
     config: DataloaderConfig | dict | str,
     batch_size: Optional[int] = 1,
     num_workers: int = 0,

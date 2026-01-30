@@ -43,7 +43,7 @@ class ConfigurableTokenizer:
 
     @staticmethod
     def eval_tokenizer_on_file(thresholds: List[int], tokenizer: Tokenizer):
-        with open("../datasets/shake.txt", "r", encoding="utf-8") as f:
+        with open("datasets/shake.txt", "r", encoding="utf-8") as f:
             text = f.read()
 
         encoding = tokenizer.encode(text)

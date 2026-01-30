@@ -76,7 +76,7 @@ class DataloaderConfig(StrictModel):
     shuffle: Optional[ShuffleConfig | Literal[False]] = None
 
 
-def load_dataloader_config(config_path: str | Path) -> DataloaderConfig:
+def load_tokenizer_dataloader_config(config_path: str | Path) -> DataloaderConfig:
     path = Path(config_path)
     with path.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
