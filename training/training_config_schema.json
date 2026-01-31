@@ -11,7 +11,8 @@
     "sample_every",
     "sample_max_tokens",
     "save_every",
-    "optimizer"
+    "optimizer",
+    "lr_scheduler"
   ],
   "properties": {
     "max_steps": {
@@ -46,6 +47,9 @@
     },
     "optimizer": {
       "$ref": "#/$defs/optimizer"
+    },
+    "lr_scheduler": {
+      "$ref": "#/$defs/lr_scheduler"
     }
   },
   "$defs": {
@@ -79,6 +83,191 @@
           "type": "number",
           "exclusiveMinimum": 0,
           "description": "Optimizer epsilon for numerical stability."
+        }
+      }
+    },
+    "lr_scheduler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "schedulers"],
+      "properties": {
+        "type": {
+          "const": "sequential",
+          "description": "Sequential wrapper for step-based schedulers."
+        },
+        "schedulers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/scheduler" },
+          "description": "Ordered list of schedulers to apply in sequence."
+        }
+      }
+    },
+    "scheduler": {
+      "oneOf": [
+        { "$ref": "#/$defs/linear_scheduler" },
+        { "$ref": "#/$defs/cosine_annealing_scheduler" },
+        { "$ref": "#/$defs/step_scheduler" },
+        { "$ref": "#/$defs/multistep_scheduler" },
+        { "$ref": "#/$defs/exponential_scheduler" },
+        { "$ref": "#/$defs/constant_scheduler" },
+        { "$ref": "#/$defs/cosine_annealing_warm_restarts_scheduler" }
+      ]
+    },
+    "linear_scheduler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "steps", "start_factor", "end_factor"],
+      "properties": {
+        "type": { "const": "linear" },
+        "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of steps to run this scheduler."
+        },
+        "start_factor": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Initial LR factor."
+        },
+        "end_factor": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Final LR factor."
+        }
+      }
+    },
+    "cosine_annealing_scheduler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "steps"],
+      "properties": {
+        "type": { "const": "cosine_annealing" },
+        "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of steps to run this scheduler."
+        },
+        "eta_min": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Minimum learning rate."
+        }
+      }
+    },
+    "step_scheduler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "steps", "step_size"],
+      "properties": {
+        "type": { "const": "step" },
+        "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of steps to run this scheduler."
+        },
+        "step_size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Period of learning rate decay."
+        },
+        "gamma": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0.1,
+          "description": "Multiplicative factor of learning rate decay."
+        }
+      }
+    },
+    "multistep_scheduler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "steps", "milestones"],
+      "properties": {
+        "type": { "const": "multistep" },
+        "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of steps to run this scheduler."
+        },
+        "milestones": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 1 },
+          "description": "Milestone steps within this scheduler."
+        },
+        "gamma": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0.1,
+          "description": "Multiplicative factor of learning rate decay."
+        }
+      }
+    },
+    "exponential_scheduler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "steps", "gamma"],
+      "properties": {
+        "type": { "const": "exponential" },
+        "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of steps to run this scheduler."
+        },
+        "gamma": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Multiplicative factor of learning rate decay."
+        }
+      }
+    },
+    "constant_scheduler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "steps", "factor"],
+      "properties": {
+        "type": { "const": "constant" },
+        "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of steps to run this scheduler."
+        },
+        "factor": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Constant multiplicative LR factor."
+        }
+      }
+    },
+    "cosine_annealing_warm_restarts_scheduler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "steps", "t_0"],
+      "properties": {
+        "type": { "const": "cosine_annealing_warm_restarts" },
+        "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of steps to run this scheduler."
+        },
+        "t_0": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of iterations for the first restart."
+        },
+        "t_mult": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Multiplicative factor of T_i after a restart."
+        },
+        "eta_min": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Minimum learning rate."
         }
       }
     }

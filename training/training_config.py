@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Annotated, List
+from typing import Annotated, List, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
@@ -25,6 +25,88 @@ class OptimizerConfig(StrictModel):
         return self
 
 
+class LinearLRSchedulerConfig(StrictModel):
+    type: Literal["linear"]
+    steps: Annotated[int, Field(gt=0)]
+    start_factor: Annotated[float, Field(gt=0)]
+    end_factor: Annotated[float, Field(gt=0)]
+
+
+class CosineAnnealingLRSchedulerConfig(StrictModel):
+    type: Literal["cosine_annealing"]
+    steps: Annotated[int, Field(gt=0)]
+    eta_min: Annotated[float, Field(ge=0)] = 0.0
+
+
+class StepLRSchedulerConfig(StrictModel):
+    type: Literal["step"]
+    steps: Annotated[int, Field(gt=0)]
+    step_size: Annotated[int, Field(gt=0)]
+    gamma: Annotated[float, Field(gt=0)] = 0.1
+
+    @model_validator(mode="after")
+    def validate_step_size(self) -> "StepLRSchedulerConfig":
+        if self.step_size > self.steps:
+            raise ValueError("step_size must be <= steps")
+        return self
+
+
+class MultiStepLRSchedulerConfig(StrictModel):
+    type: Literal["multistep"]
+    steps: Annotated[int, Field(gt=0)]
+    milestones: Annotated[List[int], Field(min_length=1)]
+    gamma: Annotated[float, Field(gt=0)] = 0.1
+
+    @model_validator(mode="after")
+    def validate_milestones(self) -> "MultiStepLRSchedulerConfig":
+        if any(milestone <= 0 or milestone >= self.steps for milestone in self.milestones):
+            raise ValueError("milestones must be in the range (0, steps)")
+        if sorted(self.milestones) != self.milestones:
+            raise ValueError("milestones must be sorted ascending")
+        if len(set(self.milestones)) != len(self.milestones):
+            raise ValueError("milestones must be unique")
+        return self
+
+
+class ExponentialLRSchedulerConfig(StrictModel):
+    type: Literal["exponential"]
+    steps: Annotated[int, Field(gt=0)]
+    gamma: Annotated[float, Field(gt=0)]
+
+
+class ConstantLRSchedulerConfig(StrictModel):
+    type: Literal["constant"]
+    steps: Annotated[int, Field(gt=0)]
+    factor: Annotated[float, Field(gt=0)]
+
+
+class CosineAnnealingWarmRestartsLRSchedulerConfig(StrictModel):
+    type: Literal["cosine_annealing_warm_restarts"]
+    steps: Annotated[int, Field(gt=0)]
+    t_0: Annotated[int, Field(gt=0)]
+    t_mult: Annotated[int, Field(ge=1)] = 1
+    eta_min: Annotated[float, Field(ge=0)] = 0.0
+
+
+SchedulerConfig = Annotated[
+    Union[
+        LinearLRSchedulerConfig,
+        CosineAnnealingLRSchedulerConfig,
+        StepLRSchedulerConfig,
+        MultiStepLRSchedulerConfig,
+        ExponentialLRSchedulerConfig,
+        ConstantLRSchedulerConfig,
+        CosineAnnealingWarmRestartsLRSchedulerConfig,
+    ],
+    Field(discriminator="type"),
+]
+
+
+class SequentialLRSchedulerConfig(StrictModel):
+    type: Literal["sequential"]
+    schedulers: Annotated[List[SchedulerConfig], Field(min_length=1)]
+
+
 class TrainingConfig(StrictModel):
     max_steps: Annotated[int, Field(gt=0)]
     total_batch_size: Annotated[int, Field(gt=0)]
@@ -33,6 +115,16 @@ class TrainingConfig(StrictModel):
     sample_max_tokens: Annotated[int, Field(gt=0)]
     save_every: Annotated[int, Field(gt=0)]
     optimizer: OptimizerConfig
+    lr_scheduler: SequentialLRSchedulerConfig
+
+    @model_validator(mode="after")
+    def validate_scheduler_steps(self) -> "TrainingConfig":
+        total_steps = sum(scheduler.steps for scheduler in self.lr_scheduler.schedulers)
+        if total_steps != self.max_steps:
+            raise ValueError(
+                "sum of lr_scheduler steps must equal max_steps"
+            )
+        return self
 
 
 def load_training_config(config_path: str | Path) -> TrainingConfig:
