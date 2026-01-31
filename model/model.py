@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import itertools as it
 
+from torch.optim import AdamW
+
 from model.loader import *
 from model.kvcache import KVCache
 
@@ -53,6 +55,11 @@ class ConfigurableGPT(nn.Module):
             return loss
         else:
             return logits
+
+    def setup_optimizer(self, lr=3e-4, weight_decay=0.01, betas=(0.8, 0.95), eps=1e-10):
+        use_fused = next(self.parameters()).device.type == "cuda"
+
+        return AdamW(self.parameters(), lr=lr, weight_decay=weight_decay, betas=betas, eps=eps, fused=use_fused)
 
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):

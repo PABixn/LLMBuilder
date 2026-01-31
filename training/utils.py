@@ -16,7 +16,7 @@ def get_init():
     return ddp, ddp_rank, ddp_local_rank, ddp_world_size, device, device_type, autocast_ctx, synchronize
 
 def autodetect_device_type():
-    if torch.cude.is_available():
+    if torch.cuda.is_available():
         device_type = "cuda"
     elif torch.mps.is_available():
         device_type = "mps"
