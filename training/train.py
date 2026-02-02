@@ -1,8 +1,13 @@
+import time
+from contextlib import nullcontext
+
 from tokenizers.tokenizers import Tokenizer
 
 from model.model import ConfigurableGPT
+from training.checkpoint_manager import CheckpointManager
 from training.dataloader import TrainingDataLoader
 from training.dataloader_config import load_training_dataloader_config
+from training.logger import Logger
 from training.lr_scheduler import build_lr_scheduler
 from training_config import load_training_config
 from utils import get_init
@@ -15,6 +20,8 @@ def main():
     config = load_training_config("training/training_config.json")
 
     ddp, ddp_rank, ddp_local_rank, ddp_world_size, device, device_type, autocast_ctx, synchronize = get_init()
+
+    master_process = ddp_rank == 0
 
     batch_size = 32
 
@@ -51,7 +58,74 @@ def main():
     train_loader_config = load_training_dataloader_config("training/dataloader_config.json")
     train_loader = TrainingDataLoader(config=train_loader_config, tokenizer=tokenizer, batch_size=batch_size)
 
+    #Logger and checkpoing manager
+    logger = Logger(stats_file_path="stats.jsonl")
+    checkpoint_manager = CheckpointManager()
 
+    for step in range(config.max_steps):
+        model.train()
+
+        synchronize()
+        t0 = time.time()
+
+        loss_accum = 0.0
+
+        for micro_step in range(grad_accum_steps):
+            x, y = train_loader.next_batch()
+            x = x.to(device=device, non_blocking=True)
+            y = y.to(device=device, non_blocking=True)
+
+            synchronize_ctx = model.no_sync() if ddp and micro_step < grad_accum_steps - 1 else nullcontext()
+            with synchronize_ctx:
+                with autocast_ctx:
+                    loss = model(x, y)
+
+            loss = loss / grad_accum_steps
+            loss_accum += loss.detach()
+            loss.backward()
+
+        grad_norm_tensor = torch.nn.utils.clip_grad_norm_(orig_model.parameters(), 1.0)
+        grad_norm = grad_norm_tensor.item()
+
+        optimizer.step()
+
+        adamw_lr = optimizer.param_groups[0]['lr']
+
+        scheduler.step()
+
+        model.zero_grad(set_to_none=True)
+
+        synchronize()
+        t1 = time.time()
+        dt = t1 - t0
+
+        tok_per_sec = int(config.total_batch_size / dt)
+
+        if master_process:
+            logger.step(step, loss_accum.item(), grad_norm, dt, tok_per_sec, adamw_lr)
+
+            if 0 < step < config.max_steps - 1 and step % config.save_every == 0:
+                checkpoint_manager.save(
+                    step=step,
+                    model_data=orig_model.state_dict(),
+                    optimizer_data=optimizer.state_dict(),
+                    meta_data={
+                        "step": step,
+                        "batch_size": batch_size,
+                        "seq_len": config.seq_len,
+                        "model_config": model_config.model_dump_json()
+                    })
+
+        checkpoint_manager.save(
+            step=step,
+            model_data=orig_model.state_dict(),
+            optimizer_data=optimizer.state_dict(),
+            meta_data={
+                "step": step,
+                "batch_size": batch_size,
+                "seq_len": config.seq_len,
+                "model_config": model_config.model_dump_json()
+            })
 
 if __name__ == "__main__":
     main()
