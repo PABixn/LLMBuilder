@@ -63,8 +63,6 @@ def main():
     checkpoint_manager = CheckpointManager()
 
     for step in range(config.max_steps):
-        model.train()
-
         synchronize()
         t0 = time.time()
 
@@ -115,6 +113,33 @@ def main():
                         "seq_len": config.seq_len,
                         "model_config": model_config.model_dump_json()
                     })
+
+            if 0 < step < config.max_steps - 1 and step % config.sample_every == 0:
+                model.eval()
+
+                prompts = ["Hello, I'm a language model"]
+                samples = []
+
+                for idx, prompt in enumerate(prompts):
+                    prompt_tokens = tokenizer.encode(prompt).ids
+
+                    with autocast_ctx:
+                        new_tokens = list(
+                            model.generate(
+                                tokens=prompt_tokens,
+                                max_tokens=config.sample_max_tokens,
+                                temperature=1.0,
+                                top_k=50,
+                            )
+                        )
+
+                    full_tokens = prompt_tokens + new_tokens
+                    decoded_tokens = tokenizer.decode(full_tokens, skip_special_tokens=False)
+                    samples.append(decoded_tokens)
+
+                logger.sample(step, samples)
+
+                model.train()
 
         checkpoint_manager.save(
             step=step,
