@@ -57,7 +57,12 @@ def main():
 
     #Dataloaders
     train_loader_config = load_training_dataloader_config("training/dataloader_config.json")
-    train_loader = TrainingDataLoader(config=train_loader_config, tokenizer=tokenizer, batch_size=batch_size)
+    train_loader = TrainingDataLoader(
+        config=train_loader_config,
+        tokenizer=tokenizer,
+        batch_size=batch_size,
+        seq_len=config.seq_len,
+    )
 
     #Logger and checkpoing manager
     logger = Logger(stats_file_path="stats.jsonl")
@@ -65,7 +70,6 @@ def main():
 
     #Checks
     assert model_config.vocab_size == tokenizer.get_vocab_size()
-    assert config.seq_len == train_loader_config.seq_len
 
     for step in range(config.max_steps):
         synchronize()
@@ -160,5 +164,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

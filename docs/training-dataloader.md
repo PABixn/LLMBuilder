@@ -17,7 +17,6 @@ Config is JSON and validated with `pydantic` in `training/dataloader_config.py`.
 
 ### Top-level fields
 - `datasets`: list of dataset specs.
-- `seq_len`: fixed sequence length for training inputs/targets.
 - `add_bos`: prepend BOS token to each record.
 - `add_eos`: append EOS token to each record.
 - `bos_token`/`eos_token`: token strings to look up in the tokenizer (required if `add_bos`/`add_eos`).
@@ -69,7 +68,6 @@ Config is JSON and validated with `pydantic` in `training/dataloader_config.py`.
       "streaming": true
     }
   ],
-  "seq_len": 1024,
   "add_eos": true,
   "eos_token": "<|endoftext|>",
   "drop_last": true,
@@ -94,7 +92,6 @@ Config is JSON and validated with `pydantic` in `training/dataloader_config.py`.
       "streaming": false
     }
   ],
-  "seq_len": 2048,
   "add_bos": true,
   "bos_token": "<|bos|>",
   "add_eos": true,
@@ -113,6 +110,7 @@ Config is JSON and validated with `pydantic` in `training/dataloader_config.py`.
 from tokenizer.tokenizer import ConfigurableTokenizer
 from tokenizer.loader import load_tokenizer_config
 from training.dataloader_config import load_training_dataloader_config
+from training.training_config import load_training_config
 from training.dataloader import TrainingDataLoader
 
 # Build tokenizer
@@ -120,11 +118,18 @@ config = load_tokenizer_config("tokenizer/tok_config.json")
 ctok = ConfigurableTokenizer(config)
 ctok.train_from_file(["datasets/shake.txt"])
 
-# Load training config
-train_config = load_training_dataloader_config("my_training_config.json")
+# Load configs
+loader_config = load_training_dataloader_config("my_training_dataloader_config.json")
+train_config = load_training_config("training/training_config.json")
 
 # Create loader
-loader = TrainingDataLoader(train_config, ctok.tokenizer, batch_size=8, num_workers=2)
+loader = TrainingDataLoader(
+    loader_config,
+    ctok.tokenizer,
+    batch_size=8,
+    seq_len=train_config.seq_len,
+    num_workers=2,
+)
 inputs, targets = loader.next_batch()
 print(inputs.shape, targets.shape)
 ```

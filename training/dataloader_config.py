@@ -58,7 +58,6 @@ class MixingConfig(StrictModel):
 
 class TrainingDataloaderConfig(StrictModel):
     datasets: Annotated[List[DatasetSpec], Field(min_length=1)]
-    seq_len: Annotated[int, Field(gt=0)]
     add_bos: bool = False
     add_eos: bool = False
     bos_token: Optional[str] = None

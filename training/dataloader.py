@@ -157,10 +157,18 @@ class _DatasetState:
 
 
 class TrainingTokenDataset(IterableDataset):
-    def __init__(self, config: TrainingDataloaderConfig, tokenizer) -> None:
+    def __init__(
+        self,
+        config: TrainingDataloaderConfig,
+        tokenizer,
+        seq_len: int,
+    ) -> None:
         super().__init__()
         self.config = config
         self.tokenizer = tokenizer
+        self.seq_len = int(seq_len)
+        if self.seq_len <= 0:
+            raise ValueError("seq_len must be > 0")
         if not hasattr(tokenizer, "encode_batch") or not hasattr(tokenizer, "token_to_id"):
             raise ValueError("tokenizer must expose encode_batch() and token_to_id()")
         self._epoch = multiprocessing.Value("i", 0)
@@ -481,7 +489,7 @@ class TrainingTokenDataset(IterableDataset):
     def _pack_tokens(
         self, token_iter: Iterable[List[int]]
     ) -> Iterable[tuple[torch.Tensor, torch.Tensor]]:
-        seq_len = self.config.seq_len
+        seq_len = self.seq_len
         pad_id = self._pad_id
         buffer: List[int] = []
         for tokens in token_iter:
@@ -513,6 +521,7 @@ def _strided_iterable(dataset: Iterable, worker_id: int, num_workers: int) -> It
 def build_training_dataset(
     config: TrainingDataloaderConfig | dict | str,
     tokenizer,
+    seq_len: int,
 ) -> TrainingTokenDataset:
     if isinstance(config, TrainingDataloaderConfig):
         resolved = config
@@ -520,7 +529,7 @@ def build_training_dataset(
         resolved = load_training_dataloader_config(config)
     else:
         resolved = TrainingDataloaderConfig.model_validate(config)
-    return TrainingTokenDataset(resolved, tokenizer)
+    return TrainingTokenDataset(resolved, tokenizer, seq_len=seq_len)
 
 
 class TrainingDataLoader:
@@ -529,13 +538,14 @@ class TrainingDataLoader:
         config: TrainingDataloaderConfig | dict | str,
         tokenizer,
         batch_size: int,
+        seq_len: int,
         num_workers: int = 0,
         pin_memory: bool = False,
         prefetch_factor: int = 2,
         persistent_workers: Optional[bool] = None,
         **kwargs,
     ) -> None:
-        self.dataset = build_training_dataset(config, tokenizer)
+        self.dataset = build_training_dataset(config, tokenizer, seq_len=seq_len)
         if persistent_workers is None:
             persistent_workers = num_workers > 0
         dataloader_kwargs = dict(
