@@ -100,6 +100,7 @@ def main():
         tok_per_sec = int(config.total_batch_size / dt)
 
         if master_process:
+            #Log step
             logger.step(step, loss_accum.item(), grad_norm, dt, tok_per_sec, adamw_lr)
 
             if 0 < step < config.max_steps - 1 and step % config.save_every == 0:
@@ -114,22 +115,22 @@ def main():
                         "model_config": model_config.model_dump_json()
                     })
 
-            if 0 < step < config.max_steps - 1 and step % config.sample_every == 0:
+            #Sample from the model
+            if step > 0 and step % config.sample_every == 0:
                 model.eval()
 
-                prompts = ["Hello, I'm a language model"]
                 samples = []
 
-                for idx, prompt in enumerate(prompts):
-                    prompt_tokens = tokenizer.encode(prompt).ids
+                for idx, obj in enumerate(config.sampler.prompts):
+                    prompt_tokens = tokenizer.encode(obj.prompt).ids
 
                     with autocast_ctx:
                         new_tokens = list(
                             model.generate(
                                 tokens=prompt_tokens,
-                                max_tokens=config.sample_max_tokens,
-                                temperature=1.0,
-                                top_k=50,
+                                max_tokens=obj.max_tokens,
+                                temperature=obj.temperature,
+                                top_k=obj.top_k,
                             )
                         )
 

@@ -57,6 +57,7 @@ class ConfigurableGPT(nn.Module):
             return logits
 
     @torch.inference_mode()
+    @torch.no_grad()
     def generate(self, tokens, max_tokens, temperature=1.0, top_k=50, seed=42, repetition_penalty=1.0):
         assert isinstance(tokens, list)
 

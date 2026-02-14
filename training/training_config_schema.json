@@ -9,7 +9,7 @@
     "total_batch_size",
     "seq_len",
     "sample_every",
-    "sample_max_tokens",
+    "sampler",
     "save_every",
     "optimizer",
     "lr_scheduler"
@@ -35,10 +35,8 @@
       "minimum": 1,
       "description": "Steps between sampling runs."
     },
-    "sample_max_tokens": {
-      "type": "integer",
-      "minimum": 1,
-      "description": "Maximum tokens to generate when sampling."
+    "sampler": {
+      "$ref": "#/$defs/sampler"
     },
     "save_every": {
       "type": "integer",
@@ -53,6 +51,46 @@
     }
   },
   "$defs": {
+    "sampler_prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt", "max_tokens", "temperature", "top_k"],
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Prompt text used as model input for sampling."
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum tokens to generate for this prompt."
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sampling temperature; 0 enables greedy decoding."
+        },
+        "top_k": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Top-k cutoff applied before token sampling."
+        }
+      }
+    },
+    "sampler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompts"],
+      "properties": {
+        "prompts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sampler_prompt" },
+          "description": "Per-prompt sampling configurations."
+        }
+      }
+    },
     "optimizer": {
       "type": "object",
       "additionalProperties": false,

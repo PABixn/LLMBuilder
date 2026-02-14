@@ -107,12 +107,29 @@ class SequentialLRSchedulerConfig(StrictModel):
     schedulers: Annotated[List[SchedulerConfig], Field(min_length=1)]
 
 
+class SamplerPromptConfig(StrictModel):
+    prompt: Annotated[str, Field(min_length=1)]
+    max_tokens: Annotated[int, Field(gt=0)]
+    temperature: Annotated[float, Field(ge=0)]
+    top_k: Annotated[int, Field(gt=0)]
+
+    @model_validator(mode="after")
+    def validate_prompt(self) -> "SamplerPromptConfig":
+        if not self.prompt.strip():
+            raise ValueError("prompt must contain at least one non-whitespace character")
+        return self
+
+
+class SamplerConfig(StrictModel):
+    prompts: Annotated[List[SamplerPromptConfig], Field(min_length=1)]
+
+
 class TrainingConfig(StrictModel):
     max_steps: Annotated[int, Field(gt=0)]
     total_batch_size: Annotated[int, Field(gt=0)]
     seq_len: Annotated[int, Field(gt=0)]
     sample_every: Annotated[int, Field(gt=0)]
-    sample_max_tokens: Annotated[int, Field(gt=0)]
+    sampler: SamplerConfig
     save_every: Annotated[int, Field(gt=0)]
     optimizer: OptimizerConfig
     lr_scheduler: SequentialLRSchedulerConfig
