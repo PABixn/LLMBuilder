@@ -9,8 +9,8 @@ from training.dataloader import TrainingDataLoader
 from training.dataloader_config import load_training_dataloader_config
 from training.logger import Logger
 from training.lr_scheduler import build_lr_scheduler
-from training_config import load_training_config
-from utils import get_init
+from training.training_config import load_training_config
+from training.utils import get_init
 from model.loader import load_config
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -40,6 +40,7 @@ def main():
     #Initialize model
     model_config = load_config("model/gpt2_config.json")
     orig_model = ConfigurableGPT(model_config)
+    orig_model = orig_model.to(device)
 
     compiled_model = torch.compile(orig_model, dynamic=False)
 
@@ -155,6 +156,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
