@@ -17,7 +17,7 @@
       "weight": 0.3
     }
   ],
-  "seq_len": 1024,
+  "seq_len": 64,
   "add_eos": true,
   "eos_token": "<|endoftext|>",
   "drop_last": true,

@@ -63,6 +63,10 @@ def main():
     logger = Logger(stats_file_path="stats.jsonl")
     checkpoint_manager = CheckpointManager()
 
+    #Checks
+    assert model_config.vocab_size == tokenizer.get_vocab_size()
+    assert config.seq_len == train_loader_config.seq_len
+
     for step in range(config.max_steps):
         synchronize()
         t0 = time.time()
@@ -143,16 +147,16 @@ def main():
 
                 model.train()
 
-        checkpoint_manager.save(
-            step=step,
-            model_data=orig_model.state_dict(),
-            optimizer_data=optimizer.state_dict(),
-            meta_data={
-                "step": step,
-                "batch_size": batch_size,
-                "seq_len": config.seq_len,
-                "model_config": model_config.model_dump_json()
-            })
+    checkpoint_manager.save(
+        step=config.max_steps,
+        model_data=orig_model.state_dict(),
+        optimizer_data=optimizer.state_dict(),
+        meta_data={
+            "step": config.max_steps,
+            "batch_size": batch_size,
+            "seq_len": config.seq_len,
+            "model_config": model_config.model_dump_json()
+        })
 
 if __name__ == "__main__":
     main()
