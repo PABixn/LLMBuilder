@@ -20,10 +20,11 @@ def main():
     config = load_training_config("training/training_config.json")
 
     ddp, ddp_rank, ddp_local_rank, ddp_world_size, device, device_type, autocast_ctx, synchronize = get_init()
+    is_cuda = device == "cuda"
 
     master_process = ddp_rank == 0
 
-    batch_size = 32
+    batch_size = 8
 
     #Gradient accumulation
     tokens_per_pass = batch_size * config.seq_len
@@ -41,11 +42,13 @@ def main():
     model_config = load_config("model/gpt2_config.json")
     orig_model = ConfigurableGPT(model_config)
     orig_model = orig_model.to(device)
+    compiled_model = orig_model
 
-    compiled_model = torch.compile(orig_model, dynamic=False)
+    if is_cuda:
+        compiled_model = torch.compile(orig_model, dynamic=False)
 
     if ddp:
-        model = DDP(compiled_model, device_ids=[ddp_local_rank] if device_type == "cuda" else None)
+        model = DDP(compiled_model, device_ids=[ddp_local_rank] if is_cuda else None)
     else:
         model = compiled_model
 
@@ -79,8 +82,8 @@ def main():
 
         for micro_step in range(grad_accum_steps):
             x, y = train_loader.next_batch()
-            x = x.to(device=device, non_blocking=True)
-            y = y.to(device=device, non_blocking=True)
+            x = x.to(device=device, non_blocking=is_cuda)
+            y = y.to(device=device, non_blocking=is_cuda)
 
             synchronize_ctx = model.no_sync() if ddp and micro_step < grad_accum_steps - 1 else nullcontext()
             with synchronize_ctx:

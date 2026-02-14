@@ -1,7 +1,7 @@
 {
   "max_steps": 300,
   "total_batch_size": 8192,
-  "seq_len": 1024,
+  "seq_len": 128,
   "sample_every": 50,
   "sampler": {
     "prompts": [
