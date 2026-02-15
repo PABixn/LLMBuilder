@@ -1,6 +1,8 @@
 import json
 from typing import List
 
+from training.memory_estimator import StepSizeEstimate, MemoryEstimator
+
 
 class Logger:
     def __init__(self, stats_file_path: str = "stats.jsonl", samples_file_path: str = "samples.jsonl"):
@@ -25,3 +27,6 @@ class Logger:
             texts = {"step": step, "samples": samples}
             f.write(json.dumps(texts) + "\n")
             f.flush()
+
+    def memory_estimate(self, estimate: StepSizeEstimate):
+        print(MemoryEstimator.format(estimate))

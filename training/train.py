@@ -9,6 +9,7 @@ from training.dataloader import TrainingDataLoader
 from training.dataloader_config import load_training_dataloader_config
 from training.logger import Logger
 from training.lr_scheduler import build_lr_scheduler
+from training.memory_estimator import MemoryEstimator
 from training.training_config import load_training_config
 from training.utils import get_init
 from model.loader import load_config
@@ -20,11 +21,11 @@ def main():
     config = load_training_config("training/training_config.json")
 
     ddp, ddp_rank, ddp_local_rank, ddp_world_size, device, device_type, autocast_ctx, synchronize = get_init()
-    is_cuda = device == "cuda"
+    is_cuda = device_type == "cuda"
 
     master_process = ddp_rank == 0
 
-    batch_size = 8
+    batch_size = 16
 
     #Gradient accumulation
     tokens_per_pass = batch_size * config.seq_len
@@ -37,6 +38,10 @@ def main():
 
     #Tokenier
     tokenizer = Tokenizer.from_file("trained_tokenizer.json")
+
+    # Logger and checkpoing manager
+    logger = Logger(stats_file_path="stats.jsonl", samples_file_path="samples.jsonl")
+    checkpoint_manager = CheckpointManager()
 
     #Initialize model
     model_config = load_config("model/gpt2_config.json")
@@ -55,6 +60,24 @@ def main():
     #Optimizer
     optimizer = orig_model.setup_optimizer(lr=config.optimizer.lr, weight_decay=config.optimizer.weight_decay, betas=config.optimizer.betas, eps=config.optimizer.eps)
 
+    #Estimate the memory
+    memory_estimator = MemoryEstimator(
+        model=orig_model,
+        optimizer=optimizer,
+        device=device,
+        gradient_accumulation_steps=grad_accum_steps,
+        world_size=ddp_world_size,
+    )
+
+    memory_estimate = memory_estimator.estimate(
+        seq_len=config.seq_len,
+        batch_size=batch_size,
+    )
+
+    logger.memory_estimate(memory_estimate)
+
+    batch_size = memory_estimate.max_batch_size if memory_estimate.max_batch_size % 2 == 0 else memory_estimate.max_batch_size - 1
+
     #LR Schedulers
     scheduler = build_lr_scheduler(optimizer, config.lr_scheduler)
 
@@ -66,10 +89,6 @@ def main():
         batch_size=batch_size,
         seq_len=config.seq_len,
     )
-
-    #Logger and checkpoing manager
-    logger = Logger(stats_file_path="stats.jsonl")
-    checkpoint_manager = CheckpointManager()
 
     #Checks
     assert model_config.vocab_size == tokenizer.get_vocab_size()
@@ -167,4 +186,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
