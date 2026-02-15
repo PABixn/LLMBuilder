@@ -65,7 +65,16 @@ def main():
 
     logger.memory_estimate(memory_estimate)
 
-    batch_size = memory_estimate.max_batch_size if memory_estimate.max_batch_size % 2 == 0 else memory_estimate.max_batch_size - 1
+    max_batch_size_from_total = config.total_batch_size // config.seq_len
+    max_allowed_batch_size = min(memory_estimate.max_batch_size, max_batch_size_from_total)
+    batch_size = max_allowed_batch_size if max_allowed_batch_size % 2 == 0 else max_allowed_batch_size - 1
+
+    if batch_size <= 0:
+        raise ValueError(
+            "Could not derive a positive even batch_size from memory estimate and total_batch_size/seq_len constraints."
+        )
+
+    print(f"Using batch_size = {batch_size}")
 
     # Gradient accumulation
     tokens_per_pass = batch_size * config.seq_len
