@@ -92,7 +92,6 @@ class StepSizeEstimate:
     usable_free_bytes: int
     max_step_tokens: int
     max_batch_size: int
-    max_total_batch_tokens: int
     estimated_peak_additional_bytes: int
     configured_step_tokens: int | None = None
     configured_peak_additional_bytes: int | None = None
@@ -122,7 +121,6 @@ class StepSizeEstimate:
             "model_resident_bytes": self.model_resident_bytes,
             "max_step_tokens": self.max_step_tokens,
             "max_batch_size": self.max_batch_size,
-            "max_total_batch_tokens": self.max_total_batch_tokens,
             "estimated_peak_additional_bytes": self.estimated_peak_additional_bytes,
             "estimated_peak_total_bytes": self.estimated_peak_total_bytes,
             "configured_step_tokens": self.configured_step_tokens,
@@ -144,8 +142,6 @@ class MemoryEstimator:
             model,
             optimizer=optimizer,
             device=device,
-            gradient_accumulation_steps=grad_accum_steps,
-            world_size=world_size,
         )
         estimate = estimator.estimate(seq_len=seq_len, batch_size=batch_size)
         print(estimator.format(estimate))
@@ -157,8 +153,6 @@ class MemoryEstimator:
         *,
         optimizer: Optimizer | None = None,
         device: torch.device | str | None = None,
-        gradient_accumulation_steps: int = 1,
-        world_size: int = 1,
         attention_backend: Literal["auto", "flash", "math"] = "auto",
         safety_margin: float = 0.9,
         logits_backward_factor: float = 2.0,
@@ -170,8 +164,6 @@ class MemoryEstimator:
         self.model = model
         self.optimizer = optimizer
         self.device = device
-        self.gradient_accumulation_steps = gradient_accumulation_steps
-        self.world_size = world_size
         self.attention_backend = attention_backend
         self.safety_margin = safety_margin
         self.logits_backward_factor = logits_backward_factor
@@ -186,8 +178,6 @@ class MemoryEstimator:
             optimizer=self.optimizer,
             seq_len=seq_len,
             batch_size=batch_size,
-            gradient_accumulation_steps=self.gradient_accumulation_steps,
-            world_size=self.world_size,
             device=self.device,
             attention_backend=self.attention_backend,
             safety_margin=self.safety_margin,
@@ -218,7 +208,6 @@ def format_step_size_estimate(estimate: StepSizeEstimate) -> str:
         f"  dynamic memory per token: {_format_bytes(estimate.breakdown.dynamic_bytes_per_token)}",
         f"  max micro-step tokens (batch_size * seq_len): {estimate.max_step_tokens:,}",
         f"  max batch_size at seq_len={estimate.seq_len}: {estimate.max_batch_size:,}",
-        f"  max total tokens per optimizer step (at current grad_accum * world_size): {estimate.max_total_batch_tokens:,}",
         f"  estimated peak total training memory at max step: {_format_bytes(estimate.estimated_peak_total_bytes)}",
     ]
     if estimate.configured_step_tokens is not None:
@@ -243,8 +232,6 @@ def estimate_max_step_tokens(
     optimizer: Optimizer | None,
     seq_len: int,
     batch_size: int | None = None,
-    gradient_accumulation_steps: int = 1,
-    world_size: int = 1,
     device: torch.device | str | None = None,
     attention_backend: Literal["auto", "flash", "math"] = "auto",
     safety_margin: float = 0.9,
@@ -274,8 +261,6 @@ def estimate_max_step_tokens(
         raise ValueError("dynamic_overhead_factor must be >= 0")
     if fixed_workspace_bytes < 0 or fixed_misc_bytes < 0:
         raise ValueError("fixed overhead bytes must be >= 0")
-    if gradient_accumulation_steps <= 0 or world_size <= 0:
-        raise ValueError("gradient_accumulation_steps and world_size must be > 0")
     if seq_len > int(model.config.context_length):
         raise ValueError(
             f"seq_len ({seq_len}) exceeds model context_length ({model.config.context_length})"
@@ -362,7 +347,6 @@ def estimate_max_step_tokens(
     max_step_tokens = max_batch_size * seq_len
 
     estimated_peak_additional_bytes = breakdown.fixed_bytes + max_step_tokens * breakdown.dynamic_bytes_per_token
-    max_total_batch_tokens = max_step_tokens * gradient_accumulation_steps * world_size
 
     configured_step_tokens = None
     configured_peak_additional_bytes = None
@@ -387,7 +371,6 @@ def estimate_max_step_tokens(
         usable_free_bytes=usable_free_bytes,
         max_step_tokens=max_step_tokens,
         max_batch_size=max_batch_size,
-        max_total_batch_tokens=max_total_batch_tokens,
         estimated_peak_additional_bytes=estimated_peak_additional_bytes,
         configured_step_tokens=configured_step_tokens,
         configured_peak_additional_bytes=configured_peak_additional_bytes,

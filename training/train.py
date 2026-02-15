@@ -27,15 +27,6 @@ def main():
 
     batch_size = 16
 
-    #Gradient accumulation
-    tokens_per_pass = batch_size * config.seq_len
-    world_tokens_per_pass = tokens_per_pass * ddp_world_size
-
-    assert config.total_batch_size % world_tokens_per_pass == 0
-
-    grad_accum_steps = config.total_batch_size // world_tokens_per_pass
-    print(f"Gradient accumulation steps: {grad_accum_steps}")
-
     #Tokenier
     tokenizer = Tokenizer.from_file("trained_tokenizer.json")
 
@@ -65,8 +56,6 @@ def main():
         model=orig_model,
         optimizer=optimizer,
         device=device,
-        gradient_accumulation_steps=grad_accum_steps,
-        world_size=ddp_world_size,
     )
 
     memory_estimate = memory_estimator.estimate(
@@ -77,6 +66,15 @@ def main():
     logger.memory_estimate(memory_estimate)
 
     batch_size = memory_estimate.max_batch_size if memory_estimate.max_batch_size % 2 == 0 else memory_estimate.max_batch_size - 1
+
+    # Gradient accumulation
+    tokens_per_pass = batch_size * config.seq_len
+    world_tokens_per_pass = tokens_per_pass * ddp_world_size
+
+    assert config.total_batch_size % world_tokens_per_pass == 0
+
+    grad_accum_steps = config.total_batch_size // world_tokens_per_pass
+    print(f"Gradient accumulation steps: {grad_accum_steps}")
 
     #LR Schedulers
     scheduler = build_lr_scheduler(optimizer, config.lr_scheduler)
