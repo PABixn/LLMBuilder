@@ -7,7 +7,13 @@ from typing import Iterable, Iterator, List, Optional, Sequence, Tuple
 
 from torch.utils.data import DataLoader, IterableDataset, get_worker_info
 
-from datasets import load_dataset
+try:
+    from datasets import load_dataset
+except ImportError as exc:
+    raise ImportError(
+        "Failed to import HuggingFace 'datasets'. Ensure your project virtualenv is active "
+        "and run the API with `python -m uvicorn ...` so the correct interpreter is used."
+    ) from exc
 
 from tokenizer.dataloader_config import (
     DataloaderConfig,
@@ -329,9 +335,10 @@ class StreamingTextDataset(IterableDataset):
         if spec.filters is not None:
             kwargs["filters"] = [tuple(filt) for filt in spec.filters]
         dataset = load_dataset(*args, **kwargs)
-        if hasattr(dataset, "features"):
+        features = getattr(dataset, "features", None)
+        if features is not None:
             for column in spec.text_columns:
-                if column not in dataset.features:
+                if column not in features:
                     raise ValueError(
                         f"Dataset '{spec.name}' does not contain text column '{column}'"
                     )

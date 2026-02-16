@@ -13,7 +13,13 @@ from typing import Iterable, Iterator, List, Optional, Sequence
 import torch
 from torch.utils.data import DataLoader, IterableDataset, get_worker_info
 
-from datasets import load_dataset, load_from_disk
+try:
+    from datasets import load_dataset, load_from_disk
+except ImportError as exc:
+    raise ImportError(
+        "Failed to import HuggingFace 'datasets'. Ensure your project virtualenv is active "
+        "and run scripts with that interpreter."
+    ) from exc
 
 from training.dataloader_config import (
     DatasetSpec,
@@ -289,9 +295,10 @@ class TrainingTokenDataset(IterableDataset):
         if self.config.cache_dir is not None:
             kwargs["cache_dir"] = self.config.cache_dir
         dataset = load_dataset(*args, **kwargs)
-        if hasattr(dataset, "features"):
+        features = getattr(dataset, "features", None)
+        if features is not None:
             for column in spec.text_columns:
-                if column not in dataset.features:
+                if column not in features:
                     raise ValueError(
                         f"Dataset '{spec.name}' does not contain text column '{column}'"
                     )
