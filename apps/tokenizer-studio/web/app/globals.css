@@ -1,0 +1,533 @@
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --text: #1f2933;
+  --text-muted: #52606d;
+  --line: #d9e2ec;
+  --brand: #0f766e;
+  --brand-strong: #0b5f59;
+  --danger: #b42318;
+  --danger-bg: #fff1f1;
+  --ok: #067647;
+  --ok-bg: #ecfdf3;
+  --radius: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 20% -10%, #d5f5ef 0, transparent 40%),
+    radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 30%),
+    var(--bg);
+  color: var(--text);
+  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+.studioPage {
+  width: min(1120px, 100% - 32px);
+  margin: 24px auto 42px;
+  display: grid;
+  gap: 14px;
+}
+
+.heroCard,
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
+}
+
+.heroCard {
+  padding: 22px;
+}
+
+.heroCard h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.1vw, 2.2rem);
+  letter-spacing: -0.02em;
+}
+
+.heroCard p {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  max-width: 72ch;
+}
+
+.heroTag {
+  margin: 0 0 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.heroMeta {
+  margin-top: 12px;
+  display: inline-flex;
+  border: 1px solid #cce3df;
+  border-radius: 999px;
+  padding: 5px 11px;
+  background: #f0fdf9;
+  color: #0d5f58;
+  font-size: 0.84rem;
+}
+
+.messages {
+  display: grid;
+  gap: 8px;
+}
+
+.message {
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  font-size: 0.92rem;
+}
+
+.message-info {
+  background: #f8fffd;
+  border-color: #cce3df;
+}
+
+.message-error {
+  background: var(--danger-bg);
+  border-color: #f3c2c2;
+  color: var(--danger);
+}
+
+.sectionBlock {
+  padding: 18px;
+}
+
+.sectionBlock h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.setupGrid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.miniPanel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--surface-muted);
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.miniPanel h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fullWidthField {
+  grid-column: 1 / -1;
+}
+
+.fieldNote {
+  margin: -2px 0 2px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.sourceModeRow {
+  display: grid;
+  gap: 8px;
+}
+
+.sourceModeRow > span {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.modeSwitch {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #eef3f7;
+  width: fit-content;
+}
+
+.modeSwitchButton {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #334e68;
+  font-weight: 600;
+  padding: 7px 10px;
+}
+
+.modeSwitchButton-active {
+  background: #ffffff;
+  border-color: #c7d7e6;
+  color: #102a43;
+}
+
+.datasetConfigurator {
+  display: grid;
+  gap: 10px;
+}
+
+.compactActionRow {
+  margin-top: 0;
+}
+
+.datasetList {
+  display: grid;
+  gap: 10px;
+}
+
+.datasetCard {
+  border: 1px solid #ced9e3;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fdfefe;
+}
+
+.datasetCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+input,
+select,
+textarea,
+pre {
+  width: 100%;
+  border: 1px solid #c5d2de;
+  border-radius: 9px;
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+  padding: 8px 10px;
+}
+
+textarea,
+pre {
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid rgba(15, 118, 110, 0.3);
+  outline-offset: 1px;
+}
+
+pre {
+  margin: 0;
+  min-height: 140px;
+  max-height: 280px;
+  overflow: auto;
+  background: #0b1220;
+  color: #e8edf4;
+  border-color: #1f2a3b;
+}
+
+.inlineRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.inlineField {
+  min-width: 220px;
+}
+
+.checkLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkLabel input {
+  width: auto;
+  margin: 0;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.hint-ok {
+  color: var(--ok);
+}
+
+.hint-error {
+  color: var(--danger);
+}
+
+.advancedPanel {
+  border: 1px dashed #bfd3e3;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fbfdff;
+}
+
+.advancedPanel > summary {
+  cursor: pointer;
+  color: #334e68;
+  font-weight: 600;
+}
+
+.actionRow {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button,
+.downloadLink {
+  border-radius: 9px;
+  border: 1px solid transparent;
+  padding: 9px 13px;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.secondaryButton {
+  border-color: #b6c6d7;
+  background: #ffffff;
+  color: #334e68;
+  font-weight: 600;
+}
+
+.textButton {
+  border-color: #b6c6d7;
+  background: transparent;
+  color: #334e68;
+}
+
+.jsonGrid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.jobsGrid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 14px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.metaLine {
+  margin: 6px 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.progressTrack {
+  margin-top: 8px;
+  width: 100%;
+  height: 11px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid #c4d3e0;
+  background: #edf2f7;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #0f766e, #0ea5a4);
+}
+
+.statsGrid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.statsGrid > div {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+  background: var(--surface-muted);
+}
+
+.statsGrid span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin-bottom: 3px;
+}
+
+.statsGrid strong {
+  font-size: 0.96rem;
+}
+
+.downloadLink {
+  display: inline-flex;
+  margin-top: 10px;
+  background: #e6fffb;
+  border-color: #a6e7de;
+  color: #0d5f58;
+  font-weight: 700;
+}
+
+.jobsList {
+  display: grid;
+  gap: 8px;
+}
+
+.jobRow {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  background: #ffffff;
+}
+
+.jobRow p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.jobRow-active {
+  border-color: #6ebdb4;
+  background: #f0fdf9;
+}
+
+.jobBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid;
+}
+
+.jobBadge-pending {
+  color: #975a16;
+  background: #fff7ed;
+  border-color: #fcd6ae;
+}
+
+.jobBadge-running {
+  color: #075985;
+  background: #e0f2fe;
+  border-color: #9fd8f9;
+}
+
+.jobBadge-completed {
+  color: #067647;
+  background: #ecfdf3;
+  border-color: #a9eec3;
+}
+
+.jobBadge-failed {
+  color: #b42318;
+  background: #fff1f1;
+  border-color: #f3c2c2;
+}
+
+@media (max-width: 1060px) {
+  .setupGrid,
+  .jobsGrid,
+  .jsonGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 740px) {
+  .studioPage {
+    width: min(1120px, 100% - 20px);
+    margin-top: 14px;
+  }
+
+  .heroCard,
+  .sectionBlock {
+    padding: 14px;
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .actionRow {
+    flex-direction: column;
+  }
+
+  .modeSwitch {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .datasetCardHeader .textButton,
+  .modeSwitchButton {
+    width: 100%;
+  }
+
+  button,
+  .downloadLink {
+    width: 100%;
+    justify-content: center;
+  }
+}

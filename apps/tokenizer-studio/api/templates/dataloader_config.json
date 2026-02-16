@@ -1,0 +1,34 @@
+{
+  "datasets": [
+    {
+      "name": "HuggingFaceFW/fineweb-edu",
+      "split": "train",
+      "text_columns": ["text"],
+      "weight": 0.7,
+      "filters": [
+        ["language_score", ">", 0.95],
+        ["int_score", ">=", 4]
+      ]
+    },
+    {
+      "name": "bigcode/the-stack",
+      "split": "train",
+      "text_columns": ["content"],
+      "weight": 0.3
+    }
+  ],
+  "budget": {
+    "limit": 40000000,
+    "unit": "chars",
+    "behavior": "truncate"
+  },
+  "mixing": {
+    "seed": 42,
+    "exhausted_policy": "stop"
+  },
+  "shuffle": {
+    "buffer_size": 10000,
+    "seed": 123
+  },
+  "record_separator": ""
+}

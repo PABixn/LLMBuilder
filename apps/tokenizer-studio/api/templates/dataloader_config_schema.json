@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://practiqai.com/llm-builder/1.0.0/tokenizer-dataloader-schema.json",
+  "title": "Tokenizer Dataloader Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["datasets", "budget"],
+  "properties": {
+    "datasets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/dataset_spec" },
+      "description": "Ordered list of dataset specs to stream and interleave."
+    },
+    "budget": {
+      "$ref": "#/$defs/text_budget"
+    },
+    "chunking": {
+      "$ref": "#/$defs/chunking"
+    },
+    "mixing": {
+      "$ref": "#/$defs/mixing"
+    },
+    "normalization": {
+      "$ref": "#/$defs/normalization"
+    },
+    "record_separator": {
+      "type": "string",
+      "default": "",
+      "description": "String appended to every record before chunking."
+    },
+    "shuffle": {
+      "oneOf": [
+        { "$ref": "#/$defs/shuffle" },
+        { "type": "boolean", "const": false }
+      ],
+      "description": "Optional global shuffle config; use false to disable."
+    }
+  },
+  "$defs": {
+    "normalization": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "normalize_newlines": {
+          "type": "boolean",
+          "default": true
+        },
+        "collapse_whitespace": {
+          "type": "boolean",
+          "default": false
+        },
+        "strip": {
+          "type": "boolean",
+          "default": true
+        },
+        "lowercase": {
+          "type": "boolean",
+          "default": false
+        },
+        "drop_empty": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "shuffle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "buffer_size": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1000
+        },
+        "seed": {
+          "type": ["integer", "null"],
+          "description": "Optional RNG seed for deterministic shuffling."
+        }
+      }
+    },
+    "dataset_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Dataset name or HF builder (e.g., \"json\", \"text\")."
+        },
+        "config": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional dataset config name."
+        },
+        "split": {
+          "type": "string",
+          "minLength": 1,
+          "default": "train"
+        },
+        "text_columns": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "default": ["text"]
+        },
+        "text_joiner": {
+          "type": "string",
+          "default": "\n"
+        },
+        "weight": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 1.0
+        },
+        "filters": {
+          "type": "array",
+          "description": "List of [column, op, value] filter triplets.",
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": [
+              { "type": "string", "description": "Column name." },
+              { "type": "string", "description": "Operator string." },
+              { "description": "Filter value." }
+            ],
+            "additionalItems": false
+          }
+        },
+        "columns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional column subset to load from a dataset."
+        },
+        "data_files": {
+          "description": "Optional data_files spec for local or remote files."
+        },
+        "normalization": {
+          "$ref": "#/$defs/normalization"
+        },
+        "record_separator": {
+          "type": "string",
+          "description": "Per-dataset record separator override."
+        },
+        "shuffle": {
+          "oneOf": [
+            { "$ref": "#/$defs/shuffle" },
+            { "type": "boolean", "const": false }
+          ],
+          "description": "Optional per-dataset shuffle override; false disables."
+        }
+      }
+    },
+    "text_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["limit"],
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum total text budget."
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["chars", "bytes"],
+          "default": "chars"
+        },
+        "behavior": {
+          "type": "string",
+          "enum": ["stop", "truncate"],
+          "default": "stop"
+        }
+      }
+    },
+    "chunking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chunk_size"],
+      "properties": {
+        "chunk_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "drop_last": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "mixing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seed": {
+          "type": ["integer", "null"]
+        },
+        "exhausted_policy": {
+          "type": "string",
+          "enum": ["stop", "repeat", "drop"],
+          "default": "stop"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://practiqai.com/llm-builder/1.0.0/tokenizer-schema.json",
+  "title": "Tokenizer Configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "tokenizer_type",
+    "vocab_size",
+    "min_frequency",
+    "special_tokens",
+    "pre_tokenizer",
+    "decoder"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Readable identifier, used for naming saved tokenizer files."
+    },
+    "tokenizer_type": {
+      "type": "string",
+      "enum": ["bpe", "wordpiece", "unigram"],
+      "description": "Tokenizer model family."
+    },
+    "vocab_size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Target vocabulary size for training."
+    },
+    "min_frequency": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Minimum token frequency for inclusion (used by BPE/WordPiece)."
+    },
+    "special_tokens": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Special tokens to reserve at fixed ids."
+    },
+    "pre_tokenizer": {
+      "type": "string",
+      "enum": ["byte_level", "whitespace", "metaspace"],
+      "description": "Pre-tokenization strategy."
+    },
+    "decoder": {
+      "type": "string",
+      "enum": ["byte_level", "wordpiece", "metaspace"],
+      "description": "Decoder strategy used to reconstruct text."
+    },
+    "byte_fallback": {
+      "type": "boolean",
+      "default": true,
+      "description": "If true, BPE can fall back to byte-level tokens for unknown bytes."
+    },
+    "unk_token": {
+      "type": "string",
+      "minLength": 1,
+      "default": "[UNK]",
+      "description": "Unknown token string for WordPiece."
+    }
+  },
+  "oneOf": [
+    {
+      "title": "BPE with byte fallback",
+      "properties": {
+        "tokenizer_type": { "const": "bpe" },
+        "byte_fallback": { "const": true }
+      },
+      "required": ["byte_fallback"],
+      "not": { "required": ["unk_token"] }
+    },
+    {
+      "title": "BPE without byte fallback",
+      "properties": {
+        "tokenizer_type": { "const": "bpe" },
+        "byte_fallback": { "const": false }
+      },
+      "required": ["byte_fallback", "unk_token"]
+    },
+    {
+      "title": "WordPiece",
+      "properties": {
+        "tokenizer_type": { "const": "wordpiece" }
+      },
+      "required": ["unk_token"],
+      "not": { "required": ["byte_fallback"] }
+    },
+    {
+      "title": "Unigram",
+      "properties": {
+        "tokenizer_type": { "const": "unigram" }
+      },
+      "not": {
+        "anyOf": [{ "required": ["byte_fallback"] }, { "required": ["unk_token"] }]
+      }
+    }
+  ]
+}
