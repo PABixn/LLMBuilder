@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import re
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from uuid import uuid4
 
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
@@ -14,6 +16,7 @@ from .config import (
     DATALOADER_SCHEMA_PATH,
     TOKENIZER_CONFIG_TEMPLATE_PATH,
     TOKENIZER_SCHEMA_PATH,
+    upload_dir,
 )
 from .jobs import TrainingJobManager
 from .models import (
@@ -24,6 +27,7 @@ from .models import (
     TrainTokenizerRequest,
     TrainingJobResponse,
     TrainingJobsListResponse,
+    UploadedTrainFileResponse,
     ValidateConfigRequest,
     ValidateConfigResponse,
 )
@@ -35,6 +39,52 @@ if str(IMPORT_ROOT) not in sys.path:
 
 from tokenizer.dataloader_config import DataloaderConfig
 from tokenizer.loader import TokenizerConfig
+
+_FILENAME_SANITIZER = re.compile(r"[^a-zA-Z0-9._-]+")
+
+
+def _sanitize_uploaded_filename(name: str) -> str:
+    base_name = Path(name).name
+    sanitized = _FILENAME_SANITIZER.sub("-", base_name).strip("-")
+    return sanitized if sanitized else "train.txt"
+
+
+async def _store_uploaded_text_file(file: UploadFile) -> UploadedTrainFileResponse:
+    original_name = (file.filename or "").strip()
+    if original_name == "":
+        raise HTTPException(status_code=400, detail="Uploaded file must have a filename")
+
+    target_dir = upload_dir()
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_name = _sanitize_uploaded_filename(original_name)
+    target_path = target_dir / f"{uuid4().hex[:12]}-{safe_name}"
+    bytes_written = 0
+
+    try:
+        with target_path.open("wb") as handle:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                bytes_written += len(chunk)
+                handle.write(chunk)
+    except OSError as exc:
+        if target_path.exists():
+            target_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="Failed to store uploaded file") from exc
+    finally:
+        await file.close()
+
+    if bytes_written == 0:
+        target_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    return UploadedTrainFileResponse(
+        file_name=target_path.name,
+        file_path=str(target_path.resolve()),
+        size_bytes=bytes_written,
+    )
 
 
 @asynccontextmanager
@@ -105,6 +155,16 @@ def validate_dataloader(payload: ValidateConfigRequest) -> ValidateConfigRespons
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
     return ValidateConfigResponse(normalized_config=normalized)
+
+
+@api.post("/files/train", response_model=UploadedTrainFileResponse, status_code=201)
+async def upload_train_file(file: UploadFile = File(...)) -> UploadedTrainFileResponse:
+    return await _store_uploaded_text_file(file)
+
+
+@api.post("/files/validation", response_model=UploadedTrainFileResponse, status_code=201)
+async def upload_validation_file(file: UploadFile = File(...)) -> UploadedTrainFileResponse:
+    return await _store_uploaded_text_file(file)
 
 
 @api.post("/jobs", response_model=TrainingJobResponse, status_code=201)

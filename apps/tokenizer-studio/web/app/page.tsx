@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
+import { FiMoon, FiSun } from "react-icons/fi";
 
 import {
   apiBaseUrl,
@@ -10,6 +18,8 @@ import {
   fetchTrainingJob,
   fetchTrainingJobs,
   type TrainingJob,
+  uploadTrainFile,
+  uploadValidationFile,
   validateDataloaderConfig,
   validateTokenizerConfig,
 } from "../lib/api";
@@ -24,6 +34,30 @@ type DecoderType = "byte_level" | "wordpiece" | "metaspace";
 type BudgetUnit = "chars" | "bytes";
 type BudgetBehavior = "stop" | "truncate";
 type DatasetSourceMode = "local_file" | "streaming_hf";
+type FilterOperator = "==" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "not in";
+type ThemeMode = "white" | "dark";
+
+const FILTER_OPERATORS: FilterOperator[] = [
+  "==",
+  "!=",
+  ">",
+  ">=",
+  "<",
+  "<=",
+  "in",
+  "not in",
+];
+const THEME_STORAGE_KEY = "tokenizer-studio-theme";
+const WEIGHT_SUM_EPSILON = 1e-9;
+const WEIGHT_SCALE = 1_000_000;
+const MIN_STRICT_POSITIVE_WEIGHT = 1e-6;
+
+interface StreamingFilterFormState {
+  id: string;
+  column: string;
+  operator: FilterOperator;
+  value: string;
+}
 
 interface StreamingDatasetFormState {
   id: string;
@@ -32,7 +66,7 @@ interface StreamingDatasetFormState {
   split: string;
   textColumns: string;
   weight: string;
-  filters: string;
+  filters: StreamingFilterFormState[];
 }
 
 interface TokenizerFormState {
@@ -54,6 +88,7 @@ interface DatasetFormState {
   split: string;
   textColumns: string;
   trainFilePath: string;
+  trainFileName: string;
   streamingDatasets: StreamingDatasetFormState[];
 }
 
@@ -63,11 +98,21 @@ interface TrainingFormState {
   budgetBehavior: BudgetBehavior;
   evaluationThresholds: string;
   evaluationTextPath: string;
+  evaluationFileName: string;
 }
 
 interface BuildResult {
   value: Record<string, unknown> | null;
   error: string | null;
+}
+
+type ToastLevel = "info" | "success" | "error";
+
+interface ToastState {
+  id: string;
+  level: ToastLevel;
+  message: string;
+  durationMs: number;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -112,6 +157,10 @@ function asBudgetBehavior(value: unknown): BudgetBehavior {
   return "truncate";
 }
 
+function asThemeMode(value: unknown): ThemeMode {
+  return value === "dark" ? "dark" : "white";
+}
+
 function makeStreamingDatasetEntry(
   value?: Partial<Omit<StreamingDatasetFormState, "id">>
 ): StreamingDatasetFormState {
@@ -122,7 +171,18 @@ function makeStreamingDatasetEntry(
     split: value?.split ?? "train",
     textColumns: value?.textColumns ?? "text",
     weight: value?.weight ?? "1",
-    filters: value?.filters ?? "",
+    filters: value?.filters ?? [],
+  };
+}
+
+function makeStreamingFilterEntry(
+  value?: Partial<Omit<StreamingFilterFormState, "id">>
+): StreamingFilterFormState {
+  return {
+    id: `filter-${Math.random().toString(36).slice(2, 10)}`,
+    column: value?.column ?? "",
+    operator: value?.operator ?? "==",
+    value: value?.value ?? "",
   };
 }
 
@@ -131,6 +191,35 @@ function splitTokens(value: string): string[] {
     .split(/[\n,]/)
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
+}
+
+function fileNameFromPath(value: string): string {
+  const normalized = value.replaceAll("\\", "/");
+  const parts = normalized.split("/");
+  return parts[parts.length - 1] ?? "";
+}
+
+function asFilterOperator(value: unknown): FilterOperator {
+  return FILTER_OPERATORS.includes(value as FilterOperator)
+    ? (value as FilterOperator)
+    : "==";
+}
+
+function stringifyFilterValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (value === null) {
+    return "null";
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 function parseInteger(raw: string, label: string, min?: number): number {
@@ -152,40 +241,276 @@ function parsePositiveInt(raw: string, label: string): number {
   return parseInteger(raw, label, 1);
 }
 
-function parsePositiveNumber(raw: string, label: string): number {
+function parseNonNegativeNumber(raw: string, label: string): number {
   const trimmed = raw.trim();
   if (trimmed === "") {
     throw new Error(`${label} is required`);
   }
   const value = Number(trimmed);
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`${label} must be a positive number`);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative number`);
   }
   return value;
 }
 
-function parseFilters(raw: string, label: string): unknown[][] | undefined {
-  const trimmed = raw.trim();
+function sanitizePositiveIntegerInput(value: string): string {
+  return value.replace(/\D+/g, "");
+}
+
+function sanitizePositiveDecimalInput(value: string): string {
+  const digitsAndDot = value.replace(/[^0-9.]/g, "");
+  const firstDotIndex = digitsAndDot.indexOf(".");
+  if (firstDotIndex === -1) {
+    return digitsAndDot;
+  }
+  return `${digitsAndDot.slice(0, firstDotIndex + 1)}${digitsAndDot
+    .slice(firstDotIndex + 1)
+    .replace(/\./g, "")}`;
+}
+
+function sanitizeThresholdsInput(value: string): string {
+  return value.replace(/[^\d,\s]/g, "");
+}
+
+function parseWeightInput(value: string): number | null {
+  const trimmed = value.trim();
   if (trimmed === "") {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return parsed;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function formatWeight(value: number): string {
+  const rounded = Math.round(clamp(value, 0, 1) * WEIGHT_SCALE) / WEIGHT_SCALE;
+  return Number(rounded.toFixed(6)).toString();
+}
+
+function sanitizeWeightInput(value: string): string {
+  const sanitized = sanitizePositiveDecimalInput(value);
+  if (sanitized === "") {
+    return "0";
+  }
+  if (sanitized === ".") {
+    return "0.";
+  }
+  return parseWeightInput(sanitized) === null ? "0" : sanitized;
+}
+
+function normalizeWeights(weights: number[]): number[] {
+  if (weights.length === 0) {
+    return [];
+  }
+
+  const safeWeights = weights.map((weight) =>
+    Number.isFinite(weight) ? Math.max(0, weight) : 0
+  );
+  const total = safeWeights.reduce((sum, weight) => sum + weight, 0);
+
+  if (total <= WEIGHT_SUM_EPSILON) {
+    const shared = 1 / safeWeights.length;
+    return safeWeights.map(() => shared);
+  }
+
+  return safeWeights.map((weight) => weight / total);
+}
+
+function normalizeWeightsWithLockedIndex(
+  weights: number[],
+  lockedIndex: number
+): number[] {
+  if (weights.length === 0) {
+    return [];
+  }
+  if (weights.length === 1) {
+    return [1];
+  }
+
+  const safeWeights = weights.map((weight) =>
+    Number.isFinite(weight) ? Math.max(0, weight) : 0
+  );
+  const normalized = new Array(safeWeights.length).fill(0);
+  const lockedWeight = clamp(safeWeights[lockedIndex] ?? 0, 0, 1);
+  normalized[lockedIndex] = lockedWeight;
+
+  const otherIndexes = safeWeights
+    .map((_, index) => index)
+    .filter((index) => index !== lockedIndex);
+  const remaining = 1 - lockedWeight;
+
+  if (remaining <= WEIGHT_SUM_EPSILON) {
+    otherIndexes.forEach((index) => {
+      normalized[index] = 0;
+    });
+    return normalized;
+  }
+
+  const totalOthers = otherIndexes.reduce(
+    (sum, index) => sum + safeWeights[index],
+    0
+  );
+
+  if (totalOthers <= WEIGHT_SUM_EPSILON) {
+    const shared = remaining / otherIndexes.length;
+    otherIndexes.forEach((index) => {
+      normalized[index] = shared;
+    });
+  } else {
+    otherIndexes.forEach((index) => {
+      normalized[index] = (safeWeights[index] / totalOthers) * remaining;
+    });
+  }
+
+  return normalized;
+}
+
+function normalizeStreamingDatasetWeights(
+  datasets: StreamingDatasetFormState[],
+  lockedId?: string,
+  lockedRawWeight?: string
+): StreamingDatasetFormState[] {
+  if (datasets.length === 0) {
+    return [];
+  }
+
+  if (datasets.length === 1) {
+    return [{ ...datasets[0], weight: "1" }];
+  }
+
+  const lockedIndex =
+    typeof lockedId === "string"
+      ? datasets.findIndex((entry) => entry.id === lockedId)
+      : -1;
+  const weights = datasets.map((entry) =>
+    Math.max(0, parseWeightInput(entry.weight) ?? 0)
+  );
+
+  if (lockedIndex >= 0 && typeof lockedRawWeight === "string") {
+    weights[lockedIndex] = Math.max(0, parseWeightInput(lockedRawWeight) ?? 0);
+  }
+
+  const lockedRawParsed =
+    typeof lockedRawWeight === "string" ? parseWeightInput(lockedRawWeight) : null;
+  const shouldLock =
+    lockedIndex >= 0 && lockedRawParsed !== null && lockedRawParsed <= 1;
+  const normalizedWeights =
+    shouldLock
+      ? normalizeWeightsWithLockedIndex(weights, lockedIndex)
+      : normalizeWeights(weights);
+  const roundedWeights = normalizedWeights.map(
+    (weight) => Math.round(weight * WEIGHT_SCALE) / WEIGHT_SCALE
+  );
+  const roundedSum = roundedWeights.reduce((sum, weight) => sum + weight, 0);
+  const drift = 1 - roundedSum;
+  const adjustmentIndex =
+    lockedIndex >= 0
+      ? lockedIndex
+      : roundedWeights.reduce(
+          (bestIndex, weight, index) =>
+            weight > roundedWeights[bestIndex] ? index : bestIndex,
+          0
+        );
+  roundedWeights[adjustmentIndex] = clamp(
+    roundedWeights[adjustmentIndex] + drift,
+    0,
+    1
+  );
+
+  return datasets.map((entry, index) => ({
+    ...entry,
+    weight:
+      shouldLock &&
+      index === lockedIndex &&
+      typeof lockedRawWeight === "string" &&
+      lockedRawParsed !== null &&
+      Math.abs(lockedRawParsed - roundedWeights[index]) <= WEIGHT_SUM_EPSILON
+        ? lockedRawWeight
+        : formatWeight(roundedWeights[index]),
+  }));
+}
+
+function parseFilterValue(
+  value: string,
+  operator: FilterOperator,
+  label: string
+): unknown {
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    throw new Error(`${label} value is required`);
+  }
+
+  if (operator === "in" || operator === "not in") {
+    try {
+      const parsedJson = JSON.parse(trimmed);
+      if (Array.isArray(parsedJson)) {
+        return parsedJson;
+      }
+    } catch {
+      // Fallback to comma-separated inference.
+    }
+
+    const parts = value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry !== "");
+    if (parts.length === 0) {
+      throw new Error(`${label} value is required`);
+    }
+    return parts.map((entry) => parseFilterValue(entry, "==", label));
+  }
+
+  if (trimmed === "true") {
+    return true;
+  }
+  if (trimmed === "false") {
+    return false;
+  }
+
+  if (/^-?(?:\d+|\d*\.\d+)(?:[eE][+-]?\d+)?$/.test(trimmed)) {
+    const parsed = Number(trimmed);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  if (
+    trimmed === "null" ||
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      throw new Error(`${label} value must be valid JSON`);
+    }
+  }
+
+  return trimmed;
+}
+
+function buildFiltersFromForm(
+  filters: StreamingFilterFormState[],
+  label: string
+): unknown[][] | undefined {
+  if (filters.length === 0) {
     return undefined;
   }
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(trimmed);
-  } catch {
-    throw new Error(`${label} must be valid JSON`);
-  }
-
-  if (!Array.isArray(parsed)) {
-    throw new Error(`${label} must be a JSON array`);
-  }
-
-  return parsed.map((entry, index) => {
-    if (!Array.isArray(entry) || entry.length !== 3) {
-      throw new Error(`${label} item ${index + 1} must be [column, op, value]`);
+  return filters.map((filter, index) => {
+    const filterLabel = `${label} filter ${index + 1}`;
+    const column = filter.column.trim();
+    if (column === "") {
+      throw new Error(`${filterLabel}: column is required`);
     }
-    return [entry[0], entry[1], entry[2]];
+    const parsedValue = parseFilterValue(filter.value, filter.operator, filterLabel);
+    return [column, filter.operator, parsedValue];
   });
 }
 
@@ -201,6 +526,14 @@ function parseThresholds(raw: string): number[] {
   }
 
   return Array.from(new Set(values)).sort((a, b) => a - b);
+}
+
+function resolveEvaluationTextPath(raw: string): string {
+  const value = raw.trim();
+  if (value === "") {
+    throw new Error("Validation file is required");
+  }
+  return value;
 }
 
 function prettyJson(value: unknown): string {
@@ -275,9 +608,19 @@ function datasetFormFromConfig(config: Record<string, unknown>): DatasetFormStat
             const datasetTextColumns = Array.isArray(datasetTextColumnsRaw)
               ? datasetTextColumnsRaw.map((item) => String(item)).join(", ")
               : "text";
-            const datasetFilters = Array.isArray(datasetRecord.filters)
-              ? JSON.stringify(datasetRecord.filters, null, 2)
-              : "";
+            const datasetFiltersRaw = datasetRecord.filters;
+            const datasetFilters = Array.isArray(datasetFiltersRaw)
+              ? datasetFiltersRaw
+                  .filter((item) => Array.isArray(item) && item.length === 3)
+                  .map((item) => {
+                    const filterEntry = item as [unknown, unknown, unknown];
+                    return makeStreamingFilterEntry({
+                      column: String(filterEntry[0] ?? ""),
+                      operator: asFilterOperator(filterEntry[1]),
+                      value: stringifyFilterValue(filterEntry[2]),
+                    });
+                  })
+              : [];
             return makeStreamingDatasetEntry({
               name: String(datasetRecord.name ?? ""),
               config: String(datasetRecord.config ?? ""),
@@ -295,6 +638,7 @@ function datasetFormFromConfig(config: Record<string, unknown>): DatasetFormStat
     split: String(firstDataset.split ?? "train"),
     textColumns,
     trainFilePath,
+    trainFileName: fileNameFromPath(trainFilePath),
     sourceMode,
     streamingDatasets,
   };
@@ -302,12 +646,14 @@ function datasetFormFromConfig(config: Record<string, unknown>): DatasetFormStat
 
 function trainingFormFromConfig(config: Record<string, unknown>): TrainingFormState {
   const budget = asRecord(config.budget);
+  const evaluationTextPath = "datasets/shake.txt";
   return {
     budgetLimit: String(budget.limit ?? 250000),
     budgetUnit: asBudgetUnit(budget.unit),
     budgetBehavior: asBudgetBehavior(budget.behavior),
     evaluationThresholds: "5,10,25",
-    evaluationTextPath: "datasets/shake.txt",
+    evaluationTextPath,
+    evaluationFileName: fileNameFromPath(evaluationTextPath),
   };
 }
 
@@ -386,9 +732,10 @@ function buildDataloaderConfigFromForm(
     }
 
     const trainFilePath = dataset.trainFilePath.trim();
-    if (trainFilePath !== "") {
-      datasetConfig.data_files = { train: trainFilePath };
+    if (trainFilePath === "") {
+      throw new Error("Local train file is required");
     }
+    datasetConfig.data_files = { train: trainFilePath };
 
     datasets = [datasetConfig];
   } else {
@@ -396,7 +743,7 @@ function buildDataloaderConfigFromForm(
       throw new Error("At least one streaming dataset is required");
     }
 
-    datasets = dataset.streamingDatasets.map((entry, index) => {
+    const streamingDatasetConfigs = dataset.streamingDatasets.map((entry, index) => {
       const datasetName = entry.name.trim();
       if (datasetName === "") {
         throw new Error(`Streaming dataset ${index + 1}: dataset name is required`);
@@ -407,14 +754,16 @@ function buildDataloaderConfigFromForm(
         throw new Error(`Streaming dataset ${index + 1}: text columns are required`);
       }
 
+      const parsedWeight = parseNonNegativeNumber(
+        entry.weight,
+        `Streaming dataset ${index + 1}: weight`
+      );
+
       const datasetConfig: Record<string, unknown> = {
         name: datasetName,
         split: entry.split.trim() || "train",
         text_columns: textColumns,
-        weight: parsePositiveNumber(
-          entry.weight,
-          `Streaming dataset ${index + 1}: weight`
-        ),
+        weight: parsedWeight,
       };
 
       const datasetConfigName = entry.config.trim();
@@ -422,16 +771,45 @@ function buildDataloaderConfigFromForm(
         datasetConfig.config = datasetConfigName;
       }
 
-      const parsedFilters = parseFilters(
+      const parsedFilters = buildFiltersFromForm(
         entry.filters,
-        `Streaming dataset ${index + 1}: filters`
+        `Streaming dataset ${index + 1}`
       );
       if (parsedFilters) {
         datasetConfig.filters = parsedFilters;
       }
 
-      return datasetConfig;
+      return {
+        datasetConfig,
+        parsedWeight,
+      };
     });
+
+    const totalWeight = streamingDatasetConfigs.reduce(
+      (sum, entry) => sum + entry.parsedWeight,
+      0
+    );
+
+    if (Math.abs(totalWeight - 1) > WEIGHT_SUM_EPSILON) {
+      throw new Error(
+        `Streaming dataset weights must sum to exactly 1. Current total: ${Number(
+          totalWeight.toFixed(6)
+        )}`
+      );
+    }
+
+    const strictlyPositiveWeights = normalizeWeights(
+      streamingDatasetConfigs.map((entry) =>
+        entry.parsedWeight <= WEIGHT_SUM_EPSILON
+          ? MIN_STRICT_POSITIVE_WEIGHT
+          : entry.parsedWeight
+      )
+    );
+
+    datasets = streamingDatasetConfigs.map((entry, index) => ({
+      ...entry.datasetConfig,
+      weight: strictlyPositiveWeights[index],
+    }));
   }
 
   return {
@@ -487,6 +865,7 @@ export default function Home() {
   const [trainingForm, setTrainingForm] = useState<TrainingFormState>(() =>
     trainingFormFromConfig(defaultDataloaderConfig)
   );
+  const [themeMode, setThemeMode] = useState<ThemeMode>("white");
 
   const [jobs, setJobs] = useState<TrainingJob[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -495,10 +874,60 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
-  const [statusMessage, setStatusMessage] = useState(
-    "Ready. Fill the quick setup and run training."
+  const [isUploadingTrainFile, setIsUploadingTrainFile] = useState(false);
+  const [isUploadingValidationFile, setIsUploadingValidationFile] = useState(false);
+  const [toasts, setToasts] = useState<ToastState[]>([]);
+  const toastTimeoutsRef = useRef<Record<string, number>>({});
+  const jobNotificationKeysRef = useRef<Set<string>>(new Set());
+  const controlsDisabled =
+    isSubmitting ||
+    isValidating ||
+    isLoadingTemplate ||
+    isUploadingTrainFile ||
+    isUploadingValidationFile;
+
+  const removeToast = useCallback((toastId: string) => {
+    setToasts((previous) => previous.filter((toast) => toast.id !== toastId));
+    const timeoutId = toastTimeoutsRef.current[toastId];
+    if (typeof timeoutId === "number") {
+      window.clearTimeout(timeoutId);
+      delete toastTimeoutsRef.current[toastId];
+    }
+  }, []);
+
+  const notify = useCallback(
+    (level: ToastLevel, message: string, durationMs = 4500) => {
+      const id = `toast-${Math.random().toString(36).slice(2, 10)}`;
+      const toast: ToastState = { id, level, message, durationMs };
+      setToasts((previous) => [...previous, toast]);
+
+      toastTimeoutsRef.current[id] = window.setTimeout(() => {
+        removeToast(id);
+      }, durationMs);
+    },
+    [removeToast]
   );
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      Object.values(toastTimeoutsRef.current).forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+      toastTimeoutsRef.current = {};
+    };
+  }, []);
+
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (storedTheme) {
+      setThemeMode(asThemeMode(storedTheme));
+    }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = themeMode;
+    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+  }, [themeMode]);
 
   const tokenizerBuild = useMemo(
     () => buildResult(() => buildTokenizerConfigFromForm(tokenizerForm)),
@@ -525,11 +954,32 @@ export default function Home() {
     []
   );
 
+  const updateStreamingWeight = useCallback(
+    (datasetId: string, rawWeight: string) => {
+      const sanitizedWeight = sanitizeWeightInput(rawWeight);
+      setDatasetForm((previous) => ({
+        ...previous,
+        streamingDatasets: normalizeStreamingDatasetWeights(
+          previous.streamingDatasets,
+          datasetId,
+          sanitizedWeight
+        ),
+      }));
+    },
+    []
+  );
+
   const addStreamingDataset = useCallback(() => {
-    setDatasetForm((previous) => ({
-      ...previous,
-      streamingDatasets: [...previous.streamingDatasets, makeStreamingDatasetEntry()],
-    }));
+    setDatasetForm((previous) => {
+      const nextDatasets = normalizeStreamingDatasetWeights([
+        ...previous.streamingDatasets,
+        makeStreamingDatasetEntry(),
+      ]);
+      return {
+        ...previous,
+        streamingDatasets: nextDatasets,
+      };
+    });
   }, []);
 
   const removeStreamingDataset = useCallback((datasetId: string) => {
@@ -539,10 +989,61 @@ export default function Home() {
       );
       return {
         ...previous,
-        streamingDatasets:
-          nextDatasets.length > 0 ? nextDatasets : [makeStreamingDatasetEntry()],
+        streamingDatasets: normalizeStreamingDatasetWeights(
+          nextDatasets.length > 0 ? nextDatasets : [makeStreamingDatasetEntry()]
+        ),
       };
     });
+  }, []);
+
+  const updateStreamingFilter = useCallback(
+    (
+      datasetId: string,
+      filterId: string,
+      updates: Partial<Omit<StreamingFilterFormState, "id">>
+    ) => {
+      setDatasetForm((previous) => ({
+        ...previous,
+        streamingDatasets: previous.streamingDatasets.map((entry) => {
+          if (entry.id !== datasetId) {
+            return entry;
+          }
+          return {
+            ...entry,
+            filters: entry.filters.map((filter) =>
+              filter.id === filterId ? { ...filter, ...updates } : filter
+            ),
+          };
+        }),
+      }));
+    },
+    []
+  );
+
+  const addStreamingFilter = useCallback((datasetId: string) => {
+    setDatasetForm((previous) => ({
+      ...previous,
+      streamingDatasets: previous.streamingDatasets.map((entry) =>
+        entry.id === datasetId
+          ? { ...entry, filters: [...entry.filters, makeStreamingFilterEntry()] }
+          : entry
+      ),
+    }));
+  }, []);
+
+  const removeStreamingFilter = useCallback((datasetId: string, filterId: string) => {
+    setDatasetForm((previous) => ({
+      ...previous,
+      streamingDatasets: previous.streamingDatasets.map((entry) => {
+        if (entry.id !== datasetId) {
+          return entry;
+        }
+        return {
+          ...entry,
+          filters: entry.filters.filter((filter) => filter.id !== filterId),
+        };
+      }),
+    }));
   }, []);
 
   const refreshJobs = useCallback(async () => {
@@ -600,21 +1101,31 @@ export default function Home() {
         setActiveJob(job);
 
         if (job.status === "completed") {
-          setStatusMessage(
-            `Training job ${job.id.slice(0, 8)} completed. Artifact is ready.`
-          );
+          const completedKey = `${job.id}:completed`;
+          if (!jobNotificationKeysRef.current.has(completedKey)) {
+            jobNotificationKeysRef.current.add(completedKey);
+            notify(
+              "success",
+              `Training job ${job.id.slice(0, 8)} completed. Artifact is ready.`,
+              6000
+            );
+          }
           void refreshJobs();
         }
 
         if (job.status === "failed") {
-          setErrorMessage(job.error ?? "Training job failed");
+          const failedKey = `${job.id}:failed`;
+          if (!jobNotificationKeysRef.current.has(failedKey)) {
+            jobNotificationKeysRef.current.add(failedKey);
+            notify("error", job.error ?? "Training job failed", 7000);
+          }
           void refreshJobs();
         }
       } catch (error) {
         if (!cancelled) {
           const message =
             error instanceof Error ? error.message : "Failed to poll job status";
-          setErrorMessage(message);
+          notify("error", message, 7000);
         }
       }
     };
@@ -628,11 +1139,64 @@ export default function Home() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [activeJobId, refreshJobs]);
+  }, [activeJobId, notify, refreshJobs]);
+
+  const handleTrainFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    notify("info", `Uploading local train file: ${file.name}`, 2500);
+    setIsUploadingTrainFile(true);
+
+    try {
+      const uploadedFile = await uploadTrainFile(file);
+      setDatasetForm((previous) => ({
+        ...previous,
+        trainFilePath: uploadedFile.file_path,
+        trainFileName: uploadedFile.file_name,
+      }));
+      notify("success", `Uploaded ${uploadedFile.file_name}. Ready to validate.`);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to upload local train file";
+      notify("error", `Could not upload local train file. ${message}`, 7000);
+    } finally {
+      setIsUploadingTrainFile(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleValidationFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    notify("info", `Uploading validation file: ${file.name}`, 2500);
+    setIsUploadingValidationFile(true);
+
+    try {
+      const uploadedFile = await uploadValidationFile(file);
+      setTrainingForm((previous) => ({
+        ...previous,
+        evaluationTextPath: uploadedFile.file_path,
+        evaluationFileName: uploadedFile.file_name,
+      }));
+      notify("success", `Uploaded ${uploadedFile.file_name}. Ready to validate.`);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to upload validation file";
+      notify("error", `Could not upload validation file. ${message}`, 7000);
+    } finally {
+      setIsUploadingValidationFile(false);
+      event.target.value = "";
+    }
+  };
 
   const handleLoadStreamingTemplate = async () => {
-    setErrorMessage(null);
-    setStatusMessage("Loading streaming dataset template...");
+    notify("info", "Loading streaming dataset template...", 2500);
     setIsLoadingTemplate(true);
 
     try {
@@ -644,7 +1208,9 @@ export default function Home() {
       setDatasetForm((previous) => ({
         ...previous,
         sourceMode: "streaming_hf",
-        streamingDatasets: templateDatasetForm.streamingDatasets,
+        streamingDatasets: normalizeStreamingDatasetWeights(
+          templateDatasetForm.streamingDatasets
+        ),
       }));
       setTrainingForm((previous) => ({
         ...previous,
@@ -652,22 +1218,20 @@ export default function Home() {
         budgetUnit: templateTrainingForm.budgetUnit,
         budgetBehavior: templateTrainingForm.budgetBehavior,
       }));
-      setStatusMessage("Loaded streaming template datasets.");
+      notify("success", "Loaded streaming template datasets.");
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : "Failed to load streaming template";
-      setErrorMessage(message);
-      setStatusMessage("Could not load streaming template.");
+      notify("error", `Could not load streaming template. ${message}`, 7000);
     } finally {
       setIsLoadingTemplate(false);
     }
   };
 
   const handleValidate = async () => {
-    setErrorMessage(null);
-    setStatusMessage("Validating configs with API...");
+    notify("info", "Validating configs with API...", 2500);
     setIsValidating(true);
 
     try {
@@ -677,26 +1241,25 @@ export default function Home() {
       if (!dataloaderBuild.value) {
         throw new Error(dataloaderBuild.error ?? "Dataloader config is invalid");
       }
+      resolveEvaluationTextPath(trainingForm.evaluationTextPath);
 
       await Promise.all([
         validateTokenizerConfig(tokenizerBuild.value),
         validateDataloaderConfig(dataloaderBuild.value),
       ]);
 
-      setStatusMessage("Validation passed. You can start training.");
+      notify("success", "Validation passed. You can start training.");
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Validation failed unexpectedly";
-      setErrorMessage(message);
-      setStatusMessage("Validation failed.");
+      notify("error", `Validation failed. ${message}`, 7000);
     } finally {
       setIsValidating(false);
     }
   };
 
   const handleTrain = async () => {
-    setErrorMessage(null);
-    setStatusMessage("Submitting training job...");
+    notify("info", "Submitting training job...", 2500);
     setIsSubmitting(true);
 
     try {
@@ -708,23 +1271,25 @@ export default function Home() {
       }
 
       const thresholds = parseThresholds(trainingForm.evaluationThresholds);
+      const evaluationTextPath = resolveEvaluationTextPath(
+        trainingForm.evaluationTextPath
+      );
 
       const job = await createTrainingJob({
         tokenizer_config: tokenizerBuild.value,
         dataloader_config: dataloaderBuild.value,
         evaluation_thresholds: thresholds,
-        evaluation_text_path: trainingForm.evaluationTextPath.trim(),
+        evaluation_text_path: evaluationTextPath,
       });
 
       setActiveJobId(job.id);
       setActiveJob(job);
-      setStatusMessage(`Training job ${job.id.slice(0, 8)} started.`);
+      notify("success", `Training job ${job.id.slice(0, 8)} started.`);
       await refreshJobs();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to create training job";
-      setErrorMessage(message);
-      setStatusMessage("Could not start training.");
+      notify("error", `Could not start training. ${message}`, 7000);
     } finally {
       setIsSubmitting(false);
     }
@@ -733,7 +1298,30 @@ export default function Home() {
   return (
     <main className="studioPage">
       <header className="heroCard">
-        <p className="heroTag">Tokenizer Studio</p>
+        <div className="heroTopRow">
+          <p className="heroTag">Tokenizer Studio</p>
+          <button
+            type="button"
+            className="themeToggle"
+            onClick={() =>
+              setThemeMode((previous) =>
+                previous === "white" ? "dark" : "white"
+              )
+            }
+            aria-label={
+              themeMode === "dark"
+                ? "Switch to white theme"
+                : "Switch to dark theme"
+            }
+            title={
+              themeMode === "dark"
+                ? "Switch to white theme"
+                : "Switch to dark theme"
+            }
+          >
+            {themeMode === "dark" ? <FiSun aria-hidden="true" /> : <FiMoon aria-hidden="true" />}
+          </button>
+        </div>
         <h1>Train a tokenizer in 3 steps</h1>
         <p>
           Set basic tokenizer fields, point to your dataset, validate once, and run.
@@ -742,18 +1330,13 @@ export default function Home() {
         <div className="heroMeta">API: {apiBaseUrl()}</div>
       </header>
 
-      <section className="messages">
-        <div className="message message-info">{statusMessage}</div>
-        {errorMessage ? <div className="message message-error">{errorMessage}</div> : null}
-      </section>
-
       <section className="card sectionBlock">
-        <h2>1. Quick Setup</h2>
-        <p className="metaLine">
-          Only required fields are shown. Open advanced sections only when needed.
-        </p>
-        <div className="setupGrid">
-          <article className="miniPanel">
+        <details className="sectionCollapse" open>
+          <summary className="sectionCollapseSummary">
+            <span className="sectionCollapseHeading">1. Quick Setup</span>
+          </summary>
+          <div className="setupGrid">
+            <article className="miniPanel">
             <h3>Tokenizer</h3>
             <div className="fieldGrid">
               <label>
@@ -789,11 +1372,13 @@ export default function Home() {
               <label>
                 Vocab size
                 <input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={tokenizerForm.vocabSize}
                   onChange={(event) =>
                     setTokenizerForm((previous) => ({
                       ...previous,
-                      vocabSize: event.target.value,
+                      vocabSize: sanitizePositiveIntegerInput(event.target.value),
                     }))
                   }
                 />
@@ -802,11 +1387,13 @@ export default function Home() {
               <label>
                 Min frequency
                 <input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={tokenizerForm.minFrequency}
                   onChange={(event) =>
                     setTokenizerForm((previous) => ({
                       ...previous,
-                      minFrequency: event.target.value,
+                      minFrequency: sanitizePositiveIntegerInput(event.target.value),
                     }))
                   }
                 />
@@ -931,6 +1518,7 @@ export default function Home() {
                       ? "modeSwitchButton-active"
                       : ""
                   }`}
+                  disabled={controlsDisabled}
                   onClick={() =>
                     setDatasetForm((previous) => ({
                       ...previous,
@@ -947,10 +1535,14 @@ export default function Home() {
                       ? "modeSwitchButton-active"
                       : ""
                   }`}
+                  disabled={controlsDisabled}
                   onClick={() =>
                     setDatasetForm((previous) => ({
                       ...previous,
                       sourceMode: "streaming_hf",
+                      streamingDatasets: normalizeStreamingDatasetWeights(
+                        previous.streamingDatasets
+                      ),
                     }))
                   }
                 >
@@ -964,6 +1556,20 @@ export default function Home() {
 
             {datasetForm.sourceMode === "local_file" ? (
               <div className="fieldGrid">
+                <label className="fullWidthField">
+                  Local train file
+                  <input
+                    type="file"
+                    onChange={handleTrainFileSelected}
+                    disabled={controlsDisabled}
+                  />
+                  <span className="fieldNote">
+                    {datasetForm.trainFilePath === ""
+                      ? "Choose a local file to continue."
+                      : `Using: ${datasetForm.trainFileName} (${datasetForm.trainFilePath})`}
+                  </span>
+                </label>
+
                 <label>
                   Dataset builder
                   <input
@@ -1018,20 +1624,6 @@ export default function Home() {
                     placeholder="text"
                   />
                 </label>
-
-                <label className="fullWidthField">
-                  Local train file path (optional)
-                  <input
-                    value={datasetForm.trainFilePath}
-                    onChange={(event) =>
-                      setDatasetForm((previous) => ({
-                        ...previous,
-                        trainFilePath: event.target.value,
-                      }))
-                    }
-                    placeholder="datasets/shake.txt"
-                  />
-                </label>
               </div>
             ) : (
               <div className="datasetConfigurator">
@@ -1040,7 +1632,7 @@ export default function Home() {
                     type="button"
                     className="secondaryButton"
                     onClick={addStreamingDataset}
-                    disabled={isSubmitting || isValidating || isLoadingTemplate}
+                    disabled={controlsDisabled}
                   >
                     Add dataset
                   </button>
@@ -1048,7 +1640,7 @@ export default function Home() {
                     type="button"
                     className="secondaryButton"
                     onClick={handleLoadStreamingTemplate}
-                    disabled={isSubmitting || isValidating || isLoadingTemplate}
+                    disabled={controlsDisabled}
                   >
                     {isLoadingTemplate
                       ? "Loading template..."
@@ -1065,7 +1657,7 @@ export default function Home() {
                           type="button"
                           className="textButton"
                           onClick={() => removeStreamingDataset(entry.id)}
-                          disabled={datasetForm.streamingDatasets.length <= 1}
+                          disabled={controlsDisabled || datasetForm.streamingDatasets.length <= 1}
                         >
                           Remove
                         </button>
@@ -1113,11 +1705,14 @@ export default function Home() {
                         <label>
                           Weight
                           <input
+                            inputMode="decimal"
+                            pattern="[0-9]*[.]?[0-9]*"
+                            min="0"
+                            max="1"
+                            step="0.000001"
                             value={entry.weight}
                             onChange={(event) =>
-                              updateStreamingDataset(entry.id, {
-                                weight: event.target.value,
-                              })
+                              updateStreamingWeight(entry.id, event.target.value)
                             }
                             placeholder="1.0"
                           />
@@ -1136,19 +1731,90 @@ export default function Home() {
                           />
                         </label>
 
-                        <label className="fullWidthField">
-                          Filters JSON (optional)
-                          <textarea
-                            rows={2}
-                            value={entry.filters}
-                            onChange={(event) =>
-                              updateStreamingDataset(entry.id, {
-                                filters: event.target.value,
-                              })
-                            }
-                            placeholder='[["language_score", ">", 0.95]]'
-                          />
-                        </label>
+                        <div className="fullWidthField filterBuilder">
+                          <div className="filterBuilderHeader">
+                            <span className="filterBuilderTitle">Filters (optional)</span>
+                            <button
+                              type="button"
+                              className="secondaryButton"
+                              onClick={() => addStreamingFilter(entry.id)}
+                              disabled={controlsDisabled}
+                            >
+                              Add filter
+                            </button>
+                          </div>
+
+                          {entry.filters.length === 0 ? (
+                            <p className="filterEmpty">No filters yet.</p>
+                          ) : (
+                            <div className="filterList">
+                              {entry.filters.map((filter) => (
+                                <div key={filter.id} className="filterRow">
+                                  <label>
+                                    Column
+                                    <input
+                                      value={filter.column}
+                                      onChange={(event) =>
+                                        updateStreamingFilter(entry.id, filter.id, {
+                                          column: event.target.value,
+                                        })
+                                      }
+                                      placeholder="language_score"
+                                    />
+                                  </label>
+
+                                  <label>
+                                    Operator
+                                    <select
+                                      value={filter.operator}
+                                      onChange={(event) =>
+                                        updateStreamingFilter(entry.id, filter.id, {
+                                          operator: event.target.value as FilterOperator,
+                                        })
+                                      }
+                                    >
+                                      {FILTER_OPERATORS.map((operator) => (
+                                        <option key={operator} value={operator}>
+                                          {operator}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <label>
+                                    Value
+                                    <input
+                                      value={filter.value}
+                                      onChange={(event) =>
+                                        updateStreamingFilter(entry.id, filter.id, {
+                                          value: event.target.value,
+                                        })
+                                      }
+                                      placeholder={
+                                        filter.operator === "in" || filter.operator === "not in"
+                                          ? '["en", "de"] or en,de'
+                                          : "en, true, 0.95, {\"k\":1}"
+                                      }
+                                    />
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    className="textButton filterRemoveButton"
+                                    onClick={() => removeStreamingFilter(entry.id, filter.id)}
+                                    disabled={controlsDisabled}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <p className="fieldNote">
+                            Values are inferred automatically. For `in`/`not in`, use a JSON
+                            array or comma-separated values.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1160,11 +1826,13 @@ export default function Home() {
               <label>
                 Budget limit
                 <input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={trainingForm.budgetLimit}
                   onChange={(event) =>
                     setTrainingForm((previous) => ({
                       ...previous,
-                      budgetLimit: event.target.value,
+                      budgetLimit: sanitizePositiveIntegerInput(event.target.value),
                     }))
                   }
                 />
@@ -1207,11 +1875,26 @@ export default function Home() {
               {dataloaderBuild.error ?? "Dataloader config looks valid."}
             </p>
           </article>
-        </div>
+          </div>
+        </details>
       </section>
 
       <section className="card sectionBlock">
         <h2>2. Validate and Run</h2>
+        <label className="fullWidthField">
+          Validation file
+          <input
+            type="file"
+            onChange={handleValidationFileSelected}
+            disabled={controlsDisabled}
+          />
+          <span className="fieldNote">
+            {trainingForm.evaluationTextPath === ""
+              ? "Choose a validation file to continue."
+              : `Using: ${trainingForm.evaluationFileName} (${trainingForm.evaluationTextPath})`}
+          </span>
+        </label>
+
         <div className="fieldGrid">
           <label>
             Evaluation thresholds
@@ -1220,24 +1903,10 @@ export default function Home() {
               onChange={(event) =>
                 setTrainingForm((previous) => ({
                   ...previous,
-                  evaluationThresholds: event.target.value,
+                  evaluationThresholds: sanitizeThresholdsInput(event.target.value),
                 }))
               }
               placeholder="5,10,25"
-            />
-          </label>
-
-          <label>
-            Evaluation text path
-            <input
-              value={trainingForm.evaluationTextPath}
-              onChange={(event) =>
-                setTrainingForm((previous) => ({
-                  ...previous,
-                  evaluationTextPath: event.target.value,
-                }))
-              }
-              placeholder="datasets/shake.txt"
             />
           </label>
         </div>
@@ -1247,7 +1916,12 @@ export default function Home() {
             type="button"
             className="secondaryButton"
             onClick={handleValidate}
-            disabled={isSubmitting || isValidating}
+            disabled={
+              isSubmitting ||
+              isValidating ||
+              isUploadingTrainFile ||
+              isUploadingValidationFile
+            }
           >
             {isValidating ? "Validating..." : "Validate"}
           </button>
@@ -1255,7 +1929,12 @@ export default function Home() {
             type="button"
             className="primaryButton"
             onClick={handleTrain}
-            disabled={isSubmitting || isValidating}
+            disabled={
+              isSubmitting ||
+              isValidating ||
+              isUploadingTrainFile ||
+              isUploadingValidationFile
+            }
           >
             {isSubmitting ? "Starting..." : "Start Training"}
           </button>
@@ -1390,6 +2069,28 @@ export default function Home() {
           )}
         </article>
       </section>
+
+      <aside className="toastViewport" aria-live="polite" aria-atomic="false">
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`toast toast-${toast.level}`}>
+            <div className="toastContent">
+              <p>{toast.message}</p>
+              <button
+                type="button"
+                className="toastClose"
+                onClick={() => removeToast(toast.id)}
+                aria-label="Dismiss notification"
+              >
+                ×
+              </button>
+            </div>
+            <div
+              className="toastProgress"
+              style={{ animationDuration: `${toast.durationMs}ms` }}
+            />
+          </div>
+        ))}
+      </aside>
     </main>
   );
 }

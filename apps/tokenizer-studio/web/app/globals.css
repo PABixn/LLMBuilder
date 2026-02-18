@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --bg: #f4f6f8;
   --surface: #ffffff;
   --surface-muted: #f8fafc;
@@ -12,6 +13,90 @@
   --ok: #067647;
   --ok-bg: #ecfdf3;
   --radius: 14px;
+  --bg-accent-1: #d5f5ef;
+  --bg-accent-2: #dbeafe;
+  --shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
+  --hero-meta-border: #cce3df;
+  --hero-meta-bg: #f0fdf9;
+  --hero-meta-text: #0d5f58;
+  --switch-bg: #eef3f7;
+  --switch-text: #334e68;
+  --switch-active-bg: #ffffff;
+  --switch-active-border: #c7d7e6;
+  --switch-active-text: #102a43;
+  --dataset-card-border: #ced9e3;
+  --dataset-card-bg: #fdfefe;
+  --panel-dashed-border: #bfd3e3;
+  --panel-dashed-bg: #fbfdff;
+  --panel-heading: #334e68;
+  --filter-row-border: #d3dee8;
+  --field-border: #c5d2de;
+  --field-bg: #ffffff;
+  --field-focus: rgba(15, 118, 110, 0.3);
+  --secondary-border: #b6c6d7;
+  --secondary-text: #334e68;
+  --progress-border: #c4d3e0;
+  --progress-bg: #edf2f7;
+  --download-bg: #e6fffb;
+  --download-border: #a6e7de;
+  --download-text: #0d5f58;
+  --job-active-border: #6ebdb4;
+  --job-active-bg: #f0fdf9;
+  --toast-bg: rgba(255, 255, 255, 0.96);
+  --toast-shadow: 0 14px 30px rgba(16, 24, 40, 0.12);
+  --pre-bg: #0b1220;
+  --pre-text: #e8edf4;
+  --pre-border: #1f2a3b;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b1218;
+  --surface: #111a23;
+  --surface-muted: #15202b;
+  --text: #e5eef7;
+  --text-muted: #9bb3c8;
+  --line: #243447;
+  --brand: #2dd4bf;
+  --brand-strong: #0f9b8f;
+  --danger: #fca5a5;
+  --danger-bg: #3a1111;
+  --ok: #86efac;
+  --ok-bg: #0f2f21;
+  --bg-accent-1: #083a3a;
+  --bg-accent-2: #152f52;
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  --hero-meta-border: #2a5753;
+  --hero-meta-bg: #0f2926;
+  --hero-meta-text: #7ee3d4;
+  --switch-bg: #1a2835;
+  --switch-text: #b8cadd;
+  --switch-active-bg: #0f1720;
+  --switch-active-border: #35506b;
+  --switch-active-text: #e6f0fa;
+  --dataset-card-border: #2b3d50;
+  --dataset-card-bg: #101a24;
+  --panel-dashed-border: #35506b;
+  --panel-dashed-bg: #0f1720;
+  --panel-heading: #b8cadd;
+  --filter-row-border: #2f4358;
+  --field-border: #33506a;
+  --field-bg: #0d1620;
+  --field-focus: rgba(45, 212, 191, 0.35);
+  --secondary-border: #3a536d;
+  --secondary-text: #c7d7e7;
+  --progress-border: #35506a;
+  --progress-bg: #1a2835;
+  --download-bg: #0f2926;
+  --download-border: #2a5753;
+  --download-text: #7ee3d4;
+  --job-active-border: #2a7f76;
+  --job-active-bg: #0f2926;
+  --toast-bg: rgba(17, 26, 35, 0.96);
+  --toast-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+  --pre-bg: #050b13;
+  --pre-text: #d9e7f5;
+  --pre-border: #233648;
 }
 
 * {
@@ -23,8 +108,8 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at 20% -10%, #d5f5ef 0, transparent 40%),
-    radial-gradient(circle at 100% 0%, #dbeafe 0, transparent 30%),
+    radial-gradient(circle at 20% -10%, var(--bg-accent-1) 0, transparent 40%),
+    radial-gradient(circle at 100% 0%, var(--bg-accent-2) 0, transparent 30%),
     var(--bg);
   color: var(--text);
   font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
@@ -42,11 +127,18 @@ body {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
+  box-shadow: var(--shadow);
 }
 
 .heroCard {
   padding: 22px;
+}
+
+.heroTopRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .heroCard h1 {
@@ -62,7 +154,7 @@ body {
 }
 
 .heroTag {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -70,38 +162,38 @@ body {
   color: var(--brand);
 }
 
+.themeToggle {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--field-bg);
+  color: var(--text-muted);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.themeToggle:hover {
+  color: var(--text);
+  border-color: var(--brand);
+}
+
+.themeToggle svg {
+  width: 18px;
+  height: 18px;
+}
+
 .heroMeta {
   margin-top: 12px;
   display: inline-flex;
-  border: 1px solid #cce3df;
+  border: 1px solid var(--hero-meta-border);
   border-radius: 999px;
   padding: 5px 11px;
-  background: #f0fdf9;
-  color: #0d5f58;
+  background: var(--hero-meta-bg);
+  color: var(--hero-meta-text);
   font-size: 0.84rem;
-}
-
-.messages {
-  display: grid;
-  gap: 8px;
-}
-
-.message {
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  padding: 10px 12px;
-  font-size: 0.92rem;
-}
-
-.message-info {
-  background: #f8fffd;
-  border-color: #cce3df;
-}
-
-.message-error {
-  background: var(--danger-bg);
-  border-color: #f3c2c2;
-  color: var(--danger);
 }
 
 .sectionBlock {
@@ -111,6 +203,48 @@ body {
 .sectionBlock h2 {
   margin: 0;
   font-size: 1.1rem;
+}
+
+.sectionCollapse {
+  display: grid;
+  gap: 10px;
+}
+
+.sectionCollapseSummary {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px 12px;
+  cursor: pointer;
+}
+
+.sectionCollapseSummary::-webkit-details-marker {
+  display: none;
+}
+
+.sectionCollapseHeading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sectionCollapseSummary::after {
+  content: "Expand";
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sectionCollapse[open] > .sectionCollapseSummary::after {
+  content: "Collapse";
+}
+
+.sectionCollapse .setupGrid {
+  margin-top: 0;
 }
 
 .setupGrid {
@@ -167,22 +301,22 @@ body {
   padding: 4px;
   border-radius: 10px;
   border: 1px solid var(--line);
-  background: #eef3f7;
+  background: var(--switch-bg);
   width: fit-content;
 }
 
 .modeSwitchButton {
   border: 1px solid transparent;
   background: transparent;
-  color: #334e68;
+  color: var(--switch-text);
   font-weight: 600;
   padding: 7px 10px;
 }
 
 .modeSwitchButton-active {
-  background: #ffffff;
-  border-color: #c7d7e6;
-  color: #102a43;
+  background: var(--switch-active-bg);
+  border-color: var(--switch-active-border);
+  color: var(--switch-active-text);
 }
 
 .datasetConfigurator {
@@ -200,10 +334,10 @@ body {
 }
 
 .datasetCard {
-  border: 1px solid #ced9e3;
+  border: 1px solid var(--dataset-card-border);
   border-radius: 10px;
   padding: 10px;
-  background: #fdfefe;
+  background: var(--dataset-card-bg);
 }
 
 .datasetCardHeader {
@@ -212,6 +346,54 @@ body {
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+}
+
+.filterBuilder {
+  border: 1px dashed var(--panel-dashed-border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--panel-dashed-bg);
+  display: grid;
+  gap: 8px;
+}
+
+.filterBuilderHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.filterBuilderTitle {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--panel-heading);
+}
+
+.filterEmpty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.filterList {
+  display: grid;
+  gap: 8px;
+}
+
+.filterRow {
+  border: 1px solid var(--filter-row-border);
+  border-radius: 9px;
+  padding: 8px;
+  background: var(--field-bg);
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1.2fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.filterRemoveButton {
+  align-self: end;
 }
 
 label {
@@ -225,9 +407,9 @@ select,
 textarea,
 pre {
   width: 100%;
-  border: 1px solid #c5d2de;
+  border: 1px solid var(--field-border);
   border-radius: 9px;
-  background: #ffffff;
+  background: var(--field-bg);
   color: var(--text);
   font: inherit;
   padding: 8px 10px;
@@ -242,7 +424,7 @@ pre {
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid rgba(15, 118, 110, 0.3);
+  outline: 2px solid var(--field-focus);
   outline-offset: 1px;
 }
 
@@ -251,9 +433,9 @@ pre {
   min-height: 140px;
   max-height: 280px;
   overflow: auto;
-  background: #0b1220;
-  color: #e8edf4;
-  border-color: #1f2a3b;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+  border-color: var(--pre-border);
 }
 
 .inlineRow {
@@ -292,15 +474,15 @@ pre {
 }
 
 .advancedPanel {
-  border: 1px dashed #bfd3e3;
+  border: 1px dashed var(--panel-dashed-border);
   border-radius: 10px;
   padding: 10px;
-  background: #fbfdff;
+  background: var(--panel-dashed-bg);
 }
 
 .advancedPanel > summary {
   cursor: pointer;
-  color: #334e68;
+  color: var(--panel-heading);
   font-weight: 600;
 }
 
@@ -334,16 +516,16 @@ button:disabled {
 }
 
 .secondaryButton {
-  border-color: #b6c6d7;
-  background: #ffffff;
-  color: #334e68;
+  border-color: var(--secondary-border);
+  background: var(--field-bg);
+  color: var(--secondary-text);
   font-weight: 600;
 }
 
 .textButton {
-  border-color: #b6c6d7;
+  border-color: var(--secondary-border);
   background: transparent;
-  color: #334e68;
+  color: var(--secondary-text);
 }
 
 .jsonGrid {
@@ -351,6 +533,14 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.jsonGrid > label {
+  height: 100%;
+}
+
+.jsonGrid > label > pre {
+  height: 280px;
 }
 
 .jobsGrid {
@@ -379,8 +569,8 @@ button:disabled {
   height: 11px;
   border-radius: 999px;
   overflow: hidden;
-  border: 1px solid #c4d3e0;
-  background: #edf2f7;
+  border: 1px solid var(--progress-border);
+  background: var(--progress-bg);
 }
 
 .progressFill {
@@ -416,9 +606,9 @@ button:disabled {
 .downloadLink {
   display: inline-flex;
   margin-top: 10px;
-  background: #e6fffb;
-  border-color: #a6e7de;
-  color: #0d5f58;
+  background: var(--download-bg);
+  border-color: var(--download-border);
+  color: var(--download-text);
   font-weight: 700;
 }
 
@@ -436,7 +626,7 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
   text-align: left;
-  background: #ffffff;
+  background: var(--field-bg);
 }
 
 .jobRow p {
@@ -446,8 +636,8 @@ button:disabled {
 }
 
 .jobRow-active {
-  border-color: #6ebdb4;
-  background: #f0fdf9;
+  border-color: var(--job-active-border);
+  background: var(--job-active-bg);
 }
 
 .jobBadge {
@@ -487,6 +677,99 @@ button:disabled {
   border-color: #f3c2c2;
 }
 
+.toastViewport {
+  position: fixed;
+  right: 18px;
+  top: 18px;
+  z-index: 60;
+  width: min(300px, calc(100vw - 28px));
+  display: grid;
+  gap: 9px;
+  pointer-events: none;
+}
+
+.toast {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--toast-bg);
+  box-shadow: var(--toast-shadow);
+  backdrop-filter: blur(6px);
+  position: relative;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.toastContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 11px 12px 12px;
+}
+
+.toastContent p {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.toast-info {
+  border-color: #c7d7e6;
+}
+
+.toast-success {
+  border-color: #a9eec3;
+}
+
+.toast-error {
+  border-color: #f3c2c2;
+}
+
+.toastClose {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0 2px;
+  line-height: 1;
+  font-size: 1.05rem;
+  min-width: 18px;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.toastProgress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #0f766e, #36b6aa);
+  transform-origin: left center;
+  animation-name: toastProgressDrain;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.toast-success .toastProgress {
+  background: linear-gradient(90deg, #16a34a, #4ade80);
+}
+
+.toast-error .toastProgress {
+  background: linear-gradient(90deg, #dc2626, #fb7185);
+}
+
+@keyframes toastProgressDrain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
 @media (max-width: 1060px) {
   .setupGrid,
   .jobsGrid,
@@ -506,8 +789,28 @@ button:disabled {
     padding: 14px;
   }
 
+  .heroTopRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .themeToggle {
+    width: 42px;
+    height: 42px;
+  }
+
   .fieldGrid {
     grid-template-columns: 1fr;
+  }
+
+  .filterRow {
+    grid-template-columns: 1fr;
+  }
+
+  .toastViewport {
+    right: 10px;
+    top: 10px;
+    width: min(300px, calc(100vw - 20px));
   }
 
   .actionRow {
@@ -525,9 +828,13 @@ button:disabled {
     width: 100%;
   }
 
-  button,
+  button:not(.themeToggle),
   .downloadLink {
     width: 100%;
     justify-content: center;
+  }
+
+  .toastClose {
+    width: auto;
   }
 }

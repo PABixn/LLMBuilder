@@ -19,7 +19,7 @@ class TrainTokenizerRequest(BaseModel):
     tokenizer_config: dict[str, Any]
     dataloader_config: dict[str, Any]
     evaluation_thresholds: list[int] = Field(default_factory=lambda: [5, 10, 25])
-    evaluation_text_path: str | None = None
+    evaluation_text_path: str
 
     @field_validator("evaluation_thresholds")
     @classmethod
@@ -86,6 +86,12 @@ class ConfigSchemasResponse(BaseModel):
 class ValidateConfigResponse(BaseModel):
     valid: bool = True
     normalized_config: dict[str, Any]
+
+
+class UploadedTrainFileResponse(BaseModel):
+    file_name: str
+    file_path: str
+    size_bytes: int
 
 
 class ArtifactMetadataResponse(BaseModel):

@@ -11,8 +11,11 @@ try:
     from datasets import load_dataset
 except ImportError as exc:
     raise ImportError(
-        "Failed to import HuggingFace 'datasets'. Ensure your project virtualenv is active "
-        "and run the API with `python -m uvicorn ...` so the correct interpreter is used."
+        "Failed to import HuggingFace 'datasets.load_dataset'. Install API dependencies in the "
+        "interpreter used to run `make api` (for example: "
+        "`./.venv/bin/pip install -r apps/tokenizer-studio/api/requirements.txt`). If `datasets` "
+        "is resolving to `apps/tokenizer-studio/api/datasets/`, that interpreter is missing the "
+        "HuggingFace `datasets` package."
     ) from exc
 
 from tokenizer.dataloader_config import (

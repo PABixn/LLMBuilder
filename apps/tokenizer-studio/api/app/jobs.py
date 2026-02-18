@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from tokenizers import Tokenizer
 
-from .config import API_ROOT, eval_text_path, max_job_workers, output_dir
+from .config import API_ROOT, max_job_workers, output_dir
 from .models import JobStatus, TokenizerStatsResponse, TrainTokenizerRequest, TrainingJobResponse
 
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
@@ -254,13 +254,13 @@ class TrainingJobManager:
             if error is not None:
                 job.error = error
 
-    def _resolve_eval_text_path(self, raw: str | None) -> Path:
-        if raw is None or raw.strip() == "":
-            path = eval_text_path()
-        else:
-            path = Path(raw).expanduser()
-            if not path.is_absolute():
-                path = API_ROOT / path
+    def _resolve_eval_text_path(self, raw: str) -> Path:
+        if raw.strip() == "":
+            raise ValueError("evaluation_text_path is required")
+
+        path = Path(raw).expanduser()
+        if not path.is_absolute():
+            path = API_ROOT / path
         if not path.exists() or not path.is_file():
             raise ValueError(f"evaluation_text_path does not point to a file: {path}")
         return path

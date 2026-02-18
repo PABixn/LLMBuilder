@@ -6,6 +6,7 @@ from pathlib import Path
 API_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = API_ROOT / "artifacts" / "tokenizers"
 DEFAULT_EVAL_TEXT_PATH = API_ROOT / "datasets" / "shake.txt"
+DEFAULT_UPLOAD_DIR = API_ROOT / "datasets" / "uploads"
 TEMPLATE_DIR = API_ROOT / "templates"
 
 TOKENIZER_CONFIG_TEMPLATE_PATH = TEMPLATE_DIR / "tok_config.json"
@@ -30,6 +31,10 @@ def output_dir() -> Path:
 
 def eval_text_path() -> Path:
     return _resolve_env_path("TOKENIZER_STUDIO_EVAL_TEXT_PATH", DEFAULT_EVAL_TEXT_PATH)
+
+
+def upload_dir() -> Path:
+    return _resolve_env_path("TOKENIZER_STUDIO_UPLOAD_DIR", DEFAULT_UPLOAD_DIR)
 
 
 def max_job_workers() -> int:

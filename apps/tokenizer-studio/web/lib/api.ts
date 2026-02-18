@@ -34,12 +34,20 @@ export interface ConfigTemplates {
   dataloader_config_template: Record<string, unknown>;
 }
 
+export interface UploadedTrainFile {
+  file_name: string;
+  file_path: string;
+  size_bytes: number;
+}
+
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers ?? {});
-  if (init?.body && !headers.has("Content-Type")) {
+  const hasFormDataBody =
+    typeof FormData !== "undefined" && init?.body instanceof FormData;
+  if (init?.body && !hasFormDataBody && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -114,11 +122,29 @@ export async function validateDataloaderConfig(
   return response.normalized_config;
 }
 
+export async function uploadTrainFile(file: File): Promise<UploadedTrainFile> {
+  const body = new FormData();
+  body.append("file", file);
+  return request<UploadedTrainFile>("/files/train", {
+    method: "POST",
+    body,
+  });
+}
+
+export async function uploadValidationFile(file: File): Promise<UploadedTrainFile> {
+  const body = new FormData();
+  body.append("file", file);
+  return request<UploadedTrainFile>("/files/validation", {
+    method: "POST",
+    body,
+  });
+}
+
 export async function createTrainingJob(payload: {
   tokenizer_config: Record<string, unknown>;
   dataloader_config: Record<string, unknown>;
   evaluation_thresholds: number[];
-  evaluation_text_path?: string;
+  evaluation_text_path: string;
 }): Promise<TrainingJob> {
   return request<TrainingJob>("/jobs", {
     method: "POST",
