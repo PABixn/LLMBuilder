@@ -34,6 +34,22 @@ export interface ConfigTemplates {
   dataloader_config_template: Record<string, unknown>;
 }
 
+export interface TokenizerPreviewToken {
+  index: number;
+  id: number;
+  token: string;
+  start: number;
+  end: number;
+}
+
+export interface TokenizerPreviewResult {
+  job_id: string;
+  text: string;
+  text_length: number;
+  num_tokens: number;
+  tokens: TokenizerPreviewToken[];
+}
+
 export interface UploadedTrainFile {
   file_name: string;
   file_path: string;
@@ -159,6 +175,16 @@ export async function fetchTrainingJobs(): Promise<TrainingJob[]> {
 
 export async function fetchTrainingJob(jobId: string): Promise<TrainingJob> {
   return request<TrainingJob>(`/jobs/${jobId}`);
+}
+
+export async function previewJobTokenizer(
+  jobId: string,
+  payload: { text: string }
+): Promise<TokenizerPreviewResult> {
+  return request<TokenizerPreviewResult>(`/jobs/${jobId}/preview`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function artifactDownloadUrl(jobId: string): string {

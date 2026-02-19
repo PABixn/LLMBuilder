@@ -24,6 +24,8 @@ from .models import (
     ConfigSchemasResponse,
     ConfigTemplatesResponse,
     HealthResponse,
+    TokenizerPreviewRequest,
+    TokenizerPreviewResponse,
     TrainTokenizerRequest,
     TrainingJobResponse,
     TrainingJobsListResponse,
@@ -191,6 +193,22 @@ def get_job(job_id: str) -> TrainingJobResponse:
         return manager.get_job(job_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Unknown job id: {job_id}") from exc
+
+
+@api.post("/jobs/{job_id}/preview", response_model=TokenizerPreviewResponse)
+def preview_job_tokenizer(job_id: str, payload: TokenizerPreviewRequest) -> TokenizerPreviewResponse:
+    manager = app.state.jobs
+    try:
+        return manager.preview_tokens(job_id, payload.text)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown job id: {job_id}") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Tokenizer artifact is not ready for job {job_id}",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @api.get("/jobs/{job_id}/artifact/meta", response_model=ArtifactMetadataResponse)

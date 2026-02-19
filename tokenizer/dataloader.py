@@ -337,6 +337,8 @@ class StreamingTextDataset(IterableDataset):
             kwargs["columns"] = spec.columns
         if spec.filters is not None:
             kwargs["filters"] = [tuple(filt) for filt in spec.filters]
+        if spec.hf_token is not None:
+            kwargs["token"] = spec.hf_token
         dataset = load_dataset(*args, **kwargs)
         features = getattr(dataset, "features", None)
         if features is not None:

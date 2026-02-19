@@ -26,6 +26,7 @@ class DatasetSpec(StrictModel):
     name: Annotated[str, Field(min_length=1)]
     config: Optional[str] = None
     split: Annotated[str, Field(min_length=1)] = "train"
+    hf_token: Optional[str] = None
     text_columns: Annotated[List[str], Field(min_length=1)] = Field(
         default_factory=lambda: ["text"]
     )

@@ -17,7 +17,10 @@ import {
   fetchConfigTemplates,
   fetchTrainingJob,
   fetchTrainingJobs,
+  previewJobTokenizer,
   type TrainingJob,
+  type TokenizerPreviewResult,
+  type TokenizerPreviewToken,
   uploadTrainFile,
   uploadValidationFile,
   validateDataloaderConfig,
@@ -89,6 +92,7 @@ interface DatasetFormState {
   textColumns: string;
   trainFilePath: string;
   trainFileName: string;
+  hfToken: string;
   streamingDatasets: StreamingDatasetFormState[];
 }
 
@@ -104,6 +108,12 @@ interface TrainingFormState {
 interface BuildResult {
   value: Record<string, unknown> | null;
   error: string | null;
+}
+
+interface PreviewSegment {
+  kind: "plain" | "token";
+  text: string;
+  token?: TokenizerPreviewToken;
 }
 
 type ToastLevel = "info" | "success" | "error";
@@ -540,6 +550,62 @@ function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function makePreviewSegments(text: string, tokens: TokenizerPreviewToken[]): PreviewSegment[] {
+  if (text.length === 0) {
+    return [];
+  }
+
+  const segments: PreviewSegment[] = [];
+  let cursor = 0;
+
+  for (const token of tokens) {
+    const start = Math.max(0, Math.min(text.length, Math.trunc(token.start)));
+    const end = Math.max(0, Math.min(text.length, Math.trunc(token.end)));
+
+    if (end <= start || start < cursor) {
+      continue;
+    }
+
+    if (start > cursor) {
+      segments.push({
+        kind: "plain",
+        text: text.slice(cursor, start),
+      });
+    }
+
+    segments.push({
+      kind: "token",
+      text: text.slice(start, end),
+      token,
+    });
+    cursor = end;
+  }
+
+  if (cursor < text.length) {
+    segments.push({
+      kind: "plain",
+      text: text.slice(cursor),
+    });
+  }
+
+  return segments;
+}
+
+function displayTokenLabel(value: string): string {
+  return value
+    .replaceAll("Ġ", "[space]")
+    .replaceAll("▁", "[space]")
+    .replaceAll("Ċ", "[\\n]")
+    .replaceAll("\r\n", "[\\r\\n]\n")
+    .replaceAll(" ", "[space]")
+    .replaceAll("\n", "[\\n]\n")
+    .replaceAll("\t", "[\\t]");
+}
+
+function tokenHue(index: number): number {
+  return (index * 37) % 360;
+}
+
 function tokenizerFormFromConfig(config: Record<string, unknown>): TokenizerFormState {
   const specialTokensRaw = config.special_tokens;
   const specialTokens = Array.isArray(specialTokensRaw)
@@ -563,6 +629,8 @@ function tokenizerFormFromConfig(config: Record<string, unknown>): TokenizerForm
 function datasetFormFromConfig(config: Record<string, unknown>): DatasetFormState {
   const datasetsRaw = Array.isArray(config.datasets) ? config.datasets : [];
   const firstDataset = asRecord(datasetsRaw[0]);
+  const firstHfToken =
+    typeof firstDataset.hf_token === "string" ? firstDataset.hf_token : "";
   const firstDataFiles = firstDataset.data_files;
   const sourceMode: DatasetSourceMode =
     datasetsRaw.length === 1 &&
@@ -639,6 +707,7 @@ function datasetFormFromConfig(config: Record<string, unknown>): DatasetFormStat
     textColumns,
     trainFilePath,
     trainFileName: fileNameFromPath(trainFilePath),
+    hfToken: firstHfToken,
     sourceMode,
     streamingDatasets,
   };
@@ -707,6 +776,7 @@ function buildDataloaderConfigFromForm(
   training: TrainingFormState
 ): Record<string, unknown> {
   let datasets: Record<string, unknown>[] = [];
+  const hfToken = dataset.hfToken.trim();
 
   if (dataset.sourceMode === "local_file") {
     const datasetName = dataset.name.trim();
@@ -769,6 +839,10 @@ function buildDataloaderConfigFromForm(
       const datasetConfigName = entry.config.trim();
       if (datasetConfigName !== "") {
         datasetConfig.config = datasetConfigName;
+      }
+
+      if (hfToken !== "") {
+        datasetConfig.hf_token = hfToken;
       }
 
       const parsedFilters = buildFiltersFromForm(
@@ -870,6 +944,14 @@ export default function Home() {
   const [jobs, setJobs] = useState<TrainingJob[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [activeJob, setActiveJob] = useState<TrainingJob | null>(null);
+  const [previewText, setPreviewText] = useState(
+    "The quick brown fox jumps over the lazy dog."
+  );
+  const [previewResult, setPreviewResult] = useState<TokenizerPreviewResult | null>(
+    null
+  );
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -879,6 +961,7 @@ export default function Home() {
   const [toasts, setToasts] = useState<ToastState[]>([]);
   const toastTimeoutsRef = useRef<Record<string, number>>({});
   const jobNotificationKeysRef = useRef<Set<string>>(new Set());
+  const previewRequestRef = useRef(0);
   const controlsDisabled =
     isSubmitting ||
     isValidating ||
@@ -1045,6 +1128,64 @@ export default function Home() {
       }),
     }));
   }, []);
+
+  const runPreview = useCallback(async (jobId: string, text: string) => {
+    const requestId = ++previewRequestRef.current;
+    setIsPreviewing(true);
+    setPreviewError(null);
+    setPreviewResult((previous) =>
+      previous && previous.job_id === jobId && previous.text === text ? previous : null
+    );
+
+    try {
+      const result = await previewJobTokenizer(jobId, { text });
+      if (previewRequestRef.current !== requestId) {
+        return;
+      }
+      setPreviewResult(result);
+    } catch (error) {
+      if (previewRequestRef.current !== requestId) {
+        return;
+      }
+      const message =
+        error instanceof Error ? error.message : "Failed to preview tokenizer output";
+      setPreviewResult(null);
+      setPreviewError(message);
+    } finally {
+      if (previewRequestRef.current === requestId) {
+        setIsPreviewing(false);
+      }
+    }
+  }, []);
+
+  const previewReadyJobId =
+    activeJob && activeJob.status === "completed" && activeJob.artifact_file
+      ? activeJob.id
+      : null;
+
+  const previewSegments = useMemo(() => {
+    if (!previewResult) {
+      return [];
+    }
+    return makePreviewSegments(previewResult.text, previewResult.tokens);
+  }, [previewResult]);
+
+  useEffect(() => {
+    if (!previewReadyJobId) {
+      setPreviewResult(null);
+      setPreviewError(null);
+      setIsPreviewing(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void runPreview(previewReadyJobId, previewText);
+    }, 280);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [previewReadyJobId, previewText, runPreview]);
 
   const refreshJobs = useCallback(async () => {
     try {
@@ -1627,6 +1768,28 @@ export default function Home() {
               </div>
             ) : (
               <div className="datasetConfigurator">
+                <div className="fieldGrid">
+                  <label className="fullWidthField">
+                    HF access token (optional)
+                    <input
+                      type="password"
+                      value={datasetForm.hfToken}
+                      onChange={(event) =>
+                        setDatasetForm((previous) => ({
+                          ...previous,
+                          hfToken: event.target.value,
+                        }))
+                      }
+                      disabled={controlsDisabled}
+                      autoComplete="off"
+                      placeholder="hf_..."
+                    />
+                    <span className="fieldNote">
+                      Required for gated/private datasets.
+                    </span>
+                  </label>
+                </div>
+
                 <div className="actionRow compactActionRow">
                   <button
                     type="button"
@@ -2013,6 +2176,97 @@ export default function Home() {
                     <strong>{activeJob.stats.num_unused_tokens}</strong>
                   </div>
                 </div>
+              ) : null}
+
+              {activeJob.status === "completed" && activeJob.artifact_file ? (
+                <section className="tokenizerPreview">
+                  <div className="sectionHeader tokenizerPreviewHeader">
+                    <h3>Tokenizer Preview</h3>
+                    <p className="metaLine">
+                      {isPreviewing
+                        ? "Tokenizing..."
+                        : previewResult
+                          ? `${previewResult.num_tokens} token${
+                              previewResult.num_tokens === 1 ? "" : "s"
+                            }`
+                          : "-"}
+                    </p>
+                  </div>
+
+                  <label className="fullWidthField">
+                    Text to tokenize
+                    <textarea
+                      className="previewInput"
+                      value={previewText}
+                      onChange={(event) => setPreviewText(event.target.value)}
+                      placeholder="Type text to preview tokenization..."
+                      rows={4}
+                    />
+                  </label>
+
+                  {previewError ? <p className="hint hint-error">{previewError}</p> : null}
+
+                  {previewResult && previewResult.text.length > 0 ? (
+                    <>
+                      <div className="tokenizedText" aria-live="polite">
+                        {previewSegments.map((segment, segmentIndex) => {
+                          if (segment.kind === "plain") {
+                            return (
+                              <span key={`plain-${segmentIndex}`} className="plainSegment">
+                                {segment.text}
+                              </span>
+                            );
+                          }
+
+                          const token = segment.token;
+                          if (!token) {
+                            return (
+                              <span key={`plain-fallback-${segmentIndex}`} className="plainSegment">
+                                {segment.text}
+                              </span>
+                            );
+                          }
+
+                          const hue = tokenHue(token.index);
+                          return (
+                            <span
+                              key={`token-${token.index}-${token.start}-${token.end}`}
+                              className="tokenMark"
+                              title={`Token ID: ${token.id}`}
+                              style={{
+                                backgroundColor: `hsla(${hue}, 95%, 55%, 0.2)`,
+                                borderColor: `hsla(${hue}, 70%, 55%, 0.7)`,
+                              }}
+                            >
+                              {segment.text}
+                            </span>
+                          );
+                        })}
+                      </div>
+
+                      <div className="tokenChipList" aria-label="Tokenizer output tokens">
+                        {previewResult.tokens.map((token) => {
+                          const hue = tokenHue(token.index);
+                          return (
+                            <span
+                              key={`chip-${token.index}-${token.id}`}
+                              className="tokenChip"
+                              title={`Token ID: ${token.id}`}
+                              style={{
+                                backgroundColor: `hsla(${hue}, 95%, 55%, 0.17)`,
+                                borderColor: `hsla(${hue}, 70%, 55%, 0.62)`,
+                              }}
+                            >
+                              <code>{displayTokenLabel(token.token)}</code>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : previewText.trim() === "" ? (
+                    <p className="metaLine">Enter text above to preview tokenization.</p>
+                  ) : null}
+                </section>
               ) : null}
 
               {activeJob.artifact_file ? (

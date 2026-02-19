@@ -36,6 +36,26 @@ class ValidateConfigRequest(BaseModel):
     config: dict[str, Any]
 
 
+class TokenizerPreviewRequest(BaseModel):
+    text: str = Field(max_length=50_000)
+
+
+class TokenPreviewTokenResponse(BaseModel):
+    index: int
+    id: int
+    token: str
+    start: int
+    end: int
+
+
+class TokenizerPreviewResponse(BaseModel):
+    job_id: str
+    text: str
+    text_length: int
+    num_tokens: int
+    tokens: list[TokenPreviewTokenResponse]
+
+
 class HealthResponse(BaseModel):
     ok: bool = True
 

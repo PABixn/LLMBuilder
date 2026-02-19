@@ -14,7 +14,14 @@ from uuid import uuid4
 from tokenizers import Tokenizer
 
 from .config import API_ROOT, max_job_workers, output_dir
-from .models import JobStatus, TokenizerStatsResponse, TrainTokenizerRequest, TrainingJobResponse
+from .models import (
+    JobStatus,
+    TokenPreviewTokenResponse,
+    TokenizerPreviewResponse,
+    TokenizerStatsResponse,
+    TrainTokenizerRequest,
+    TrainingJobResponse,
+)
 
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
 if str(IMPORT_ROOT) not in sys.path:
@@ -119,6 +126,46 @@ class TrainingJobManager:
         if not path.exists():
             raise FileNotFoundError(f"Artifact file does not exist: {path}")
         return path
+
+    def preview_tokens(self, job_id: str, text: str) -> TokenizerPreviewResponse:
+        artifact_path = self.get_artifact_path(job_id)
+        tokenizer = Tokenizer.from_file(str(artifact_path))
+
+        if text == "":
+            return TokenizerPreviewResponse(
+                job_id=job_id,
+                text=text,
+                text_length=0,
+                num_tokens=0,
+                tokens=[],
+            )
+
+        encoding = tokenizer.encode(text)
+        offsets = getattr(encoding, "offsets", [])
+
+        tokens: list[TokenPreviewTokenResponse] = []
+        for index, (token_id, token_text) in enumerate(zip(encoding.ids, encoding.tokens)):
+            start = 0
+            end = 0
+            if index < len(offsets):
+                start, end = offsets[index]
+            tokens.append(
+                TokenPreviewTokenResponse(
+                    index=index,
+                    id=int(token_id),
+                    token=token_text,
+                    start=int(start),
+                    end=int(end),
+                )
+            )
+
+        return TokenizerPreviewResponse(
+            job_id=job_id,
+            text=text,
+            text_length=len(text),
+            num_tokens=len(tokens),
+            tokens=tokens,
+        )
 
     def shutdown(self) -> None:
         self._executor.shutdown(wait=False, cancel_futures=False)
