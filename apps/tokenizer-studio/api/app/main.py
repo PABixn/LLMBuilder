@@ -34,6 +34,7 @@ from .models import (
     ValidateConfigResponse,
 )
 from .schemas import load_json
+from .storage import StudioStore
 
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
 if str(IMPORT_ROOT) not in sys.path:
@@ -91,9 +92,17 @@ async def _store_uploaded_text_file(file: UploadFile) -> UploadedTrainFileRespon
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.jobs = TrainingJobManager()
+    store = StudioStore()
+    store.initialize()
+    store.mark_incomplete_jobs_failed(
+        "Training was interrupted because the API restarted before completion."
+    )
+
+    app.state.store = store
+    app.state.jobs = TrainingJobManager(store=store)
     yield
     app.state.jobs.shutdown()
+    app.state.store.dispose()
 
 
 app = FastAPI(
@@ -161,12 +170,26 @@ def validate_dataloader(payload: ValidateConfigRequest) -> ValidateConfigRespons
 
 @api.post("/files/train", response_model=UploadedTrainFileResponse, status_code=201)
 async def upload_train_file(file: UploadFile = File(...)) -> UploadedTrainFileResponse:
-    return await _store_uploaded_text_file(file)
+    uploaded = await _store_uploaded_text_file(file)
+    app.state.store.record_uploaded_file(
+        "train",
+        uploaded.file_name,
+        uploaded.file_path,
+        uploaded.size_bytes,
+    )
+    return uploaded
 
 
 @api.post("/files/validation", response_model=UploadedTrainFileResponse, status_code=201)
 async def upload_validation_file(file: UploadFile = File(...)) -> UploadedTrainFileResponse:
-    return await _store_uploaded_text_file(file)
+    uploaded = await _store_uploaded_text_file(file)
+    app.state.store.record_uploaded_file(
+        "validation",
+        uploaded.file_name,
+        uploaded.file_path,
+        uploaded.size_bytes,
+    )
+    return uploaded
 
 
 @api.post("/jobs", response_model=TrainingJobResponse, status_code=201)

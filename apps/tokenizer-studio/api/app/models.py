@@ -15,11 +15,31 @@ class JobStatus(str, Enum):
     failed = "failed"
 
 
+class JobState(str, Enum):
+    queued = "queued"
+    initializing = "initializing"
+    preparing_dataset = "preparing_dataset"
+    training = "training"
+    saving_artifact = "saving_artifact"
+    evaluating = "evaluating"
+    running = "running"
+    completed = "completed"
+    failed = "failed"
+
+
+class EvaluationSource(str, Enum):
+    training_dataset = "training_dataset"
+    legacy_file = "legacy_file"
+
+
 class TrainTokenizerRequest(BaseModel):
     tokenizer_config: dict[str, Any]
     dataloader_config: dict[str, Any]
     evaluation_thresholds: list[int] = Field(default_factory=lambda: [5, 10, 25])
-    evaluation_text_path: str
+    evaluation_text_path: str | None = Field(
+        default=None,
+        description="Deprecated. Evaluation always uses the tokenizer training dataset.",
+    )
 
     @field_validator("evaluation_thresholds")
     @classmethod
@@ -61,9 +81,13 @@ class HealthResponse(BaseModel):
 
 
 class TokenizerStatsResponse(BaseModel):
+    num_records: int = 0
     num_chars: int
     num_tokens: int
     token_per_char: float
+    chars_per_token: float = 0.0
+    avg_chars_per_record: float = 0.0
+    avg_tokens_per_record: float = 0.0
     vocab_size: int
     num_used_tokens: int
     num_unused_tokens: int
@@ -74,6 +98,7 @@ class TokenizerStatsResponse(BaseModel):
 class TrainingJobResponse(BaseModel):
     id: str
     status: JobStatus
+    state: JobState
     stage: str
     progress: float
     created_at: datetime
@@ -81,6 +106,7 @@ class TrainingJobResponse(BaseModel):
     finished_at: datetime | None = None
     tokenizer_config: dict[str, Any]
     dataloader_config: dict[str, Any]
+    evaluation_source: EvaluationSource
     evaluation_thresholds: list[int]
     evaluation_text_path: str
     artifact_file: str | None = None

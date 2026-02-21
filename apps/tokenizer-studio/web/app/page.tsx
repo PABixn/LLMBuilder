@@ -11,7 +11,6 @@ import {
 import { FiMoon, FiSun } from "react-icons/fi";
 
 import {
-  apiBaseUrl,
   artifactDownloadUrl,
   createTrainingJob,
   fetchConfigTemplates,
@@ -22,7 +21,6 @@ import {
   type TokenizerPreviewResult,
   type TokenizerPreviewToken,
   uploadTrainFile,
-  uploadValidationFile,
   validateDataloaderConfig,
   validateTokenizerConfig,
 } from "../lib/api";
@@ -51,6 +49,11 @@ const FILTER_OPERATORS: FilterOperator[] = [
   "not in",
 ];
 const THEME_STORAGE_KEY = "tokenizer-studio-theme";
+const TOKENIZER_FORM_STORAGE_KEY = "tokenizer-studio-tokenizer-form";
+const DATASET_FORM_STORAGE_KEY = "tokenizer-studio-dataset-form";
+const TRAINING_FORM_STORAGE_KEY = "tokenizer-studio-training-form";
+const ACTIVE_JOB_STORAGE_KEY = "tokenizer-studio-active-job-id";
+const PREVIEW_TEXT_STORAGE_KEY = "tokenizer-studio-preview-text";
 const WEIGHT_SUM_EPSILON = 1e-9;
 const WEIGHT_SCALE = 1_000_000;
 const MIN_STRICT_POSITIVE_WEIGHT = 1e-6;
@@ -101,8 +104,6 @@ interface TrainingFormState {
   budgetUnit: BudgetUnit;
   budgetBehavior: BudgetBehavior;
   evaluationThresholds: string;
-  evaluationTextPath: string;
-  evaluationFileName: string;
 }
 
 interface BuildResult {
@@ -172,10 +173,10 @@ function asThemeMode(value: unknown): ThemeMode {
 }
 
 function makeStreamingDatasetEntry(
-  value?: Partial<Omit<StreamingDatasetFormState, "id">>
+  value?: Partial<StreamingDatasetFormState>
 ): StreamingDatasetFormState {
   return {
-    id: `dataset-${Math.random().toString(36).slice(2, 10)}`,
+    id: value?.id ?? `dataset-${Math.random().toString(36).slice(2, 10)}`,
     name: value?.name ?? "",
     config: value?.config ?? "",
     split: value?.split ?? "train",
@@ -186,14 +187,173 @@ function makeStreamingDatasetEntry(
 }
 
 function makeStreamingFilterEntry(
-  value?: Partial<Omit<StreamingFilterFormState, "id">>
+  value?: Partial<StreamingFilterFormState>
 ): StreamingFilterFormState {
   return {
-    id: `filter-${Math.random().toString(36).slice(2, 10)}`,
+    id: value?.id ?? `filter-${Math.random().toString(36).slice(2, 10)}`,
     column: value?.column ?? "",
     operator: value?.operator ?? "==",
     value: value?.value ?? "",
   };
+}
+
+function asString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function readStoredValue(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function readStoredJson(key: string): unknown | null {
+  const raw = readStoredValue(key);
+  if (raw === null || raw.trim() === "") {
+    return null;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredValue(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Ignore quota/unavailable storage failures in local mode.
+  }
+}
+
+function writeStoredJson(key: string, value: unknown): void {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore quota/unavailable storage failures in local mode.
+  }
+}
+
+function removeStoredValue(key: string): void {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Ignore quota/unavailable storage failures in local mode.
+  }
+}
+
+function hydrateStreamingFilter(value: unknown): StreamingFilterFormState {
+  const record = asRecord(value);
+  const storedId = asString(record.id, "").trim();
+
+  return makeStreamingFilterEntry({
+    id: storedId === "" ? undefined : storedId,
+    column: asString(record.column, ""),
+    operator: asFilterOperator(record.operator),
+    value: asString(record.value, ""),
+  });
+}
+
+function hydrateStreamingDataset(value: unknown): StreamingDatasetFormState {
+  const record = asRecord(value);
+  const storedId = asString(record.id, "").trim();
+  const filtersRaw = Array.isArray(record.filters) ? record.filters : [];
+
+  return makeStreamingDatasetEntry({
+    id: storedId === "" ? undefined : storedId,
+    name: asString(record.name, ""),
+    config: asString(record.config, ""),
+    split: asString(record.split, "train"),
+    textColumns: asString(record.textColumns, "text"),
+    weight: sanitizeWeightInput(asString(record.weight, "1")),
+    filters: filtersRaw.map((entry) => hydrateStreamingFilter(entry)),
+  });
+}
+
+function hydrateTokenizerForm(
+  value: unknown,
+  fallback: TokenizerFormState
+): TokenizerFormState {
+  const record = asRecord(value);
+
+  return {
+    name: asString(record.name, fallback.name),
+    tokenizerType: asTokenizerType(record.tokenizerType),
+    vocabSize: sanitizePositiveIntegerInput(
+      asString(record.vocabSize, fallback.vocabSize)
+    ),
+    minFrequency: sanitizePositiveIntegerInput(
+      asString(record.minFrequency, fallback.minFrequency)
+    ),
+    specialTokens: asString(record.specialTokens, fallback.specialTokens),
+    byteFallback:
+      typeof record.byteFallback === "boolean"
+        ? record.byteFallback
+        : fallback.byteFallback,
+    unkToken: asString(record.unkToken, fallback.unkToken),
+    preTokenizer: asPreTokenizerType(record.preTokenizer),
+    decoder: asDecoderType(record.decoder),
+  };
+}
+
+function hydrateDatasetForm(value: unknown, fallback: DatasetFormState): DatasetFormState {
+  const record = asRecord(value);
+  const sourceMode: DatasetSourceMode =
+    record.sourceMode === "local_file" || record.sourceMode === "streaming_hf"
+      ? record.sourceMode
+      : fallback.sourceMode;
+  const streamingDatasetsRaw = Array.isArray(record.streamingDatasets)
+    ? record.streamingDatasets
+    : [];
+  const streamingDatasets =
+    streamingDatasetsRaw.length > 0
+      ? streamingDatasetsRaw.map((entry) => hydrateStreamingDataset(entry))
+      : fallback.streamingDatasets.map((entry) => makeStreamingDatasetEntry(entry));
+  const trainFilePath = asString(record.trainFilePath, fallback.trainFilePath);
+  const computedTrainFileName =
+    fileNameFromPath(trainFilePath) || fallback.trainFileName;
+
+  return {
+    sourceMode,
+    name: asString(record.name, fallback.name),
+    config: asString(record.config, fallback.config),
+    split: asString(record.split, fallback.split),
+    textColumns: asString(record.textColumns, fallback.textColumns),
+    trainFilePath,
+    trainFileName: asString(record.trainFileName, computedTrainFileName),
+    hfToken: asString(record.hfToken, fallback.hfToken),
+    streamingDatasets: normalizeStreamingDatasetWeights(
+      streamingDatasets.length > 0 ? streamingDatasets : [makeStreamingDatasetEntry()]
+    ),
+  };
+}
+
+function hydrateTrainingForm(
+  value: unknown,
+  fallback: TrainingFormState
+): TrainingFormState {
+  const record = asRecord(value);
+
+  return {
+    budgetLimit: sanitizePositiveIntegerInput(
+      asString(record.budgetLimit, fallback.budgetLimit)
+    ),
+    budgetUnit: asBudgetUnit(record.budgetUnit),
+    budgetBehavior: asBudgetBehavior(record.budgetBehavior),
+    evaluationThresholds: sanitizeThresholdsInput(
+      asString(record.evaluationThresholds, fallback.evaluationThresholds)
+    ),
+  };
+}
+
+function hydratePreviewText(value: unknown, fallback: string): string {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+  return value.slice(0, 50_000);
 }
 
 function splitTokens(value: string): string[] {
@@ -538,14 +698,6 @@ function parseThresholds(raw: string): number[] {
   return Array.from(new Set(values)).sort((a, b) => a - b);
 }
 
-function resolveEvaluationTextPath(raw: string): string {
-  const value = raw.trim();
-  if (value === "") {
-    throw new Error("Validation file is required");
-  }
-  return value;
-}
-
 function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
@@ -715,14 +867,11 @@ function datasetFormFromConfig(config: Record<string, unknown>): DatasetFormStat
 
 function trainingFormFromConfig(config: Record<string, unknown>): TrainingFormState {
   const budget = asRecord(config.budget);
-  const evaluationTextPath = "datasets/shake.txt";
   return {
     budgetLimit: String(budget.limit ?? 250000),
     budgetUnit: asBudgetUnit(budget.unit),
     budgetBehavior: asBudgetBehavior(budget.behavior),
     evaluationThresholds: "5,10,25",
-    evaluationTextPath,
-    evaluationFileName: fileNameFromPath(evaluationTextPath),
   };
 }
 
@@ -925,8 +1074,75 @@ function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
-function JobBadge({ status }: { status: TrainingJob["status"] }) {
-  return <span className={`jobBadge jobBadge-${status}`}>{status}</span>;
+type JobBadgeTone =
+  | "pending"
+  | "setup"
+  | "training"
+  | "saving"
+  | "evaluating"
+  | "running"
+  | "completed"
+  | "failed";
+
+function describeJobState(state: TrainingJob["state"]): string {
+  switch (state) {
+    case "queued":
+      return "Queued";
+    case "initializing":
+      return "Initializing";
+    case "preparing_dataset":
+      return "Preparing data";
+    case "training":
+      return "Training";
+    case "saving_artifact":
+      return "Saving artifact";
+    case "evaluating":
+      return "Evaluating";
+    case "running":
+      return "Running";
+    case "completed":
+      return "Completed";
+    case "failed":
+      return "Failed";
+    default:
+      return "Running";
+  }
+}
+
+function jobBadgeTone(state: TrainingJob["state"]): JobBadgeTone {
+  switch (state) {
+    case "queued":
+      return "pending";
+    case "initializing":
+    case "preparing_dataset":
+      return "setup";
+    case "training":
+      return "training";
+    case "saving_artifact":
+      return "saving";
+    case "evaluating":
+      return "evaluating";
+    case "running":
+      return "running";
+    case "completed":
+      return "completed";
+    case "failed":
+      return "failed";
+    default:
+      return "running";
+  }
+}
+
+function evaluationSourceLabel(source: TrainingJob["evaluation_source"]): string {
+  return source === "training_dataset"
+    ? "Training dataset (same config)"
+    : "Legacy external file";
+}
+
+function JobBadge({ job }: { job: TrainingJob }) {
+  const tone = jobBadgeTone(job.state);
+  const label = describeJobState(job.state);
+  return <span className={`jobBadge jobBadge-${tone}`}>{label}</span>;
 }
 
 export default function Home() {
@@ -957,17 +1173,18 @@ export default function Home() {
   const [isValidating, setIsValidating] = useState(false);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const [isUploadingTrainFile, setIsUploadingTrainFile] = useState(false);
-  const [isUploadingValidationFile, setIsUploadingValidationFile] = useState(false);
+  const [hasHydratedLocalState, setHasHydratedLocalState] = useState(false);
   const [toasts, setToasts] = useState<ToastState[]>([]);
   const toastTimeoutsRef = useRef<Record<string, number>>({});
   const jobNotificationKeysRef = useRef<Set<string>>(new Set());
+  const locallyStartedJobIdsRef = useRef<Set<string>>(new Set());
   const previewRequestRef = useRef(0);
+  const hasHydratedLocalStateRef = useRef(false);
   const controlsDisabled =
     isSubmitting ||
     isValidating ||
     isLoadingTemplate ||
-    isUploadingTrainFile ||
-    isUploadingValidationFile;
+    isUploadingTrainFile;
 
   const removeToast = useCallback((toastId: string) => {
     setToasts((previous) => previous.filter((toast) => toast.id !== toastId));
@@ -1001,16 +1218,87 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    const storedTheme = readStoredValue(THEME_STORAGE_KEY);
     if (storedTheme) {
       setThemeMode(asThemeMode(storedTheme));
     }
+
+    const storedTokenizerForm = readStoredJson(TOKENIZER_FORM_STORAGE_KEY);
+    if (storedTokenizerForm !== null) {
+      setTokenizerForm((previous) =>
+        hydrateTokenizerForm(storedTokenizerForm, previous)
+      );
+    }
+
+    const storedDatasetForm = readStoredJson(DATASET_FORM_STORAGE_KEY);
+    if (storedDatasetForm !== null) {
+      setDatasetForm((previous) => hydrateDatasetForm(storedDatasetForm, previous));
+    }
+
+    const storedTrainingForm = readStoredJson(TRAINING_FORM_STORAGE_KEY);
+    if (storedTrainingForm !== null) {
+      setTrainingForm((previous) =>
+        hydrateTrainingForm(storedTrainingForm, previous)
+      );
+    }
+
+    const storedPreviewText = readStoredValue(PREVIEW_TEXT_STORAGE_KEY);
+    if (storedPreviewText !== null) {
+      setPreviewText((previous) => hydratePreviewText(storedPreviewText, previous));
+    }
+
+    const storedActiveJobId = readStoredValue(ACTIVE_JOB_STORAGE_KEY);
+    if (storedActiveJobId !== null && storedActiveJobId.trim() !== "") {
+      setActiveJobId(storedActiveJobId.trim());
+    }
+
+    hasHydratedLocalStateRef.current = true;
+    setHasHydratedLocalState(true);
   }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode;
-    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+    writeStoredValue(THEME_STORAGE_KEY, themeMode);
   }, [themeMode]);
+
+  useEffect(() => {
+    if (!hasHydratedLocalState) {
+      return;
+    }
+    writeStoredJson(TOKENIZER_FORM_STORAGE_KEY, tokenizerForm);
+  }, [hasHydratedLocalState, tokenizerForm]);
+
+  useEffect(() => {
+    if (!hasHydratedLocalState) {
+      return;
+    }
+    writeStoredJson(DATASET_FORM_STORAGE_KEY, datasetForm);
+  }, [datasetForm, hasHydratedLocalState]);
+
+  useEffect(() => {
+    if (!hasHydratedLocalState) {
+      return;
+    }
+    writeStoredJson(TRAINING_FORM_STORAGE_KEY, trainingForm);
+  }, [hasHydratedLocalState, trainingForm]);
+
+  useEffect(() => {
+    if (!hasHydratedLocalState) {
+      return;
+    }
+    writeStoredValue(PREVIEW_TEXT_STORAGE_KEY, previewText);
+  }, [hasHydratedLocalState, previewText]);
+
+  useEffect(() => {
+    if (!hasHydratedLocalState) {
+      return;
+    }
+    if (activeJobId === null) {
+      removeStoredValue(ACTIVE_JOB_STORAGE_KEY);
+      return;
+    }
+    writeStoredValue(ACTIVE_JOB_STORAGE_KEY, activeJobId);
+  }, [activeJobId, hasHydratedLocalState]);
 
   const tokenizerBuild = useMemo(
     () => buildResult(() => buildTokenizerConfigFromForm(tokenizerForm)),
@@ -1188,6 +1476,10 @@ export default function Home() {
   }, [previewReadyJobId, previewText, runPreview]);
 
   const refreshJobs = useCallback(async () => {
+    if (!hasHydratedLocalStateRef.current) {
+      return;
+    }
+
     try {
       const latest = await fetchTrainingJobs();
       setJobs(latest);
@@ -1226,18 +1518,30 @@ export default function Home() {
   }, [refreshJobs]);
 
   useEffect(() => {
-    if (!activeJobId) {
+    if (!hasHydratedLocalStateRef.current || !activeJobId) {
       return;
     }
 
     let cancelled = false;
+    let isPolling = false;
+    let hasCapturedInitialSnapshot = false;
 
     const poll = async () => {
+      if (isPolling) {
+        return;
+      }
+      isPolling = true;
+
       try {
         const job = await fetchTrainingJob(activeJobId);
         if (cancelled) {
           return;
         }
+
+        const isInitialSnapshot = !hasCapturedInitialSnapshot;
+        hasCapturedInitialSnapshot = true;
+        const suppressTerminalToast =
+          isInitialSnapshot && !locallyStartedJobIdsRef.current.has(job.id);
 
         setActiveJob(job);
 
@@ -1245,11 +1549,13 @@ export default function Home() {
           const completedKey = `${job.id}:completed`;
           if (!jobNotificationKeysRef.current.has(completedKey)) {
             jobNotificationKeysRef.current.add(completedKey);
-            notify(
-              "success",
-              `Training job ${job.id.slice(0, 8)} completed. Artifact is ready.`,
-              6000
-            );
+            if (!suppressTerminalToast) {
+              notify(
+                "success",
+                `Training job ${job.id.slice(0, 8)} completed. Artifact is ready.`,
+                6000
+              );
+            }
           }
           void refreshJobs();
         }
@@ -1258,7 +1564,9 @@ export default function Home() {
           const failedKey = `${job.id}:failed`;
           if (!jobNotificationKeysRef.current.has(failedKey)) {
             jobNotificationKeysRef.current.add(failedKey);
-            notify("error", job.error ?? "Training job failed", 7000);
+            if (!suppressTerminalToast) {
+              notify("error", job.error ?? "Training job failed", 7000);
+            }
           }
           void refreshJobs();
         }
@@ -1268,6 +1576,8 @@ export default function Home() {
             error instanceof Error ? error.message : "Failed to poll job status";
           notify("error", message, 7000);
         }
+      } finally {
+        isPolling = false;
       }
     };
 
@@ -1305,33 +1615,6 @@ export default function Home() {
       notify("error", `Could not upload local train file. ${message}`, 7000);
     } finally {
       setIsUploadingTrainFile(false);
-      event.target.value = "";
-    }
-  };
-
-  const handleValidationFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    notify("info", `Uploading validation file: ${file.name}`, 2500);
-    setIsUploadingValidationFile(true);
-
-    try {
-      const uploadedFile = await uploadValidationFile(file);
-      setTrainingForm((previous) => ({
-        ...previous,
-        evaluationTextPath: uploadedFile.file_path,
-        evaluationFileName: uploadedFile.file_name,
-      }));
-      notify("success", `Uploaded ${uploadedFile.file_name}. Ready to validate.`);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to upload validation file";
-      notify("error", `Could not upload validation file. ${message}`, 7000);
-    } finally {
-      setIsUploadingValidationFile(false);
       event.target.value = "";
     }
   };
@@ -1382,7 +1665,6 @@ export default function Home() {
       if (!dataloaderBuild.value) {
         throw new Error(dataloaderBuild.error ?? "Dataloader config is invalid");
       }
-      resolveEvaluationTextPath(trainingForm.evaluationTextPath);
 
       await Promise.all([
         validateTokenizerConfig(tokenizerBuild.value),
@@ -1412,17 +1694,14 @@ export default function Home() {
       }
 
       const thresholds = parseThresholds(trainingForm.evaluationThresholds);
-      const evaluationTextPath = resolveEvaluationTextPath(
-        trainingForm.evaluationTextPath
-      );
 
       const job = await createTrainingJob({
         tokenizer_config: tokenizerBuild.value,
         dataloader_config: dataloaderBuild.value,
         evaluation_thresholds: thresholds,
-        evaluation_text_path: evaluationTextPath,
       });
 
+      locallyStartedJobIdsRef.current.add(job.id);
       setActiveJobId(job.id);
       setActiveJob(job);
       notify("success", `Training job ${job.id.slice(0, 8)} started.`);
@@ -1437,629 +1716,111 @@ export default function Home() {
   };
 
   return (
-    <main className="studioPage">
-      <header className="heroCard">
-        <div className="heroTopRow">
-          <p className="heroTag">Tokenizer Studio</p>
-          <button
-            type="button"
-            className="themeToggle"
-            onClick={() =>
-              setThemeMode((previous) =>
-                previous === "white" ? "dark" : "white"
-              )
-            }
-            aria-label={
-              themeMode === "dark"
-                ? "Switch to white theme"
-                : "Switch to dark theme"
-            }
-            title={
-              themeMode === "dark"
-                ? "Switch to white theme"
-                : "Switch to dark theme"
-            }
-          >
-            {themeMode === "dark" ? <FiSun aria-hidden="true" /> : <FiMoon aria-hidden="true" />}
-          </button>
+    <main className="studioRoot">
+      <header className="studioNav" role="navigation" aria-label="Primary">
+        <div className="studioNavBrand">
+          <span className="studioNavDot" aria-hidden="true" />
+          <span>Tokenizer Studio</span>
         </div>
-        <h1>Train a tokenizer in 3 steps</h1>
-        <p>
-          Set basic tokenizer fields, point to your dataset, validate once, and run.
-          The interface keeps advanced options hidden by default.
-        </p>
-        <div className="heroMeta">API: {apiBaseUrl()}</div>
+        <nav className="studioNavLinks" aria-label="Sections">
+          <a className="studioNavLink" href="#workflow">
+            Workflow
+          </a>
+          <a className="studioNavLink" href="#results">
+            Results
+          </a>
+          <a className="studioNavLink" href="#settings">
+            Settings
+          </a>
+        </nav>
+        <button
+          type="button"
+          className="themeToggle"
+          onClick={() =>
+            setThemeMode((previous) =>
+              previous === "white" ? "dark" : "white"
+            )
+          }
+          aria-label={
+            themeMode === "dark"
+              ? "Switch to white theme"
+              : "Switch to dark theme"
+          }
+          title={
+            themeMode === "dark"
+              ? "Switch to white theme"
+              : "Switch to dark theme"
+          }
+        >
+          {themeMode === "dark" ? (
+            <FiSun aria-hidden="true" />
+          ) : (
+            <FiMoon aria-hidden="true" />
+          )}
+        </button>
       </header>
 
-      <section className="card sectionBlock">
-        <details className="sectionCollapse" open>
-          <summary className="sectionCollapseSummary">
-            <span className="sectionCollapseHeading">1. Quick Setup</span>
-          </summary>
-          <div className="setupGrid">
-            <article className="miniPanel">
-            <h3>Tokenizer</h3>
-            <div className="fieldGrid">
-              <label>
-                Name
-                <input
-                  value={tokenizerForm.name}
-                  onChange={(event) =>
-                    setTokenizerForm((previous) => ({
-                      ...previous,
-                      name: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-
-              <label>
-                Type
-                <select
-                  value={tokenizerForm.tokenizerType}
-                  onChange={(event) =>
-                    setTokenizerForm((previous) => ({
-                      ...previous,
-                      tokenizerType: event.target.value as TokenizerType,
-                    }))
-                  }
-                >
-                  <option value="bpe">BPE</option>
-                  <option value="wordpiece">WordPiece</option>
-                  <option value="unigram">Unigram</option>
-                </select>
-              </label>
-
-              <label>
-                Vocab size
-                <input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={tokenizerForm.vocabSize}
-                  onChange={(event) =>
-                    setTokenizerForm((previous) => ({
-                      ...previous,
-                      vocabSize: sanitizePositiveIntegerInput(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-
-              <label>
-                Min frequency
-                <input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={tokenizerForm.minFrequency}
-                  onChange={(event) =>
-                    setTokenizerForm((previous) => ({
-                      ...previous,
-                      minFrequency: sanitizePositiveIntegerInput(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-            </div>
-
-            <label>
-              Special tokens (comma or new line)
-              <textarea
-                rows={2}
-                value={tokenizerForm.specialTokens}
-                onChange={(event) =>
-                  setTokenizerForm((previous) => ({
-                    ...previous,
-                    specialTokens: event.target.value,
-                  }))
-                }
-              />
-            </label>
-
-            {tokenizerForm.tokenizerType === "bpe" ? (
-              <div className="inlineRow">
-                <label className="checkLabel">
-                  <input
-                    type="checkbox"
-                    checked={tokenizerForm.byteFallback}
-                    onChange={(event) =>
-                      setTokenizerForm((previous) => ({
-                        ...previous,
-                        byteFallback: event.target.checked,
-                      }))
-                    }
-                  />
-                  Byte fallback
-                </label>
-
-                {!tokenizerForm.byteFallback ? (
-                  <label className="inlineField">
-                    Unknown token
-                    <input
-                      value={tokenizerForm.unkToken}
-                      onChange={(event) =>
-                        setTokenizerForm((previous) => ({
-                          ...previous,
-                          unkToken: event.target.value,
-                        }))
-                      }
-                    />
-                  </label>
-                ) : null}
-              </div>
-            ) : null}
-
-            {tokenizerForm.tokenizerType === "wordpiece" ? (
-              <label>
-                Unknown token
-                <input
-                  value={tokenizerForm.unkToken}
-                  onChange={(event) =>
-                    setTokenizerForm((previous) => ({
-                      ...previous,
-                      unkToken: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-            ) : null}
-
-            <details className="advancedPanel">
-              <summary>Advanced tokenizer fields</summary>
-              <div className="fieldGrid">
-                <label>
-                  Pre-tokenizer
-                  <select
-                    value={tokenizerForm.preTokenizer}
-                    onChange={(event) =>
-                      setTokenizerForm((previous) => ({
-                        ...previous,
-                        preTokenizer: event.target.value as PreTokenizerType,
-                      }))
-                    }
-                  >
-                    <option value="byte_level">byte_level</option>
-                    <option value="whitespace">whitespace</option>
-                    <option value="metaspace">metaspace</option>
-                  </select>
-                </label>
-
-                <label>
-                  Decoder
-                  <select
-                    value={tokenizerForm.decoder}
-                    onChange={(event) =>
-                      setTokenizerForm((previous) => ({
-                        ...previous,
-                        decoder: event.target.value as DecoderType,
-                      }))
-                    }
-                  >
-                    <option value="byte_level">byte_level</option>
-                    <option value="wordpiece">wordpiece</option>
-                    <option value="metaspace">metaspace</option>
-                  </select>
-                </label>
-              </div>
-            </details>
-
-            <p className={`hint ${tokenizerBuild.error ? "hint-error" : "hint-ok"}`}>
-              {tokenizerBuild.error ?? "Tokenizer config looks valid."}
+      <section id="workflow" className="panelCard actionDeck">
+        <div className="panelHead actionDeckHead">
+          <div>
+            <p className="panelEyebrow">Top Workflow</p>
+            <h2>Train, evaluate, and test</h2>
+            <p className="panelCopy">
+              Upload data, validate configs, then start training. Results and
+              tokenizer testing update below.
             </p>
-          </article>
-
-          <article className="miniPanel">
-            <h3>Dataset + Budget</h3>
-            <div className="sourceModeRow">
-              <span>Dataset source</span>
-              <div className="modeSwitch">
-                <button
-                  type="button"
-                  className={`modeSwitchButton ${
-                    datasetForm.sourceMode === "local_file"
-                      ? "modeSwitchButton-active"
-                      : ""
-                  }`}
-                  disabled={controlsDisabled}
-                  onClick={() =>
-                    setDatasetForm((previous) => ({
-                      ...previous,
-                      sourceMode: "local_file",
-                    }))
-                  }
-                >
-                  Local file
-                </button>
-                <button
-                  type="button"
-                  className={`modeSwitchButton ${
-                    datasetForm.sourceMode === "streaming_hf"
-                      ? "modeSwitchButton-active"
-                      : ""
-                  }`}
-                  disabled={controlsDisabled}
-                  onClick={() =>
-                    setDatasetForm((previous) => ({
-                      ...previous,
-                      sourceMode: "streaming_hf",
-                      streamingDatasets: normalizeStreamingDatasetWeights(
-                        previous.streamingDatasets
-                      ),
-                    }))
-                  }
-                >
-                  Streaming HF datasets
-                </button>
-              </div>
-            </div>
-            <p className="fieldNote">
-              Switch between local data files and streaming Hugging Face datasets.
-            </p>
-
-            {datasetForm.sourceMode === "local_file" ? (
-              <div className="fieldGrid">
-                <label className="fullWidthField">
-                  Local train file
-                  <input
-                    type="file"
-                    onChange={handleTrainFileSelected}
-                    disabled={controlsDisabled}
-                  />
-                  <span className="fieldNote">
-                    {datasetForm.trainFilePath === ""
-                      ? "Choose a local file to continue."
-                      : `Using: ${datasetForm.trainFileName} (${datasetForm.trainFilePath})`}
-                  </span>
-                </label>
-
-                <label>
-                  Dataset builder
-                  <input
-                    value={datasetForm.name}
-                    onChange={(event) =>
-                      setDatasetForm((previous) => ({
-                        ...previous,
-                        name: event.target.value,
-                      }))
-                    }
-                    placeholder="text"
-                  />
-                </label>
-
-                <label>
-                  Dataset config (optional)
-                  <input
-                    value={datasetForm.config}
-                    onChange={(event) =>
-                      setDatasetForm((previous) => ({
-                        ...previous,
-                        config: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-
-                <label>
-                  Split
-                  <input
-                    value={datasetForm.split}
-                    onChange={(event) =>
-                      setDatasetForm((previous) => ({
-                        ...previous,
-                        split: event.target.value,
-                      }))
-                    }
-                    placeholder="train"
-                  />
-                </label>
-
-                <label>
-                  Text columns
-                  <input
-                    value={datasetForm.textColumns}
-                    onChange={(event) =>
-                      setDatasetForm((previous) => ({
-                        ...previous,
-                        textColumns: event.target.value,
-                      }))
-                    }
-                    placeholder="text"
-                  />
-                </label>
-              </div>
-            ) : (
-              <div className="datasetConfigurator">
-                <div className="fieldGrid">
-                  <label className="fullWidthField">
-                    HF access token (optional)
-                    <input
-                      type="password"
-                      value={datasetForm.hfToken}
-                      onChange={(event) =>
-                        setDatasetForm((previous) => ({
-                          ...previous,
-                          hfToken: event.target.value,
-                        }))
-                      }
-                      disabled={controlsDisabled}
-                      autoComplete="off"
-                      placeholder="hf_..."
-                    />
-                    <span className="fieldNote">
-                      Required for gated/private datasets.
-                    </span>
-                  </label>
-                </div>
-
-                <div className="actionRow compactActionRow">
-                  <button
-                    type="button"
-                    className="secondaryButton"
-                    onClick={addStreamingDataset}
-                    disabled={controlsDisabled}
-                  >
-                    Add dataset
-                  </button>
-                  <button
-                    type="button"
-                    className="secondaryButton"
-                    onClick={handleLoadStreamingTemplate}
-                    disabled={controlsDisabled}
-                  >
-                    {isLoadingTemplate
-                      ? "Loading template..."
-                      : "Load streaming template"}
-                  </button>
-                </div>
-
-                <div className="datasetList">
-                  {datasetForm.streamingDatasets.map((entry, index) => (
-                    <div key={entry.id} className="datasetCard">
-                      <div className="datasetCardHeader">
-                        <strong>Streaming dataset {index + 1}</strong>
-                        <button
-                          type="button"
-                          className="textButton"
-                          onClick={() => removeStreamingDataset(entry.id)}
-                          disabled={controlsDisabled || datasetForm.streamingDatasets.length <= 1}
-                        >
-                          Remove
-                        </button>
-                      </div>
-
-                      <div className="fieldGrid">
-                        <label>
-                          HF dataset name
-                          <input
-                            value={entry.name}
-                            onChange={(event) =>
-                              updateStreamingDataset(entry.id, {
-                                name: event.target.value,
-                              })
-                            }
-                            placeholder="HuggingFaceFW/fineweb-edu"
-                          />
-                        </label>
-
-                        <label>
-                          Config (optional)
-                          <input
-                            value={entry.config}
-                            onChange={(event) =>
-                              updateStreamingDataset(entry.id, {
-                                config: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-
-                        <label>
-                          Split
-                          <input
-                            value={entry.split}
-                            onChange={(event) =>
-                              updateStreamingDataset(entry.id, {
-                                split: event.target.value,
-                              })
-                            }
-                            placeholder="train"
-                          />
-                        </label>
-
-                        <label>
-                          Weight
-                          <input
-                            inputMode="decimal"
-                            pattern="[0-9]*[.]?[0-9]*"
-                            min="0"
-                            max="1"
-                            step="0.000001"
-                            value={entry.weight}
-                            onChange={(event) =>
-                              updateStreamingWeight(entry.id, event.target.value)
-                            }
-                            placeholder="1.0"
-                          />
-                        </label>
-
-                        <label className="fullWidthField">
-                          Text columns
-                          <input
-                            value={entry.textColumns}
-                            onChange={(event) =>
-                              updateStreamingDataset(entry.id, {
-                                textColumns: event.target.value,
-                              })
-                            }
-                            placeholder="text"
-                          />
-                        </label>
-
-                        <div className="fullWidthField filterBuilder">
-                          <div className="filterBuilderHeader">
-                            <span className="filterBuilderTitle">Filters (optional)</span>
-                            <button
-                              type="button"
-                              className="secondaryButton"
-                              onClick={() => addStreamingFilter(entry.id)}
-                              disabled={controlsDisabled}
-                            >
-                              Add filter
-                            </button>
-                          </div>
-
-                          {entry.filters.length === 0 ? (
-                            <p className="filterEmpty">No filters yet.</p>
-                          ) : (
-                            <div className="filterList">
-                              {entry.filters.map((filter) => (
-                                <div key={filter.id} className="filterRow">
-                                  <label>
-                                    Column
-                                    <input
-                                      value={filter.column}
-                                      onChange={(event) =>
-                                        updateStreamingFilter(entry.id, filter.id, {
-                                          column: event.target.value,
-                                        })
-                                      }
-                                      placeholder="language_score"
-                                    />
-                                  </label>
-
-                                  <label>
-                                    Operator
-                                    <select
-                                      value={filter.operator}
-                                      onChange={(event) =>
-                                        updateStreamingFilter(entry.id, filter.id, {
-                                          operator: event.target.value as FilterOperator,
-                                        })
-                                      }
-                                    >
-                                      {FILTER_OPERATORS.map((operator) => (
-                                        <option key={operator} value={operator}>
-                                          {operator}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
-
-                                  <label>
-                                    Value
-                                    <input
-                                      value={filter.value}
-                                      onChange={(event) =>
-                                        updateStreamingFilter(entry.id, filter.id, {
-                                          value: event.target.value,
-                                        })
-                                      }
-                                      placeholder={
-                                        filter.operator === "in" || filter.operator === "not in"
-                                          ? '["en", "de"] or en,de'
-                                          : "en, true, 0.95, {\"k\":1}"
-                                      }
-                                    />
-                                  </label>
-
-                                  <button
-                                    type="button"
-                                    className="textButton filterRemoveButton"
-                                    onClick={() => removeStreamingFilter(entry.id, filter.id)}
-                                    disabled={controlsDisabled}
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <p className="fieldNote">
-                            Values are inferred automatically. For `in`/`not in`, use a JSON
-                            array or comma-separated values.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="fieldGrid">
-              <label>
-                Budget limit
-                <input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={trainingForm.budgetLimit}
-                  onChange={(event) =>
-                    setTrainingForm((previous) => ({
-                      ...previous,
-                      budgetLimit: sanitizePositiveIntegerInput(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-
-              <label>
-                Budget unit
-                <select
-                  value={trainingForm.budgetUnit}
-                  onChange={(event) =>
-                    setTrainingForm((previous) => ({
-                      ...previous,
-                      budgetUnit: event.target.value as BudgetUnit,
-                    }))
-                  }
-                >
-                  <option value="chars">chars</option>
-                  <option value="bytes">bytes</option>
-                </select>
-              </label>
-
-              <label>
-                Budget behavior
-                <select
-                  value={trainingForm.budgetBehavior}
-                  onChange={(event) =>
-                    setTrainingForm((previous) => ({
-                      ...previous,
-                      budgetBehavior: event.target.value as BudgetBehavior,
-                    }))
-                  }
-                >
-                  <option value="truncate">truncate</option>
-                  <option value="stop">stop</option>
-                </select>
-              </label>
-            </div>
-
-            <p className={`hint ${dataloaderBuild.error ? "hint-error" : "hint-ok"}`}>
-              {dataloaderBuild.error ?? "Dataloader config looks valid."}
-            </p>
-          </article>
           </div>
-        </details>
-      </section>
+          <div className="actionButtonRow">
+            <button
+              type="button"
+              className="primaryButton"
+              onClick={handleTrain}
+              disabled={
+                isSubmitting ||
+                isValidating ||
+                isUploadingTrainFile
+              }
+            >
+              {isSubmitting ? "Starting..." : "Start Training"}
+            </button>
+            <button
+              type="button"
+              className="secondaryButton"
+              onClick={handleValidate}
+              disabled={
+                isSubmitting ||
+                isValidating ||
+                isUploadingTrainFile
+              }
+            >
+              {isValidating ? "Validating..." : "Validate"}
+            </button>
+          </div>
+        </div>
 
-      <section className="card sectionBlock">
-        <h2>2. Validate and Run</h2>
-        <label className="fullWidthField">
-          Validation file
-          <input
-            type="file"
-            onChange={handleValidationFileSelected}
-            disabled={controlsDisabled}
-          />
-          <span className="fieldNote">
-            {trainingForm.evaluationTextPath === ""
-              ? "Choose a validation file to continue."
-              : `Using: ${trainingForm.evaluationFileName} (${trainingForm.evaluationTextPath})`}
-          </span>
-        </label>
+        <div className="actionInputGrid">
+          <label className="uploadTile">
+            Train file
+            <input
+              type="file"
+              onChange={handleTrainFileSelected}
+              disabled={controlsDisabled}
+            />
+            <span className="fieldNote">
+              {datasetForm.trainFilePath === ""
+                ? "Choose a local file or switch to streaming datasets in settings."
+                : "Train file uploaded."}
+            </span>
+          </label>
 
-        <div className="fieldGrid">
-          <label>
+          <div className="uploadTile">
+            Evaluation source
+            <span className="fieldNote">
+              Evaluation automatically runs on the same training dataset config.
+            </span>
+          </div>
+
+          <label className="uploadTile">
             Evaluation thresholds
             <input
               value={trainingForm.evaluationThresholds}
@@ -2071,117 +1832,166 @@ export default function Home() {
               }
               placeholder="5,10,25"
             />
+            <span className="fieldNote">Comma-separated integers.</span>
           </label>
         </div>
 
-        <div className="actionRow">
-          <button
-            type="button"
-            className="secondaryButton"
-            onClick={handleValidate}
-            disabled={
-              isSubmitting ||
-              isValidating ||
-              isUploadingTrainFile ||
-              isUploadingValidationFile
-            }
+        <div className="statusStrip">
+          <article
+            className={`statusCard ${
+              tokenizerBuild.error ? "statusCard-bad" : "statusCard-good"
+            }`}
           >
-            {isValidating ? "Validating..." : "Validate"}
-          </button>
-          <button
-            type="button"
-            className="primaryButton"
-            onClick={handleTrain}
-            disabled={
-              isSubmitting ||
-              isValidating ||
-              isUploadingTrainFile ||
-              isUploadingValidationFile
-            }
+            <span>Tokenizer config</span>
+            <strong>
+              {tokenizerBuild.error ? "Needs fixes" : "Ready"}
+            </strong>
+          </article>
+          <article
+            className={`statusCard ${
+              dataloaderBuild.error ? "statusCard-bad" : "statusCard-good"
+            }`}
           >
-            {isSubmitting ? "Starting..." : "Start Training"}
-          </button>
+            <span>Dataloader config</span>
+            <strong>
+              {dataloaderBuild.error ? "Needs fixes" : "Ready"}
+            </strong>
+          </article>
+          <article className="statusCard statusCard-neutral">
+            <span>Dataset mode</span>
+            <strong>
+              {datasetForm.sourceMode === "local_file" ? "Local file" : "Streaming HF"}
+            </strong>
+          </article>
+          <article className="statusCard statusCard-neutral">
+            <span>Evaluation source</span>
+            <strong>
+              Training dataset (same config)
+            </strong>
+          </article>
         </div>
       </section>
 
-      <section className="card sectionBlock">
-        <details className="advancedPanel">
-          <summary>3. Preview generated JSON</summary>
-          <div className="jsonGrid">
-            <label>
-              Tokenizer JSON
-              <pre>{tokenizerBuild.value ? prettyJson(tokenizerBuild.value) : "Invalid config"}</pre>
-            </label>
-
-            <label>
-              Dataloader JSON
-              <pre>{dataloaderBuild.value ? prettyJson(dataloaderBuild.value) : "Invalid config"}</pre>
-            </label>
-          </div>
-        </details>
-      </section>
-
-      <section className="jobsGrid">
-        <article className="card sectionBlock">
+      <section id="results" className="workspaceGrid">
+        <article className="panelCard activeJobCard">
           <div className="sectionHeader">
-            <h2>Active Job</h2>
-            {activeJob ? <JobBadge status={activeJob.status} /> : null}
+            <h2>Active Job and Evaluation</h2>
+            {activeJob ? <JobBadge job={activeJob} /> : null}
           </div>
 
           {activeJob ? (
             <>
-              <p className="metaLine">
-                <strong>ID:</strong> {activeJob.id}
-              </p>
-              <p className="metaLine">
-                <strong>Stage:</strong> {activeJob.stage}
-              </p>
-              <p className="metaLine">
-                <strong>Progress:</strong> {formatPercent(activeJob.progress)}
-              </p>
+              <div className="metaList">
+                <div className="metaItem">
+                  <span className="metaLabel">Job ID</span>
+                  <span className="metaValue">{activeJob.id}</span>
+                </div>
+                <div className="metaItem">
+                  <span className="metaLabel">Status</span>
+                  <span className="metaValue">{describeJobState(activeJob.state)}</span>
+                </div>
+                <div className="metaItem">
+                  <span className="metaLabel">Stage</span>
+                  <span className="metaValue">{activeJob.stage}</span>
+                </div>
+                <div className="metaItem">
+                  <span className="metaLabel">Progress</span>
+                  <span className="metaValue">{formatPercent(activeJob.progress)}</span>
+                </div>
+                <div className="metaItem">
+                  <span className="metaLabel">Evaluation</span>
+                  <span className="metaValue">
+                    {evaluationSourceLabel(activeJob.evaluation_source)}
+                  </span>
+                </div>
+                <div className="metaItem">
+                  <span className="metaLabel">Created</span>
+                  <span className="metaValue">{formatDate(activeJob.created_at)}</span>
+                </div>
+                <div className="metaItem">
+                  <span className="metaLabel">Started</span>
+                  <span className="metaValue">{formatDate(activeJob.started_at)}</span>
+                </div>
+                <div className="metaItem">
+                  <span className="metaLabel">Finished</span>
+                  <span className="metaValue">{formatDate(activeJob.finished_at)}</span>
+                </div>
+              </div>
 
               <div className="progressTrack">
                 <div
                   className="progressFill"
-                  style={{ width: `${Math.max(0, Math.min(activeJob.progress * 100, 100))}%` }}
+                  style={{
+                    width: `${Math.max(0, Math.min(activeJob.progress * 100, 100))}%`,
+                  }}
                 />
               </div>
 
-              <p className="metaLine">
-                <strong>Created:</strong> {formatDate(activeJob.created_at)}
-              </p>
-              <p className="metaLine">
-                <strong>Started:</strong> {formatDate(activeJob.started_at)}
-              </p>
-              <p className="metaLine">
-                <strong>Finished:</strong> {formatDate(activeJob.finished_at)}
-              </p>
-
               {activeJob.status === "completed" && activeJob.stats ? (
-                <div className="statsGrid">
-                  <div>
-                    <span>Tokens / Char</span>
-                    <strong>{activeJob.stats.token_per_char.toFixed(4)}</strong>
+                <>
+                  <div className="statsGrid">
+                    <div>
+                      <span>Tokens / Char</span>
+                      <strong>{activeJob.stats.token_per_char.toFixed(4)}</strong>
+                    </div>
+                    <div>
+                      <span>Chars / Token</span>
+                      <strong>{activeJob.stats.chars_per_token.toFixed(4)}</strong>
+                    </div>
+                    <div>
+                      <span>Records evaluated</span>
+                      <strong>{activeJob.stats.num_records}</strong>
+                    </div>
+                    <div>
+                      <span>Avg chars / record</span>
+                      <strong>{activeJob.stats.avg_chars_per_record.toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      <span>Avg tokens / record</span>
+                      <strong>{activeJob.stats.avg_tokens_per_record.toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      <span>Vocab</span>
+                      <strong>{activeJob.stats.vocab_size}</strong>
+                    </div>
+                    <div>
+                      <span>Used tokens</span>
+                      <strong>{activeJob.stats.num_used_tokens}</strong>
+                    </div>
+                    <div>
+                      <span>Unused tokens</span>
+                      <strong>{activeJob.stats.num_unused_tokens}</strong>
+                    </div>
                   </div>
-                  <div>
-                    <span>Vocab</span>
-                    <strong>{activeJob.stats.vocab_size}</strong>
+
+                  <div className="rareTokenCard">
+                    <h3>Rare Token Coverage</h3>
+                    <div className="rareTokenTable">
+                      {Object.entries(activeJob.stats.rare_tokens)
+                        .sort(([left], [right]) => Number(left) - Number(right))
+                        .map(([threshold, count]) => {
+                          const fraction =
+                            activeJob.stats?.rare_token_fraction?.[threshold] ?? 0;
+                          return (
+                            <div
+                              key={`rare-threshold-${threshold}`}
+                              className="rareTokenRow"
+                            >
+                              <span>{`< ${threshold}`}</span>
+                              <strong>{count}</strong>
+                              <span>{`${(fraction * 100).toFixed(2)}%`}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
-                  <div>
-                    <span>Used tokens</span>
-                    <strong>{activeJob.stats.num_used_tokens}</strong>
-                  </div>
-                  <div>
-                    <span>Unused tokens</span>
-                    <strong>{activeJob.stats.num_unused_tokens}</strong>
-                  </div>
-                </div>
+                </>
               ) : null}
 
               {activeJob.status === "completed" && activeJob.artifact_file ? (
                 <section className="tokenizerPreview">
                   <div className="sectionHeader tokenizerPreviewHeader">
-                    <h3>Tokenizer Preview</h3>
+                    <h3>Tokenizer Test Bench</h3>
                     <p className="metaLine">
                       {isPreviewing
                         ? "Tokenizing..."
@@ -2221,7 +2031,10 @@ export default function Home() {
                           const token = segment.token;
                           if (!token) {
                             return (
-                              <span key={`plain-fallback-${segmentIndex}`} className="plainSegment">
+                              <span
+                                key={`plain-fallback-${segmentIndex}`}
+                                className="plainSegment"
+                              >
                                 {segment.text}
                               </span>
                             );
@@ -2287,7 +2100,7 @@ export default function Home() {
           )}
         </article>
 
-        <article className="card sectionBlock">
+        <article className="panelCard recentJobsCard">
           <div className="sectionHeader">
             <h2>Recent Jobs</h2>
             <button type="button" className="textButton" onClick={() => void refreshJobs()}>
@@ -2312,16 +2125,638 @@ export default function Home() {
                   <div>
                     <strong>{String(job.tokenizer_config.name ?? "tokenizer")}</strong>
                     <p>{job.id.slice(0, 8)}</p>
+                    <p>{job.stage}</p>
                   </div>
-                  <div>
-                    <JobBadge status={job.status} />
-                    <p>{formatPercent(job.progress)}</p>
+                  <div className="jobRowMeta">
+                    <JobBadge job={job} />
+                    {job.status === "completed" || job.status === "failed" ? null : (
+                      <p>{formatPercent(job.progress)}</p>
+                    )}
                   </div>
                 </button>
               ))}
             </div>
           )}
         </article>
+      </section>
+
+      <section id="settings" className="panelCard settingsStudio">
+        <div className="panelHead">
+          <div>
+            <p className="panelEyebrow">Settings</p>
+            <h2>Configuration Studio</h2>
+            <p className="panelCopy">
+              Core fields stay visible. Advanced options are collapsed so most
+              users can train and test quickly.
+            </p>
+          </div>
+        </div>
+
+        <details className="settingsPanel" open>
+          <summary>Tokenizer and training budget</summary>
+          <div className="settingsGrid">
+            <div className="settingsGroup">
+              <div className="settingsGroupHeader">
+                <h3>Tokenizer core</h3>
+                <p className="settingsGroupHint">
+                  Set tokenizer identity, model type, and vocabulary behavior.
+                </p>
+              </div>
+
+              <div className="fieldGrid">
+                <label>
+                  Name
+                  <input
+                    value={tokenizerForm.name}
+                    onChange={(event) =>
+                      setTokenizerForm((previous) => ({
+                        ...previous,
+                        name: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  Type
+                  <select
+                    value={tokenizerForm.tokenizerType}
+                    onChange={(event) =>
+                      setTokenizerForm((previous) => ({
+                        ...previous,
+                        tokenizerType: event.target.value as TokenizerType,
+                      }))
+                    }
+                  >
+                    <option value="bpe">BPE</option>
+                    <option value="wordpiece">WordPiece</option>
+                    <option value="unigram">Unigram</option>
+                  </select>
+                </label>
+
+                <label>
+                  Vocab size
+                  <input
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={tokenizerForm.vocabSize}
+                    onChange={(event) =>
+                      setTokenizerForm((previous) => ({
+                        ...previous,
+                        vocabSize: sanitizePositiveIntegerInput(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  Min frequency
+                  <input
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={tokenizerForm.minFrequency}
+                    onChange={(event) =>
+                      setTokenizerForm((previous) => ({
+                        ...previous,
+                        minFrequency: sanitizePositiveIntegerInput(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+
+                <label className="fullWidthField">
+                  Special tokens (comma or new line)
+                  <textarea
+                    rows={2}
+                    value={tokenizerForm.specialTokens}
+                    onChange={(event) =>
+                      setTokenizerForm((previous) => ({
+                        ...previous,
+                        specialTokens: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+
+              {tokenizerForm.tokenizerType === "bpe" ? (
+                <div className="inlineRow">
+                  <label className="checkLabel">
+                    <input
+                      type="checkbox"
+                      checked={tokenizerForm.byteFallback}
+                      onChange={(event) =>
+                        setTokenizerForm((previous) => ({
+                          ...previous,
+                          byteFallback: event.target.checked,
+                        }))
+                      }
+                    />
+                    Byte fallback
+                  </label>
+
+                  {!tokenizerForm.byteFallback ? (
+                    <label className="inlineField">
+                      Unknown token
+                      <input
+                        value={tokenizerForm.unkToken}
+                        onChange={(event) =>
+                          setTokenizerForm((previous) => ({
+                            ...previous,
+                            unkToken: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {tokenizerForm.tokenizerType === "wordpiece" ? (
+                <label className="inlineField">
+                  Unknown token
+                  <input
+                    value={tokenizerForm.unkToken}
+                    onChange={(event) =>
+                      setTokenizerForm((previous) => ({
+                        ...previous,
+                        unkToken: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              ) : null}
+
+              <p className={`hint ${tokenizerBuild.error ? "hint-error" : "hint-ok"}`}>
+                {tokenizerBuild.error ?? "Tokenizer config looks valid."}
+              </p>
+            </div>
+
+            <div className="settingsGroup">
+              <div className="settingsGroupHeader">
+                <h3>Training budget</h3>
+                <p className="settingsGroupHint">
+                  Control how much dataset text is consumed during tokenizer training.
+                </p>
+              </div>
+              <div className="fieldGrid">
+                <label>
+                  Budget limit
+                  <input
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={trainingForm.budgetLimit}
+                    onChange={(event) =>
+                      setTrainingForm((previous) => ({
+                        ...previous,
+                        budgetLimit: sanitizePositiveIntegerInput(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  Budget unit
+                  <select
+                    value={trainingForm.budgetUnit}
+                    onChange={(event) =>
+                      setTrainingForm((previous) => ({
+                        ...previous,
+                        budgetUnit: event.target.value as BudgetUnit,
+                      }))
+                    }
+                  >
+                    <option value="chars">chars</option>
+                    <option value="bytes">bytes</option>
+                  </select>
+                </label>
+
+                <label>
+                  Budget behavior
+                  <select
+                    value={trainingForm.budgetBehavior}
+                    onChange={(event) =>
+                      setTrainingForm((previous) => ({
+                        ...previous,
+                        budgetBehavior: event.target.value as BudgetBehavior,
+                      }))
+                    }
+                  >
+                    <option value="truncate">truncate</option>
+                    <option value="stop">stop</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details className="settingsPanel" open>
+          <summary>Core dataset settings</summary>
+          <div className="settingsGrid">
+            <div className="sourceModeRow">
+              <span>Dataset source</span>
+              <div className="modeSwitch">
+                <button
+                  type="button"
+                  className={`modeSwitchButton ${
+                    datasetForm.sourceMode === "local_file"
+                      ? "modeSwitchButton-active"
+                      : ""
+                  }`}
+                  disabled={controlsDisabled}
+                  onClick={() =>
+                    setDatasetForm((previous) => ({
+                      ...previous,
+                      sourceMode: "local_file",
+                    }))
+                  }
+                >
+                  Local file
+                </button>
+                <button
+                  type="button"
+                  className={`modeSwitchButton ${
+                    datasetForm.sourceMode === "streaming_hf"
+                      ? "modeSwitchButton-active"
+                      : ""
+                  }`}
+                  disabled={controlsDisabled}
+                  onClick={() =>
+                    setDatasetForm((previous) => ({
+                      ...previous,
+                      sourceMode: "streaming_hf",
+                      streamingDatasets: normalizeStreamingDatasetWeights(
+                        previous.streamingDatasets
+                      ),
+                    }))
+                  }
+                >
+                  Streaming HF datasets
+                </button>
+              </div>
+            </div>
+
+            {datasetForm.sourceMode === "local_file" ? (
+              <>
+                <div className="fieldGrid">
+                  <label>
+                    Dataset builder
+                    <input
+                      value={datasetForm.name}
+                      onChange={(event) =>
+                        setDatasetForm((previous) => ({
+                          ...previous,
+                          name: event.target.value,
+                        }))
+                      }
+                      placeholder="text"
+                    />
+                  </label>
+
+                  <label>
+                    Split
+                    <input
+                      value={datasetForm.split}
+                      onChange={(event) =>
+                        setDatasetForm((previous) => ({
+                          ...previous,
+                          split: event.target.value,
+                        }))
+                      }
+                      placeholder="train"
+                    />
+                  </label>
+
+                  <label className="fullWidthField">
+                    Text columns
+                    <input
+                      value={datasetForm.textColumns}
+                      onChange={(event) =>
+                        setDatasetForm((previous) => ({
+                          ...previous,
+                          textColumns: event.target.value,
+                        }))
+                      }
+                      placeholder="text"
+                    />
+                  </label>
+                </div>
+
+                <details className="subPanel">
+                  <summary>Advanced local dataset options</summary>
+                  <div className="fieldGrid">
+                    <label>
+                      Dataset config (optional)
+                      <input
+                        value={datasetForm.config}
+                        onChange={(event) =>
+                          setDatasetForm((previous) => ({
+                            ...previous,
+                            config: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  </div>
+                </details>
+              </>
+            ) : (
+              <div className="datasetConfigurator">
+                <label className="fullWidthField">
+                  HF access token (optional)
+                  <input
+                    type="password"
+                    value={datasetForm.hfToken}
+                    onChange={(event) =>
+                      setDatasetForm((previous) => ({
+                        ...previous,
+                        hfToken: event.target.value,
+                      }))
+                    }
+                    disabled={controlsDisabled}
+                    autoComplete="off"
+                    placeholder="hf_..."
+                  />
+                  <span className="fieldNote">Required for gated/private datasets.</span>
+                </label>
+
+                <div className="actionRow">
+                  <button
+                    type="button"
+                    className="secondaryButton"
+                    onClick={addStreamingDataset}
+                    disabled={controlsDisabled}
+                  >
+                    Add dataset
+                  </button>
+                  <button
+                    type="button"
+                    className="secondaryButton"
+                    onClick={handleLoadStreamingTemplate}
+                    disabled={controlsDisabled}
+                  >
+                    {isLoadingTemplate
+                      ? "Loading template..."
+                      : "Load streaming template"}
+                  </button>
+                </div>
+
+                <div className="datasetList">
+                  {datasetForm.streamingDatasets.map((entry, index) => (
+                    <div key={entry.id} className="datasetCard">
+                      <div className="datasetCardHeader">
+                        <strong>Streaming dataset {index + 1}</strong>
+                        <button
+                          type="button"
+                          className="textButton"
+                          onClick={() => removeStreamingDataset(entry.id)}
+                          disabled={
+                            controlsDisabled || datasetForm.streamingDatasets.length <= 1
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      <div className="fieldGrid">
+                        <label>
+                          HF dataset name
+                          <input
+                            value={entry.name}
+                            onChange={(event) =>
+                              updateStreamingDataset(entry.id, {
+                                name: event.target.value,
+                              })
+                            }
+                            placeholder="HuggingFaceFW/fineweb-edu"
+                          />
+                        </label>
+
+                        <label>
+                          Split
+                          <input
+                            value={entry.split}
+                            onChange={(event) =>
+                              updateStreamingDataset(entry.id, {
+                                split: event.target.value,
+                              })
+                            }
+                            placeholder="train"
+                          />
+                        </label>
+
+                        <label>
+                          Weight
+                          <input
+                            inputMode="decimal"
+                            pattern="[0-9]*[.]?[0-9]*"
+                            min="0"
+                            max="1"
+                            step="0.000001"
+                            value={entry.weight}
+                            onChange={(event) =>
+                              updateStreamingWeight(entry.id, event.target.value)
+                            }
+                            placeholder="1.0"
+                          />
+                        </label>
+
+                        <label className="fullWidthField">
+                          Text columns
+                          <input
+                            value={entry.textColumns}
+                            onChange={(event) =>
+                              updateStreamingDataset(entry.id, {
+                                textColumns: event.target.value,
+                              })
+                            }
+                            placeholder="text"
+                          />
+                        </label>
+                      </div>
+
+                      <details className="subPanel">
+                        <summary>Advanced source options</summary>
+                        <div className="fieldGrid">
+                          <label>
+                            Config (optional)
+                            <input
+                              value={entry.config}
+                              onChange={(event) =>
+                                updateStreamingDataset(entry.id, {
+                                  config: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+
+                          <div className="fullWidthField filterBuilder">
+                            <div className="filterBuilderHeader">
+                              <span className="filterBuilderTitle">Filters (optional)</span>
+                              <button
+                                type="button"
+                                className="secondaryButton"
+                                onClick={() => addStreamingFilter(entry.id)}
+                                disabled={controlsDisabled}
+                              >
+                                Add filter
+                              </button>
+                            </div>
+
+                            {entry.filters.length === 0 ? (
+                              <p className="filterEmpty">No filters yet.</p>
+                            ) : (
+                              <div className="filterList">
+                                {entry.filters.map((filter) => (
+                                  <div key={filter.id} className="filterRow">
+                                    <label>
+                                      Column
+                                      <input
+                                        value={filter.column}
+                                        onChange={(event) =>
+                                          updateStreamingFilter(entry.id, filter.id, {
+                                            column: event.target.value,
+                                          })
+                                        }
+                                        placeholder="language_score"
+                                      />
+                                    </label>
+
+                                    <label>
+                                      Operator
+                                      <select
+                                        value={filter.operator}
+                                        onChange={(event) =>
+                                          updateStreamingFilter(entry.id, filter.id, {
+                                            operator: event.target.value as FilterOperator,
+                                          })
+                                        }
+                                      >
+                                        {FILTER_OPERATORS.map((operator) => (
+                                          <option key={operator} value={operator}>
+                                            {operator}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+
+                                    <label>
+                                      Value
+                                      <input
+                                        value={filter.value}
+                                        onChange={(event) =>
+                                          updateStreamingFilter(entry.id, filter.id, {
+                                            value: event.target.value,
+                                          })
+                                        }
+                                        placeholder={
+                                          filter.operator === "in" ||
+                                          filter.operator === "not in"
+                                            ? '["en", "de"] or en,de'
+                                            : "en, true, 0.95, {\"k\":1}"
+                                        }
+                                      />
+                                    </label>
+
+                                    <button
+                                      type="button"
+                                      className="textButton filterRemoveButton"
+                                      onClick={() =>
+                                        removeStreamingFilter(entry.id, filter.id)
+                                      }
+                                      disabled={controlsDisabled}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <p className="fieldNote">
+                              Values are inferred automatically. For `in`/`not in`, use
+                              a JSON array or comma-separated values.
+                            </p>
+                          </div>
+                        </div>
+                      </details>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className={`hint ${dataloaderBuild.error ? "hint-error" : "hint-ok"}`}>
+              {dataloaderBuild.error ?? "Dataloader config looks valid."}
+            </p>
+          </div>
+        </details>
+
+        <details className="settingsPanel">
+          <summary>Advanced tokenizer settings</summary>
+          <div className="settingsGrid">
+            <div className="fieldGrid">
+              <label>
+                Pre-tokenizer
+                <select
+                  value={tokenizerForm.preTokenizer}
+                  onChange={(event) =>
+                    setTokenizerForm((previous) => ({
+                      ...previous,
+                      preTokenizer: event.target.value as PreTokenizerType,
+                    }))
+                  }
+                >
+                  <option value="byte_level">byte_level</option>
+                  <option value="whitespace">whitespace</option>
+                  <option value="metaspace">metaspace</option>
+                </select>
+              </label>
+
+              <label>
+                Decoder
+                <select
+                  value={tokenizerForm.decoder}
+                  onChange={(event) =>
+                    setTokenizerForm((previous) => ({
+                      ...previous,
+                      decoder: event.target.value as DecoderType,
+                    }))
+                  }
+                >
+                  <option value="byte_level">byte_level</option>
+                  <option value="wordpiece">wordpiece</option>
+                  <option value="metaspace">metaspace</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <details className="settingsPanel">
+          <summary>Generated config JSON</summary>
+          <div className="settingsGrid">
+            <div className="jsonGrid">
+              <label>
+                Tokenizer JSON
+                <pre>
+                  {tokenizerBuild.value
+                    ? prettyJson(tokenizerBuild.value)
+                    : "Invalid config"}
+                </pre>
+              </label>
+
+              <label>
+                Dataloader JSON
+                <pre>
+                  {dataloaderBuild.value
+                    ? prettyJson(dataloaderBuild.value)
+                    : "Invalid config"}
+                </pre>
+              </label>
+            </div>
+          </div>
+        </details>
       </section>
 
       <aside className="toastViewport" aria-live="polite" aria-atomic="false">

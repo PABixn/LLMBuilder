@@ -5,8 +5,8 @@ from pathlib import Path
 
 API_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = API_ROOT / "artifacts" / "tokenizers"
-DEFAULT_EVAL_TEXT_PATH = API_ROOT / "datasets" / "shake.txt"
 DEFAULT_UPLOAD_DIR = API_ROOT / "datasets" / "uploads"
+DEFAULT_DATABASE_PATH = API_ROOT / "data" / "tokenizer_studio.db"
 TEMPLATE_DIR = API_ROOT / "templates"
 
 TOKENIZER_CONFIG_TEMPLATE_PATH = TEMPLATE_DIR / "tok_config.json"
@@ -29,12 +29,20 @@ def output_dir() -> Path:
     return _resolve_env_path("TOKENIZER_STUDIO_OUTPUT_DIR", DEFAULT_OUTPUT_DIR)
 
 
-def eval_text_path() -> Path:
-    return _resolve_env_path("TOKENIZER_STUDIO_EVAL_TEXT_PATH", DEFAULT_EVAL_TEXT_PATH)
-
-
 def upload_dir() -> Path:
     return _resolve_env_path("TOKENIZER_STUDIO_UPLOAD_DIR", DEFAULT_UPLOAD_DIR)
+
+
+def database_path() -> Path:
+    return _resolve_env_path("TOKENIZER_STUDIO_DB_PATH", DEFAULT_DATABASE_PATH)
+
+
+def database_url() -> str:
+    explicit = os.getenv("TOKENIZER_STUDIO_DATABASE_URL")
+    if explicit is not None and explicit.strip() != "":
+        return explicit.strip()
+    path = database_path().resolve()
+    return f"sqlite:///{path}"
 
 
 def max_job_workers() -> int:

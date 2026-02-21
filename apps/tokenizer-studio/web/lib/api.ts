@@ -1,9 +1,24 @@
 export type JobStatus = "pending" | "running" | "completed" | "failed";
+export type JobState =
+  | "queued"
+  | "initializing"
+  | "preparing_dataset"
+  | "training"
+  | "saving_artifact"
+  | "evaluating"
+  | "running"
+  | "completed"
+  | "failed";
+export type EvaluationSource = "training_dataset" | "legacy_file";
 
 export interface TokenizerStats {
+  num_records: number;
   num_chars: number;
   num_tokens: number;
   token_per_char: number;
+  chars_per_token: number;
+  avg_chars_per_record: number;
+  avg_tokens_per_record: number;
   vocab_size: number;
   num_used_tokens: number;
   num_unused_tokens: number;
@@ -14,6 +29,7 @@ export interface TokenizerStats {
 export interface TrainingJob {
   id: string;
   status: JobStatus;
+  state: JobState;
   stage: string;
   progress: number;
   created_at: string;
@@ -21,6 +37,7 @@ export interface TrainingJob {
   finished_at: string | null;
   tokenizer_config: Record<string, unknown>;
   dataloader_config: Record<string, unknown>;
+  evaluation_source: EvaluationSource;
   evaluation_thresholds: number[];
   evaluation_text_path: string;
   artifact_file: string | null;
@@ -147,20 +164,10 @@ export async function uploadTrainFile(file: File): Promise<UploadedTrainFile> {
   });
 }
 
-export async function uploadValidationFile(file: File): Promise<UploadedTrainFile> {
-  const body = new FormData();
-  body.append("file", file);
-  return request<UploadedTrainFile>("/files/validation", {
-    method: "POST",
-    body,
-  });
-}
-
 export async function createTrainingJob(payload: {
   tokenizer_config: Record<string, unknown>;
   dataloader_config: Record<string, unknown>;
   evaluation_thresholds: number[];
-  evaluation_text_path: string;
 }): Promise<TrainingJob> {
   return request<TrainingJob>("/jobs", {
     method: "POST",

@@ -2,19 +2,19 @@ from __future__ import annotations
 
 import re
 import sys
-from collections import Counter
+import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import Lock
-from typing import Any
+from typing import Any, Iterable
 from uuid import uuid4
 
 from tokenizers import Tokenizer
 
-from .config import API_ROOT, max_job_workers, output_dir
+from .config import max_job_workers, output_dir
 from .models import (
+    EvaluationSource,
+    JobState,
     JobStatus,
     TokenPreviewTokenResponse,
     TokenizerPreviewResponse,
@@ -22,57 +22,41 @@ from .models import (
     TrainTokenizerRequest,
     TrainingJobResponse,
 )
+from .storage import StoredJob, StudioStore
 
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
 if str(IMPORT_ROOT) not in sys.path:
     sys.path.append(str(IMPORT_ROOT))
 
-from tokenizer.dataloader import build_dataset
+from tokenizer.dataloader import build_dataset, measure_text
 from tokenizer.dataloader_config import DataloaderConfig
 from tokenizer.loader import TokenizerConfig
 from tokenizer.tokenizer import ConfigurableTokenizer
 
 
 _FILENAME_SANITIZER = re.compile(r"[^a-zA-Z0-9._-]+")
-
-
-@dataclass
-class ManagedJob:
-    id: str
-    status: JobStatus
-    stage: str
-    progress: float
-    created_at: datetime
-    started_at: datetime | None
-    finished_at: datetime | None
-    tokenizer_config: dict[str, Any]
-    dataloader_config: dict[str, Any]
-    evaluation_thresholds: list[int]
-    evaluation_text_path: str
-    artifact_file: str | None
-    artifact_path: str | None
-    stats: dict[str, Any] | None
-    error: str | None
+_TRAINING_DATASET_EVAL_SENTINEL = "__training_dataset__"
+_UNSET = object()
+_PROGRESS_MIN_DELTA = 0.02
+_PROGRESS_MIN_INTERVAL_SECONDS = 0.65
 
 
 class TrainingJobManager:
-    def __init__(self, workers: int | None = None) -> None:
+    def __init__(self, store: StudioStore, workers: int | None = None) -> None:
+        self._store = store
         max_workers = workers if workers is not None else max_job_workers()
         self._executor = ThreadPoolExecutor(
             max_workers=max_workers,
             thread_name_prefix="tokenizer-train",
         )
-        self._jobs: dict[str, ManagedJob] = {}
-        self._lock = Lock()
 
     def create_job(self, request: TrainTokenizerRequest) -> TrainingJobResponse:
         tokenizer_config = TokenizerConfig.model_validate(request.tokenizer_config)
         dataloader_config = DataloaderConfig.model_validate(request.dataloader_config)
-        resolved_eval_text_path = self._resolve_eval_text_path(request.evaluation_text_path)
 
         now = _utc_now()
         job_id = uuid4().hex
-        managed = ManagedJob(
+        managed = StoredJob(
             id=job_id,
             status=JobStatus.pending,
             stage="Queued",
@@ -83,45 +67,47 @@ class TrainingJobManager:
             tokenizer_config=tokenizer_config.model_dump(mode="json"),
             dataloader_config=dataloader_config.model_dump(mode="json"),
             evaluation_thresholds=list(request.evaluation_thresholds),
-            evaluation_text_path=str(resolved_eval_text_path),
+            evaluation_text_path=_TRAINING_DATASET_EVAL_SENTINEL,
             artifact_file=None,
             artifact_path=None,
             stats=None,
             error=None,
         )
 
-        with self._lock:
-            self._jobs[job_id] = managed
+        self._store.create_job(managed)
 
-        self._executor.submit(
-            self._run_training_job,
-            job_id,
-            tokenizer_config,
-            dataloader_config,
-            request.evaluation_thresholds,
-            resolved_eval_text_path,
-        )
+        try:
+            self._executor.submit(
+                self._run_training_job,
+                job_id,
+                tokenizer_config,
+                dataloader_config,
+                request.evaluation_thresholds,
+            )
+        except Exception as exc:
+            self._set_failed(
+                job_id,
+                f"Failed to queue training execution: {type(exc).__name__}: {exc}",
+            )
         return self.get_job(job_id)
 
     def list_jobs(self) -> list[TrainingJobResponse]:
-        with self._lock:
-            jobs = sorted(self._jobs.values(), key=lambda x: x.created_at, reverse=True)
-        return [self._to_response(job) for job in jobs]
+        return [self._to_response(job) for job in self._store.list_jobs()]
 
     def get_job(self, job_id: str) -> TrainingJobResponse:
-        with self._lock:
-            job = self._jobs.get(job_id)
+        job = self._store.get_job(job_id)
         if job is None:
             raise KeyError(job_id)
         return self._to_response(job)
 
     def get_artifact_path(self, job_id: str) -> Path:
-        with self._lock:
-            job = self._jobs.get(job_id)
+        job = self._store.get_job(job_id)
         if job is None:
             raise KeyError(job_id)
+
         if job.artifact_path is None:
             raise FileNotFoundError("This job has not produced an artifact yet")
+
         path = Path(job.artifact_path)
         if not path.exists():
             raise FileNotFoundError(f"Artifact file does not exist: {path}")
@@ -176,21 +162,35 @@ class TrainingJobManager:
         tokenizer_config: TokenizerConfig,
         dataloader_config: DataloaderConfig,
         evaluation_thresholds: list[int],
-        eval_path: Path,
     ) -> None:
         try:
-            self._set_running(job_id, "Initializing tokenizer", 0.1)
+            self._set_running(job_id, "Initializing tokenizer", 0.03)
             configurable = ConfigurableTokenizer(tokenizer_config)
 
-            self._update_job(job_id, stage="Building dataset stream", progress=0.25)
+            self._update_job(job_id, stage="Preparing training dataset stream", progress=0.10)
             dataset = build_dataset(dataloader_config)
 
+            training_stage_prefix = "Training tokenizer"
             self._update_job(
                 job_id,
-                stage="Training tokenizer (streaming dataset)",
-                progress=0.6,
+                stage=self._format_budget_stage(
+                    stage_prefix=training_stage_prefix,
+                    budget_unit=dataloader_config.budget.unit,
+                    fraction=0.0,
+                    records=0,
+                ),
+                progress=0.14,
             )
-            configurable.tokenizer.train_from_iterator(dataset, configurable.trainer)
+            training_stream = self._stream_with_budget_progress(
+                text_iter=dataset,
+                job_id=job_id,
+                stage_prefix=training_stage_prefix,
+                budget_limit=dataloader_config.budget.limit,
+                budget_unit=dataloader_config.budget.unit,
+                progress_start=0.14,
+                progress_end=0.72,
+            )
+            configurable.tokenizer.train_from_iterator(training_stream, configurable.trainer)
 
             output = output_dir()
             output.mkdir(parents=True, exist_ok=True)
@@ -200,24 +200,46 @@ class TrainingJobManager:
             self._update_job(
                 job_id,
                 stage="Saving tokenizer artifact",
-                progress=0.8,
+                progress=0.80,
                 artifact_file=artifact_file,
                 artifact_path=str(artifact_path),
             )
             configurable.tokenizer.save(str(artifact_path))
 
+            evaluation_stage_prefix = "Evaluating tokenizer on training dataset"
             self._update_job(
                 job_id,
-                stage="Evaluating tokenizer statistics",
-                progress=0.92,
+                stage=self._format_budget_stage(
+                    stage_prefix=evaluation_stage_prefix,
+                    budget_unit=dataloader_config.budget.unit,
+                    fraction=0.0,
+                    records=0,
+                ),
+                progress=0.86,
             )
-            stats = _evaluate_tokenizer(configurable.tokenizer, eval_path, evaluation_thresholds)
+            evaluation_stream = self._stream_with_budget_progress(
+                text_iter=dataset,
+                job_id=job_id,
+                stage_prefix=evaluation_stage_prefix,
+                budget_limit=dataloader_config.budget.limit,
+                budget_unit=dataloader_config.budget.unit,
+                progress_start=0.86,
+                progress_end=0.98,
+            )
+            stats = ConfigurableTokenizer.eval_tokenizer_on_iterator(
+                thresholds=evaluation_thresholds,
+                tokenizer=configurable.tokenizer,
+                text_iter=evaluation_stream,
+            )
+            stats_payload = TokenizerStatsResponse.model_validate(
+                stats.__dict__
+            ).model_dump(mode="json")
 
             self._set_completed(
                 job_id,
                 stage="Completed",
                 progress=1.0,
-                stats=stats.model_dump(mode="json"),
+                stats=stats_payload,
                 artifact_file=artifact_file,
                 artifact_path=str(artifact_path),
             )
@@ -252,6 +274,7 @@ class TrainingJobManager:
             stats=stats,
             artifact_file=artifact_file,
             artifact_path=artifact_path,
+            error=None,
         )
 
     def _set_failed(self, job_id: str, error: str) -> None:
@@ -264,53 +287,113 @@ class TrainingJobManager:
             error=error,
         )
 
+    def _stream_with_budget_progress(
+        self,
+        *,
+        text_iter: Iterable[str],
+        job_id: str,
+        stage_prefix: str,
+        budget_limit: int,
+        budget_unit: str,
+        progress_start: float,
+        progress_end: float,
+    ) -> Iterable[str]:
+        consumed = 0
+        records = 0
+        last_reported_fraction = -1.0
+        last_report_time = 0.0
+
+        for raw_text in text_iter:
+            text = raw_text if isinstance(raw_text, str) else str(raw_text)
+            records += 1
+            consumed += measure_text(text, budget_unit)
+            fraction = (consumed / budget_limit) if budget_limit > 0 else 1.0
+            clamped_fraction = max(0.0, min(fraction, 1.0))
+
+            now = time.monotonic()
+            should_report = (
+                last_reported_fraction < 0.0
+                or clamped_fraction >= 1.0
+                or (clamped_fraction - last_reported_fraction) >= _PROGRESS_MIN_DELTA
+                or (now - last_report_time) >= _PROGRESS_MIN_INTERVAL_SECONDS
+            )
+            if should_report:
+                self._update_job(
+                    job_id,
+                    stage=self._format_budget_stage(
+                        stage_prefix=stage_prefix,
+                        budget_unit=budget_unit,
+                        fraction=clamped_fraction,
+                        records=records,
+                    ),
+                    progress=_phase_progress(
+                        clamped_fraction,
+                        progress_start=progress_start,
+                        progress_end=progress_end,
+                    ),
+                )
+                last_reported_fraction = clamped_fraction
+                last_report_time = now
+
+            yield text
+
+        if records == 0:
+            self._update_job(
+                job_id,
+                stage=f"{stage_prefix} (dataset stream is empty)",
+                progress=progress_start,
+            )
+
+    def _format_budget_stage(
+        self,
+        *,
+        stage_prefix: str,
+        budget_unit: str,
+        fraction: float,
+        records: int,
+    ) -> str:
+        percent = int(round(max(0.0, min(fraction, 1.0)) * 100))
+        if records <= 0:
+            return f"{stage_prefix} ({percent}% of {budget_unit} budget)"
+        return f"{stage_prefix} ({percent}% of {budget_unit} budget, {records:,} records)"
+
     def _update_job(
         self,
         job_id: str,
         *,
-        status: JobStatus | None = None,
-        stage: str | None = None,
-        progress: float | None = None,
-        started_at: datetime | None = None,
-        finished_at: datetime | None = None,
-        artifact_file: str | None = None,
-        artifact_path: str | None = None,
-        stats: dict[str, Any] | None = None,
-        error: str | None = None,
+        status: JobStatus | object = _UNSET,
+        stage: str | object = _UNSET,
+        progress: float | object = _UNSET,
+        started_at: datetime | None | object = _UNSET,
+        finished_at: datetime | None | object = _UNSET,
+        artifact_file: str | None | object = _UNSET,
+        artifact_path: str | None | object = _UNSET,
+        stats: dict[str, Any] | None | object = _UNSET,
+        error: str | None | object = _UNSET,
     ) -> None:
-        with self._lock:
-            job = self._jobs.get(job_id)
-            if job is None:
-                return
-            if status is not None:
-                job.status = status
-            if stage is not None:
-                job.stage = stage
-            if progress is not None:
-                job.progress = max(0.0, min(progress, 1.0))
-            if started_at is not None:
-                job.started_at = started_at
-            if finished_at is not None:
-                job.finished_at = finished_at
-            if artifact_file is not None:
-                job.artifact_file = artifact_file
-            if artifact_path is not None:
-                job.artifact_path = artifact_path
-            if stats is not None:
-                job.stats = stats
-            if error is not None:
-                job.error = error
+        updates: dict[str, Any] = {}
 
-    def _resolve_eval_text_path(self, raw: str) -> Path:
-        if raw.strip() == "":
-            raise ValueError("evaluation_text_path is required")
+        if status is not _UNSET:
+            updates["status"] = status
+        if stage is not _UNSET:
+            updates["stage"] = stage
+        if progress is not _UNSET:
+            updates["progress"] = progress
+        if started_at is not _UNSET:
+            updates["started_at"] = started_at
+        if finished_at is not _UNSET:
+            updates["finished_at"] = finished_at
+        if artifact_file is not _UNSET:
+            updates["artifact_file"] = artifact_file
+        if artifact_path is not _UNSET:
+            updates["artifact_path"] = artifact_path
+        if stats is not _UNSET:
+            updates["stats"] = stats
+        if error is not _UNSET:
+            updates["error"] = error
 
-        path = Path(raw).expanduser()
-        if not path.is_absolute():
-            path = API_ROOT / path
-        if not path.exists() or not path.is_file():
-            raise ValueError(f"evaluation_text_path does not point to a file: {path}")
-        return path
+        if updates:
+            self._store.update_job(job_id, **updates)
 
     def _artifact_filename(self, config_name: str, job_id: str) -> str:
         base = _FILENAME_SANITIZER.sub("-", config_name).strip("-")
@@ -318,13 +401,14 @@ class TrainingJobManager:
             base = "tokenizer"
         return f"{base}-{job_id[:8]}.json"
 
-    def _to_response(self, job: ManagedJob) -> TrainingJobResponse:
+    def _to_response(self, job: StoredJob) -> TrainingJobResponse:
         stats = None
         if job.stats is not None:
             stats = TokenizerStatsResponse.model_validate(job.stats)
         return TrainingJobResponse(
             id=job.id,
             status=job.status,
+            state=_derive_job_state(job.status, job.stage),
             stage=job.stage,
             progress=job.progress,
             created_at=job.created_at,
@@ -332,6 +416,7 @@ class TrainingJobManager:
             finished_at=job.finished_at,
             tokenizer_config=job.tokenizer_config,
             dataloader_config=job.dataloader_config,
+            evaluation_source=_derive_evaluation_source(job.evaluation_text_path),
             evaluation_thresholds=job.evaluation_thresholds,
             evaluation_text_path=job.evaluation_text_path,
             artifact_file=job.artifact_file,
@@ -341,53 +426,39 @@ class TrainingJobManager:
         )
 
 
-def _evaluate_tokenizer(
-    tokenizer: Tokenizer,
-    text_path: Path,
-    thresholds: list[int],
-) -> TokenizerStatsResponse:
-    text = text_path.read_text(encoding="utf-8")
-    if text == "":
-        return TokenizerStatsResponse(
-            num_chars=0,
-            num_tokens=0,
-            token_per_char=0.0,
-            vocab_size=tokenizer.get_vocab_size(),
-            num_used_tokens=0,
-            num_unused_tokens=tokenizer.get_vocab_size(),
-            rare_tokens={threshold: 0 for threshold in thresholds},
-            rare_token_fraction={threshold: 0.0 for threshold in thresholds},
-        )
+def _phase_progress(fraction: float, *, progress_start: float, progress_end: float) -> float:
+    clamped = max(0.0, min(fraction, 1.0))
+    start = min(progress_start, progress_end)
+    end = max(progress_start, progress_end)
+    return start + (end - start) * clamped
 
-    encoding = tokenizer.encode(text)
-    ids = encoding.ids
-    num_tokens = len(ids)
-    num_chars = len(text)
-    tokens_per_char = (num_tokens / num_chars) if num_chars > 0 else 0.0
 
-    frequencies = Counter(ids)
-    num_used_tokens = len(frequencies)
-    vocab_size = tokenizer.get_vocab_size()
+def _derive_evaluation_source(value: str) -> EvaluationSource:
+    if value == _TRAINING_DATASET_EVAL_SENTINEL:
+        return EvaluationSource.training_dataset
+    return EvaluationSource.legacy_file
 
-    rare_tokens: dict[int, int] = {}
-    rare_token_fraction: dict[int, float] = {}
 
-    for threshold in thresholds:
-        rare_count = sum(1 for count in frequencies.values() if count < threshold)
-        fraction = (rare_count / num_used_tokens) if num_used_tokens > 0 else 0.0
-        rare_tokens[threshold] = rare_count
-        rare_token_fraction[threshold] = fraction
+def _derive_job_state(status: JobStatus, stage: str) -> JobState:
+    if status is JobStatus.pending:
+        return JobState.queued
+    if status is JobStatus.completed:
+        return JobState.completed
+    if status is JobStatus.failed:
+        return JobState.failed
 
-    return TokenizerStatsResponse(
-        num_chars=num_chars,
-        num_tokens=num_tokens,
-        token_per_char=tokens_per_char,
-        vocab_size=vocab_size,
-        num_used_tokens=num_used_tokens,
-        num_unused_tokens=max(vocab_size - num_used_tokens, 0),
-        rare_tokens=rare_tokens,
-        rare_token_fraction=rare_token_fraction,
-    )
+    normalized_stage = stage.strip().lower()
+    if normalized_stage.startswith("initializing tokenizer"):
+        return JobState.initializing
+    if normalized_stage.startswith("preparing training dataset"):
+        return JobState.preparing_dataset
+    if normalized_stage.startswith("training tokenizer"):
+        return JobState.training
+    if normalized_stage.startswith("saving tokenizer artifact"):
+        return JobState.saving_artifact
+    if normalized_stage.startswith("evaluating tokenizer"):
+        return JobState.evaluating
+    return JobState.running
 
 
 def _utc_now() -> datetime:

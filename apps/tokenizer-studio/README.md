@@ -39,7 +39,9 @@ Frontend URL: `http://127.0.0.1:3000`
 ## Notes
 
 - Backend jobs train tokenizers with the existing modules under `tokenizer/`.
+- Tokenizer evaluation always runs on the same dataset configuration used for training.
 - API config templates and schemas are served from `api/templates/`.
 - Artifacts are saved by default to `apps/tokenizer-studio/api/artifacts/tokenizers/`.
-- Override output/eval behavior with environment variables in `api/.env.example` (relative paths are resolved from `api/`).
+- Training jobs and upload metadata are persisted in SQLite at `apps/tokenizer-studio/api/data/tokenizer_studio.db` by default.
+- Override output/storage behavior with environment variables in `api/.env.example` (relative paths are resolved from `api/`).
 - If you see `ImportError: cannot import name 'load_dataset' from 'datasets'`, you are likely using a different Python than your project venv. Use `python -m uvicorn ...` from the activated environment.
