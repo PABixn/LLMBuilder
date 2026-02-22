@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "icons": "tauri icon ../../../icons/icon-512x512.png",
+    "icons": "tauri icon ./icons/icon-512x512.png",
     "tauri": "tauri"
   },
   "dependencies": {

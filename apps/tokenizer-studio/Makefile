@@ -7,7 +7,7 @@ DESKTOP_DIR := $(CURDIR)/desktop
 ROOT_VENV_PY := $(ROOT_DIR)/.venv/bin/python3
 API_VENV_PY := $(API_DIR)/.venv/bin/python3
 PYTHON_BIN ?= $(if $(wildcard $(ROOT_VENV_PY)),$(ROOT_VENV_PY),$(if $(wildcard $(API_VENV_PY)),$(API_VENV_PY),python3))
-DESKTOP_SCRIPT_DIR := $(ROOT_DIR)/scripts/desktop
+DESKTOP_SCRIPT_DIR := $(DESKTOP_DIR)/scripts
 
 api:
 	@echo "Using Python interpreter: $(PYTHON_BIN)"

@@ -51,14 +51,14 @@ Environment overrides are documented in `apps/tokenizer-studio/api/.env.example`
 
 ## Desktop Build Pipeline
 
-Build scripts live in `scripts/desktop/`.
+Build scripts live in `apps/tokenizer-studio/desktop/scripts/`.
 
 Example (macOS arm64):
 
 ```bash
-scripts/desktop/build_web.sh
-scripts/desktop/build_runtime_macos.sh macos-arm64
-scripts/desktop/smoke_test_runtime.sh macos-arm64
+apps/tokenizer-studio/desktop/scripts/build_web.sh
+apps/tokenizer-studio/desktop/scripts/build_runtime_macos.sh macos-arm64
+apps/tokenizer-studio/desktop/scripts/smoke_test_runtime.sh macos-arm64
 cd apps/tokenizer-studio/desktop
 npm install
 npm run tauri build
@@ -67,7 +67,7 @@ npm run tauri build
 One-command pipeline:
 
 ```bash
-scripts/desktop/build_desktop.sh macos-arm64
+apps/tokenizer-studio/desktop/scripts/build_desktop.sh macos-arm64
 ```
 
 ## Typical Workflow In App

@@ -9,8 +9,6 @@ from pathlib import Path
 from typing import Any, Iterable
 from uuid import uuid4
 
-from tokenizers import Tokenizer
-
 from .config import max_job_workers, output_dir
 from .models import (
     EvaluationSource,
@@ -27,12 +25,6 @@ from .storage import StoredJob, StudioStore
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
 if str(IMPORT_ROOT) not in sys.path:
     sys.path.append(str(IMPORT_ROOT))
-
-from tokenizer.dataloader import build_dataset, measure_text
-from tokenizer.dataloader_config import DataloaderConfig
-from tokenizer.loader import TokenizerConfig
-from tokenizer.tokenizer import ConfigurableTokenizer
-
 
 _FILENAME_SANITIZER = re.compile(r"[^a-zA-Z0-9._-]+")
 _TRAINING_DATASET_EVAL_SENTINEL = "__training_dataset__"
@@ -51,6 +43,9 @@ class TrainingJobManager:
         )
 
     def create_job(self, request: TrainTokenizerRequest) -> TrainingJobResponse:
+        from tokenizer.dataloader_config import DataloaderConfig
+        from tokenizer.loader import TokenizerConfig
+
         tokenizer_config = TokenizerConfig.model_validate(request.tokenizer_config)
         dataloader_config = DataloaderConfig.model_validate(request.dataloader_config)
 
@@ -114,6 +109,8 @@ class TrainingJobManager:
         return path
 
     def preview_tokens(self, job_id: str, text: str) -> TokenizerPreviewResponse:
+        from tokenizers import Tokenizer
+
         artifact_path = self.get_artifact_path(job_id)
         tokenizer = Tokenizer.from_file(str(artifact_path))
 
@@ -164,6 +161,9 @@ class TrainingJobManager:
         evaluation_thresholds: list[int],
     ) -> None:
         try:
+            from tokenizer.dataloader import build_dataset
+            from tokenizer.tokenizer import ConfigurableTokenizer
+
             self._set_running(job_id, "Initializing tokenizer", 0.03)
             configurable = ConfigurableTokenizer(tokenizer_config)
 
@@ -306,7 +306,7 @@ class TrainingJobManager:
         for raw_text in text_iter:
             text = raw_text if isinstance(raw_text, str) else str(raw_text)
             records += 1
-            consumed += measure_text(text, budget_unit)
+            consumed += _measure_text(text, budget_unit)
             fraction = (consumed / budget_limit) if budget_limit > 0 else 1.0
             clamped_fraction = max(0.0, min(fraction, 1.0))
 
@@ -431,6 +431,14 @@ def _phase_progress(fraction: float, *, progress_start: float, progress_end: flo
     start = min(progress_start, progress_end)
     end = max(progress_start, progress_end)
     return start + (end - start) * clamped
+
+
+def _measure_text(text: str, unit: str) -> int:
+    if unit == "chars":
+        return len(text)
+    if unit == "bytes":
+        return len(text.encode("utf-8"))
+    raise ValueError(f"Unknown text unit: {unit}")
 
 
 def _derive_evaluation_source(value: str) -> EvaluationSource:

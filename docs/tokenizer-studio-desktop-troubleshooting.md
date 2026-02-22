@@ -24,8 +24,8 @@ Likely causes:
 
 Actions:
 
-1. Rebuild runtime: `scripts/desktop/build_runtime_<platform>.sh`.
-2. Run smoke test: `scripts/desktop/smoke_test_runtime.sh <platform>`.
+1. Rebuild runtime: `apps/tokenizer-studio/desktop/scripts/build_runtime_<platform>.sh`.
+2. Run smoke test: `apps/tokenizer-studio/desktop/scripts/smoke_test_runtime.sh <platform>`.
 3. Verify `python -m app.serve` works from `runtime/app`.
 
 ## Port Conflicts

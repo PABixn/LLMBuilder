@@ -153,7 +153,7 @@ Deliverable:
 
 ## 4) Build and Packaging Scripts
 
-Add `scripts/desktop/`:
+Add `apps/tokenizer-studio/desktop/scripts/`:
 
 - `build_web.sh` (frontend production assets).
 - `build_runtime_<platform>.sh` (embedded Python + pip install deps).

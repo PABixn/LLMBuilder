@@ -5,26 +5,28 @@
 - `apps/tokenizer-studio/web`: frontend static bundle source.
 - `apps/tokenizer-studio/api`: backend sidecar source + requirements.
 - `apps/tokenizer-studio/desktop`: Tauri shell source.
-- `scripts/desktop/*`: platform build and signing automation.
+- `apps/tokenizer-studio/desktop/scripts/*`: platform build and signing automation.
 
 ## Per-Platform Pipeline
 
 1. Build web:
-   - `scripts/desktop/build_web.sh`
+   - `apps/tokenizer-studio/desktop/scripts/build_web.sh`
 2. Build runtime:
-   - `scripts/desktop/build_runtime_macos.sh <platform>`
-   - `scripts/desktop/build_runtime_windows.sh <platform>`
-   - `scripts/desktop/build_runtime_linux.sh <platform>`
+   - `apps/tokenizer-studio/desktop/scripts/build_runtime_macos.sh <platform>`
+   - `apps/tokenizer-studio/desktop/scripts/build_runtime_windows.sh <platform>`
+   - `apps/tokenizer-studio/desktop/scripts/build_runtime_linux.sh <platform>`
 3. Smoke test runtime:
-   - `scripts/desktop/smoke_test_runtime.sh <platform>`
+   - `apps/tokenizer-studio/desktop/scripts/smoke_test_runtime.sh <platform>`
 4. Build shell:
    - `cd apps/tokenizer-studio/desktop && npm run tauri build`
+   - macOS runtime is staged into Tauri resources before this step so the packaged `.app` is not mutated after signing.
 5. Assemble runtime archive and manifest:
-   - `scripts/desktop/assemble_bundle.sh <platform>`
+   - `apps/tokenizer-studio/desktop/scripts/assemble_bundle.sh <platform>`
 6. Sign artifacts:
-   - macOS: `scripts/desktop/sign_and_notarize_macos.sh <artifact>`
-   - Windows: `scripts/desktop/sign_windows.sh <artifact>`
-   - Linux: `scripts/desktop/sign_linux.sh <artifact>`
+   - macOS: `apps/tokenizer-studio/desktop/scripts/sign_and_notarize_macos.sh <artifact>`
+   - Windows: `apps/tokenizer-studio/desktop/scripts/sign_windows.sh <artifact>`
+   - Linux: `apps/tokenizer-studio/desktop/scripts/sign_linux.sh <artifact>`
+   - If using `apps/tokenizer-studio/desktop/scripts/build_desktop.sh` on macOS, final DMG icon stamping happens before optional DMG signing/notarization.
 
 ## Runtime Update Manifest
 
