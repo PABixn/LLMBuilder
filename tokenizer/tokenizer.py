@@ -199,10 +199,16 @@ class ConfigurableTokenizer:
 
     def get_trainer(self):
         if self.config.tokenizer_type == "bpe":
+            trainer_kwargs = {}
+            # Without the full byte alphabet, byte-level BPE can silently drop unseen
+            # Unicode bytes even when byte_fallback is enabled.
+            if self.config.pre_tokenizer == "byte_level":
+                trainer_kwargs["initial_alphabet"] = ByteLevelPreTokenizer.alphabet()
             return BpeTrainer(
                 vocab_size=self.config.vocab_size,
                 min_frequency=self.config.min_frequency,
                 special_tokens=self.config.special_tokens,
+                **trainer_kwargs,
             )
         elif self.config.tokenizer_type == "wordpiece":
             return WordPieceTrainer(

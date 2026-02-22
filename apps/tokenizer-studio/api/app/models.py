@@ -138,6 +138,7 @@ class UploadedTrainFileResponse(BaseModel):
     file_name: str
     file_path: str
     size_bytes: int
+    size_chars: int
 
 
 class ArtifactMetadataResponse(BaseModel):

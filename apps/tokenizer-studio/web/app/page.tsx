@@ -7,13 +7,17 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type DragEvent,
+  type MouseEvent,
 } from "react";
-import { FiMoon, FiSun } from "react-icons/fi";
+import { FiMoon, FiSun, FiX } from "react-icons/fi";
 
 import {
   artifactDownloadUrl,
   createTrainingJob,
+  downloadJobArtifact,
   fetchConfigTemplates,
+  fetchLocalTrainFileStats,
   fetchTrainingJob,
   fetchTrainingJobs,
   previewJobTokenizer,
@@ -37,6 +41,7 @@ type BudgetBehavior = "stop" | "truncate";
 type DatasetSourceMode = "local_file" | "streaming_hf";
 type FilterOperator = "==" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "not in";
 type ThemeMode = "white" | "dark";
+type SettingsCategory = "tokenizer" | "dataset" | "training";
 
 const FILTER_OPERATORS: FilterOperator[] = [
   "==",
@@ -54,6 +59,11 @@ const DATASET_FORM_STORAGE_KEY = "tokenizer-studio-dataset-form";
 const TRAINING_FORM_STORAGE_KEY = "tokenizer-studio-training-form";
 const ACTIVE_JOB_STORAGE_KEY = "tokenizer-studio-active-job-id";
 const PREVIEW_TEXT_STORAGE_KEY = "tokenizer-studio-preview-text";
+const SETTINGS_CATEGORY_HASH_MAP: Record<SettingsCategory, string> = {
+  tokenizer: "#settings-tokenizer",
+  dataset: "#settings-dataset",
+  training: "#settings-training",
+};
 const WEIGHT_SUM_EPSILON = 1e-9;
 const WEIGHT_SCALE = 1_000_000;
 const MIN_STRICT_POSITIVE_WEIGHT = 1e-6;
@@ -75,6 +85,14 @@ interface StreamingDatasetFormState {
   filters: StreamingFilterFormState[];
 }
 
+interface LocalTrainFileFormState {
+  id: string;
+  fileName: string;
+  filePath: string;
+  sizeBytes: number | null;
+  sizeChars: number | null;
+}
+
 interface TokenizerFormState {
   name: string;
   tokenizerType: TokenizerType;
@@ -89,12 +107,7 @@ interface TokenizerFormState {
 
 interface DatasetFormState {
   sourceMode: DatasetSourceMode;
-  name: string;
-  config: string;
-  split: string;
-  textColumns: string;
-  trainFilePath: string;
-  trainFileName: string;
+  localTrainFiles: LocalTrainFileFormState[];
   hfToken: string;
   streamingDatasets: StreamingDatasetFormState[];
 }
@@ -124,6 +137,49 @@ interface ToastState {
   level: ToastLevel;
   message: string;
   durationMs: number;
+}
+
+type TauriInvokeFn = (
+  command: string,
+  args?: Record<string, unknown>
+) => Promise<unknown>;
+
+function getTauriInvoke(): TauriInvokeFn | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const tauriWindow = window as Window & {
+    __TAURI__?: {
+      core?: {
+        invoke?: TauriInvokeFn;
+      };
+    };
+    __TAURI_INTERNALS__?: {
+      invoke?: TauriInvokeFn;
+    };
+  };
+
+  return (
+    tauriWindow.__TAURI__?.core?.invoke ??
+    tauriWindow.__TAURI_INTERNALS__?.invoke ??
+    null
+  );
+}
+
+function triggerBlobDownload(blob: Blob, fileName: string): void {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = fileName;
+  link.rel = "noreferrer";
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => {
+    URL.revokeObjectURL(objectUrl);
+  }, 1_000);
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -194,6 +250,35 @@ function makeStreamingFilterEntry(
     column: value?.column ?? "",
     operator: value?.operator ?? "==",
     value: value?.value ?? "",
+  };
+}
+
+function makeLocalTrainFileEntry(
+  value?: Partial<LocalTrainFileFormState>
+): LocalTrainFileFormState {
+  const filePath = value?.filePath?.trim() ?? "";
+  const fallbackFileName = stripGeneratedUploadPrefix(fileNameFromPath(filePath));
+  const providedFileName = stripGeneratedUploadPrefix(value?.fileName?.trim() ?? "");
+  return {
+    id: value?.id ?? `train-file-${Math.random().toString(36).slice(2, 10)}`,
+    fileName: providedFileName || fallbackFileName || "uploaded-file.txt",
+    filePath,
+    sizeBytes:
+      typeof value?.sizeBytes === "number" &&
+      Number.isFinite(value.sizeBytes) &&
+      value.sizeBytes >= 0
+        ? value.sizeBytes
+        : null,
+    sizeChars:
+      typeof value?.sizeChars === "number" &&
+      Number.isFinite(value.sizeChars) &&
+      value.sizeChars >= 0
+        ? value.sizeChars
+        : typeof value?.sizeBytes === "number" &&
+            Number.isFinite(value.sizeBytes) &&
+            value.sizeBytes >= 0
+          ? Math.trunc(value.sizeBytes)
+          : null,
   };
 }
 
@@ -273,6 +358,94 @@ function hydrateStreamingDataset(value: unknown): StreamingDatasetFormState {
   });
 }
 
+function hydrateLocalTrainFile(value: unknown): LocalTrainFileFormState | null {
+  const record = asRecord(value);
+  const filePath = asString(record.filePath, "").trim();
+  if (filePath === "") {
+    return null;
+  }
+
+  const fileName = asString(record.fileName, "").trim() || fileNameFromPath(filePath);
+  const sizeBytesRaw = record.sizeBytes;
+  const sizeBytes =
+    typeof sizeBytesRaw === "number" && Number.isFinite(sizeBytesRaw) && sizeBytesRaw >= 0
+      ? sizeBytesRaw
+      : null;
+  const sizeCharsRaw = record.sizeChars;
+  const sizeChars =
+    typeof sizeCharsRaw === "number" && Number.isFinite(sizeCharsRaw) && sizeCharsRaw >= 0
+      ? sizeCharsRaw
+      : sizeBytes;
+
+  return makeLocalTrainFileEntry({
+    id: asString(record.id, "").trim() || undefined,
+    fileName,
+    filePath,
+    sizeBytes,
+    sizeChars,
+  });
+}
+
+function normalizeLocalTrainFiles(
+  files: LocalTrainFileFormState[]
+): LocalTrainFileFormState[] {
+  const dedupedByPath = new Map<string, LocalTrainFileFormState>();
+  files.forEach((entry) => {
+    const filePath = entry.filePath.trim();
+    if (filePath === "") {
+      return;
+    }
+    dedupedByPath.set(filePath, {
+      ...entry,
+      filePath,
+      fileName:
+        stripGeneratedUploadPrefix(entry.fileName.trim()) ||
+        stripGeneratedUploadPrefix(fileNameFromPath(filePath)),
+      sizeBytes:
+        typeof entry.sizeBytes === "number" &&
+        Number.isFinite(entry.sizeBytes) &&
+        entry.sizeBytes >= 0
+          ? entry.sizeBytes
+          : null,
+      sizeChars:
+        typeof entry.sizeChars === "number" &&
+        Number.isFinite(entry.sizeChars) &&
+        entry.sizeChars >= 0
+          ? entry.sizeChars
+          : null,
+    });
+  });
+  return Array.from(dedupedByPath.values());
+}
+
+function extractTrainFilePaths(dataFiles: unknown): string[] {
+  if (typeof dataFiles === "string") {
+    const trimmed = dataFiles.trim();
+    return trimmed === "" ? [] : [trimmed];
+  }
+
+  if (Array.isArray(dataFiles)) {
+    return dataFiles
+      .filter((entry) => typeof entry === "string")
+      .map((entry) => String(entry).trim())
+      .filter((entry) => entry !== "");
+  }
+
+  const record = asRecord(dataFiles);
+  const trainField = record.train;
+  if (typeof trainField === "string") {
+    const trimmed = trainField.trim();
+    return trimmed === "" ? [] : [trimmed];
+  }
+  if (Array.isArray(trainField)) {
+    return trainField
+      .filter((entry) => typeof entry === "string")
+      .map((entry) => String(entry).trim())
+      .filter((entry) => entry !== "");
+  }
+  return [];
+}
+
 function hydrateTokenizerForm(
   value: unknown,
   fallback: TokenizerFormState
@@ -312,18 +485,40 @@ function hydrateDatasetForm(value: unknown, fallback: DatasetFormState): Dataset
     streamingDatasetsRaw.length > 0
       ? streamingDatasetsRaw.map((entry) => hydrateStreamingDataset(entry))
       : fallback.streamingDatasets.map((entry) => makeStreamingDatasetEntry(entry));
-  const trainFilePath = asString(record.trainFilePath, fallback.trainFilePath);
-  const computedTrainFileName =
-    fileNameFromPath(trainFilePath) || fallback.trainFileName;
+  const hasStoredLocalTrainFiles = Array.isArray(record.localTrainFiles);
+  const localTrainFilesRaw: unknown[] = hasStoredLocalTrainFiles
+    ? (record.localTrainFiles as unknown[])
+    : [];
+  const localTrainFilesFromStorage = normalizeLocalTrainFiles(
+    localTrainFilesRaw
+      .map((entry: unknown) => hydrateLocalTrainFile(entry))
+      .filter((entry: LocalTrainFileFormState | null): entry is LocalTrainFileFormState =>
+        entry !== null
+      )
+  );
+  const legacyTrainFilePath = asString(record.trainFilePath, "").trim();
+  const legacyTrainFileName = asString(record.trainFileName, "").trim();
+  const legacyLocalTrainFile =
+    legacyTrainFilePath === ""
+      ? []
+      : [
+          makeLocalTrainFileEntry({
+            filePath: legacyTrainFilePath,
+            fileName: legacyTrainFileName || fileNameFromPath(legacyTrainFilePath),
+          }),
+        ];
+  const localTrainFiles =
+    localTrainFilesFromStorage.length > 0
+      ? localTrainFilesFromStorage
+      : hasStoredLocalTrainFiles
+        ? []
+        : legacyLocalTrainFile.length > 0
+          ? legacyLocalTrainFile
+          : fallback.localTrainFiles.map((entry) => makeLocalTrainFileEntry(entry));
 
   return {
     sourceMode,
-    name: asString(record.name, fallback.name),
-    config: asString(record.config, fallback.config),
-    split: asString(record.split, fallback.split),
-    textColumns: asString(record.textColumns, fallback.textColumns),
-    trainFilePath,
-    trainFileName: asString(record.trainFileName, computedTrainFileName),
+    localTrainFiles: normalizeLocalTrainFiles(localTrainFiles),
     hfToken: asString(record.hfToken, fallback.hfToken),
     streamingDatasets: normalizeStreamingDatasetWeights(
       streamingDatasets.length > 0 ? streamingDatasets : [makeStreamingDatasetEntry()]
@@ -367,6 +562,27 @@ function fileNameFromPath(value: string): string {
   const normalized = value.replaceAll("\\", "/");
   const parts = normalized.split("/");
   return parts[parts.length - 1] ?? "";
+}
+
+function stripGeneratedUploadPrefix(value: string): string {
+  const trimmed = value.trim();
+  const separatorIndex = trimmed.indexOf("-");
+  if (separatorIndex <= 0) {
+    return trimmed;
+  }
+  const prefix = trimmed.slice(0, separatorIndex);
+  if (!/^[0-9a-f]{12}$/i.test(prefix)) {
+    return trimmed;
+  }
+  const stripped = trimmed.slice(separatorIndex + 1).trim();
+  return stripped === "" ? trimmed : stripped;
+}
+
+function formatCharCount(value: number | null): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return null;
+  }
+  return new Intl.NumberFormat().format(Math.trunc(value));
 }
 
 function asFilterOperator(value: unknown): FilterOperator {
@@ -783,31 +999,19 @@ function datasetFormFromConfig(config: Record<string, unknown>): DatasetFormStat
   const firstDataset = asRecord(datasetsRaw[0]);
   const firstHfToken =
     typeof firstDataset.hf_token === "string" ? firstDataset.hf_token : "";
-  const firstDataFiles = firstDataset.data_files;
+  const localTrainPaths = extractTrainFilePaths(firstDataset.data_files);
   const sourceMode: DatasetSourceMode =
-    datasetsRaw.length === 1 &&
-    (typeof firstDataFiles === "string" ||
-      (typeof firstDataFiles === "object" &&
-        firstDataFiles !== null &&
-        typeof asRecord(firstDataFiles).train === "string"))
+    datasetsRaw.length === 1 && localTrainPaths.length > 0
       ? "local_file"
       : "streaming_hf";
-
-  const textColumnsRaw = firstDataset.text_columns;
-  const textColumns = Array.isArray(textColumnsRaw)
-    ? textColumnsRaw.map((entry) => String(entry)).join(", ")
-    : "text";
-
-  let trainFilePath = "datasets/shake.txt";
-  const dataFiles = firstDataset.data_files;
-  if (typeof dataFiles === "string") {
-    trainFilePath = dataFiles;
-  } else if (typeof dataFiles === "object" && dataFiles !== null) {
-    const record = asRecord(dataFiles);
-    if (typeof record.train === "string") {
-      trainFilePath = record.train;
-    }
-  }
+  const localTrainFiles = normalizeLocalTrainFiles(
+    localTrainPaths.map((filePath) =>
+      makeLocalTrainFileEntry({
+        filePath,
+        fileName: fileNameFromPath(filePath),
+      })
+    )
+  );
 
   const defaultStreamingDatasets = [
     makeStreamingDatasetEntry({
@@ -853,12 +1057,7 @@ function datasetFormFromConfig(config: Record<string, unknown>): DatasetFormStat
         : defaultStreamingDatasets;
 
   return {
-    name: String(firstDataset.name ?? "text"),
-    config: String(firstDataset.config ?? ""),
-    split: String(firstDataset.split ?? "train"),
-    textColumns,
-    trainFilePath,
-    trainFileName: fileNameFromPath(trainFilePath),
+    localTrainFiles,
     hfToken: firstHfToken,
     sourceMode,
     streamingDatasets,
@@ -928,33 +1127,22 @@ function buildDataloaderConfigFromForm(
   const hfToken = dataset.hfToken.trim();
 
   if (dataset.sourceMode === "local_file") {
-    const datasetName = dataset.name.trim();
-    if (datasetName === "") {
-      throw new Error("Dataset name is required");
+    const localTrainPaths = normalizeLocalTrainFiles(dataset.localTrainFiles)
+      .map((entry) => entry.filePath.trim())
+      .filter((entry) => entry !== "");
+    if (localTrainPaths.length === 0) {
+      throw new Error("Add at least one local train file");
     }
-
-    const textColumns = splitTokens(dataset.textColumns);
-    if (textColumns.length === 0) {
-      throw new Error("At least one text column is required");
-    }
+    const trainDataFiles =
+      localTrainPaths.length === 1 ? localTrainPaths[0] : localTrainPaths;
 
     const datasetConfig: Record<string, unknown> = {
-      name: datasetName,
-      split: dataset.split.trim() || "train",
-      text_columns: textColumns,
+      name: "text",
+      split: "train",
+      text_columns: ["text"],
       weight: 1,
+      data_files: { train: trainDataFiles },
     };
-
-    const datasetConfigName = dataset.config.trim();
-    if (datasetConfigName !== "") {
-      datasetConfig.config = datasetConfigName;
-    }
-
-    const trainFilePath = dataset.trainFilePath.trim();
-    if (trainFilePath === "") {
-      throw new Error("Local train file is required");
-    }
-    datasetConfig.data_files = { train: trainFilePath };
 
     datasets = [datasetConfig];
   } else {
@@ -1043,6 +1231,53 @@ function buildDataloaderConfigFromForm(
       behavior: training.budgetBehavior,
     },
   };
+}
+
+function buildDatasetSelectionFromForm(dataset: DatasetFormState): Record<string, unknown> {
+  if (dataset.sourceMode === "local_file") {
+    const localTrainPaths = normalizeLocalTrainFiles(dataset.localTrainFiles)
+      .map((entry) => entry.filePath.trim())
+      .filter((entry) => entry !== "");
+    if (localTrainPaths.length === 0) {
+      throw new Error("Add at least one local train file");
+    }
+    return { source_mode: "local_file", file_count: localTrainPaths.length };
+  }
+
+  if (dataset.streamingDatasets.length === 0) {
+    throw new Error("At least one streaming dataset is required");
+  }
+
+  const parsedWeights = dataset.streamingDatasets.map((entry, index) => {
+    const datasetName = entry.name.trim();
+    if (datasetName === "") {
+      throw new Error(`Streaming dataset ${index + 1}: dataset name is required`);
+    }
+
+    const textColumns = splitTokens(entry.textColumns);
+    if (textColumns.length === 0) {
+      throw new Error(`Streaming dataset ${index + 1}: text columns are required`);
+    }
+
+    const parsedWeight = parseNonNegativeNumber(
+      entry.weight,
+      `Streaming dataset ${index + 1}: weight`
+    );
+
+    buildFiltersFromForm(entry.filters, `Streaming dataset ${index + 1}`);
+    return parsedWeight;
+  });
+
+  const totalWeight = parsedWeights.reduce((sum, weight) => sum + weight, 0);
+  if (Math.abs(totalWeight - 1) > WEIGHT_SUM_EPSILON) {
+    throw new Error(
+      `Streaming dataset weights must sum to exactly 1. Current total: ${Number(
+        totalWeight.toFixed(6)
+      )}`
+    );
+  }
+
+  return { source_mode: "streaming_hf", dataset_count: dataset.streamingDatasets.length };
 }
 
 function buildResult(factory: () => Record<string, unknown>): BuildResult {
@@ -1168,23 +1403,54 @@ export default function Home() {
   );
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isDownloadingArtifact, setIsDownloadingArtifact] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [hasValidationPassed, setHasValidationPassed] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const [isUploadingTrainFile, setIsUploadingTrainFile] = useState(false);
+  const [isDraggingTrainFiles, setIsDraggingTrainFiles] = useState(false);
   const [hasHydratedLocalState, setHasHydratedLocalState] = useState(false);
+  const [highlightedSettingsCategory, setHighlightedSettingsCategory] =
+    useState<SettingsCategory | null>(null);
   const [toasts, setToasts] = useState<ToastState[]>([]);
   const toastTimeoutsRef = useRef<Record<string, number>>({});
   const jobNotificationKeysRef = useRef<Set<string>>(new Set());
   const locallyStartedJobIdsRef = useRef<Set<string>>(new Set());
+  const validationRequestRef = useRef(0);
   const previewRequestRef = useRef(0);
+  const localFileDragDepthRef = useRef(0);
+  const localTrainFileStatsPendingIdsRef = useRef<Set<string>>(new Set());
+  const localTrainFileStatsFailedIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedLocalStateRef = useRef(false);
+  const settingsCategoryHighlightTimeoutRef = useRef<number | null>(null);
+  const tokenizerAndTrainingPanelRef = useRef<HTMLDetailsElement | null>(null);
+  const datasetPanelRef = useRef<HTMLDetailsElement | null>(null);
+  const tokenizerCategoryRef = useRef<HTMLDivElement | null>(null);
+  const datasetCategoryRef = useRef<HTMLDivElement | null>(null);
+  const trainingCategoryRef = useRef<HTMLDivElement | null>(null);
   const controlsDisabled =
     isSubmitting ||
-    isValidating ||
     isLoadingTemplate ||
     isUploadingTrainFile;
+
+  useEffect(() => {
+    if (!controlsDisabled) {
+      return;
+    }
+    localFileDragDepthRef.current = 0;
+    setIsDraggingTrainFiles(false);
+  }, [controlsDisabled]);
+
+  useEffect(() => {
+    return () => {
+      if (settingsCategoryHighlightTimeoutRef.current !== null) {
+        window.clearTimeout(settingsCategoryHighlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const removeToast = useCallback((toastId: string) => {
     setToasts((previous) => previous.filter((toast) => toast.id !== toastId));
@@ -1293,6 +1559,118 @@ export default function Home() {
     if (!hasHydratedLocalState) {
       return;
     }
+
+    const currentIds = new Set(datasetForm.localTrainFiles.map((entry) => entry.id));
+    for (const entryId of Array.from(localTrainFileStatsPendingIdsRef.current)) {
+      if (!currentIds.has(entryId)) {
+        localTrainFileStatsPendingIdsRef.current.delete(entryId);
+      }
+    }
+    for (const entryId of Array.from(localTrainFileStatsFailedIdsRef.current)) {
+      if (!currentIds.has(entryId)) {
+        localTrainFileStatsFailedIdsRef.current.delete(entryId);
+      }
+    }
+
+    const entriesNeedingStats = datasetForm.localTrainFiles.filter((entry) => {
+      if (
+        typeof entry.sizeBytes === "number" &&
+        Number.isFinite(entry.sizeBytes) &&
+        entry.sizeBytes >= 0 &&
+        typeof entry.sizeChars === "number" &&
+        Number.isFinite(entry.sizeChars) &&
+        entry.sizeChars >= 0
+      ) {
+        return false;
+      }
+      if (entry.filePath.trim() === "") {
+        return false;
+      }
+      if (localTrainFileStatsPendingIdsRef.current.has(entry.id)) {
+        return false;
+      }
+      if (localTrainFileStatsFailedIdsRef.current.has(entry.id)) {
+        return false;
+      }
+      return true;
+    });
+
+    if (entriesNeedingStats.length === 0) {
+      return;
+    }
+
+    entriesNeedingStats.forEach((entry) => {
+      localTrainFileStatsPendingIdsRef.current.add(entry.id);
+    });
+
+    let cancelled = false;
+
+    void Promise.allSettled(
+      entriesNeedingStats.map(async (entry) => ({
+        entryId: entry.id,
+        stats: await fetchLocalTrainFileStats(entry.filePath),
+      }))
+    ).then((results) => {
+      const updatesById = new Map<string, { sizeBytes: number; sizeChars: number }>();
+
+      results.forEach((result, index) => {
+        const entry = entriesNeedingStats[index];
+        localTrainFileStatsPendingIdsRef.current.delete(entry.id);
+
+        if (result.status === "fulfilled") {
+          localTrainFileStatsFailedIdsRef.current.delete(entry.id);
+          updatesById.set(entry.id, {
+            sizeBytes: result.value.stats.size_bytes,
+            sizeChars: result.value.stats.size_chars,
+          });
+          return;
+        }
+
+        localTrainFileStatsFailedIdsRef.current.add(entry.id);
+      });
+
+      if (cancelled || updatesById.size === 0) {
+        return;
+      }
+
+      setDatasetForm((previous) => {
+        let changed = false;
+        const nextLocalTrainFiles = previous.localTrainFiles.map((entry) => {
+          const stats = updatesById.get(entry.id);
+          if (!stats) {
+            return entry;
+          }
+          if (entry.sizeBytes === stats.sizeBytes && entry.sizeChars === stats.sizeChars) {
+            return entry;
+          }
+          changed = true;
+          return {
+            ...entry,
+            sizeBytes: stats.sizeBytes,
+            sizeChars: stats.sizeChars,
+          };
+        });
+
+        if (!changed) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          localTrainFiles: normalizeLocalTrainFiles(nextLocalTrainFiles),
+        };
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [datasetForm.localTrainFiles, hasHydratedLocalState]);
+
+  useEffect(() => {
+    if (!hasHydratedLocalState) {
+      return;
+    }
     if (activeJobId === null) {
       removeStoredValue(ACTIVE_JOB_STORAGE_KEY);
       return;
@@ -1309,6 +1687,188 @@ export default function Home() {
     () => buildResult(() => buildDataloaderConfigFromForm(datasetForm, trainingForm)),
     [datasetForm, trainingForm]
   );
+  const datasetBuild = useMemo(
+    () => buildResult(() => buildDatasetSelectionFromForm(datasetForm)),
+    [datasetForm]
+  );
+  const trainingRuntimeBuild = useMemo(
+    () =>
+      buildResult(() => ({
+        budget_limit: parsePositiveInt(trainingForm.budgetLimit, "Text budget limit"),
+        thresholds: parseThresholds(trainingForm.evaluationThresholds),
+      })),
+    [trainingForm.budgetLimit, trainingForm.evaluationThresholds]
+  );
+
+  useEffect(() => {
+    setHasValidationPassed(false);
+    setValidationError(null);
+  }, [tokenizerForm, datasetForm, trainingForm]);
+
+  const openSettingsCategory = useCallback((category: SettingsCategory) => {
+    if (tokenizerAndTrainingPanelRef.current) {
+      tokenizerAndTrainingPanelRef.current.open = true;
+    }
+    if (datasetPanelRef.current) {
+      datasetPanelRef.current.open = true;
+    }
+
+    const targetRef =
+      category === "tokenizer"
+        ? tokenizerCategoryRef
+        : category === "dataset"
+          ? datasetCategoryRef
+          : trainingCategoryRef;
+
+    const hash = SETTINGS_CATEGORY_HASH_MAP[category];
+    if (window.location.hash !== hash) {
+      window.history.replaceState(null, "", hash);
+    }
+
+    targetRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+      inline: "nearest",
+    });
+
+    setHighlightedSettingsCategory(category);
+    if (settingsCategoryHighlightTimeoutRef.current !== null) {
+      window.clearTimeout(settingsCategoryHighlightTimeoutRef.current);
+    }
+    settingsCategoryHighlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightedSettingsCategory((previous) =>
+        previous === category ? null : previous
+      );
+    }, 1800);
+  }, []);
+
+  const handleSettingsCategoryNavigation = useCallback(
+    (category: SettingsCategory) => {
+      openSettingsCategory(category);
+    },
+    [openSettingsCategory]
+  );
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash === SETTINGS_CATEGORY_HASH_MAP.tokenizer) {
+      openSettingsCategory("tokenizer");
+      return;
+    }
+    if (hash === SETTINGS_CATEGORY_HASH_MAP.dataset) {
+      openSettingsCategory("dataset");
+      return;
+    }
+    if (hash === SETTINGS_CATEGORY_HASH_MAP.training) {
+      openSettingsCategory("training");
+    }
+  }, [openSettingsCategory]);
+
+  useEffect(() => {
+    if (!hasHydratedLocalStateRef.current) {
+      return;
+    }
+    if (
+      tokenizerBuild.error !== null ||
+      dataloaderBuild.error !== null ||
+      !tokenizerBuild.value ||
+      !dataloaderBuild.value
+    ) {
+      setIsValidating(false);
+      return;
+    }
+
+    const requestId = ++validationRequestRef.current;
+    setIsValidating(true);
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          await Promise.all([
+            validateTokenizerConfig(tokenizerBuild.value as Record<string, unknown>),
+            validateDataloaderConfig(dataloaderBuild.value as Record<string, unknown>),
+          ]);
+          if (validationRequestRef.current !== requestId) {
+            return;
+          }
+          setHasValidationPassed(true);
+          setValidationError(null);
+        } catch (error) {
+          if (validationRequestRef.current !== requestId) {
+            return;
+          }
+          const message =
+            error instanceof Error ? error.message : "Validation failed unexpectedly";
+          setHasValidationPassed(false);
+          setValidationError(message);
+        } finally {
+          if (validationRequestRef.current === requestId) {
+            setIsValidating(false);
+          }
+        }
+      })();
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    dataloaderBuild.error,
+    dataloaderBuild.value,
+    tokenizerBuild.error,
+    tokenizerBuild.value,
+  ]);
+
+  const handleManualValidate = useCallback(async () => {
+    if (!tokenizerBuild.value) {
+      const message = tokenizerBuild.error ?? "Tokenizer config is invalid";
+      setHasValidationPassed(false);
+      setValidationError(message);
+      notify("error", message, 5000);
+      return;
+    }
+    if (!dataloaderBuild.value) {
+      const message = dataloaderBuild.error ?? "Dataloader config is invalid";
+      setHasValidationPassed(false);
+      setValidationError(message);
+      notify("error", message, 5000);
+      return;
+    }
+
+    const requestId = ++validationRequestRef.current;
+    setIsValidating(true);
+
+    try {
+      await Promise.all([
+        validateTokenizerConfig(tokenizerBuild.value),
+        validateDataloaderConfig(dataloaderBuild.value),
+      ]);
+      if (validationRequestRef.current !== requestId) {
+        return;
+      }
+      setHasValidationPassed(true);
+      setValidationError(null);
+      notify("success", "Validation passed.", 3500);
+    } catch (error) {
+      if (validationRequestRef.current !== requestId) {
+        return;
+      }
+      const message =
+        error instanceof Error ? error.message : "Validation failed unexpectedly";
+      setHasValidationPassed(false);
+      setValidationError(message);
+      notify("error", message, 6000);
+    } finally {
+      if (validationRequestRef.current === requestId) {
+        setIsValidating(false);
+      }
+    }
+  }, [
+    dataloaderBuild.error,
+    dataloaderBuild.value,
+    notify,
+    tokenizerBuild.error,
+    tokenizerBuild.value,
+  ]);
 
   const updateStreamingDataset = useCallback(
     (
@@ -1417,6 +1977,22 @@ export default function Home() {
     }));
   }, []);
 
+  const removeLocalTrainFile = useCallback((localFileId: string) => {
+    setDatasetForm((previous) => ({
+      ...previous,
+      localTrainFiles: previous.localTrainFiles.filter(
+        (entry) => entry.id !== localFileId
+      ),
+    }));
+  }, []);
+
+  const clearLocalTrainFiles = useCallback(() => {
+    setDatasetForm((previous) => ({
+      ...previous,
+      localTrainFiles: [],
+    }));
+  }, []);
+
   const runPreview = useCallback(async (jobId: string, text: string) => {
     const requestId = ++previewRequestRef.current;
     setIsPreviewing(true);
@@ -1445,6 +2021,53 @@ export default function Home() {
       }
     }
   }, []);
+
+  const handleDownloadArtifact = useCallback(
+    async (event: MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+
+      if (!activeJob?.artifact_file || isDownloadingArtifact) {
+        return;
+      }
+
+      const fileName = activeJob.artifact_file;
+      setIsDownloadingArtifact(true);
+
+      try {
+        const blob = await downloadJobArtifact(activeJob.id);
+        const tauriInvoke = getTauriInvoke();
+
+        if (tauriInvoke) {
+          try {
+            const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
+            const result = await tauriInvoke("save_tokenizer_artifact", {
+              file_name: fileName,
+              bytes,
+            });
+            const savedPath =
+              typeof result === "string" && result.trim() !== "" ? result : null;
+
+            if (savedPath) {
+              notify("success", `Saved ${fileName}`, 4500);
+            }
+            return;
+          } catch {
+            // Fall back to browser-style download if the desktop command is unavailable.
+          }
+        }
+
+        triggerBlobDownload(blob, fileName);
+        notify("success", `Downloaded ${fileName}`, 4500);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to download tokenizer";
+        notify("error", message, 6500);
+      } finally {
+        setIsDownloadingArtifact(false);
+      }
+    },
+    [activeJob, isDownloadingArtifact, notify]
+  );
 
   const previewReadyJobId =
     activeJob && activeJob.status === "completed" && activeJob.artifact_file
@@ -1592,32 +2215,155 @@ export default function Home() {
     };
   }, [activeJobId, notify, refreshJobs]);
 
-  const handleTrainFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+  const uploadLocalTrainFiles = useCallback(
+    async (selectedFiles: File[]) => {
+      if (selectedFiles.length === 0) {
+        return;
+      }
 
-    notify("info", `Uploading local train file: ${file.name}`, 2500);
-    setIsUploadingTrainFile(true);
+      notify(
+        "info",
+        selectedFiles.length === 1
+          ? `Uploading local train file: ${selectedFiles[0].name}`
+          : `Uploading ${selectedFiles.length} local train files...`,
+        2500
+      );
+      setIsUploadingTrainFile(true);
 
-    try {
-      const uploadedFile = await uploadTrainFile(file);
-      setDatasetForm((previous) => ({
-        ...previous,
-        trainFilePath: uploadedFile.file_path,
-        trainFileName: uploadedFile.file_name,
-      }));
-      notify("success", `Uploaded ${uploadedFile.file_name}. Ready to validate.`);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to upload local train file";
-      notify("error", `Could not upload local train file. ${message}`, 7000);
-    } finally {
-      setIsUploadingTrainFile(false);
+      try {
+        const uploadResults = await Promise.allSettled(
+          selectedFiles.map((file) => uploadTrainFile(file))
+        );
+
+        const successfulUploads = uploadResults
+          .filter(
+            (
+              result
+            ): result is PromiseFulfilledResult<Awaited<ReturnType<typeof uploadTrainFile>>> =>
+              result.status === "fulfilled"
+          )
+          .map((result) => result.value);
+
+        if (successfulUploads.length > 0) {
+          setDatasetForm((previous) => ({
+            ...previous,
+            localTrainFiles: normalizeLocalTrainFiles([
+              ...previous.localTrainFiles,
+              ...successfulUploads.map((uploadedFile) =>
+                makeLocalTrainFileEntry({
+                  fileName: uploadedFile.file_name,
+                  filePath: uploadedFile.file_path,
+                  sizeBytes: uploadedFile.size_bytes,
+                  sizeChars: uploadedFile.size_chars,
+                })
+              ),
+            ]),
+          }));
+        }
+
+        if (successfulUploads.length > 0) {
+          notify(
+            "success",
+            successfulUploads.length === 1
+              ? `Added ${stripGeneratedUploadPrefix(successfulUploads[0].file_name)}.`
+              : `Added ${successfulUploads.length} local train files.`,
+            4500
+          );
+        }
+
+        const failedUploads = uploadResults.filter(
+          (result): result is PromiseRejectedResult => result.status === "rejected"
+        );
+        if (failedUploads.length > 0) {
+          const firstFailure = failedUploads[0];
+          const firstFailureMessage =
+            firstFailure?.reason instanceof Error
+              ? firstFailure.reason.message
+              : "Upload failed";
+          notify(
+            "error",
+            `Failed to upload ${failedUploads.length} file(s). ${firstFailureMessage}`,
+            8000
+          );
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to upload local train files";
+        notify("error", `Could not upload local train files. ${message}`, 7000);
+      } finally {
+        setIsUploadingTrainFile(false);
+      }
+    },
+    [notify]
+  );
+
+  const handleTrainFilesSelected = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = Array.from(event.target.files ?? []);
       event.target.value = "";
-    }
-  };
+      await uploadLocalTrainFiles(selectedFiles);
+    },
+    [uploadLocalTrainFiles]
+  );
+
+  const handleLocalTrainFilesDragEnter = useCallback(
+    (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (controlsDisabled) {
+        return;
+      }
+      if (!Array.from(event.dataTransfer.types).includes("Files")) {
+        return;
+      }
+      localFileDragDepthRef.current += 1;
+      setIsDraggingTrainFiles(true);
+    },
+    [controlsDisabled]
+  );
+
+  const handleLocalTrainFilesDragOver = useCallback(
+    (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (controlsDisabled) {
+        return;
+      }
+      event.dataTransfer.dropEffect = "copy";
+      setIsDraggingTrainFiles(true);
+    },
+    [controlsDisabled]
+  );
+
+  const handleLocalTrainFilesDragLeave = useCallback(
+    (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (controlsDisabled) {
+        return;
+      }
+      localFileDragDepthRef.current = Math.max(0, localFileDragDepthRef.current - 1);
+      if (localFileDragDepthRef.current === 0) {
+        setIsDraggingTrainFiles(false);
+      }
+    },
+    [controlsDisabled]
+  );
+
+  const handleLocalTrainFilesDrop = useCallback(
+    async (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      localFileDragDepthRef.current = 0;
+      setIsDraggingTrainFiles(false);
+      if (controlsDisabled) {
+        return;
+      }
+      const droppedFiles = Array.from(event.dataTransfer.files ?? []);
+      await uploadLocalTrainFiles(droppedFiles);
+    },
+    [controlsDisabled, uploadLocalTrainFiles]
+  );
 
   const handleLoadStreamingTemplate = async () => {
     notify("info", "Loading streaming dataset template...", 2500);
@@ -1654,38 +2400,14 @@ export default function Home() {
     }
   };
 
-  const handleValidate = async () => {
-    notify("info", "Validating configs with API...", 2500);
-    setIsValidating(true);
-
-    try {
-      if (!tokenizerBuild.value) {
-        throw new Error(tokenizerBuild.error ?? "Tokenizer config is invalid");
-      }
-      if (!dataloaderBuild.value) {
-        throw new Error(dataloaderBuild.error ?? "Dataloader config is invalid");
-      }
-
-      await Promise.all([
-        validateTokenizerConfig(tokenizerBuild.value),
-        validateDataloaderConfig(dataloaderBuild.value),
-      ]);
-
-      notify("success", "Validation passed. You can start training.");
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Validation failed unexpectedly";
-      notify("error", `Validation failed. ${message}`, 7000);
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
   const handleTrain = async () => {
     notify("info", "Submitting training job...", 2500);
     setIsSubmitting(true);
 
     try {
+      if (!hasValidationPassed) {
+        throw new Error("Automatic validation must pass before starting training");
+      }
       if (!tokenizerBuild.value) {
         throw new Error(tokenizerBuild.error ?? "Tokenizer config is invalid");
       }
@@ -1714,6 +2436,47 @@ export default function Home() {
       setIsSubmitting(false);
     }
   };
+
+  const localTrainFileCount = datasetForm.localTrainFiles.length;
+  const localTrainKnownCharCount = datasetForm.localTrainFiles.reduce(
+    (sum, entry) => sum + (entry.sizeChars ?? 0),
+    0
+  );
+  const localTrainKnownCharLabel =
+    localTrainKnownCharCount > 0 ? formatCharCount(localTrainKnownCharCount) : null;
+  const localTrainFilesHint =
+    localTrainFileCount === 0
+      ? "Add one or more local files, or switch to streaming datasets in settings."
+      : datasetForm.sourceMode === "local_file"
+        ? `${localTrainFileCount} file${localTrainFileCount === 1 ? "" : "s"} ready${
+            localTrainKnownCharLabel ? ` (${localTrainKnownCharLabel} chars)` : ""
+          }.`
+        : `${localTrainFileCount} local file${
+            localTrainFileCount === 1 ? "" : "s"
+          } stored${
+            localTrainKnownCharLabel ? ` (${localTrainKnownCharLabel} chars)` : ""
+          }. Switch dataset source to Local files to use them.`;
+  const tokenizerReady = tokenizerBuild.error === null;
+  const datasetReady = datasetBuild.error === null;
+  const trainingRuntimeReady = trainingRuntimeBuild.error === null;
+  const preflightReady =
+    tokenizerBuild.error === null &&
+    dataloaderBuild.error === null &&
+    trainingRuntimeBuild.error === null;
+  const hasTrainingInProgress =
+    activeJob !== null &&
+    activeJob.status !== "completed" &&
+    activeJob.status !== "failed";
+  const trainingCompleted = activeJob?.status === "completed";
+  const canStartTraining =
+    hasValidationPassed &&
+    !isValidating &&
+    !controlsDisabled &&
+    !hasTrainingInProgress;
+  const activeThresholds =
+    trainingRuntimeBuild.value && Array.isArray(trainingRuntimeBuild.value.thresholds)
+      ? (trainingRuntimeBuild.value.thresholds as number[]).join(", ")
+      : null;
 
   return (
     <main className="studioRoot">
@@ -1764,110 +2527,161 @@ export default function Home() {
         <div className="panelHead actionDeckHead">
           <div>
             <p className="panelEyebrow">Top Workflow</p>
-            <h2>Train, evaluate, and test</h2>
+            <h2>Steps to train the tokenizer</h2>
             <p className="panelCopy">
-              Upload data, validate configs, then start training. Results and
-              tokenizer testing update below.
+              Complete each step in order. A step turns green only when it is ready.
             </p>
           </div>
-          <div className="actionButtonRow">
+        </div>
+
+        <div className="workflowStepGrid" role="list" aria-label="Tokenizer training steps">
+          <article
+            className={`workflowStepTile ${
+              tokenizerReady ? "workflowStepTile-ready" : "workflowStepTile-waiting"
+            }`}
+            role="listitem"
+          >
+            <p className="workflowStepTitle">Step 1 - Choose tokenizer config</p>
+            <strong>{tokenizerReady ? "Ready" : "Waiting for configuration"}</strong>
+            <p className="fieldNote">
+              {tokenizerBuild.error ??
+                `${tokenizerForm.tokenizerType.toUpperCase()} tokenizer configured.`}
+            </p>
             <button
               type="button"
-              className="primaryButton"
+              className="workflowStepLink workflowStepAction"
+              onClick={() => handleSettingsCategoryNavigation("tokenizer")}
+            >
+              Open tokenizer settings
+            </button>
+          </article>
+
+          <article
+            className={`workflowStepTile ${
+              datasetReady ? "workflowStepTile-ready" : "workflowStepTile-waiting"
+            }`}
+            role="listitem"
+          >
+            <p className="workflowStepTitle">Step 2 - Choose dataset</p>
+            <strong>{datasetReady ? "Ready" : "Waiting for configuration"}</strong>
+            <p className="fieldNote">
+              {datasetBuild.error ??
+                (datasetForm.sourceMode === "local_file"
+                  ? localTrainFilesHint
+                  : `${datasetForm.streamingDatasets.length} streaming dataset${
+                      datasetForm.streamingDatasets.length === 1 ? "" : "s"
+                    } configured.`)}
+            </p>
+            <button
+              type="button"
+              className="workflowStepLink workflowStepAction"
+              onClick={() => handleSettingsCategoryNavigation("dataset")}
+            >
+              Open dataset settings
+            </button>
+          </article>
+
+          <article
+            className={`workflowStepTile ${
+              trainingRuntimeReady
+                ? "workflowStepTile-ready"
+                : "workflowStepTile-waiting"
+            }`}
+            role="listitem"
+          >
+            <p className="workflowStepTitle">Step 3 - Configure training run</p>
+            <strong>{trainingRuntimeReady ? "Ready" : "Waiting for configuration"}</strong>
+            <p className="fieldNote">
+              {trainingRuntimeBuild.error ??
+                `Budget: ${trainingForm.budgetLimit} ${trainingForm.budgetUnit}, thresholds: ${activeThresholds}.`}
+            </p>
+            <button
+              type="button"
+              className="workflowStepLink workflowStepAction"
+              onClick={() => handleSettingsCategoryNavigation("training")}
+            >
+              Open training settings
+            </button>
+          </article>
+
+          <article
+            className={`workflowStepTile ${
+              hasValidationPassed
+                ? "workflowStepTile-ready"
+                : isValidating
+                  ? "workflowStepTile-inProgress"
+                  : "workflowStepTile-waiting"
+            }`}
+            role="listitem"
+          >
+            <p className="workflowStepTitle">Step 4 - Validate configs</p>
+            <strong>
+              {hasValidationPassed
+                ? "Ready"
+                : isValidating
+                  ? "In progress"
+                  : "Waiting for configuration"}
+            </strong>
+            <p className="fieldNote">
+              {hasValidationPassed
+                ? "Validation passed for tokenizer and dataloader configs."
+                : isValidating
+                  ? "Validating latest configuration changes automatically..."
+                  : preflightReady
+                    ? validationError ?? "Waiting for the next validation cycle."
+                    : "Complete steps 1-3 first. Validation runs automatically."}
+            </p>
+            <button
+              type="button"
+              className="secondaryButton workflowStepAction workflowStepButtonCompact"
+              onClick={handleManualValidate}
+              disabled={controlsDisabled || !preflightReady || isValidating}
+            >
+              {isValidating ? "Validating..." : "Validate now"}
+            </button>
+          </article>
+
+          <article
+            className={`workflowStepTile ${
+              trainingCompleted
+                ? "workflowStepTile-ready"
+                : hasTrainingInProgress
+                  ? "workflowStepTile-inProgress"
+                  : "workflowStepTile-waiting"
+            }`}
+            role="listitem"
+          >
+            <p className="workflowStepTitle">Step 5 - Start training</p>
+            <strong>
+              {trainingCompleted
+                ? "Ready (trained)"
+                : hasTrainingInProgress
+                  ? "In progress"
+                  : "Not ready"}
+            </strong>
+            <p className="fieldNote">
+              {trainingCompleted
+                ? "Latest training job completed. Artifact is ready."
+                : hasTrainingInProgress
+                  ? `Current job is ${describeJobState(activeJob?.state ?? "running").toLowerCase()}.`
+                  : hasValidationPassed
+                    ? "Validation passed. Start training to complete this step."
+                    : isValidating
+                      ? "Waiting for automatic validation to finish."
+                      : "Automatic validation must pass to unlock training."}
+            </p>
+            <button
+              type="button"
+              className="primaryButton workflowStepAction"
               onClick={handleTrain}
-              disabled={
-                isSubmitting ||
-                isValidating ||
-                isUploadingTrainFile
-              }
+              disabled={!canStartTraining}
             >
-              {isSubmitting ? "Starting..." : "Start Training"}
+              {hasTrainingInProgress
+                ? "Training..."
+                : isSubmitting
+                  ? "Starting..."
+                  : "Start Training"}
             </button>
-            <button
-              type="button"
-              className="secondaryButton"
-              onClick={handleValidate}
-              disabled={
-                isSubmitting ||
-                isValidating ||
-                isUploadingTrainFile
-              }
-            >
-              {isValidating ? "Validating..." : "Validate"}
-            </button>
-          </div>
-        </div>
-
-        <div className="actionInputGrid">
-          <label className="uploadTile">
-            Train file
-            <input
-              type="file"
-              onChange={handleTrainFileSelected}
-              disabled={controlsDisabled}
-            />
-            <span className="fieldNote">
-              {datasetForm.trainFilePath === ""
-                ? "Choose a local file or switch to streaming datasets in settings."
-                : "Train file uploaded."}
-            </span>
-          </label>
-
-          <div className="uploadTile">
-            Evaluation source
-            <span className="fieldNote">
-              Evaluation automatically runs on the same training dataset config.
-            </span>
-          </div>
-
-          <label className="uploadTile">
-            Evaluation thresholds
-            <input
-              value={trainingForm.evaluationThresholds}
-              onChange={(event) =>
-                setTrainingForm((previous) => ({
-                  ...previous,
-                  evaluationThresholds: sanitizeThresholdsInput(event.target.value),
-                }))
-              }
-              placeholder="5,10,25"
-            />
-            <span className="fieldNote">Comma-separated integers.</span>
-          </label>
-        </div>
-
-        <div className="statusStrip">
-          <article
-            className={`statusCard ${
-              tokenizerBuild.error ? "statusCard-bad" : "statusCard-good"
-            }`}
-          >
-            <span>Tokenizer config</span>
-            <strong>
-              {tokenizerBuild.error ? "Needs fixes" : "Ready"}
-            </strong>
-          </article>
-          <article
-            className={`statusCard ${
-              dataloaderBuild.error ? "statusCard-bad" : "statusCard-good"
-            }`}
-          >
-            <span>Dataloader config</span>
-            <strong>
-              {dataloaderBuild.error ? "Needs fixes" : "Ready"}
-            </strong>
-          </article>
-          <article className="statusCard statusCard-neutral">
-            <span>Dataset mode</span>
-            <strong>
-              {datasetForm.sourceMode === "local_file" ? "Local file" : "Streaming HF"}
-            </strong>
-          </article>
-          <article className="statusCard statusCard-neutral">
-            <span>Evaluation source</span>
-            <strong>
-              Training dataset (same config)
-            </strong>
           </article>
         </div>
       </section>
@@ -2086,10 +2900,14 @@ export default function Home() {
                 <a
                   className="downloadLink"
                   href={artifactDownloadUrl(activeJob.id)}
-                  target="_blank"
+                  download={activeJob.artifact_file}
+                  onClick={(event) => void handleDownloadArtifact(event)}
+                  aria-disabled={isDownloadingArtifact}
                   rel="noreferrer"
                 >
-                  Download {activeJob.artifact_file}
+                  {isDownloadingArtifact
+                    ? `Downloading ${activeJob.artifact_file}...`
+                    : `Download ${activeJob.artifact_file}`}
                 </a>
               ) : null}
 
@@ -2152,10 +2970,18 @@ export default function Home() {
           </div>
         </div>
 
-        <details className="settingsPanel" open>
+        <details className="settingsPanel" open ref={tokenizerAndTrainingPanelRef}>
           <summary>Tokenizer and training budget</summary>
           <div className="settingsGrid">
-            <div className="settingsGroup">
+            <div
+              id="settings-tokenizer"
+              ref={tokenizerCategoryRef}
+              className={`settingsGroup settingsCategoryAnchor ${
+                highlightedSettingsCategory === "tokenizer"
+                  ? "settingsCategoryAnchor-highlight"
+                  : ""
+              }`}
+            >
               <div className="settingsGroupHeader">
                 <h3>Tokenizer core</h3>
                 <p className="settingsGroupHint">
@@ -2292,7 +3118,15 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="settingsGroup">
+            <div
+              id="settings-training"
+              ref={trainingCategoryRef}
+              className={`settingsGroup settingsCategoryAnchor ${
+                highlightedSettingsCategory === "training"
+                  ? "settingsCategoryAnchor-highlight"
+                  : ""
+              }`}
+            >
               <div className="settingsGroupHeader">
                 <h3>Training budget</h3>
                 <p className="settingsGroupHint">
@@ -2351,9 +3185,18 @@ export default function Home() {
           </div>
         </details>
 
-        <details className="settingsPanel" open>
+        <details className="settingsPanel" open ref={datasetPanelRef}>
           <summary>Core dataset settings</summary>
           <div className="settingsGrid">
+            <div
+              id="settings-dataset"
+              ref={datasetCategoryRef}
+              className={`settingsCategoryAnchor ${
+                highlightedSettingsCategory === "dataset"
+                  ? "settingsCategoryAnchor-highlight"
+                  : ""
+              }`}
+            >
             <div className="sourceModeRow">
               <span>Dataset source</span>
               <div className="modeSwitch">
@@ -2372,7 +3215,7 @@ export default function Home() {
                     }))
                   }
                 >
-                  Local file
+                  Local files
                 </button>
                 <button
                   type="button"
@@ -2398,69 +3241,91 @@ export default function Home() {
             </div>
 
             {datasetForm.sourceMode === "local_file" ? (
-              <>
-                <div className="fieldGrid">
-                  <label>
-                    Dataset builder
-                    <input
-                      value={datasetForm.name}
-                      onChange={(event) =>
-                        setDatasetForm((previous) => ({
-                          ...previous,
-                          name: event.target.value,
-                        }))
-                      }
-                      placeholder="text"
-                    />
-                  </label>
-
-                  <label>
-                    Split
-                    <input
-                      value={datasetForm.split}
-                      onChange={(event) =>
-                        setDatasetForm((previous) => ({
-                          ...previous,
-                          split: event.target.value,
-                        }))
-                      }
-                      placeholder="train"
-                    />
-                  </label>
-
-                  <label className="fullWidthField">
-                    Text columns
-                    <input
-                      value={datasetForm.textColumns}
-                      onChange={(event) =>
-                        setDatasetForm((previous) => ({
-                          ...previous,
-                          textColumns: event.target.value,
-                        }))
-                      }
-                      placeholder="text"
-                    />
-                  </label>
-                </div>
-
-                <details className="subPanel">
-                  <summary>Advanced local dataset options</summary>
-                  <div className="fieldGrid">
-                    <label>
-                      Dataset config (optional)
-                      <input
-                        value={datasetForm.config}
-                        onChange={(event) =>
-                          setDatasetForm((previous) => ({
-                            ...previous,
-                            config: event.target.value,
-                          }))
-                        }
-                      />
-                    </label>
+              <div className="datasetConfigurator">
+                <div
+                  className={`localFileManager ${
+                    isDraggingTrainFiles ? "localFileManager-dragging" : ""
+                  }`}
+                  onDragEnter={handleLocalTrainFilesDragEnter}
+                  onDragOver={handleLocalTrainFilesDragOver}
+                  onDragLeave={handleLocalTrainFilesDragLeave}
+                  onDrop={handleLocalTrainFilesDrop}
+                >
+                  <div className="localFileManagerHeader">
+                    <div>
+                      <strong>Local training files</strong>
+                      <p>Training and evaluation use this same file set.</p>
+                    </div>
+                    <div className="localFileHeaderActions">
+                      <div className="localFileHeaderButtons">
+                        <label
+                          className={`secondaryButton localFileUploadButton localFileHeaderButton ${
+                            controlsDisabled ? "localFileUploadButton-disabled" : ""
+                          }`}
+                          aria-disabled={controlsDisabled}
+                        >
+                          {isUploadingTrainFile ? "Uploading..." : "Add files"}
+                          <input
+                            type="file"
+                            multiple
+                            onChange={handleTrainFilesSelected}
+                            disabled={controlsDisabled}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="textButton localFileHeaderButton"
+                          onClick={clearLocalTrainFiles}
+                          disabled={controlsDisabled || localTrainFileCount === 0}
+                        >
+                          Remove all
+                        </button>
+                      </div>
+                      <span className="localFileCount">
+                        {localTrainFileCount} file{localTrainFileCount === 1 ? "" : "s"}
+                      </span>
+                    </div>
                   </div>
-                </details>
-              </>
+
+                  {localTrainFileCount === 0 ? (
+                    <p className="filterEmpty">
+                      No local files added yet. Add one or more files to train.
+                    </p>
+                  ) : (
+                    <ul className="localFileList">
+                      {datasetForm.localTrainFiles.map((entry) => {
+                        const fileCharLabel = formatCharCount(entry.sizeChars);
+                        return (
+                          <li key={entry.id} className="localFileItem">
+                            <strong className="localFileName" title={entry.fileName}>
+                              {entry.fileName}
+                            </strong>
+                            <div className="localFileActions">
+                              <span className="localFileStat">
+                                {fileCharLabel ? `${fileCharLabel} chars` : "char count pending"}
+                              </span>
+                              <button
+                                type="button"
+                                className="textButton localFileRemoveIconButton"
+                                onClick={() => removeLocalTrainFile(entry.id)}
+                                disabled={controlsDisabled}
+                                aria-label={`Remove ${entry.fileName}`}
+                                title={`Remove ${entry.fileName}`}
+                              >
+                                <FiX aria-hidden="true" />
+                              </button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+
+                  <span className="fieldNote">
+                    Files are deduplicated by stored path.
+                  </span>
+                </div>
+              </div>
             ) : (
               <div className="datasetConfigurator">
                 <label className="fullWidthField">
@@ -2689,6 +3554,7 @@ export default function Home() {
             <p className={`hint ${dataloaderBuild.error ? "hint-error" : "hint-ok"}`}>
               {dataloaderBuild.error ?? "Dataloader config looks valid."}
             </p>
+            </div>
           </div>
         </details>
 

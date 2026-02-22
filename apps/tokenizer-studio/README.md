@@ -1,23 +1,26 @@
-# Tokenizer Studio (Local)
+# Tokenizer Studio
 
-A local full-stack app for training the repository's fully configurable tokenizer:
+Tokenizer Studio is a local-first tokenizer training product:
 
-- `web/`: Next.js frontend (configuration UI + job monitoring)
-- `api/`: FastAPI backend (validation + training job execution)
+- `web/`: Next.js frontend (configuration UI + job monitoring).
+- `api/`: FastAPI backend (validation + training sidecar service).
+- `desktop/`: Tauri shell that launches the local backend sidecar for non-technical desktop use.
 
-## 1. Backend (FastAPI)
+## Developer Local Run
+
+### 1. Backend (FastAPI)
 
 ```bash
 cd apps/tokenizer-studio/api
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 API base URL: `http://127.0.0.1:8000/api/v1`
 
-## 2. Frontend (Next.js)
+### 2. Frontend (Next.js)
 
 ```bash
 cd apps/tokenizer-studio/web
@@ -28,20 +31,49 @@ npm run dev
 
 Frontend URL: `http://127.0.0.1:3000`
 
-## 3. Typical Workflow
+## Production/Desktop Runtime Notes
 
-1. Open the frontend.
-2. Configure tokenizer + dataloader in Form Builder mode.
-3. Click **Validate Configs**.
-4. Click **Start Training**.
-5. Monitor progress and download the tokenizer JSON artifact when complete.
+- Backend defaults to localhost-only (`127.0.0.1`) with configurable port.
+- API exposes both `/health` and `/api/v1/health`.
+- Built frontend assets can be served directly by backend (`TOKENIZER_STUDIO_WEB_DIST_DIR`).
+- Storage defaults are OS app-data directories:
+  - macOS: `~/Library/Application Support/TokenizerStudio/`
+  - Windows: `%AppData%\TokenizerStudio\`
+  - Linux: `~/.local/share/TokenizerStudio/`
+- Default subfolders:
+  - `db/`
+  - `uploads/`
+  - `artifacts/tokenizers/`
+  - `logs/`
+  - `cache/huggingface/`
 
-## Notes
+Environment overrides are documented in `apps/tokenizer-studio/api/.env.example`.
 
-- Backend jobs train tokenizers with the existing modules under `tokenizer/`.
-- Tokenizer evaluation always runs on the same dataset configuration used for training.
-- API config templates and schemas are served from `api/templates/`.
-- Artifacts are saved by default to `apps/tokenizer-studio/api/artifacts/tokenizers/`.
-- Training jobs and upload metadata are persisted in SQLite at `apps/tokenizer-studio/api/data/tokenizer_studio.db` by default.
-- Override output/storage behavior with environment variables in `api/.env.example` (relative paths are resolved from `api/`).
-- If you see `ImportError: cannot import name 'load_dataset' from 'datasets'`, you are likely using a different Python than your project venv. Use `python -m uvicorn ...` from the activated environment.
+## Desktop Build Pipeline
+
+Build scripts live in `scripts/desktop/`.
+
+Example (macOS arm64):
+
+```bash
+scripts/desktop/build_web.sh
+scripts/desktop/build_runtime_macos.sh macos-arm64
+scripts/desktop/smoke_test_runtime.sh macos-arm64
+cd apps/tokenizer-studio/desktop
+npm install
+npm run tauri build
+```
+
+One-command pipeline:
+
+```bash
+scripts/desktop/build_desktop.sh macos-arm64
+```
+
+## Typical Workflow In App
+
+1. Configure tokenizer + dataset settings.
+2. Validate configs.
+3. Start training.
+4. Monitor progress and tokenizer stats.
+5. Download tokenizer JSON artifact.
