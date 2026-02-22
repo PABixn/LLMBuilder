@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tokenizer Studio</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="boot-shell">
+      <section class="card">
+        <h1>Tokenizer Studio</h1>
+        <p id="status" class="status">Starting local runtime...</p>
+        <p id="details" class="details"></p>
+        <pre id="error" class="error" hidden></pre>
+        <div class="actions">
+          <button id="retry" type="button" hidden>Retry Startup</button>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

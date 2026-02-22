@@ -1,0 +1,27 @@
+[package]
+name = "tokenizer_studio_desktop"
+version = "0.1.0"
+description = "Tokenizer Studio desktop shell"
+authors = ["Tokenizer Studio"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "=2.5.5", features = [] }
+
+[features]
+default = []
+runtime-download = ["dep:flate2", "dep:sha2", "dep:tar"]
+
+[dependencies]
+flate2 = { version = "1.1", optional = true }
+libc = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+sha2 = { version = "0.10", optional = true }
+tar = { version = "0.4", optional = true }
+tauri = { version = "=2.10.2", features = [] }
+ureq = { version = "2.12.1", default-features = true, features = ["json"] }
+wait-timeout = "0.2"
+# Pin transitive time stack for rustc 1.85 compatibility.
+time = "=0.3.45"
+time-core = "=0.1.7"
+time-macros = "=0.2.25"
