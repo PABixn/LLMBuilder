@@ -1,7 +1,6 @@
 import type {
   ChangeEvent,
   Dispatch,
-  DragEvent,
   RefObject,
   SetStateAction,
 } from "react";
@@ -25,18 +24,16 @@ import { apiBaseUrl } from "../../../lib/api";
 import type { ModelConfig } from "../../../lib/defaults";
 
 import { BuilderPanel, type BuilderPanelProps } from "./builder/BuilderPanel";
-import { PaletteTile, StatusCard } from "./primitives";
+import { StatusCard } from "./primitives";
 import type {
   BackendAnalysisState,
   BackendValidationState,
   BuilderMetrics,
   Diagnostic,
   NoticeState,
-  StudioComponentKind,
   StudioDocument,
   ThemeMode,
 } from "../types";
-import { labelForComponentKind } from "../utils/document";
 import { formatBytes, formatCompactCount, formatTimeAgo, integerInputValue, parseIntegerInput } from "../utils/format";
 
 export interface StudioPageViewProps extends BuilderPanelProps {
@@ -60,7 +57,6 @@ export interface StudioPageViewProps extends BuilderPanelProps {
     value: number
   ) => void;
   setDocumentState: Dispatch<SetStateAction<StudioDocument>>;
-  beginDragPaletteComponent: (event: DragEvent<HTMLDivElement>, componentKind: StudioComponentKind) => void;
   clearDragState: () => void;
   diagnostics: Diagnostic[];
   localErrors: Diagnostic[];
@@ -94,7 +90,6 @@ export function StudioPageView({
   documentState,
   updateBaseField,
   setDocumentState,
-  beginDragPaletteComponent,
   clearDragState,
   diagnostics,
   localErrors,
@@ -127,8 +122,51 @@ export function StudioPageView({
     moduleInventoryEntries.length - visibleModuleInventoryEntries.length
   );
 
+  function maybeSelectZeroNumberInput(target: EventTarget | null): void {
+    if (!(target instanceof HTMLInputElement) || target.type !== "number") {
+      return;
+    }
+    if (target.value.trim() === "") {
+      return;
+    }
+    const numericValue = Number(target.value);
+    if (!Number.isFinite(numericValue) || numericValue !== 0) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      if (document.activeElement === target) {
+        target.select();
+      }
+    });
+  }
+
+  function maybeSelectForcedZeroAfterEmpty(target: EventTarget | null): void {
+    if (!(target instanceof HTMLInputElement) || target.type !== "number") {
+      return;
+    }
+    if (target.value !== "") {
+      return;
+    }
+    requestAnimationFrame(() => {
+      if (document.activeElement !== target) {
+        return;
+      }
+      if (target.value.trim() !== "") {
+        const numericValue = Number(target.value);
+        if (Number.isFinite(numericValue) && numericValue === 0) {
+          target.select();
+        }
+      }
+    });
+  }
+
   return (
-    <main className="studioRoot">
+    <main
+      className="studioRoot"
+      onFocusCapture={(event) => maybeSelectZeroNumberInput(event.target)}
+      onClickCapture={(event) => maybeSelectZeroNumberInput(event.target)}
+      onChangeCapture={(event) => maybeSelectForcedZeroAfterEmpty(event.target)}
+    >
       <nav className="studioNav" aria-label="LLM Studio navigation">
         <div className="studioNavBrand">
           <span className="studioNavDot" />
@@ -168,7 +206,7 @@ export function StudioPageView({
             <p className="panelEyebrow">Visual /model Designer</p>
             <h1>Compose transformer blocks, validate live, export clean JSON.</h1>
             <p className="panelCopy">
-              Build `{"/model"}` configs using draggable block components and nested MLP step editors.
+              Build `{"/model"}` configs using clickable block insertion rails, draggable components, and nested MLP step editors.
               LLM Studio keeps a local semantic validator active even when the backend validator is offline.
             </p>
           </div>
@@ -303,51 +341,6 @@ export function StudioPageView({
           </div>
         </section>
 
-        <section className="panelCard">
-          <div className="panelHead">
-            <div>
-              <p className="panelEyebrow">Palette</p>
-              <h2>Drag components into blocks</h2>
-              <p className="panelCopy">
-                Use native drag-and-drop to attach components to any block row or reorder existing components.
-              </p>
-            </div>
-          </div>
-          <div className="paletteGrid">
-            {([
-              {
-                kind: "attention",
-                subtitle: "Self-attention with n_head / n_kv_head",
-                colorClass: "tone-attention",
-              },
-              {
-                kind: "mlp",
-                subtitle: "Configurable MLP with nested sequence editor",
-                colorClass: "tone-mlp",
-              },
-              {
-                kind: "norm",
-                subtitle: "LayerNorm or RMSNorm (optional learnable gamma)",
-                colorClass: "tone-norm",
-              },
-              {
-                kind: "activation",
-                subtitle: "Standalone activation block component",
-                colorClass: "tone-activation",
-              },
-            ] as const).map((entry) => (
-              <PaletteTile
-                key={entry.kind}
-                title={labelForComponentKind(entry.kind)}
-                subtitle={entry.subtitle}
-                colorClass={entry.colorClass}
-                draggable
-                onDragStart={(event) => beginDragPaletteComponent(event, entry.kind)}
-                onDragEnd={clearDragState}
-              />
-            ))}
-          </div>
-        </section>
       </div>
 
 

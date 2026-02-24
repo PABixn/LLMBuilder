@@ -110,8 +110,13 @@
     justify-content: flex-end;
   }
 
-  .mlpSequenceList > .dropSlot {
-    flex-basis: 18px;
+  .builderPanel .fieldGrid.compact.mlpEditorFields {
+    grid-template-columns: minmax(0, 160px);
+  }
+
+  .mlpStepInsertSlot {
+    min-height: 28px;
+    padding-inline: 7px;
   }
 
   .statusGrid {

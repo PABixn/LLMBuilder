@@ -10,6 +10,7 @@ import type {
 export type ThemeMode = "white" | "dark";
 export type StudioComponentKind = "attention" | "mlp" | "norm" | "activation";
 export type MlpStepKind = "linear" | "norm" | "activation";
+export type BlockInsertPreset = "default" | "empty";
 export type DiagnosticLevel = "error" | "warning" | "info";
 export type DiagnosticSource = "local" | "backend";
 export type NoticeTone = "info" | "success" | "error";
@@ -138,10 +139,6 @@ export type DragPayload =
   | {
       kind: "palette-component";
       componentKind: StudioComponentKind;
-    }
-  | {
-      kind: "block";
-      blockId: string;
     }
   | {
       kind: "block-component";

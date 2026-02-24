@@ -33,13 +33,15 @@ export function PaletteTile({
   draggable,
   onDragStart,
   onDragEnd,
+  hint,
 }: {
   title: string;
   subtitle: string;
   colorClass: string;
   draggable: boolean;
-  onDragStart: (event: DragEvent<HTMLDivElement>) => void;
-  onDragEnd: () => void;
+  onDragStart?: (event: DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: () => void;
+  hint?: string;
 }) {
   return (
     <div
@@ -50,7 +52,7 @@ export function PaletteTile({
     >
       <div className="paletteTileTitle">{title}</div>
       <div className="paletteTileSubtitle">{subtitle}</div>
-      <div className="paletteTileHint">Drag to canvas</div>
+      <div className="paletteTileHint">{hint ?? (draggable ? "Drag to canvas" : "Add from slot menu")}</div>
     </div>
   );
 }

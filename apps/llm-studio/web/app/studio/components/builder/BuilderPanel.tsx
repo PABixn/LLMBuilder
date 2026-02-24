@@ -1,5 +1,6 @@
-import type { DragEvent, ReactNode } from "react";
-import { Fragment } from "react";
+import type { DragEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent, ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   FiChevronDown,
   FiChevronRight,
@@ -12,13 +13,14 @@ import {
 
 import { ACTIVATION_TYPES, type ActivationType, type NormConfig } from "../../../../lib/defaults";
 
-import { DropSlot, PaletteTile } from "../primitives";
 import type {
+  BlockInsertPreset,
   BuilderMetrics,
   ConsecutiveBlockGroup,
   MlpStepKind,
   StudioBlock,
   StudioComponent,
+  StudioComponentKind,
   StudioDocument,
   StudioMlpStep,
 } from "../../types";
@@ -55,6 +57,17 @@ export interface BuilderPanelProps {
   deleteBlock: (blockId: string) => void;
   removeComponent: (blockId: string, componentId: string) => void;
   removeMlpStep: (blockId: string, componentId: string, stepId: string) => void;
+  insertComponentAt: (
+    targetBlockId: string,
+    insertIndex: number,
+    componentKind: StudioComponentKind
+  ) => void;
+  insertMlpStepAt: (
+    targetBlockId: string,
+    targetComponentId: string,
+    insertIndex: number,
+    stepKind: MlpStepKind
+  ) => void;
   updateComponent: (
     blockId: string,
     componentId: string,
@@ -66,13 +79,12 @@ export interface BuilderPanelProps {
     stepId: string,
     updater: (step: StudioMlpStep) => StudioMlpStep
   ) => void;
-  beginDragBlock: (event: DragEvent<HTMLDivElement>, blockId: string) => void;
+  insertBlockAt: (insertIndex: number, preset: BlockInsertPreset) => void;
   beginDragComponent: (
     event: DragEvent<HTMLDivElement>,
     fromBlockId: string,
     componentId: string
   ) => void;
-  beginDragPaletteMlpStep: (event: DragEvent<HTMLDivElement>, stepKind: MlpStepKind) => void;
   beginDragMlpStep: (
     event: DragEvent<HTMLDivElement>,
     fromBlockId: string,
@@ -81,7 +93,6 @@ export interface BuilderPanelProps {
   ) => void;
   clearDragState: () => void;
   markDropTarget: (event: DragEvent<HTMLDivElement>, key: string) => void;
-  handleDropBlock: (event: DragEvent<HTMLDivElement>, insertIndex: number) => void;
   handleDropComponent: (
     event: DragEvent<HTMLDivElement>,
     targetBlockId: string,
@@ -94,6 +105,22 @@ export interface BuilderPanelProps {
     insertIndex: number
   ) => void;
 }
+
+type InsertMenuVariant = "rail" | "inline";
+
+type InsertMenuAction = {
+  id: string;
+  label: string;
+  onSelect: () => void;
+};
+
+type OpenInsertMenu = {
+  key: string;
+  title: string;
+  variant: InsertMenuVariant;
+  anchorEl: HTMLButtonElement;
+  items: InsertMenuAction[];
+};
 
 export function BuilderPanel({
   documentState,
@@ -113,18 +140,270 @@ export function BuilderPanel({
   deleteBlock,
   removeComponent,
   removeMlpStep,
+  insertComponentAt,
+  insertMlpStepAt,
   updateComponent,
   updateMlpStep,
-  beginDragBlock,
+  insertBlockAt,
   beginDragComponent,
-  beginDragPaletteMlpStep,
   beginDragMlpStep,
   clearDragState,
   markDropTarget,
-  handleDropBlock,
   handleDropComponent,
   handleDropMlpStep,
 }: BuilderPanelProps) {
+  const [openInsertMenu, setOpenInsertMenu] = useState<OpenInsertMenu | null>(null);
+  const [insertMenuPosition, setInsertMenuPosition] = useState<{ left: number; top: number } | null>(
+    null
+  );
+  const insertMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (openInsertMenu === null) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent): void {
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-insert-slot]")) {
+        return;
+      }
+      closeInsertMenu();
+    }
+
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === "Escape") {
+        closeInsertMenu();
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [openInsertMenu]);
+
+  useLayoutEffect(() => {
+    if (!openInsertMenu || typeof window === "undefined") {
+      setInsertMenuPosition(null);
+      return;
+    }
+
+    let rafId = 0;
+
+    const updatePosition = () => {
+      const anchorEl = openInsertMenu.anchorEl;
+      if (!anchorEl.isConnected || !document.body.contains(anchorEl)) {
+        setOpenInsertMenu(null);
+        setInsertMenuPosition(null);
+        return;
+      }
+
+      const anchorRect = anchorEl.getBoundingClientRect();
+      const menuRect = insertMenuRef.current?.getBoundingClientRect();
+      const menuWidth = menuRect?.width ?? (openInsertMenu.variant === "rail" ? 204 : 156);
+      const menuHeight = menuRect?.height ?? 180;
+
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const gap = 8;
+      const margin = 8;
+
+      let left = 0;
+      let top = 0;
+
+      if (openInsertMenu.variant === "rail") {
+        const preferredRight = anchorRect.right + gap;
+        const fallbackLeft = anchorRect.left - menuWidth - gap;
+        left = preferredRight + menuWidth <= viewportWidth - margin ? preferredRight : fallbackLeft;
+        top = anchorRect.top + 8;
+      } else {
+        left = anchorRect.left + anchorRect.width / 2 - menuWidth / 2;
+        const belowTop = anchorRect.bottom + 6;
+        const aboveTop = anchorRect.top - menuHeight - 6;
+        top =
+          belowTop + menuHeight <= viewportHeight - margin || aboveTop < margin ? belowTop : aboveTop;
+      }
+
+      left = Math.min(Math.max(left, margin), viewportWidth - menuWidth - margin);
+      top = Math.min(Math.max(top, margin), viewportHeight - menuHeight - margin);
+
+      setInsertMenuPosition((current) =>
+        current && current.left === left && current.top === top ? current : { left, top }
+      );
+    };
+
+    const scheduleUpdate = () => {
+      window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(updatePosition);
+    };
+
+    scheduleUpdate();
+    // Re-measure after first paint when the menu node has dimensions.
+    window.requestAnimationFrame(scheduleUpdate);
+
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("scroll", scheduleUpdate, true);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("scroll", scheduleUpdate, true);
+    };
+  }, [openInsertMenu]);
+
+  function toggleInsertMenu(nextMenu: OpenInsertMenu): void {
+    setOpenInsertMenu((current) => (current?.key === nextMenu.key ? null : nextMenu));
+  }
+
+  function closeInsertMenu(): void {
+    setOpenInsertMenu(null);
+    setInsertMenuPosition(null);
+  }
+
+  function openInsertMenuFromEvent(
+    event: MouseEvent<HTMLButtonElement>,
+    config: Omit<OpenInsertMenu, "anchorEl">
+  ): void {
+    toggleInsertMenu({
+      ...config,
+      anchorEl: event.currentTarget,
+    });
+  }
+
+  function handleToggleKeyDown(
+    event: ReactKeyboardEvent<HTMLElement>,
+    toggle: () => void
+  ): void {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggle();
+    }
+  }
+
+  function renderBlockInsertSlot(insertIndex: number): ReactNode {
+    const menuKey = `block:${insertIndex}`;
+    const isOpen = openInsertMenu?.key === menuKey;
+    return (
+      <div
+        className={`dropSlot blockInsertSlot${isOpen ? " isOpen" : ""}`}
+        data-insert-slot
+      >
+        <span className="dropSlotMark" aria-hidden />
+        <button
+          type="button"
+          className="blockInsertTrigger"
+          aria-label={`Add block at position ${insertIndex + 1}`}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          title="Add block"
+          onClick={(event) =>
+            openInsertMenuFromEvent(event, {
+              key: menuKey,
+              title: "Add block",
+              variant: "rail",
+              items: [
+                {
+                  id: "default",
+                  label: "Default transformer block",
+                  onSelect: () => insertBlockAt(insertIndex, "default"),
+                },
+                {
+                  id: "empty",
+                  label: "Empty block",
+                  onSelect: () => insertBlockAt(insertIndex, "empty"),
+                },
+              ],
+            })
+          }
+        />
+      </div>
+    );
+  }
+
+  function renderComponentInsertSlot(blockId: string, insertIndex: number): ReactNode {
+    const menuKey = `component:${blockId}:${insertIndex}`;
+    const slotKey = `component-slot-${blockId}-${insertIndex}`;
+    const isOpen = openInsertMenu?.key === menuKey;
+    return (
+      <div
+        className={`dropSlot isCompact inlineInsertSlot${dragOverKey === slotKey ? " isActive" : ""}${isOpen ? " isOpen" : ""}`}
+        data-insert-slot
+        onDragOver={(event) => markDropTarget(event, slotKey)}
+        onDrop={(event) => handleDropComponent(event, blockId, insertIndex)}
+        aria-label="Insert component"
+        title="Insert component"
+      >
+        <span className="dropSlotMark" aria-hidden />
+        <button
+          type="button"
+          className="inlineInsertTrigger"
+          aria-label={`Add component at position ${insertIndex + 1}`}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={(event) =>
+            openInsertMenuFromEvent(event, {
+              key: menuKey,
+              title: "Add component",
+              variant: "inline",
+              items: (["attention", "mlp", "norm", "activation"] as const).map((kind) => ({
+                id: kind,
+                label: labelForComponentKind(kind),
+                onSelect: () => insertComponentAt(blockId, insertIndex, kind),
+              })),
+            })
+          }
+        />
+      </div>
+    );
+  }
+
+  function renderMlpStepInsertSlot(
+    blockId: string,
+    componentId: string,
+    insertIndex: number
+  ): ReactNode {
+    const menuKey = `mlp-step:${blockId}:${componentId}:${insertIndex}`;
+    const slotKey = `mlp-slot-${blockId}-${componentId}-${insertIndex}`;
+    const isOpen = openInsertMenu?.key === menuKey;
+    return (
+      <div
+        className={`dropSlot inlineInsertSlot mlpStepInsertSlot${dragOverKey === slotKey ? " isActive" : ""}${isOpen ? " isOpen" : ""}`}
+        data-insert-slot
+        onDragOver={(event) => markDropTarget(event, slotKey)}
+        onDrop={(event) => handleDropMlpStep(event, blockId, componentId, insertIndex)}
+        aria-label="Insert MLP step"
+        title="Insert MLP step"
+      >
+        <span className="dropSlotMark" aria-hidden />
+        <span className="mlpStepInsertLabel" aria-hidden>
+          + Add step
+        </span>
+        <button
+          type="button"
+          className="inlineInsertTrigger"
+          aria-label={`Add MLP step at position ${insertIndex + 1}`}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={(event) =>
+            openInsertMenuFromEvent(event, {
+              key: menuKey,
+              title: "Add MLP step",
+              variant: "inline",
+              items: (["linear", "norm", "activation"] as const).map((kind) => ({
+                id: kind,
+                label: labelForMlpStepKind(kind),
+                onSelect: () => insertMlpStepAt(blockId, componentId, insertIndex, kind),
+              })),
+            })
+          }
+        />
+      </div>
+    );
+  }
+
   function renderNormFields(
     norm: NormConfig,
     onChange: (next: NormConfig) => void,
@@ -159,7 +438,7 @@ export function BuilderPanel({
                 onChange({ type: "rmsnorm", learnable_gamma: event.target.checked })
               }
             />
-            <span>learnable_gamma</span>
+            <span>learnable</span>
           </label>
         ) : null}
       </div>
@@ -171,16 +450,6 @@ export function BuilderPanel({
       <article className="blockCard">
         <div className="blockCardHead">
           <div className="blockCardTitleWrap">
-            <div
-              className="dragBadge"
-              draggable
-              onDragStart={(event) => beginDragBlock(event, block.id)}
-              onDragEnd={clearDragState}
-              title={`Drag block ${blockIndex + 1}`}
-              aria-hidden
-            >
-              <FiMove />
-            </div>
             <div>
               <h3>Block {blockIndex + 1}</h3>
               <p>{block.components.length} component{block.components.length === 1 ? "" : "s"}</p>
@@ -225,16 +494,12 @@ export function BuilderPanel({
         </div>
 
         <div className="componentLane">
-          <DropSlot
-            compact
-            active={dragOverKey === `component-slot-${block.id}-0`}
-            label="Insert"
-            onDragOver={(event) => markDropTarget(event, `component-slot-${block.id}-0`)}
-            onDrop={(event) => handleDropComponent(event, block.id, 0)}
-          />
+          {renderComponentInsertSlot(block.id, 0)}
 
           {block.components.length === 0 ? (
-            <div className="emptyLaneHint">Drop a palette component here to start this block.</div>
+            <div className="emptyLaneHint">
+              Click the insertion slot to choose the first component, or drag an existing component here.
+            </div>
           ) : null}
 
           {block.components.map((component, componentIndex) => (
@@ -242,12 +507,21 @@ export function BuilderPanel({
               <section
                 className={`componentCard kind-${component.kind}${expandedComponentIds.has(component.id) ? "" : " isCollapsed"}`}
               >
-                <div className="componentCardHead">
+                <div
+                  className="componentCardHead isToggleable"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={expandedComponentIds.has(component.id)}
+                  aria-label={`${expandedComponentIds.has(component.id) ? "Collapse" : "Expand"} ${labelForComponentKind(component.kind)} component settings`}
+                  onClick={() => toggleExpandedComponent(component.id)}
+                  onKeyDown={(event) => handleToggleKeyDown(event, () => toggleExpandedComponent(component.id))}
+                >
                   <div
                     className="dragBadge"
                     draggable
                     onDragStart={(event) => beginDragComponent(event, block.id, component.id)}
                     onDragEnd={clearDragState}
+                    onClick={(event) => event.stopPropagation()}
                     title={`Drag ${labelForComponentKind(component.kind)} component`}
                     aria-hidden
                   >
@@ -258,20 +532,16 @@ export function BuilderPanel({
                     <span className="componentSummary">{summarizeComponent(component)}</span>
                   </div>
                   <div className="componentHeadActions">
-                    <button
-                      type="button"
-                      className="iconButton"
-                      onClick={() => toggleExpandedComponent(component.id)}
-                      aria-label={`${expandedComponentIds.has(component.id) ? "Collapse" : "Expand"} ${labelForComponentKind(component.kind)} component settings`}
-                      title={expandedComponentIds.has(component.id) ? "Collapse settings" : "Expand settings"}
-                      aria-expanded={expandedComponentIds.has(component.id)}
-                    >
+                    <span className="componentToggleGlyph" aria-hidden>
                       {expandedComponentIds.has(component.id) ? <FiChevronDown /> : <FiChevronRight />}
-                    </button>
+                    </span>
                     <button
                       type="button"
                       className="iconButton danger"
-                      onClick={() => removeComponent(block.id, component.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        removeComponent(block.id, component.id);
+                      }}
                       aria-label="Remove component"
                       title="Remove component"
                     >
@@ -402,9 +672,9 @@ export function BuilderPanel({
 
                     {component.kind === "mlp" ? (
                       <div className="mlpEditor">
-                        <div className="fieldGrid compact">
+                        <div className="fieldGrid compact mlpEditorFields">
                           <label
-                            className="fieldLabel"
+                            className="fieldLabel mlpMultiplierField"
                             htmlFor={`${componentDomIdPrefix(blockIndex, componentIndex)}-multiplier`}
                           >
                             <span>multiplier</span>
@@ -434,62 +704,40 @@ export function BuilderPanel({
                           </label>
                         </div>
 
-                        <div className="mlpPaletteRow">
-                          <div className="miniLabel">MLP Step Palette</div>
-                          <div className="miniPaletteGrid">
-                            {([
-                              {
-                                kind: "linear",
-                                subtitle: "Linear layer",
-                                colorClass: "tone-linear",
-                              },
-                              {
-                                kind: "norm",
-                                subtitle: "Norm step",
-                                colorClass: "tone-norm",
-                              },
-                              {
-                                kind: "activation",
-                                subtitle: "Activation step",
-                                colorClass: "tone-activation",
-                              },
-                            ] as const).map((entry) => (
-                              <PaletteTile
-                                key={`${component.id}-${entry.kind}`}
-                                title={labelForMlpStepKind(entry.kind)}
-                                subtitle={entry.subtitle}
-                                colorClass={entry.colorClass}
-                                draggable
-                                onDragStart={(event) => beginDragPaletteMlpStep(event, entry.kind)}
-                                onDragEnd={clearDragState}
-                              />
-                            ))}
-                          </div>
-                        </div>
-
                         <div className="mlpSequenceShell">
-                          <div className="miniLabel">Sequence</div>
-                          <div className="mlpSequenceList">
-                            <DropSlot
-                              compact
-                              active={dragOverKey === `mlp-slot-${block.id}-${component.id}-0`}
-                              label="Insert step"
-                              onDragOver={(event) =>
-                                markDropTarget(event, `mlp-slot-${block.id}-${component.id}-0`)
-                              }
-                              onDrop={(event) => handleDropMlpStep(event, block.id, component.id, 0)}
-                            />
+                          <div className="mlpSequenceHead">
+                            <div className="miniLabel">MLP steps</div>
+                            <span className="mlpSequenceCount">
+                              {component.mlp.sequence.length} step
+                              {component.mlp.sequence.length === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                          <div className="mlpSequenceList" role="list" aria-label="MLP step sequence">
+                            {renderMlpStepInsertSlot(block.id, component.id, 0)}
                             {component.mlp.sequence.length === 0 ? (
-                              <div className="emptyLaneHint compact">
-                                Drop a linear/norm/activation step here.
+                              <div className="mlpSequenceEmpty" role="listitem">
+                                <div className="emptyLaneHint compact">
+                                  Add a step, or drag an existing step here.
+                                </div>
                               </div>
                             ) : null}
                             {component.mlp.sequence.map((step, stepIndex) => (
                               <Fragment key={step.id}>
                                 <div
                                   className={`mlpStepCard kind-${step.kind}${expandedMlpStepIds.has(step.id) ? "" : " isCollapsed"}`}
+                                  role="listitem"
                                 >
-                                  <div className="componentCardHead">
+                                  <div
+                                    className="componentCardHead isToggleable"
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-expanded={expandedMlpStepIds.has(step.id)}
+                                    aria-label={`${expandedMlpStepIds.has(step.id) ? "Collapse" : "Expand"} MLP step settings`}
+                                    onClick={() => toggleExpandedMlpStep(step.id)}
+                                    onKeyDown={(event) =>
+                                      handleToggleKeyDown(event, () => toggleExpandedMlpStep(step.id))
+                                    }
+                                  >
                                     <div
                                       className="dragBadge"
                                       draggable
@@ -497,6 +745,7 @@ export function BuilderPanel({
                                         beginDragMlpStep(event, block.id, component.id, step.id)
                                       }
                                       onDragEnd={clearDragState}
+                                      onClick={(event) => event.stopPropagation()}
                                       title={`Drag ${labelForMlpStepKind(step.kind)} step`}
                                       aria-hidden
                                     >
@@ -509,28 +758,20 @@ export function BuilderPanel({
                                       <span className="componentSummary">{summarizeMlpStep(step)}</span>
                                     </div>
                                     <div className="componentHeadActions">
-                                      <button
-                                        type="button"
-                                        className="iconButton"
-                                        onClick={() => toggleExpandedMlpStep(step.id)}
-                                        aria-label={`${expandedMlpStepIds.has(step.id) ? "Collapse" : "Expand"} MLP step settings`}
-                                        title={
-                                          expandedMlpStepIds.has(step.id)
-                                            ? "Collapse settings"
-                                            : "Expand settings"
-                                        }
-                                        aria-expanded={expandedMlpStepIds.has(step.id)}
-                                      >
+                                      <span className="componentToggleGlyph" aria-hidden>
                                         {expandedMlpStepIds.has(step.id) ? (
                                           <FiChevronDown />
                                         ) : (
                                           <FiChevronRight />
                                         )}
-                                      </button>
+                                      </span>
                                       <button
                                         type="button"
                                         className="iconButton danger"
-                                        onClick={() => removeMlpStep(block.id, component.id, step.id)}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          removeMlpStep(block.id, component.id, step.id);
+                                        }}
                                         aria-label="Remove MLP step"
                                         title="Remove MLP step"
                                       >
@@ -621,22 +862,7 @@ export function BuilderPanel({
                                     </div>
                                   ) : null}
                                 </div>
-                                <DropSlot
-                                  compact
-                                  active={
-                                    dragOverKey === `mlp-slot-${block.id}-${component.id}-${stepIndex + 1}`
-                                  }
-                                  label="Insert step"
-                                  onDragOver={(event) =>
-                                    markDropTarget(
-                                      event,
-                                      `mlp-slot-${block.id}-${component.id}-${stepIndex + 1}`
-                                    )
-                                  }
-                                  onDrop={(event) =>
-                                    handleDropMlpStep(event, block.id, component.id, stepIndex + 1)
-                                  }
-                                />
+                                {renderMlpStepInsertSlot(block.id, component.id, stepIndex + 1)}
                               </Fragment>
                             ))}
                           </div>
@@ -646,15 +872,7 @@ export function BuilderPanel({
                   </div>
                 ) : null}
               </section>
-              <DropSlot
-                compact
-                active={dragOverKey === `component-slot-${block.id}-${componentIndex + 1}`}
-                label="Insert"
-                onDragOver={(event) =>
-                  markDropTarget(event, `component-slot-${block.id}-${componentIndex + 1}`)
-                }
-                onDrop={(event) => handleDropComponent(event, block.id, componentIndex + 1)}
-              />
+              {renderComponentInsertSlot(block.id, componentIndex + 1)}
             </Fragment>
           ))}
         </div>
@@ -663,13 +881,14 @@ export function BuilderPanel({
   }
 
   return (
+    <>
       <section id="block-builder" className="panelCard builderPanel">
         <div className="panelHead">
           <div>
             <p className="panelEyebrow">Visual Builder</p>
             <h2>Horizontal block canvas</h2>
             <p className="panelCopy">
-              Scroll horizontally for model depth and vertically for details. Drag blocks to reorder, then expand only the nodes you want to edit.
+              Scroll horizontally for model depth and vertically for details. Click insertion slots to add blocks/components/MLP steps, and drag existing components or steps to reorder them.
             </p>
           </div>
           <div className="actionCluster">
@@ -699,12 +918,7 @@ export function BuilderPanel({
 
         <div className="blockCanvasViewport" role="region" aria-label="Horizontal model block canvas">
           <div className="blockCanvas">
-          <DropSlot
-            active={dragOverKey === "block-slot-0"}
-            label="Insert block"
-            onDragOver={(event) => markDropTarget(event, "block-slot-0")}
-            onDrop={(event) => handleDropBlock(event, 0)}
-          />
+          {renderBlockInsertSlot(0)}
 
           {consecutiveBlockGroups.map((group) => {
             const groupBlocks = documentState.blocks.slice(group.startIndex, group.endIndex + 1);
@@ -719,7 +933,17 @@ export function BuilderPanel({
                     className={`blockGroupCard${groupExpanded ? " isExpanded" : ""}`}
                     aria-label={`Identical block group spanning blocks ${group.startIndex + 1} through ${group.endIndex + 1}`}
                   >
-                    <div className="blockGroupHead">
+                    <div
+                      className="blockGroupHead isToggleable"
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={groupExpanded}
+                      aria-label={groupExpanded ? "Collapse identical block group" : "Expand identical block group"}
+                      onClick={() => toggleExpandedBlockGroup(group.key)}
+                      onKeyDown={(event) =>
+                        handleToggleKeyDown(event, () => toggleExpandedBlockGroup(group.key))
+                      }
+                    >
                       <div className="blockGroupTitleWrap">
                         <div className="blockGroupBadge" aria-hidden>
                           <FiLayers />
@@ -731,16 +955,6 @@ export function BuilderPanel({
                           <p>{group.count} identical blocks</p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className="iconButton"
-                        onClick={() => toggleExpandedBlockGroup(group.key)}
-                        aria-label={groupExpanded ? "Collapse identical block group" : "Expand identical block group"}
-                        title={groupExpanded ? "Collapse identical block group" : "Expand identical block group"}
-                        aria-expanded={groupExpanded}
-                      >
-                        {groupExpanded ? <FiChevronDown /> : <FiChevronRight />}
-                      </button>
                     </div>
 
                     <div className="blockQuickMap" aria-label="Repeated block structure preview">
@@ -772,14 +986,7 @@ export function BuilderPanel({
                             <Fragment key={block.id}>
                               {renderBlockCard(block, absoluteIndex)}
                               {!isLastInGroup ? (
-                                <DropSlot
-                                  active={dragOverKey === `block-slot-${absoluteIndex + 1}`}
-                                  label="Insert block"
-                                  onDragOver={(event) =>
-                                    markDropTarget(event, `block-slot-${absoluteIndex + 1}`)
-                                  }
-                                  onDrop={(event) => handleDropBlock(event, absoluteIndex + 1)}
-                                />
+                                renderBlockInsertSlot(absoluteIndex + 1)
                               ) : null}
                             </Fragment>
                           );
@@ -790,17 +997,46 @@ export function BuilderPanel({
                 ) : (
                   renderBlockCard(representativeBlock, group.startIndex)
                 )}
-                <DropSlot
-                  active={dragOverKey === `block-slot-${group.endIndex + 1}`}
-                  label="Insert block"
-                  onDragOver={(event) => markDropTarget(event, `block-slot-${group.endIndex + 1}`)}
-                  onDrop={(event) => handleDropBlock(event, group.endIndex + 1)}
-                />
+                {renderBlockInsertSlot(group.endIndex + 1)}
               </Fragment>
             );
           })}
           </div>
         </div>
       </section>
+      {openInsertMenu && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={insertMenuRef}
+              className={`blockInsertMenu insertMenuPortal variant-${openInsertMenu.variant}`}
+              data-insert-slot
+              role="menu"
+              aria-label={openInsertMenu.title}
+              style={
+                insertMenuPosition
+                  ? { left: insertMenuPosition.left, top: insertMenuPosition.top }
+                  : { left: -9999, top: -9999 }
+              }
+            >
+              <div className="blockInsertMenuHeader">{openInsertMenu.title}</div>
+              {openInsertMenu.items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="blockInsertMenuButton"
+                  role="menuitem"
+                  onClick={() => {
+                    item.onSelect();
+                    closeInsertMenu();
+                  }}
+                >
+                  <span className="blockInsertMenuButtonTitle">{item.label}</span>
+                </button>
+              ))}
+            </div>,
+            document.body
+          )
+        : null}
+    </>
   );
 }

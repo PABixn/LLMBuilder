@@ -150,6 +150,142 @@
   height: 28px;
 }
 
+.blockInsertSlot {
+  overflow: visible;
+}
+
+.blockInsertSlot.isOpen {
+  border-color: var(--drop-active-border);
+  background: var(--drop-active-bg);
+  color: var(--brand-strong);
+}
+
+.blockInsertSlot .dropSlotMark {
+  pointer-events: none;
+}
+
+.inlineInsertSlot {
+  position: relative;
+  overflow: visible;
+}
+
+.inlineInsertSlot.isOpen {
+  border-color: var(--drop-active-border);
+  background: var(--drop-active-bg);
+  color: var(--brand-strong);
+}
+
+.inlineInsertSlot .dropSlotMark {
+  pointer-events: none;
+}
+
+.blockInsertTrigger,
+.inlineInsertTrigger {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.blockInsertTrigger:hover,
+.inlineInsertTrigger:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.blockInsertTrigger:focus-visible,
+.inlineInsertTrigger:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--brand), 0 0 0 3px var(--focus);
+}
+
+[data-theme="dark"] .blockInsertTrigger:hover,
+[data-theme="dark"] .inlineInsertTrigger:hover {
+  background: rgba(127, 176, 245, 0.08);
+}
+
+.blockInsertMenu {
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.96)),
+    var(--surface);
+  box-shadow: 0 18px 36px rgba(13, 21, 31, 0.16);
+  padding: 4px;
+  display: grid;
+  gap: 4px;
+}
+
+.insertMenuPortal {
+  position: fixed;
+  z-index: 2000;
+  max-height: min(60vh, 320px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.insertMenuPortal.variant-rail {
+  width: 204px;
+}
+
+.insertMenuPortal.variant-inline {
+  width: 156px;
+}
+
+[data-theme="dark"] .blockInsertMenu {
+  background:
+    linear-gradient(180deg, rgba(24, 41, 62, 0.96), rgba(18, 31, 48, 0.98)),
+    var(--surface);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+}
+
+.blockInsertMenuHeader {
+  padding: 4px 6px 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.blockInsertMenuButton {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 6px 8px;
+  display: block;
+  cursor: pointer;
+}
+
+.blockInsertMenuButton:hover,
+.blockInsertMenuButton:focus-visible {
+  border-color: var(--brand);
+  background: rgba(34, 98, 178, 0.08);
+  outline: none;
+}
+
+[data-theme="dark"] .blockInsertMenuButton:hover,
+[data-theme="dark"] .blockInsertMenuButton:focus-visible {
+  background: rgba(127, 176, 245, 0.1);
+}
+
+.blockInsertMenuButtonTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.blockInsertMenuButtonHint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .blockGroupCard {
   align-self: flex-start;
   flex: 0 0 auto;
@@ -195,6 +331,16 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
+}
+
+.blockGroupHead.isToggleable {
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.blockGroupHead.isToggleable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
 }
 
 .blockGroupTitleWrap {
@@ -257,7 +403,7 @@
   background: linear-gradient(180deg, var(--surface), var(--surface-soft));
   padding: 10px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .blockCardHead {
@@ -496,6 +642,24 @@
   min-width: 0;
 }
 
+.componentCardHead.isToggleable {
+  cursor: pointer;
+}
+
+.componentCardHead.isToggleable:hover {
+  background:
+    linear-gradient(180deg, rgba(240, 246, 252, 0.95), rgba(255, 255, 255, 0.55));
+}
+
+.componentCardHead.isToggleable:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--brand), 0 0 0 3px var(--focus);
+}
+
+[data-theme="dark"] .componentCardHead.isToggleable:hover {
+  background: linear-gradient(180deg, rgba(24, 43, 67, 0.92), rgba(18, 31, 48, 0.55));
+}
+
 [data-theme="dark"] .componentCardHead {
   border-bottom-color: rgba(41, 65, 89, 0.7);
   background: linear-gradient(180deg, rgba(19, 35, 56, 0.75), rgba(16, 28, 44, 0.4));
@@ -512,6 +676,21 @@
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.componentToggleGlyph {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.componentToggleGlyph svg {
+  width: 14px;
+  height: 14px;
 }
 
 .componentTag {
@@ -543,12 +722,6 @@
   min-width: 0;
 }
 
-.mlpPaletteRow {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-
 .miniLabel {
   font-size: 0.67rem;
   text-transform: uppercase;
@@ -557,29 +730,14 @@
   font-weight: 760;
 }
 
-.miniPaletteGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  min-width: 0;
+.builderPanel .fieldGrid.compact.mlpEditorFields {
+  grid-template-columns: minmax(0, 180px);
 }
 
-.miniPaletteGrid > * {
-  min-width: 0;
-}
-
-.miniPaletteGrid .paletteTile {
-  min-height: 62px;
-  padding: 7px 8px;
-}
-
-.miniPaletteGrid .paletteTileTitle {
-  font-size: 0.72rem;
-}
-
-.miniPaletteGrid .paletteTileSubtitle,
-.miniPaletteGrid .paletteTileHint {
-  font-size: 0.62rem;
+.builderPanel .fieldLabel.mlpMultiplierField {
+  margin-top: 0;
+  align-self: start;
+  max-width: 180px;
 }
 
 .mlpSequenceShell {
@@ -588,39 +746,101 @@
   background: var(--surface-soft);
   padding: 8px;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.mlpSequenceHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mlpSequenceCount {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+  font-weight: 650;
 }
 
 .mlpSequenceList {
   margin-top: 8px;
-  display: flex;
-  align-items: stretch;
+  display: grid;
   gap: 6px;
   width: 100%;
-  max-width: 100%;
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 2px;
+  overflow: visible;
+}
+
+.mlpSequenceEmpty {
+  padding: 2px 0 0;
 }
 
 .mlpSequenceList > * {
   min-width: 0;
 }
 
-.mlpSequenceList > .dropSlot {
-  flex: 0 0 20px;
-  padding: 4px 2px;
-}
-
-.mlpSequenceList > .dropSlot .dropSlotMark {
-  width: 2px;
-  height: 18px;
-}
-
 .mlpStepCard {
-  flex: 0 0 min(216px, 72vw);
-  max-width: min(216px, 72vw);
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.mlpStepCard .componentCardHead {
+  padding: 8px;
+  align-items: flex-start;
+}
+
+.mlpStepCard .componentSummary {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.28;
+}
+
+.mlpStepCard .componentBody {
+  padding: 8px;
+}
+
+.mlpStepCard .fieldGrid.compact {
+  grid-template-columns: 1fr;
+}
+
+.mlpStepCard .toggleField {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.mlpStepInsertSlot {
+  min-height: 26px;
+  padding: 3px 8px;
+  justify-content: flex-start;
+  border-style: dashed;
+  background: transparent;
+  border-radius: 10px;
+}
+
+.mlpStepInsertSlot .dropSlotMark {
+  left: 10px;
+  top: 50%;
+  width: 10px;
+  transform: translateY(-50%);
+}
+
+.mlpStepInsertLabel {
+  position: relative;
+  z-index: 1;
+  margin-left: 12px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.mlpStepInsertSlot.isActive .mlpStepInsertLabel,
+.mlpStepInsertSlot.isOpen .mlpStepInsertLabel {
+  color: var(--brand-strong);
 }
 
 .componentCard.isCollapsed .componentCardHead,
@@ -691,6 +911,22 @@
   padding: 7px 9px;
   gap: 8px;
   font-size: 0.78rem;
+}
+
+/* Top-level norm component uses a side-by-side RMSNorm toggle; keep it compact. */
+.componentCard.kind-norm .componentBody > .fieldGrid.compact > .toggleField {
+  align-self: end;
+  min-height: 0;
+  height: 34px;
+  border-radius: 8px;
+  padding: 0 8px;
+  gap: 6px;
+  font-size: 0.78rem;
+}
+
+.componentCard.kind-norm .componentBody > .fieldGrid.compact > .toggleField input {
+  width: 14px;
+  height: 14px;
 }
 
 .componentLane > .dropSlot.isCompact {

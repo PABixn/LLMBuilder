@@ -42,6 +42,7 @@ import {
   VALIDATION_DEBOUNCE_MS,
   type BackendAnalysisState,
   type BackendValidationState,
+  type BlockInsertPreset,
   type Diagnostic,
   type DragPayload,
   type MlpStepKind,
@@ -67,7 +68,6 @@ import {
   findComponentIndex,
   getMlpComponent,
   labelForComponentKind,
-  moveItem,
   studioBlockFromConfig,
   studioDocumentFromConfig,
   studioDocumentToConfig,
@@ -99,7 +99,7 @@ export default function Page() {
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [expandedComponentIds, setExpandedComponentIds] = useState<Set<string>>(() => new Set());
   const [expandedMlpStepIds, setExpandedMlpStepIds] = useState<Set<string>>(() => new Set());
-  const [expandedBlockGroupKeys, setExpandedBlockGroupKeys] = useState<Set<string>>(() => new Set());
+  const [expandedRepeatedBlockIds, setExpandedRepeatedBlockIds] = useState<Set<string>>(() => new Set());
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [notice, setNotice] = useState<NoticeState | null>(null);
   const [backendValidation, setBackendValidation] = useState<BackendValidationState>({
@@ -219,6 +219,20 @@ export default function Page() {
       });
       return changed ? next : current;
     });
+
+    const validBlockIds = new Set(documentState.blocks.map((block) => block.id));
+    setExpandedRepeatedBlockIds((current) => {
+      let changed = false;
+      const next = new Set<string>();
+      current.forEach((id) => {
+        if (validBlockIds.has(id)) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? next : current;
+    });
   }, [documentState]);
 
   const modelConfig = studioDocumentToConfig(documentState);
@@ -227,6 +241,21 @@ export default function Page() {
   const localWarnings = localDiagnostics.filter((item) => item.level === "warning");
   const metrics = collectBuilderMetrics(documentState);
   const consecutiveBlockGroups = collectConsecutiveIdenticalBlockGroups(documentState.blocks);
+  const expandedBlockGroupKeys = new Set(
+    consecutiveBlockGroups
+      .filter((group) => {
+        if (group.count <= 1) {
+          return false;
+        }
+        for (let index = group.startIndex; index <= group.endIndex; index += 1) {
+          if (expandedRepeatedBlockIds.has(documentState.blocks[index].id)) {
+            return true;
+          }
+        }
+        return false;
+      })
+      .map((group) => group.key)
+  );
 
   const compactJson = JSON.stringify(modelConfig);
   const deferredJsonSignature = useDeferredValue(compactJson);
@@ -379,27 +408,44 @@ export default function Page() {
   }
 
   function toggleExpandedBlockGroup(groupKey: string): void {
-    setExpandedBlockGroupKeys((current) => {
+    const group = consecutiveBlockGroups.find((item) => item.key === groupKey);
+    if (!group || group.count <= 1) {
+      return;
+    }
+    const groupBlockIds = documentState.blocks
+      .slice(group.startIndex, group.endIndex + 1)
+      .map((block) => block.id);
+
+    setExpandedRepeatedBlockIds((current) => {
       const next = new Set(current);
-      if (next.has(groupKey)) {
-        next.delete(groupKey);
+      const isExpanded = groupBlockIds.some((id) => next.has(id));
+      if (isExpanded) {
+        groupBlockIds.forEach((id) => next.delete(id));
       } else {
-        next.add(groupKey);
+        groupBlockIds.forEach((id) => next.add(id));
       }
       return next;
     });
   }
 
   function expandAllCanvasNodes(): void {
-    setExpandedBlockGroupKeys(
-      new Set(consecutiveBlockGroups.filter((group) => group.count > 1).map((group) => group.key))
+    setExpandedRepeatedBlockIds(
+      new Set(
+        consecutiveBlockGroups.flatMap((group) =>
+          group.count > 1
+            ? documentState.blocks
+                .slice(group.startIndex, group.endIndex + 1)
+                .map((block) => block.id)
+            : []
+        )
+      )
     );
     setExpandedComponentIds(new Set(collectAllComponentIds(documentState)));
     setExpandedMlpStepIds(new Set(collectAllMlpStepIds(documentState)));
   }
 
   function collapseAllCanvasNodes(): void {
-    setExpandedBlockGroupKeys(new Set());
+    setExpandedRepeatedBlockIds(new Set());
     setExpandedComponentIds(new Set());
     setExpandedMlpStepIds(new Set());
   }
@@ -430,17 +476,6 @@ export default function Page() {
     setDragOverKey(null);
   }
 
-  function beginDragBlock(event: DragEvent<HTMLDivElement>, blockId: string): void {
-    writeDragPayload(event, { kind: "block", blockId });
-  }
-
-  function beginDragPaletteComponent(
-    event: DragEvent<HTMLDivElement>,
-    componentKind: StudioComponentKind
-  ): void {
-    writeDragPayload(event, { kind: "palette-component", componentKind });
-  }
-
   function beginDragComponent(
     event: DragEvent<HTMLDivElement>,
     fromBlockId: string,
@@ -448,14 +483,6 @@ export default function Page() {
   ): void {
     event.stopPropagation();
     writeDragPayload(event, { kind: "block-component", fromBlockId, componentId });
-  }
-
-  function beginDragPaletteMlpStep(
-    event: DragEvent<HTMLDivElement>,
-    stepKind: MlpStepKind
-  ): void {
-    event.stopPropagation();
-    writeDragPayload(event, { kind: "palette-mlp-step", stepKind });
   }
 
   function beginDragMlpStep(
@@ -474,23 +501,54 @@ export default function Page() {
     event.dataTransfer.dropEffect = "move";
   }
 
-  function handleDropBlock(event: DragEvent<HTMLDivElement>, insertIndex: number): void {
-    event.preventDefault();
-    const payload = readDragPayload(event);
-    clearDragState();
-    if (!payload || payload.kind !== "block") {
-      return;
-    }
+  function insertComponentAt(
+    targetBlockId: string,
+    insertIndex: number,
+    componentKind: StudioComponentKind
+  ): void {
+    const createdComponent = createDefaultStudioComponent(componentKind);
+
     setDocumentState((current) => {
-      const fromIndex = current.blocks.findIndex((block) => block.id === payload.blockId);
-      if (fromIndex < 0) {
+      const next = clone(current);
+      const targetBlockIndex = findBlockIndex(next, targetBlockId);
+      if (targetBlockIndex < 0) {
         return current;
       }
-      return {
-        ...current,
-        blocks: moveItem(current.blocks, fromIndex, insertIndex),
-      };
+      const targetBlock = next.blocks[targetBlockIndex];
+      const targetInsertIndex = clamp(insertIndex, 0, targetBlock.components.length);
+      targetBlock.components.splice(targetInsertIndex, 0, createdComponent);
+      return next;
     });
+
+    setExpandedComponentIds((current) => new Set([...current, createdComponent.id]));
+    if (createdComponent.kind === "mlp") {
+      setExpandedMlpStepIds(
+        (current) => new Set([...current, ...createdComponent.mlp.sequence.map((step) => step.id)])
+      );
+    }
+  }
+
+  function insertMlpStepAt(
+    targetBlockId: string,
+    targetComponentId: string,
+    insertIndex: number,
+    stepKind: MlpStepKind
+  ): void {
+    const createdStep = createDefaultStudioMlpStep(stepKind);
+
+    setDocumentState((current) => {
+      const next = clone(current);
+      const targetRef = getMlpComponent(next, targetBlockId, targetComponentId);
+      if (!targetRef) {
+        return current;
+      }
+      const targetSequence = targetRef.component.mlp.sequence;
+      const targetInsertIndex = clamp(insertIndex, 0, targetSequence.length);
+      targetSequence.splice(targetInsertIndex, 0, createdStep);
+      return next;
+    });
+
+    setExpandedMlpStepIds((current) => new Set([...current, createdStep.id]));
   }
 
   function handleDropComponent(
@@ -504,10 +562,11 @@ export default function Page() {
     if (!payload) {
       return;
     }
-    const createdComponent =
-      payload.kind === "palette-component"
-        ? createDefaultStudioComponent(payload.componentKind)
-        : null;
+
+    if (payload.kind === "palette-component") {
+      insertComponentAt(targetBlockId, insertIndex, payload.componentKind);
+      return;
+    }
 
     setDocumentState((current) => {
       const next = clone(current);
@@ -517,11 +576,6 @@ export default function Page() {
       }
       const targetBlock = next.blocks[targetBlockIndex];
       const targetInsertIndex = clamp(insertIndex, 0, targetBlock.components.length);
-
-      if (payload.kind === "palette-component") {
-        targetBlock.components.splice(targetInsertIndex, 0, createdComponent!);
-        return next;
-      }
 
       if (payload.kind !== "block-component") {
         return current;
@@ -548,15 +602,6 @@ export default function Page() {
       targetBlock.components.splice(adjustedInsertIndex, 0, moved);
       return next;
     });
-
-    if (createdComponent) {
-      setExpandedComponentIds((current) => new Set([...current, createdComponent.id]));
-      if (createdComponent.kind === "mlp") {
-        setExpandedMlpStepIds(
-          (current) => new Set([...current, ...createdComponent.mlp.sequence.map((step) => step.id)])
-        );
-      }
-    }
   }
 
   function handleDropMlpStep(
@@ -571,8 +616,11 @@ export default function Page() {
     if (!payload) {
       return;
     }
-    const createdStep =
-      payload.kind === "palette-mlp-step" ? createDefaultStudioMlpStep(payload.stepKind) : null;
+
+    if (payload.kind === "palette-mlp-step") {
+      insertMlpStepAt(targetBlockId, targetComponentId, insertIndex, payload.stepKind);
+      return;
+    }
 
     setDocumentState((current) => {
       const next = clone(current);
@@ -582,11 +630,6 @@ export default function Page() {
       }
       const targetSequence = targetRef.component.mlp.sequence;
       let targetInsertIndex = clamp(insertIndex, 0, targetSequence.length);
-
-      if (payload.kind === "palette-mlp-step") {
-        targetSequence.splice(targetInsertIndex, 0, createdStep!);
-        return next;
-      }
 
       if (payload.kind !== "mlp-step") {
         return current;
@@ -613,10 +656,6 @@ export default function Page() {
       targetRef.component.mlp.sequence.splice(targetInsertIndex, 0, moved);
       return next;
     });
-
-    if (createdStep) {
-      setExpandedMlpStepIds((current) => new Set([...current, createdStep.id]));
-    }
   }
 
   function updateBaseField<K extends keyof Pick<StudioDocument, "context_length" | "vocab_size" | "n_embd">>(
@@ -626,11 +665,20 @@ export default function Page() {
     setDocumentState((current) => ({ ...current, [key]: value }));
   }
 
+  function insertBlockAt(insertIndex: number, preset: BlockInsertPreset): void {
+    setDocumentState((current) => {
+      const nextBlocks = current.blocks.slice();
+      const nextBlock =
+        preset === "empty"
+          ? studioBlockFromConfig({ components: [] })
+          : studioBlockFromConfig(createDefaultBlockConfig());
+      nextBlocks.splice(clamp(insertIndex, 0, nextBlocks.length), 0, nextBlock);
+      return { ...current, blocks: nextBlocks };
+    });
+  }
+
   function addBlock(): void {
-    setDocumentState((current) => ({
-      ...current,
-      blocks: [...current.blocks, studioBlockFromConfig(createDefaultBlockConfig())],
-    }));
+    insertBlockAt(Number.MAX_SAFE_INTEGER, "default");
   }
 
   function duplicateBlock(blockId: string): void {
@@ -863,7 +911,6 @@ export default function Page() {
       documentState={documentState}
       updateBaseField={updateBaseField}
       setDocumentState={setDocumentState}
-      beginDragPaletteComponent={beginDragPaletteComponent}
       clearDragState={clearDragState}
       diagnostics={diagnostics}
       localErrors={localErrors}
@@ -891,14 +938,14 @@ export default function Page() {
       deleteBlock={deleteBlock}
       removeComponent={removeComponent}
       removeMlpStep={removeMlpStep}
+      insertComponentAt={insertComponentAt}
+      insertMlpStepAt={insertMlpStepAt}
       updateComponent={updateComponent}
       updateMlpStep={updateMlpStep}
-      beginDragBlock={beginDragBlock}
+      insertBlockAt={insertBlockAt}
       beginDragComponent={beginDragComponent}
-      beginDragPaletteMlpStep={beginDragPaletteMlpStep}
       beginDragMlpStep={beginDragMlpStep}
       markDropTarget={markDropTarget}
-      handleDropBlock={handleDropBlock}
       handleDropComponent={handleDropComponent}
       handleDropMlpStep={handleDropMlpStep}
     />
