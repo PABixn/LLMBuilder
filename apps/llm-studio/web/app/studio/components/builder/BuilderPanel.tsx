@@ -152,6 +152,7 @@ export function BuilderPanel({
   handleDropComponent,
   handleDropMlpStep,
 }: BuilderPanelProps) {
+  const quickMapChipLimit = 4;
   const [openInsertMenu, setOpenInsertMenu] = useState<OpenInsertMenu | null>(null);
   const [insertMenuPosition, setInsertMenuPosition] = useState<{ left: number; top: number } | null>(
     null
@@ -445,6 +446,34 @@ export function BuilderPanel({
     );
   }
 
+  function renderQuickMapChips(components: StudioComponent[], chipKeyPrefix: string): ReactNode {
+    if (components.length === 0) {
+      return <span className="flowMiniChip isEmpty">Empty</span>;
+    }
+
+    const visibleComponents = components.slice(0, quickMapChipLimit);
+    const hiddenCount = Math.max(0, components.length - visibleComponents.length);
+
+    return (
+      <>
+        {visibleComponents.map((component, componentIndex) => (
+          <span
+            key={`${chipKeyPrefix}-${component.id}-chip`}
+            className={`flowMiniChip kind-${component.kind}`}
+            title={`${componentIndex + 1}. ${labelForComponentKind(component.kind)} · ${summarizeComponent(component)}`}
+          >
+            {componentIndex + 1}. {labelForComponentKind(component.kind)}
+          </span>
+        ))}
+        {hiddenCount > 0 ? (
+          <span className="flowMiniChip isMeta" title={`${components.length} components total`}>
+            +{hiddenCount} more
+          </span>
+        ) : null}
+      </>
+    );
+  }
+
   function renderBlockCard(block: StudioBlock, blockIndex: number): ReactNode {
     return (
       <article className="blockCard">
@@ -478,19 +507,7 @@ export function BuilderPanel({
           </div>
         </div>
         <div className="blockQuickMap" aria-label={`Block ${blockIndex + 1} sequence`}>
-          {block.components.length === 0 ? (
-            <span className="flowMiniChip isEmpty">Empty</span>
-          ) : (
-            block.components.map((component, componentIndex) => (
-              <span
-                key={`${block.id}-${component.id}-chip`}
-                className={`flowMiniChip kind-${component.kind}`}
-                title={`${componentIndex + 1}. ${labelForComponentKind(component.kind)} · ${summarizeComponent(component)}`}
-              >
-                {componentIndex + 1}. {labelForComponentKind(component.kind)}
-              </span>
-            ))
-          )}
+          {renderQuickMapChips(block.components, block.id)}
         </div>
 
         <div className="componentLane">
@@ -498,7 +515,7 @@ export function BuilderPanel({
 
           {block.components.length === 0 ? (
             <div className="emptyLaneHint">
-              Click the insertion slot to choose the first component, or drag an existing component here.
+              Click an insert slot or drag a component here.
             </div>
           ) : null}
 
@@ -717,7 +734,7 @@ export function BuilderPanel({
                             {component.mlp.sequence.length === 0 ? (
                               <div className="mlpSequenceEmpty" role="listitem">
                                 <div className="emptyLaneHint compact">
-                                  Add a step, or drag an existing step here.
+                                  Add a step or drag one here.
                                 </div>
                               </div>
                             ) : null}
@@ -886,9 +903,9 @@ export function BuilderPanel({
         <div className="panelHead">
           <div>
             <p className="panelEyebrow">Visual Builder</p>
-            <h2>Horizontal block canvas</h2>
+            <h2>Block canvas</h2>
             <p className="panelCopy">
-              Scroll horizontally for model depth and vertically for details. Click insertion slots to add blocks/components/MLP steps, and drag existing components or steps to reorder them.
+              Build depth horizontally. Use insert slots to add blocks/components/MLP steps, then drag to reorder.
             </p>
           </div>
           <div className="actionCluster">
@@ -907,7 +924,7 @@ export function BuilderPanel({
         <div className="builderCanvasToolbar">
           <div className="builderCanvasHint">
             <span className="builderCanvasHintDot" aria-hidden />
-            Canvas scrolls in both directions. Blocks are columns; components stay attached inside each block.
+            Two-axis canvas: blocks are columns, components stay nested inside each block.
           </div>
           <div className="builderCanvasStats" aria-label="Builder canvas statistics">
             <span>{metrics.blockCount} blocks</span>
@@ -918,89 +935,78 @@ export function BuilderPanel({
 
         <div className="blockCanvasViewport" role="region" aria-label="Horizontal model block canvas">
           <div className="blockCanvas">
-          {renderBlockInsertSlot(0)}
+            {renderBlockInsertSlot(0)}
 
-          {consecutiveBlockGroups.map((group) => {
-            const groupBlocks = documentState.blocks.slice(group.startIndex, group.endIndex + 1);
-            const representativeBlock = groupBlocks[0];
-            const isRepeatedGroup = group.count > 1;
-            const groupExpanded = isRepeatedGroup && expandedBlockGroupKeys.has(group.key);
+            {consecutiveBlockGroups.map((group) => {
+              const groupBlocks = documentState.blocks.slice(group.startIndex, group.endIndex + 1);
+              const representativeBlock = groupBlocks[0];
+              const isRepeatedGroup = group.count > 1;
+              const groupExpanded = isRepeatedGroup && expandedBlockGroupKeys.has(group.key);
 
-            return (
-              <Fragment key={isRepeatedGroup ? group.key : representativeBlock.id}>
-                {isRepeatedGroup ? (
-                  <section
-                    className={`blockGroupCard${groupExpanded ? " isExpanded" : ""}`}
-                    aria-label={`Identical block group spanning blocks ${group.startIndex + 1} through ${group.endIndex + 1}`}
-                  >
-                    <div
-                      className="blockGroupHead isToggleable"
-                      role="button"
-                      tabIndex={0}
-                      aria-expanded={groupExpanded}
-                      aria-label={groupExpanded ? "Collapse identical block group" : "Expand identical block group"}
-                      onClick={() => toggleExpandedBlockGroup(group.key)}
-                      onKeyDown={(event) =>
-                        handleToggleKeyDown(event, () => toggleExpandedBlockGroup(group.key))
-                      }
+              return (
+                <Fragment key={isRepeatedGroup ? group.key : representativeBlock.id}>
+                  {isRepeatedGroup ? (
+                    <section
+                      className={`blockGroupCard${groupExpanded ? " isExpanded" : ""}`}
+                      aria-label={`Identical block group spanning blocks ${group.startIndex + 1} through ${group.endIndex + 1}`}
                     >
-                      <div className="blockGroupTitleWrap">
-                        <div className="blockGroupBadge" aria-hidden>
-                          <FiLayers />
-                        </div>
-                        <div>
-                          <h3>
-                            Blocks {group.startIndex + 1}-{group.endIndex + 1}
-                          </h3>
-                          <p>{group.count} identical blocks</p>
+                      <div
+                        className="blockGroupHead isToggleable"
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={groupExpanded}
+                        aria-label={groupExpanded ? "Collapse identical block group" : "Expand identical block group"}
+                        onClick={() => toggleExpandedBlockGroup(group.key)}
+                        onKeyDown={(event) =>
+                          handleToggleKeyDown(event, () => toggleExpandedBlockGroup(group.key))
+                        }
+                      >
+                        <div className="blockGroupTitleWrap">
+                          <div className="blockGroupBadge" aria-hidden>
+                            <FiLayers />
+                          </div>
+                          <div>
+                            <h3>
+                              Blocks {group.startIndex + 1}-{group.endIndex + 1}
+                            </h3>
+                            <p>{group.count} identical blocks</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="blockQuickMap" aria-label="Repeated block structure preview">
-                      {representativeBlock.components.length === 0 ? (
-                        <span className="flowMiniChip isEmpty">Empty</span>
+                      <div className="blockQuickMap" aria-label="Repeated block structure preview">
+                        {renderQuickMapChips(
+                          representativeBlock.components,
+                          `${representativeBlock.id}-group`
+                        )}
+                      </div>
+
+                      {!groupExpanded ? (
+                        <p className="blockGroupHint">
+                          Expand to edit individual blocks in this repeated run.
+                        </p>
                       ) : (
-                        representativeBlock.components.map((component, componentIndex) => (
-                          <span
-                            key={`${representativeBlock.id}-${component.id}-group-chip`}
-                            className={`flowMiniChip kind-${component.kind}`}
-                            title={`${componentIndex + 1}. ${labelForComponentKind(component.kind)} · ${summarizeComponent(component)}`}
-                          >
-                            {componentIndex + 1}. {labelForComponentKind(component.kind)}
-                          </span>
-                        ))
+                        <div className="blockGroupTrack">
+                          {groupBlocks.map((block, offset) => {
+                            const absoluteIndex = group.startIndex + offset;
+                            const isLastInGroup = offset === groupBlocks.length - 1;
+                            return (
+                              <Fragment key={block.id}>
+                                {renderBlockCard(block, absoluteIndex)}
+                                {!isLastInGroup ? renderBlockInsertSlot(absoluteIndex + 1) : null}
+                              </Fragment>
+                            );
+                          })}
+                        </div>
                       )}
-                    </div>
-
-                    {!groupExpanded ? (
-                      <p className="blockGroupHint">
-                        Expand to edit or reorder individual blocks inside this repeated run.
-                      </p>
-                    ) : (
-                      <div className="blockGroupTrack">
-                        {groupBlocks.map((block, offset) => {
-                          const absoluteIndex = group.startIndex + offset;
-                          const isLastInGroup = offset === groupBlocks.length - 1;
-                          return (
-                            <Fragment key={block.id}>
-                              {renderBlockCard(block, absoluteIndex)}
-                              {!isLastInGroup ? (
-                                renderBlockInsertSlot(absoluteIndex + 1)
-                              ) : null}
-                            </Fragment>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </section>
-                ) : (
-                  renderBlockCard(representativeBlock, group.startIndex)
-                )}
-                {renderBlockInsertSlot(group.endIndex + 1)}
-              </Fragment>
-            );
-          })}
+                    </section>
+                  ) : (
+                    renderBlockCard(representativeBlock, group.startIndex)
+                  )}
+                  {renderBlockInsertSlot(group.endIndex + 1)}
+                </Fragment>
+              );
+            })}
           </div>
         </div>
       </section>

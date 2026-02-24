@@ -121,6 +121,9 @@ export function StudioPageView({
     0,
     moduleInventoryEntries.length - visibleModuleInventoryEntries.length
   );
+  const diagnosticPreviewLimit = 6;
+  const visibleDiagnostics = diagnostics.slice(0, diagnosticPreviewLimit);
+  const hiddenDiagnostics = diagnostics.slice(diagnosticPreviewLimit);
 
   function maybeSelectZeroNumberInput(target: EventTarget | null): void {
     if (!(target instanceof HTMLInputElement) || target.type !== "number") {
@@ -203,25 +206,49 @@ export function StudioPageView({
       <section className="panelCard heroCard">
         <div className="panelHead heroHead">
           <div>
-            <p className="panelEyebrow">Visual /model Designer</p>
-            <h1>Compose transformer blocks, validate live, export clean JSON.</h1>
+            <p className="panelEyebrow">Model Designer</p>
+            <h1>Build transformer configs visually and export clean JSON.</h1>
             <p className="panelCopy">
-              Build `{"/model"}` configs using clickable block insertion rails, draggable components, and nested MLP step editors.
-              LLM Studio keeps a local semantic validator active even when the backend validator is offline.
+              Add blocks, edit components, reorder with drag-and-drop, and validate as you build.
+              Local checks stay active even if the backend is unavailable.
             </p>
           </div>
           <div className="heroActions">
-            <button type="button" className="buttonGhost" onClick={addBlock}>
-              <FiPlus /> Add Block
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={addBlock}
+              aria-label="Add block"
+              title="Add block"
+            >
+              <FiPlus />
             </button>
-            <button type="button" className="buttonGhost" onClick={() => fileInputRef.current?.click()}>
-              <FiUpload /> Import File
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Import file"
+              title="Import file"
+            >
+              <FiUpload />
             </button>
-            <button type="button" className="buttonGhost" onClick={exportJson}>
-              <FiDownload /> Export JSON
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={exportJson}
+              aria-label="Export JSON"
+              title="Export JSON"
+            >
+              <FiDownload />
             </button>
-            <button type="button" className="buttonGhost" onClick={resetDefaults}>
-              <FiRefreshCw /> Reset
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={resetDefaults}
+              aria-label="Reset to defaults"
+              title="Reset to defaults"
+            >
+              <FiRefreshCw />
             </button>
           </div>
         </div>
@@ -275,9 +302,9 @@ export function StudioPageView({
           <div className="panelHead">
             <div>
               <p className="panelEyebrow">Base Model</p>
-              <h2>Core config controls</h2>
+              <h2>Base dimensions</h2>
               <p className="panelCopy">
-                These values shape the shared model dimensions and drive semantic checks for attention head sizing.
+                Shared dimensions used by the builder and validation checks.
               </p>
             </div>
           </div>
@@ -336,13 +363,109 @@ export function StudioPageView({
                   setDocumentState((current) => ({ ...current, weight_tying: event.target.checked }))
                 }
               />
-              <span>weight_tying</span>
+              <span>Weight Tying</span>
             </label>
           </div>
         </section>
 
-      </div>
+        <section id="diagnostics" className="panelCard diagnosticsPanel">
+          <div className="panelHead">
+            <div>
+              <p className="panelEyebrow">Diagnostics</p>
+              <h2>Validation</h2>
+              <p className="panelCopy">
+                Local checks run on every edit. Backend validation runs when local errors are clear.
+              </p>
+            </div>
+          </div>
 
+          <div className="diagnosticSummaryRow">
+            <div className="pillBadge tone-error">{localErrors.length} local errors</div>
+            <div className="pillBadge tone-warn">{localWarnings.length} local warnings</div>
+            <div className="pillBadge tone-error">{backendValidation.errors.length} backend errors</div>
+            <div className="pillBadge tone-warn">{backendValidation.warnings.length} backend warnings</div>
+            <div className={`pillBadge ${backendValidation.phase === "success" ? "tone-good" : backendValidation.phase === "fallback" ? "tone-warn" : "tone-neutral"}`}>
+              backend: {backendValidation.phase}
+            </div>
+          </div>
+
+          {diagnostics.length === 0 ? (
+            <div className="diagnosticList" role="list">
+              <div className="diagnosticItem tone-good" role="listitem">
+                <div className="diagnosticIcon">
+                  <FiCheckCircle />
+                </div>
+                <div>
+                  <div className="diagnosticTitle">No local or backend warnings.</div>
+                  <div className="diagnosticMeta">Configuration looks ready to export.</div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="diagnosticList" role="list">
+                {visibleDiagnostics.map((diagnostic) => (
+                  <div
+                    key={diagnostic.id}
+                    className={`diagnosticItem tone-${diagnostic.level}`}
+                    role="listitem"
+                  >
+                    <div className="diagnosticIcon">
+                      {diagnostic.level === "error" ? (
+                        <FiXCircle />
+                      ) : diagnostic.level === "warning" ? (
+                        <FiAlertTriangle />
+                      ) : (
+                        <FiCheckCircle />
+                      )}
+                    </div>
+                    <div>
+                      <div className="diagnosticTitle">{diagnostic.message}</div>
+                      <div className="diagnosticMeta">
+                        <code>{diagnostic.path}</code> · {diagnostic.source}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {hiddenDiagnostics.length > 0 ? (
+                <details className="sectionDisclosure">
+                  <summary className="sectionDisclosureSummary">
+                    Show {hiddenDiagnostics.length} more diagnostic
+                    {hiddenDiagnostics.length === 1 ? "" : "s"}
+                  </summary>
+                  <div className="diagnosticList diagnosticListNested" role="list">
+                    {hiddenDiagnostics.map((diagnostic) => (
+                      <div
+                        key={diagnostic.id}
+                        className={`diagnosticItem tone-${diagnostic.level}`}
+                        role="listitem"
+                      >
+                        <div className="diagnosticIcon">
+                          {diagnostic.level === "error" ? (
+                            <FiXCircle />
+                          ) : diagnostic.level === "warning" ? (
+                            <FiAlertTriangle />
+                          ) : (
+                            <FiCheckCircle />
+                          )}
+                        </div>
+                        <div>
+                          <div className="diagnosticTitle">{diagnostic.message}</div>
+                          <div className="diagnosticMeta">
+                            <code>{diagnostic.path}</code> · {diagnostic.source}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
+            </>
+          )}
+        </section>
+      </div>
 
       <BuilderPanel
         {...builderPanelProps}
@@ -352,85 +475,27 @@ export function StudioPageView({
         clearDragState={clearDragState}
       />
 
-      <section id="diagnostics" className="panelCard diagnosticsPanel">
-        <div className="panelHead">
-          <div>
-            <p className="panelEyebrow">Diagnostics</p>
-            <h2>Validation and warnings</h2>
-            <p className="panelCopy">
-              Local semantic checks run on every edit. Backend `{"/validate/model"}` validation is attempted when local errors are clear.
-            </p>
-          </div>
-        </div>
-
-        <div className="diagnosticSummaryRow">
-          <div className="pillBadge tone-error">{localErrors.length} local errors</div>
-          <div className="pillBadge tone-warn">{localWarnings.length} local warnings</div>
-          <div className="pillBadge tone-error">{backendValidation.errors.length} backend errors</div>
-          <div className="pillBadge tone-warn">{backendValidation.warnings.length} backend warnings</div>
-          <div className={`pillBadge ${backendValidation.phase === "success" ? "tone-good" : backendValidation.phase === "fallback" ? "tone-warn" : "tone-neutral"}`}>
-            backend: {backendValidation.phase}
-          </div>
-        </div>
-
-        <div className="diagnosticList" role="list">
-          {diagnostics.length === 0 ? (
-            <div className="diagnosticItem tone-good" role="listitem">
-              <div className="diagnosticIcon">
-                <FiCheckCircle />
-              </div>
-              <div>
-                <div className="diagnosticTitle">No local or backend warnings.</div>
-                <div className="diagnosticMeta">Configuration looks ready to export.</div>
-              </div>
-            </div>
-          ) : (
-            diagnostics.map((diagnostic) => (
-              <div
-                key={diagnostic.id}
-                className={`diagnosticItem tone-${diagnostic.level}`}
-                role="listitem"
-              >
-                <div className="diagnosticIcon">
-                  {diagnostic.level === "error" ? (
-                    <FiXCircle />
-                  ) : diagnostic.level === "warning" ? (
-                    <FiAlertTriangle />
-                  ) : (
-                    <FiCheckCircle />
-                  )}
-                </div>
-                <div>
-                  <div className="diagnosticTitle">{diagnostic.message}</div>
-                  <div className="diagnosticMeta">
-                    <code>{diagnostic.path}</code> · {diagnostic.source}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-
       <section id="model-analysis" className="panelCard analysisPanel">
         <div className="panelHead">
           <div>
             <p className="panelEyebrow">Backend Model Analysis</p>
-            <h2>Instantiate `ConfigurableGPT` and inspect runtime-facing metrics</h2>
+            <h2>Runtime analysis</h2>
             <p className="panelCopy">
-              Runs on the backend using `{"/model/model.py"}` to confirm the config constructs a real model and to estimate parameter and KV-cache memory.
+              Instantiates the model on the backend to verify the config and estimate runtime memory.
             </p>
           </div>
           <div className="actionCluster">
             <button
               type="button"
-              className="buttonGhost"
+              className="buttonGhost iconOnly"
               onClick={() => {
                 void runBackendAnalysis();
               }}
               disabled={backendAnalysis.phase === "running" || localErrors.length > 0}
+              aria-label={backendAnalysis.phase === "running" ? "Analysis running" : "Run analysis"}
+              title={backendAnalysis.phase === "running" ? "Analysis running" : "Run analysis"}
             >
-              <FiServer /> {backendAnalysis.phase === "running" ? "Analyzing..." : "Run Analysis"}
+              <FiServer />
             </button>
           </div>
         </div>
@@ -516,19 +581,25 @@ export function StudioPageView({
 
               <div className="workflowItem">
                 <div className="workflowTitle">Module inventory</div>
-                <div className="analysisChipRow analysisModuleChipRow">
-                  {visibleModuleInventoryEntries.map(([name, count]) => (
-                    <span key={name} className="analysisModuleChip">
-                      <code>{name}</code>
-                      <strong>{count}</strong>
-                    </span>
-                  ))}
-                  {hiddenModuleInventoryCount > 0 ? (
-                    <span className="analysisModuleChip isMeta">
-                      +{hiddenModuleInventoryCount} more
-                    </span>
-                  ) : null}
-                </div>
+                <details className="sectionDisclosure compact">
+                  <summary className="sectionDisclosureSummary">
+                    {moduleInventoryEntries.length} module type
+                    {moduleInventoryEntries.length === 1 ? "" : "s"}
+                  </summary>
+                  <div className="analysisChipRow analysisModuleChipRow">
+                    {visibleModuleInventoryEntries.map(([name, count]) => (
+                      <span key={name} className="analysisModuleChip">
+                        <code>{name}</code>
+                        <strong>{count}</strong>
+                      </span>
+                    ))}
+                    {hiddenModuleInventoryCount > 0 ? (
+                      <span className="analysisModuleChip isMeta">
+                        +{hiddenModuleInventoryCount} more
+                      </span>
+                    ) : null}
+                  </div>
+                </details>
               </div>
             </div>
           </>
@@ -554,17 +625,29 @@ export function StudioPageView({
           <div className="panelHead">
             <div>
               <p className="panelEyebrow">JSON Preview</p>
-              <h2>Exportable model config</h2>
+              <h2>JSON preview</h2>
               <p className="panelCopy">
-                Live JSON mirrors the visual state. Use copy/export for downstream training or backend validation calls.
+                Live JSON generated from the current visual config.
               </p>
             </div>
             <div className="actionCluster">
-              <button type="button" className="buttonGhost" onClick={copyJson}>
-                <FiCopy /> Copy
+              <button
+                type="button"
+                className="buttonGhost iconOnly"
+                onClick={copyJson}
+                aria-label="Copy JSON"
+                title="Copy JSON"
+              >
+                <FiCopy />
               </button>
-              <button type="button" className="buttonGhost" onClick={exportJson}>
-                <FiDownload /> Export
+              <button
+                type="button"
+                className="buttonGhost iconOnly"
+                onClick={exportJson}
+                aria-label="Export JSON"
+                title="Export JSON"
+              >
+                <FiDownload />
               </button>
             </div>
           </div>
@@ -575,26 +658,40 @@ export function StudioPageView({
           <div className="panelHead">
             <div>
               <p className="panelEyebrow">Import / Workflow</p>
-              <h2>Paste or load JSON</h2>
+              <h2>Import JSON</h2>
               <p className="panelCopy">
-                Import a `/model` JSON document to regenerate blocks and nested MLP sequences. Unsupported shapes are rejected before state changes.
+                Paste or load a `/model` JSON document to rebuild the visual editor.
               </p>
             </div>
           </div>
 
           <div className="actionRowWrap">
-            <button type="button" className="buttonGhost" onClick={() => fileInputRef.current?.click()}>
-              <FiUpload /> Choose JSON File
-            </button>
-            <button type="button" className="buttonGhost" onClick={() => applyImportText(importDraft)}>
-              <FiRefreshCw /> Apply Import Text
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Choose JSON file"
+              title="Choose JSON file"
+            >
+              <FiUpload />
             </button>
             <button
               type="button"
-              className="buttonGhost"
-              onClick={() => setImportDraft(JSON.stringify(modelConfig, null, 2))}
+              className="buttonGhost iconOnly"
+              onClick={() => applyImportText(importDraft)}
+              aria-label="Apply import text"
+              title="Apply import text"
             >
-              <FiCopy /> Load Current Into Editor
+              <FiRefreshCw />
+            </button>
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={() => setImportDraft(JSON.stringify(modelConfig, null, 2))}
+              aria-label="Load current config into import editor"
+              title="Load current config into import editor"
+            >
+              <FiCopy />
             </button>
           </div>
 
@@ -610,14 +707,6 @@ export function StudioPageView({
           </label>
 
           <div className="workflowList">
-            <div className="workflowItem">
-              <div className="workflowTitle">Suggested workflow</div>
-              <ol>
-                <li>Set base dimensions (`n_embd`, `context_length`, `vocab_size`).</li>
-                <li>Compose one reference block, then duplicate and tune variants.</li>
-                <li>Resolve diagnostics, then export JSON or submit to backend validator.</li>
-              </ol>
-            </div>
             <div className="workflowItem">
               <div className="workflowTitle">Counts</div>
               <div className="workflowStats">

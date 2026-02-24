@@ -2,7 +2,7 @@
   width: min(1380px, calc(100% - 24px));
   margin: 12px auto 0;
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .studioRoot > * {
@@ -14,7 +14,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 16px;
+  padding: 18px;
   min-width: 0;
 }
 
@@ -68,17 +68,17 @@
 .studioNavLinks {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
 }
 
 .studioNavLink {
   border-radius: 999px;
   border: 1px solid transparent;
-  padding: 4px 9px;
+  padding: 4px 8px;
   text-decoration: none;
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 650;
   transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
@@ -118,5 +118,5 @@
 .twoColLayout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 14px;
 }
