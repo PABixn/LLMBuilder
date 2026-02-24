@@ -1,0 +1,152 @@
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.fieldGrid.compact {
+  margin-top: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fieldLabel {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.fieldLabel > span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 650;
+}
+
+.fieldLabel input,
+.fieldLabel select,
+.fieldLabel textarea {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 9px 10px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.fieldLabel textarea {
+  resize: vertical;
+  min-height: 150px;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.fieldLabel input:focus,
+.fieldLabel select:focus,
+.fieldLabel textarea:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+.toggleField {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.toggleField.tall {
+  margin-top: 22px;
+  min-height: 44px;
+}
+
+.toggleField input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--brand);
+}
+
+.paletteGrid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.paletteTile {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  padding: 10px 12px;
+  cursor: grab;
+  user-select: none;
+  min-height: 92px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.paletteTile:active {
+  cursor: grabbing;
+}
+
+.paletteTile:hover,
+.paletteTile:focus-visible {
+  border-color: var(--brand);
+  box-shadow: 0 10px 20px rgba(9, 25, 49, 0.08);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.paletteTileTitle {
+  font-size: 0.88rem;
+  font-weight: 760;
+  letter-spacing: -0.01em;
+}
+
+.paletteTileSubtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.paletteTileHint {
+  margin-top: auto;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.88;
+}
+
+.paletteTile.tone-attention {
+  background: linear-gradient(180deg, rgba(34, 98, 178, 0.08), var(--surface-soft));
+  border-color: rgba(34, 98, 178, 0.2);
+}
+
+.paletteTile.tone-mlp {
+  background: linear-gradient(180deg, rgba(20, 133, 111, 0.08), var(--surface-soft));
+  border-color: rgba(20, 133, 111, 0.2);
+}
+
+.paletteTile.tone-norm {
+  background: linear-gradient(180deg, rgba(140, 99, 200, 0.08), var(--surface-soft));
+  border-color: rgba(140, 99, 200, 0.18);
+}
+
+.paletteTile.tone-activation {
+  background: linear-gradient(180deg, rgba(218, 125, 17, 0.08), var(--surface-soft));
+  border-color: rgba(218, 125, 17, 0.18);
+}
+
+.paletteTile.tone-linear {
+  background: linear-gradient(180deg, rgba(62, 98, 155, 0.08), var(--surface-soft));
+  border-color: rgba(62, 98, 155, 0.16);
+}

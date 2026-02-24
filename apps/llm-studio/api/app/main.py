@@ -203,6 +203,7 @@ def _build_model_analysis(config: LLMConfig) -> ModelAnalysisSummary:
     mlp_count = 0
     norm_count = 0
     activation_count = 0
+    mlp_activation_step_count = 0
     component_count = 0
     kv_cache_bytes_per_token_fp16 = 0
     head_dims: list[int] = []
@@ -221,6 +222,9 @@ def _build_model_analysis(config: LLMConfig) -> ModelAnalysisSummary:
                     )
             elif isinstance(component, MLPComponent):
                 mlp_count += 1
+                for step in component.mlp.sequence:
+                    if isinstance(step, ActivationComponent):
+                        mlp_activation_step_count += 1
             elif isinstance(component, NormComponent):
                 norm_count += 1
             elif isinstance(component, ActivationComponent):
@@ -252,6 +256,7 @@ def _build_model_analysis(config: LLMConfig) -> ModelAnalysisSummary:
         mlp_component_count=mlp_count,
         norm_component_count=norm_count,
         activation_component_count=activation_count,
+        mlp_activation_step_count=mlp_activation_step_count,
         min_head_dim=min(head_dims) if head_dims else None,
         max_head_dim=max(head_dims) if head_dims else None,
         instantiation_time_ms=round(elapsed_ms, 3),

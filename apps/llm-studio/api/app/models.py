@@ -52,6 +52,7 @@ class ModelAnalysisSummary(BaseModel):
     mlp_component_count: int
     norm_component_count: int
     activation_component_count: int
+    mlp_activation_step_count: int
     min_head_dim: int | None = None
     max_head_dim: int | None = None
     instantiation_time_ms: float

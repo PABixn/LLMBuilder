@@ -1,0 +1,511 @@
+.heroCard {
+  padding: 18px;
+  border-color: var(--line-strong);
+  background:
+    radial-gradient(circle at 95% 10%, rgba(34, 98, 178, 0.08), transparent 44%),
+    radial-gradient(circle at 12% 0%, rgba(31, 140, 104, 0.07), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), var(--surface));
+}
+
+[data-theme="dark"] .heroCard {
+  background:
+    radial-gradient(circle at 95% 10%, rgba(127, 176, 245, 0.11), transparent 44%),
+    radial-gradient(circle at 12% 0%, rgba(92, 213, 154, 0.09), transparent 34%),
+    linear-gradient(180deg, rgba(18, 31, 48, 0.94), var(--surface));
+}
+
+.heroHead {
+  align-items: flex-start;
+}
+
+.panelHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.panelEyebrow {
+  margin: 0;
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.panelHead h1,
+.panelHead h2,
+.panelHead h3 {
+  margin: 6px 0 0;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.panelHead h1 {
+  font-size: clamp(1.25rem, 2vw, 1.8rem);
+}
+
+.panelHead h2 {
+  font-size: 1.18rem;
+}
+
+.panelCopy {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  max-width: 72ch;
+  line-height: 1.45;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.buttonGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.buttonGhost:hover,
+.buttonGhost:focus-visible {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--focus);
+  outline: none;
+}
+
+.buttonGhost svg {
+  width: 14px;
+  height: 14px;
+}
+
+.actionCluster {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.inlineNotice {
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.inlineNotice.tone-info {
+  background: var(--brand-soft);
+  border-color: rgba(34, 98, 178, 0.25);
+}
+
+.inlineNotice.tone-success {
+  background: var(--ok-soft);
+  border-color: rgba(24, 114, 76, 0.24);
+}
+
+.inlineNotice.tone-error {
+  background: var(--danger-soft);
+  border-color: rgba(186, 45, 34, 0.24);
+}
+
+.statusGrid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.statusCard {
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  padding: 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.statusCardIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.statusCardIcon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.statusCardTitle {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 750;
+  color: var(--text-muted);
+}
+
+.statusCardValue {
+  margin-top: 4px;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.statusCardDetail {
+  margin-top: 4px;
+  font-size: 0.79rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.statusCard.tone-good {
+  border-color: rgba(24, 114, 76, 0.25);
+  background: linear-gradient(180deg, var(--ok-soft), var(--surface-soft));
+}
+
+.statusCard.tone-good .statusCardIcon {
+  color: var(--ok);
+  border-color: rgba(24, 114, 76, 0.28);
+}
+
+.statusCard.tone-warn {
+  border-color: rgba(168, 93, 8, 0.24);
+  background: linear-gradient(180deg, var(--warn-soft), var(--surface-soft));
+}
+
+.statusCard.tone-warn .statusCardIcon {
+  color: var(--warn);
+  border-color: rgba(168, 93, 8, 0.26);
+}
+
+.statusCard.tone-bad {
+  border-color: rgba(186, 45, 34, 0.22);
+  background: linear-gradient(180deg, var(--danger-soft), var(--surface-soft));
+}
+
+.statusCard.tone-bad .statusCardIcon {
+  color: var(--danger);
+  border-color: rgba(186, 45, 34, 0.24);
+}
+
+.diagnosticsPanel {
+  padding-top: 18px;
+}
+
+.diagnosticSummaryRow {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pillBadge {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--surface-soft);
+}
+
+.pillBadge.tone-error {
+  border-color: rgba(186, 45, 34, 0.22);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.pillBadge.tone-warn {
+  border-color: rgba(168, 93, 8, 0.22);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.pillBadge.tone-good {
+  border-color: rgba(24, 114, 76, 0.22);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.pillBadge.tone-neutral {
+  color: var(--text-muted);
+}
+
+.diagnosticList {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.diagnosticItem {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: flex-start;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  padding: 10px 11px;
+}
+
+.diagnosticItem.tone-error {
+  border-color: rgba(186, 45, 34, 0.2);
+  background: linear-gradient(180deg, var(--danger-soft), var(--surface-soft));
+}
+
+.diagnosticItem.tone-warning {
+  border-color: rgba(168, 93, 8, 0.2);
+  background: linear-gradient(180deg, var(--warn-soft), var(--surface-soft));
+}
+
+.diagnosticItem.tone-info {
+  border-color: rgba(34, 98, 178, 0.2);
+  background: linear-gradient(180deg, var(--brand-soft), var(--surface-soft));
+}
+
+.diagnosticItem.tone-good {
+  border-color: rgba(24, 114, 76, 0.2);
+  background: linear-gradient(180deg, var(--ok-soft), var(--surface-soft));
+}
+
+.diagnosticIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.diagnosticItem.tone-error .diagnosticIcon {
+  color: var(--danger);
+  border-color: rgba(186, 45, 34, 0.2);
+}
+
+.diagnosticItem.tone-warning .diagnosticIcon {
+  color: var(--warn);
+  border-color: rgba(168, 93, 8, 0.2);
+}
+
+.diagnosticItem.tone-info .diagnosticIcon {
+  color: var(--brand);
+  border-color: rgba(34, 98, 178, 0.2);
+}
+
+.diagnosticItem.tone-good .diagnosticIcon {
+  color: var(--ok);
+  border-color: rgba(24, 114, 76, 0.2);
+}
+
+.diagnosticIcon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.diagnosticTitle {
+  font-weight: 700;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.diagnosticMeta {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.diagnosticMeta code {
+  font-size: 0.72rem;
+}
+
+.analysisPanel {
+  padding-top: 18px;
+}
+
+.analysisMessage {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.analysisStatsGrid {
+  margin-top: 12px;
+}
+
+.analysisLayout {
+  margin-top: 10px;
+  align-items: start;
+}
+
+.analysisChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.analysisChipRow span {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.analysisModuleChipRow {
+  gap: 6px;
+}
+
+.analysisModuleChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysisModuleChip code {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.analysisModuleChip strong {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.analysisModuleChip.isMeta {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.analysisModuleList {
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.analysisModuleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 7px 9px;
+  font-size: 0.78rem;
+}
+
+.analysisModuleRow code {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.analysisModuleRow span {
+  font-weight: 700;
+}
+
+.previewLayout {
+  align-items: start;
+}
+
+.previewPanel,
+.importPanel {
+  min-height: 100%;
+}
+
+.jsonPreview {
+  margin: 12px 0 0;
+  border-radius: 14px;
+  border: 1px solid var(--pre-line);
+  background: linear-gradient(180deg, rgba(7, 17, 31, 0.92), var(--pre-bg));
+  color: var(--pre-text);
+  padding: 12px;
+  min-height: 420px;
+  max-height: 680px;
+  overflow: auto;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.jsonPreview code {
+  white-space: pre;
+}
+
+.actionRowWrap {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workflowList {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.workflowItem {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  padding: 10px 11px;
+}
+
+.workflowTitle {
+  font-size: 0.79rem;
+  font-weight: 760;
+  margin-bottom: 7px;
+}
+
+.workflowItem ol {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.workflowStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workflowStats span {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  font-weight: 650;
+}

@@ -26,6 +26,7 @@ export interface ModelAnalysisSummary {
   mlp_component_count: number;
   norm_component_count: number;
   activation_component_count: number;
+  mlp_activation_step_count: number;
   min_head_dim: number | null;
   max_head_dim: number | null;
   instantiation_time_ms: number;

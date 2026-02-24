@@ -1,0 +1,146 @@
+@media (max-width: 1180px) {
+  .statusGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .twoColLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .studioRoot {
+    width: min(100%, calc(100% - 12px));
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .studioNav {
+    width: calc(100% - 4px);
+    justify-self: stretch;
+    justify-content: space-between;
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .studioNavLinks {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .studioNavLinks::-webkit-scrollbar {
+    display: none;
+  }
+
+  .heroActions,
+  .actionCluster,
+  .actionRowWrap {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .heroActions .buttonGhost,
+  .actionCluster .buttonGhost,
+  .actionRowWrap .buttonGhost {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+  }
+
+  .fieldGrid,
+  .fieldGrid.compact {
+    grid-template-columns: 1fr;
+  }
+
+  .paletteGrid,
+  .miniPaletteGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .builderCanvasToolbar {
+    align-items: stretch;
+  }
+
+  .builderCanvasStats {
+    width: 100%;
+  }
+
+  .builderCanvasStats span {
+    flex: 1 1 calc(50% - 3px);
+    justify-content: center;
+    text-align: center;
+  }
+
+  .blockCanvasViewport {
+    max-height: 64vh;
+  }
+
+  .blockCanvas {
+    min-height: 300px;
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .blockCanvas > .dropSlot,
+  .blockGroupTrack > .dropSlot {
+    flex-basis: 16px;
+    min-height: 240px;
+  }
+
+  .blockCard {
+    width: min(284px, calc(100vw - 84px));
+    min-width: min(284px, calc(100vw - 84px));
+  }
+
+  .blockGroupCard {
+    width: min(284px, calc(100vw - 84px));
+    min-width: min(284px, calc(100vw - 84px));
+  }
+
+  .blockGroupCard.isExpanded {
+    width: auto;
+    min-width: 0;
+  }
+
+  .builderPanel .blockCardHead {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .builderPanel .blockCardActions {
+    justify-content: flex-end;
+  }
+
+  .mlpSequenceList > .dropSlot {
+    flex-basis: 18px;
+  }
+
+  .statusGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .blockCardHead,
+  .panelHead {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .blockCardActions {
+    justify-content: flex-end;
+  }
+
+  .jsonPreview {
+    min-height: 320px;
+    max-height: 420px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
