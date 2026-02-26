@@ -1,5 +1,6 @@
 import type { ModelAnalysisSummary, ValidationIssue as ApiValidationIssue } from "../../lib/api";
 import type {
+  ActivationType,
   ActivationConfig,
   AttentionConfig,
   LinearConfig,
@@ -89,6 +90,40 @@ export interface Diagnostic {
   source: DiagnosticSource;
   path: string;
   message: string;
+}
+
+export type SuggestionPriority = "critical" | "high" | "medium" | "low";
+export type SuggestionCategory =
+  | "correctness"
+  | "architecture"
+  | "efficiency"
+  | "consistency"
+  | "workflow";
+export type SuggestionSource = "local" | "backend" | "analysis" | "combined";
+export type SuggestionApplyAction =
+  | { kind: "run_backend_analysis" }
+  | { kind: "set_all_mlp_activations"; activation: ActivationType }
+  | { kind: "set_all_norm_family"; normType: NormConfig["type"]; learnableGamma?: boolean }
+  | { kind: "set_all_mlp_multipliers"; multiplier: number }
+  | { kind: "set_all_attention_kv_heads"; strategy: "half" | "one" };
+
+export interface SuggestionApplyOption {
+  id: string;
+  label: string;
+  action: SuggestionApplyAction;
+}
+
+export interface DesignSuggestion {
+  id: string;
+  priority: SuggestionPriority;
+  category: SuggestionCategory;
+  source: SuggestionSource;
+  title: string;
+  summary: string;
+  action: string;
+  path: string | null;
+  applyOptions: SuggestionApplyOption[];
+  score: number;
 }
 
 export interface BackendValidationState {

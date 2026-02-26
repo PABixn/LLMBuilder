@@ -1,0 +1,88 @@
+.pillBadge {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 3px 8px;
+  font-size: 0.69rem;
+  font-weight: 750;
+  color: var(--text-muted);
+  background: var(--surface-soft);
+  line-height: 1.2;
+}
+
+.pillBadge.tone-error {
+  border-color: rgba(186, 45, 34, 0.22);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.pillBadge.tone-warn {
+  border-color: rgba(168, 93, 8, 0.22);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.pillBadge.tone-good {
+  border-color: rgba(24, 114, 76, 0.22);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.pillBadge.tone-neutral {
+  color: var(--text-muted);
+}
+
+.pillBadge.tone-neutral {
+  border-color: var(--line);
+  background: var(--surface-soft);
+}
+
+.sectionDisclosure {
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  padding: 8px 10px;
+}
+
+.sectionDisclosure.compact {
+  margin-top: 0;
+  padding: 6px 8px;
+  background: var(--surface);
+}
+
+.sectionDisclosure.compact[open] {
+  padding-top: 12px;
+}
+
+.sectionDisclosureSummary {
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  list-style: none;
+  display: flex;
+  align-items: center;
+}
+
+.sectionDisclosureSummary::-webkit-details-marker {
+  display: none;
+}
+
+.sectionDisclosureSummary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--text-muted);
+  transform-origin: center;
+  transition: transform 0.12s ease;
+}
+
+.sectionDisclosure[open] .sectionDisclosureSummary::before {
+  transform: rotate(90deg);
+}
+
+.sectionDisclosureSummary:hover,
+.sectionDisclosureSummary:focus-visible {
+  color: var(--brand-strong);
+  outline: none;
+}

@@ -1,0 +1,48 @@
+.workflowList {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.workflowItem {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  padding: 9px 10px;
+}
+
+.workflowItemInset {
+  margin-top: 8px;
+}
+
+.workflowTitle {
+  font-size: 0.75rem;
+  font-weight: 760;
+  margin-bottom: 6px;
+}
+
+.workflowItem ol {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+  display: grid;
+  gap: 5px;
+  font-size: 0.77rem;
+  line-height: 1.28;
+}
+
+.workflowStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workflowStats span {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 4px 9px;
+  font-size: 0.73rem;
+  font-weight: 650;
+}
+

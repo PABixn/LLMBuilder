@@ -1,0 +1,42 @@
+.previewLayout {
+  align-items: start;
+}
+
+.previewPanel,
+.importPanel {
+  min-height: 100%;
+}
+
+.importPanel .panelHead {
+  margin-top: 8px;
+}
+
+.jsonPreview {
+  margin: 12px 0 0;
+  border-radius: 14px;
+  border: 1px solid var(--pre-line);
+  background: linear-gradient(180deg, rgba(7, 17, 31, 0.92), var(--pre-bg));
+  color: var(--pre-text);
+  padding: 11px;
+  min-height: 380px;
+  max-height: 680px;
+  overflow: auto;
+  font-size: 0.8rem;
+  line-height: 1.36;
+}
+
+.jsonPreview code {
+  white-space: pre;
+}
+
+.actionRowWrap {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.importPanel > .fieldLabel {
+  margin-top: 14px;
+}
+

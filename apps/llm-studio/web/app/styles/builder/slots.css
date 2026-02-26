@@ -1,0 +1,122 @@
+.dropSlot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--drop-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.36);
+  min-height: 18px;
+  padding: 6px 8px;
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .dropSlot {
+  background: rgba(16, 28, 44, 0.34);
+}
+
+.dropSlotMark {
+  display: block;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.62;
+  transform: translate(-50%, -50%);
+}
+
+.dropSlot.isCompact {
+  border-radius: 9px;
+  min-height: 14px;
+  padding: 4px 6px;
+}
+
+.dropSlot.isActive {
+  border-color: var(--drop-active-border);
+  background: var(--drop-active-bg);
+  color: var(--brand-strong);
+}
+
+.dropSlot.isActive .dropSlotMark {
+  opacity: 0.95;
+}
+
+.blockCanvas > .dropSlot,
+.blockGroupTrack > .dropSlot {
+  flex: 0 0 20px;
+  align-self: stretch;
+  min-height: 300px;
+  padding: 4px 2px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(247, 250, 252, 0.75));
+}
+
+[data-theme="dark"] .blockCanvas > .dropSlot,
+[data-theme="dark"] .blockGroupTrack > .dropSlot {
+  background: linear-gradient(180deg, rgba(16, 28, 44, 0.45), rgba(19, 35, 56, 0.7));
+}
+
+.blockCanvas > .dropSlot .dropSlotMark,
+.blockGroupTrack > .dropSlot .dropSlotMark {
+  width: 2px;
+  height: 28px;
+}
+
+.blockInsertSlot {
+  overflow: visible;
+}
+
+.blockInsertSlot.isOpen {
+  border-color: var(--drop-active-border);
+  background: var(--drop-active-bg);
+  color: var(--brand-strong);
+}
+
+.blockInsertSlot .dropSlotMark {
+  pointer-events: none;
+}
+
+.inlineInsertSlot {
+  position: relative;
+  overflow: visible;
+}
+
+.inlineInsertSlot.isOpen {
+  border-color: var(--drop-active-border);
+  background: var(--drop-active-bg);
+  color: var(--brand-strong);
+}
+
+.inlineInsertSlot .dropSlotMark {
+  pointer-events: none;
+}
+
+.blockInsertTrigger,
+.inlineInsertTrigger {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.blockInsertTrigger:hover,
+.inlineInsertTrigger:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.blockInsertTrigger:focus-visible,
+.inlineInsertTrigger:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--brand), 0 0 0 3px var(--focus);
+}
+
+[data-theme="dark"] .blockInsertTrigger:hover,
+[data-theme="dark"] .inlineInsertTrigger:hover {
+  background: rgba(127, 176, 245, 0.08);
+}
+

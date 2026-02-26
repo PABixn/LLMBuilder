@@ -1,0 +1,373 @@
+.blockGroupCard {
+  align-self: flex-start;
+  flex: 0 0 auto;
+  width: clamp(300px, 30vw, 360px);
+  min-width: 300px;
+  border-radius: 14px;
+  border: 1px dashed var(--line-strong);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(247, 250, 252, 0.92)),
+    var(--surface);
+  padding: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+[data-theme="dark"] .blockGroupCard {
+  background:
+    linear-gradient(180deg, rgba(24, 41, 62, 0.88), rgba(18, 31, 48, 0.92)),
+    var(--surface);
+}
+
+.blockGroupCard.isExpanded {
+  width: auto;
+  min-width: 0;
+}
+
+.blockGroupCard.isExpanded .blockGroupHead {
+  justify-content: flex-start;
+}
+
+.blockGroupCard.isExpanded .blockGroupHead > .iconButton {
+  order: -1;
+  flex: 0 0 auto;
+}
+
+.blockGroupCard.isExpanded .blockGroupTrack .blockQuickMap {
+  display: none;
+}
+
+.blockGroupCollapsedPreview {
+  gap: 8px;
+}
+
+.blockGroupCollapsedPreview > .blockCard {
+  width: 100%;
+  min-width: 0;
+  border-style: solid;
+  border-color: var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+}
+
+.blockGroupCollapsedPreview > .blockCard .blockCardHead {
+  position: relative;
+}
+
+.blockGroupCollapsedPreview > .blockCard .blockCardTitleWrap p {
+  display: none;
+}
+
+.blockGroupCollapsedPreview > .blockCard .blockQuickMap {
+  margin-top: 6px;
+  padding-bottom: 0;
+}
+
+.blockGroupCollapsedPreview > .blockCard .componentLane {
+  margin-top: 4px;
+}
+
+.blockGroupCollapsedExpand {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: -11px -11px 0;
+  width: calc(100% + 22px);
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  border-radius: 13px 13px 0 0;
+  padding: 5px 8px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.blockGroupCollapsedExpand:hover,
+.blockGroupCollapsedExpand:focus-visible {
+  border-bottom-color: var(--brand);
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-raised) 75%, var(--brand-soft));
+  outline: none;
+}
+
+.blockGroupCollapsedExpand svg {
+  width: 14px;
+  height: 14px;
+  justify-self: end;
+}
+
+.blockGroupCollapsedExpandLabel {
+  text-align: center;
+  color: inherit;
+}
+
+.blockGroupCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  justify-self: start;
+}
+
+.blockGroupHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.blockGroupHead.isToggleable {
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.blockGroupHead.isToggleable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.blockGroupTitleWrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.blockGroupBadge {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--brand);
+  display: grid;
+  place-items: center;
+}
+
+.blockGroupBadge svg {
+  width: 13px;
+  height: 13px;
+}
+
+.blockGroupTitleWrap h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+.blockGroupTitleWrap p {
+  margin: 2px 0 0;
+  font-size: 0.69rem;
+  color: var(--text-muted);
+}
+
+.blockGroupCard .blockQuickMap {
+  margin-top: 0;
+}
+
+.blockGroupHint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.69rem;
+  line-height: 1.28;
+}
+
+.blockGroupTrack {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.blockCard {
+  align-self: flex-start;
+  width: clamp(300px, 30vw, 360px);
+  min-width: 300px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  padding: 11px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  overflow: visible;
+}
+
+.blockCardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.blockCardTitleWrap {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.blockCardTitleWrap h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+.blockCardTitleWrap p {
+  margin: 2px 0 0;
+  font-size: 0.69rem;
+  color: var(--text-muted);
+}
+
+.blockCardActions {
+  display: flex;
+  gap: 6px;
+}
+
+.blockQuickMap {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 5px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.flowMiniChip {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.flowMiniChip.isEmpty {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.flowMiniChip.isMeta {
+  background: var(--surface-soft);
+  color: var(--text-muted);
+}
+
+.flowMiniChip.kind-attention {
+  border-color: rgba(34, 98, 178, 0.24);
+  color: #2a66ad;
+}
+
+.flowMiniChip.kind-mlp {
+  border-color: rgba(20, 133, 111, 0.26);
+  color: #147a67;
+}
+
+.flowMiniChip.kind-norm {
+  border-color: rgba(140, 99, 200, 0.24);
+  color: #7d56b8;
+}
+
+.flowMiniChip.kind-activation {
+  border-color: rgba(218, 125, 17, 0.24);
+  color: #c86d10;
+}
+
+[data-theme="dark"] .flowMiniChip.kind-attention {
+  color: #8fbfff;
+}
+
+[data-theme="dark"] .flowMiniChip.kind-mlp {
+  color: #73e2c8;
+}
+
+[data-theme="dark"] .flowMiniChip.kind-norm {
+  color: #cbb0ff;
+}
+
+[data-theme="dark"] .flowMiniChip.kind-activation {
+  color: #ffd08d;
+}
+
+.dragBadge {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  user-select: none;
+}
+
+.dragBadge:active {
+  cursor: grabbing;
+}
+
+.dragBadge svg {
+  width: 13px;
+  height: 13px;
+}
+
+.iconButton {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.iconButton svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.iconButton:hover,
+.iconButton:focus-visible {
+  border-color: var(--brand);
+  color: var(--text);
+  box-shadow: 0 0 0 3px var(--focus);
+  outline: none;
+}
+
+.iconButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.iconButton.danger:hover,
+.iconButton.danger:focus-visible {
+  border-color: rgba(186, 45, 34, 0.45);
+  color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(186, 45, 34, 0.13);
+}
+

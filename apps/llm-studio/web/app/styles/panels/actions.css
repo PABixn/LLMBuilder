@@ -1,0 +1,65 @@
+.buttonGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.buttonGhost:hover,
+.buttonGhost:focus-visible {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--focus);
+  outline: none;
+}
+
+.buttonGhost svg {
+  width: 14px;
+  height: 14px;
+}
+
+.buttonGhost.iconOnly {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+  flex: 0 0 34px;
+}
+
+.actionCluster {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.inlineNotice {
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 9px 11px;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.inlineNotice.tone-info {
+  background: var(--brand-soft);
+  border-color: rgba(34, 98, 178, 0.25);
+}
+
+.inlineNotice.tone-success {
+  background: var(--ok-soft);
+  border-color: rgba(24, 114, 76, 0.24);
+}
+
+.inlineNotice.tone-error {
+  background: var(--danger-soft);
+  border-color: rgba(186, 45, 34, 0.24);
+}

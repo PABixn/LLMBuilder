@@ -1,0 +1,84 @@
+.builderPanel {
+  padding-top: 16px;
+  min-width: 0;
+}
+
+.builderCanvasToolbar {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.builderCanvasHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.25;
+}
+
+.builderCanvasHintDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--brand);
+  box-shadow: 0 0 0 4px rgba(34, 98, 178, 0.12);
+  flex: 0 0 auto;
+}
+
+.builderCanvasStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.builderCanvasStats span {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  padding: 4px 8px;
+  font-size: 0.69rem;
+  font-weight: 750;
+  color: var(--text-muted);
+}
+
+.blockCanvasViewport {
+  margin-top: 10px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface-soft), rgba(255, 255, 255, 0.5));
+  width: 100%;
+  min-width: 0;
+  overflow: auto;
+  max-width: 100%;
+  max-height: min(70vh, 900px);
+  overscroll-behavior: contain;
+}
+
+[data-theme="dark"] .blockCanvasViewport {
+  background: linear-gradient(180deg, rgba(19, 35, 56, 0.84), rgba(13, 24, 38, 0.84));
+}
+
+.blockCanvas {
+  display: flex;
+  align-items: stretch;
+  gap: 9px;
+  width: max-content;
+  min-width: 100%;
+  min-height: 360px;
+  padding: 12px;
+  background-image:
+    linear-gradient(to right, rgba(148, 170, 194, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 170, 194, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+[data-theme="dark"] .blockCanvas {
+  background-image:
+    linear-gradient(to right, rgba(90, 119, 146, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(90, 119, 146, 0.16) 1px, transparent 1px);
+}

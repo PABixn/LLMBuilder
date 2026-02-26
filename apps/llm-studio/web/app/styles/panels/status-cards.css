@@ -1,0 +1,87 @@
+.statusGrid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.statusCard {
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  padding: 11px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px;
+  align-items: flex-start;
+}
+
+.statusCardIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.statusCardIcon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.statusCardTitle {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 750;
+  color: var(--text-muted);
+}
+
+.statusCardValue {
+  margin-top: 3px;
+  font-size: 0.95rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.statusCardDetail {
+  margin-top: 3px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.28;
+  word-break: break-word;
+}
+
+.statusCard.tone-good {
+  border-color: rgba(24, 114, 76, 0.25);
+  background: linear-gradient(180deg, var(--ok-soft), var(--surface-soft));
+}
+
+.statusCard.tone-good .statusCardIcon {
+  color: var(--ok);
+  border-color: rgba(24, 114, 76, 0.28);
+}
+
+.statusCard.tone-warn {
+  border-color: rgba(168, 93, 8, 0.24);
+  background: linear-gradient(180deg, var(--warn-soft), var(--surface-soft));
+}
+
+.statusCard.tone-warn .statusCardIcon {
+  color: var(--warn);
+  border-color: rgba(168, 93, 8, 0.26);
+}
+
+.statusCard.tone-bad {
+  border-color: rgba(186, 45, 34, 0.22);
+  background: linear-gradient(180deg, var(--danger-soft), var(--surface-soft));
+}
+
+.statusCard.tone-bad .statusCardIcon {
+  color: var(--danger);
+  border-color: rgba(186, 45, 34, 0.24);
+}
+

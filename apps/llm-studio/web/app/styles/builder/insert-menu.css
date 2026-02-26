@@ -1,0 +1,80 @@
+.blockInsertMenu {
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.96)),
+    var(--surface);
+  box-shadow: 0 18px 36px rgba(13, 21, 31, 0.16);
+  padding: 4px;
+  display: grid;
+  gap: 4px;
+}
+
+.insertMenuPortal {
+  position: fixed;
+  z-index: 2000;
+  max-height: min(60vh, 320px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.insertMenuPortal.variant-rail {
+  width: 204px;
+}
+
+.insertMenuPortal.variant-inline {
+  width: 156px;
+}
+
+[data-theme="dark"] .blockInsertMenu {
+  background:
+    linear-gradient(180deg, rgba(24, 41, 62, 0.96), rgba(18, 31, 48, 0.98)),
+    var(--surface);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+}
+
+.blockInsertMenuHeader {
+  padding: 4px 6px 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.blockInsertMenuButton {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 6px 8px;
+  display: block;
+  cursor: pointer;
+}
+
+.blockInsertMenuButton:hover,
+.blockInsertMenuButton:focus-visible {
+  border-color: var(--brand);
+  background: rgba(34, 98, 178, 0.08);
+  outline: none;
+}
+
+[data-theme="dark"] .blockInsertMenuButton:hover,
+[data-theme="dark"] .blockInsertMenuButton:focus-visible {
+  background: rgba(127, 176, 245, 0.1);
+}
+
+.blockInsertMenuButtonTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.blockInsertMenuButtonHint {
+  font-size: 11px;
+  color: var(--text-muted);
+}

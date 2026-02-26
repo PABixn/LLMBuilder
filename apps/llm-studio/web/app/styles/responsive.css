@@ -47,7 +47,13 @@
   }
 
   .heroMetaRow {
+    grid-template-columns: 1fr;
     gap: 9px;
+  }
+
+  .heroMetaLine {
+    justify-content: flex-start;
+    justify-self: stretch;
   }
 
   .fieldGrid,
