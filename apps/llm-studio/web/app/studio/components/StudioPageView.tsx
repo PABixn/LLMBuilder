@@ -20,7 +20,6 @@ import {
   FiXCircle,
 } from "react-icons/fi";
 
-import { apiBaseUrl } from "../../../lib/api";
 import type { ModelConfig } from "../../../lib/defaults";
 
 import { BuilderPanel, type BuilderPanelProps } from "./builder/BuilderPanel";
@@ -121,9 +120,61 @@ export function StudioPageView({
     0,
     moduleInventoryEntries.length - visibleModuleInventoryEntries.length
   );
+  const heroValidationTone =
+    totalErrors > 0
+      ? "bad"
+      : totalWarnings > 0 || backendValidation.phase === "fallback"
+        ? "warn"
+        : "good";
+  const heroValidationSummary =
+    totalErrors > 0
+      ? `${totalErrors} error${totalErrors === 1 ? "" : "s"} · ${totalWarnings} warning${totalWarnings === 1 ? "" : "s"}`
+      : totalWarnings > 0
+        ? `${totalWarnings} warning${totalWarnings === 1 ? "" : "s"}`
+        : "No local warnings";
+  const heroBackendHint =
+    backendValidation.phase === "fallback"
+      ? "Backend unavailable (local checks only)"
+      : backendValidation.phase === "validating"
+        ? "Backend validation running"
+        : null;
+  const heroValidationPillTone =
+    heroValidationTone === "bad" ? "error" : heroValidationTone;
   const diagnosticPreviewLimit = 6;
   const visibleDiagnostics = diagnostics.slice(0, diagnosticPreviewLimit);
   const hiddenDiagnostics = diagnostics.slice(diagnosticPreviewLimit);
+  const localValidationTone =
+    localErrors.length > 0 ? "error" : localWarnings.length > 0 ? "warn" : "good";
+  const localValidationStateLabel =
+    localErrors.length > 0 ? "Errors" : localWarnings.length > 0 ? "Warnings" : "Passed";
+  const backendValidationTone =
+    backendValidation.phase === "success"
+      ? "good"
+      : backendValidation.phase === "fallback"
+        ? "warn"
+        : "neutral";
+  const backendValidationStateLabel =
+    backendValidation.phase === "success"
+      ? "Validated"
+      : backendValidation.phase === "fallback"
+        ? "Local Only"
+        : "Pending";
+  const backendAnalysisPhaseLabel =
+    backendAnalysis.phase === "success"
+      ? "Ready"
+      : backendAnalysis.phase === "error"
+        ? "Error"
+        : backendAnalysis.phase === "running"
+          ? "Running"
+          : "Idle";
+  const backendAnalysisPhaseTone =
+    backendAnalysis.phase === "success"
+      ? "good"
+      : backendAnalysis.phase === "error"
+        ? "error"
+        : backendAnalysis.phase === "running"
+          ? "warn"
+          : "neutral";
 
   function maybeSelectZeroNumberInput(target: EventTarget | null): void {
     if (!(target instanceof HTMLInputElement) || target.type !== "number") {
@@ -206,11 +257,9 @@ export function StudioPageView({
       <section className="panelCard heroCard">
         <div className="panelHead heroHead">
           <div>
-            <p className="panelEyebrow">Model Designer</p>
-            <h1>Build transformer configs visually and export clean JSON.</h1>
+            <h1>Design transformer configs visually.</h1>
             <p className="panelCopy">
-              Add blocks, edit components, reorder with drag-and-drop, and validate as you build.
-              Local checks stay active even if the backend is unavailable.
+              Build blocks, edit components, reorder, validate, and export JSON from one place.
             </p>
           </div>
           <div className="heroActions">
@@ -259,41 +308,30 @@ export function StudioPageView({
           </div>
         ) : null}
 
-        <div className="statusGrid">
-          <StatusCard
-            title="Validation"
-            value={validationStatusLabel}
-            detail={backendValidation.message}
-            tone={
-              totalErrors > 0
-                ? "bad"
-                : totalWarnings > 0 || backendValidation.phase === "fallback"
-                  ? "warn"
-                  : "good"
-            }
-            icon={totalErrors > 0 ? <FiXCircle /> : totalWarnings > 0 ? <FiAlertTriangle /> : <FiCheckCircle />}
-          />
-          <StatusCard
-            title="Blocks"
-            value={`${metrics.blockCount}`}
-            detail={`${metrics.componentCount} components · ${metrics.mlpStepCount} MLP steps`}
-            tone="neutral"
-            icon={<FiLayers />}
-          />
-          <StatusCard
-            title="Backend"
-            value={backendValidation.phase === "success" ? "Connected" : backendValidation.phase === "validating" ? "Validating" : backendValidation.phase === "fallback" ? "Fallback" : "Idle"}
-            detail={`${apiBaseUrl()} · ${formatTimeAgo(backendValidation.lastValidatedAt)}`}
-            tone={backendValidation.phase === "success" ? "good" : backendValidation.phase === "fallback" ? "warn" : "neutral"}
-            icon={<FiServer />}
-          />
-          <StatusCard
-            title="Local Cache"
-            value="Auto-saved"
-            detail={`Last save ${formatTimeAgo(lastSavedAt)}`}
-            tone="neutral"
-            icon={<FiHardDrive />}
-          />
+        <div className="heroMetaRow" aria-label="Workspace summary">
+          <div className="heroMetaPills">
+            <div className={`pillBadge tone-${heroValidationPillTone}`}>
+              Validation: {validationStatusLabel}
+            </div>
+            <div className="pillBadge tone-neutral">{metrics.blockCount} Blocks</div>
+            <div className="pillBadge tone-neutral">{metrics.componentCount} Components</div>
+            <div className="pillBadge tone-neutral">{metrics.mlpStepCount} MLP Steps</div>
+          </div>
+          <div className="heroMetaLine">
+            <span>{heroValidationSummary}</span>
+            <span className="heroMetaSeparator" aria-hidden>
+              •
+            </span>
+            <span>Auto-saved {formatTimeAgo(lastSavedAt)}</span>
+            {heroBackendHint ? (
+              <>
+                <span className="heroMetaSeparator" aria-hidden>
+                  •
+                </span>
+                <span>{heroBackendHint}</span>
+              </>
+            ) : null}
+          </div>
         </div>
       </section>
 
@@ -310,7 +348,7 @@ export function StudioPageView({
           </div>
           <div className="fieldGrid">
             <label className="fieldLabel" htmlFor="context_length">
-              <span>context_length</span>
+              <span>Context Length</span>
               <input
                 id="context_length"
                 type="number"
@@ -326,7 +364,7 @@ export function StudioPageView({
               />
             </label>
             <label className="fieldLabel" htmlFor="vocab_size">
-              <span>vocab_size</span>
+              <span>Vocab Size</span>
               <input
                 id="vocab_size"
                 type="number"
@@ -342,7 +380,7 @@ export function StudioPageView({
               />
             </label>
             <label className="fieldLabel" htmlFor="n_embd">
-              <span>n_embd</span>
+              <span>Embedding Dimension</span>
               <input
                 id="n_embd"
                 type="number"
@@ -379,29 +417,60 @@ export function StudioPageView({
             </div>
           </div>
 
-          <div className="diagnosticSummaryRow">
-            <div className="pillBadge tone-error">{localErrors.length} local errors</div>
-            <div className="pillBadge tone-warn">{localWarnings.length} local warnings</div>
-            <div className="pillBadge tone-error">{backendValidation.errors.length} backend errors</div>
-            <div className="pillBadge tone-warn">{backendValidation.warnings.length} backend warnings</div>
-            <div className={`pillBadge ${backendValidation.phase === "success" ? "tone-good" : backendValidation.phase === "fallback" ? "tone-warn" : "tone-neutral"}`}>
-              backend: {backendValidation.phase}
-            </div>
-          </div>
-
-          {diagnostics.length === 0 ? (
-            <div className="diagnosticList" role="list">
-              <div className="diagnosticItem tone-good" role="listitem">
-                <div className="diagnosticIcon">
-                  <FiCheckCircle />
+          <div
+            className={`diagnosticOverviewGrid${diagnostics.length === 0 ? " isOnlyContent" : ""}`}
+            aria-label="Validation summary"
+          >
+            <section
+              className={`diagnosticOverviewCard tone-${localValidationTone}`}
+              aria-label="Local validation summary"
+            >
+              <div className="diagnosticOverviewTopRow">
+                <div className="diagnosticOverviewLabel">Local</div>
+                <div className="diagnosticOverviewState">{localValidationStateLabel}</div>
+              </div>
+              <div className="diagnosticOverviewCounts" aria-label="Local validation counts">
+                <div
+                  className={`diagnosticOverviewCount tone-error${localErrors.length === 0 ? " is-zero" : ""}`}
+                >
+                  <span>Errors</span>
+                  <strong>{localErrors.length}</strong>
                 </div>
-                <div>
-                  <div className="diagnosticTitle">No local or backend warnings.</div>
-                  <div className="diagnosticMeta">Configuration looks ready to export.</div>
+                <div
+                  className={`diagnosticOverviewCount tone-warn${localWarnings.length === 0 ? " is-zero" : ""}`}
+                >
+                  <span>Warnings</span>
+                  <strong>{localWarnings.length}</strong>
                 </div>
               </div>
-            </div>
-          ) : (
+            </section>
+
+            <section
+              className={`diagnosticOverviewCard tone-${backendValidationTone}`}
+              aria-label="Backend validation summary"
+            >
+              <div className="diagnosticOverviewTopRow">
+                <div className="diagnosticOverviewLabel">Backend</div>
+                <div className="diagnosticOverviewState">{backendValidationStateLabel}</div>
+              </div>
+              <div className="diagnosticOverviewCounts" aria-label="Backend validation counts">
+                <div
+                  className={`diagnosticOverviewCount tone-error${backendValidation.errors.length === 0 ? " is-zero" : ""}`}
+                >
+                  <span>Errors</span>
+                  <strong>{backendValidation.errors.length}</strong>
+                </div>
+                <div
+                  className={`diagnosticOverviewCount tone-warn${backendValidation.warnings.length === 0 ? " is-zero" : ""}`}
+                >
+                  <span>Warnings</span>
+                  <strong>{backendValidation.warnings.length}</strong>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {diagnostics.length > 0 ? (
             <>
               <div className="diagnosticList" role="list">
                 {visibleDiagnostics.map((diagnostic) => (
@@ -463,7 +532,7 @@ export function StudioPageView({
                 </details>
               ) : null}
             </>
-          )}
+          ) : null}
         </section>
       </div>
 
@@ -500,25 +569,19 @@ export function StudioPageView({
           </div>
         </div>
 
-        <div className="diagnosticSummaryRow">
-          <div
-            className={`pillBadge ${
-              backendAnalysis.phase === "success"
-                ? "tone-good"
-                : backendAnalysis.phase === "error"
-                  ? "tone-error"
-                  : backendAnalysis.phase === "running"
-                    ? "tone-warn"
-                    : "tone-neutral"
-            }`}
-          >
-            analysis: {backendAnalysis.phase}
+        <div className="analysisMetaRow" aria-label="Runtime analysis status">
+          <div className={`analysisMetaItem tone-${backendAnalysisPhaseTone}`}>
+            <span className="analysisMetaLabel">Analysis</span>
+            <strong className="analysisMetaValue">{backendAnalysisPhaseLabel}</strong>
           </div>
-          <div className="pillBadge tone-neutral">
-            last run: {formatTimeAgo(backendAnalysis.lastAnalyzedAt)}
+          <div className="analysisMetaItem tone-neutral">
+            <span className="analysisMetaLabel">Last Run</span>
+            <strong className="analysisMetaValue">
+              {formatTimeAgo(backendAnalysis.lastAnalyzedAt)}
+            </strong>
           </div>
           {backendAnalysisStale ? (
-            <div className="pillBadge tone-warn">stale vs current draft</div>
+            <div className="analysisMetaFlag tone-warn">Stale vs Current Draft</div>
           ) : null}
         </div>
 
@@ -539,7 +602,7 @@ export function StudioPageView({
                 value={formatBytes(
                   backendAnalysis.summary.estimated_kv_cache_bytes_per_token_fp16
                 )}
-                detail={`${formatBytes(backendAnalysis.summary.estimated_kv_cache_bytes_for_context_fp16)} @ context_length`}
+                detail={`${formatBytes(backendAnalysis.summary.estimated_kv_cache_bytes_for_context_fp16)} @ Context Length`}
                 tone="neutral"
                 icon={<FiHardDrive />}
               />
@@ -547,7 +610,7 @@ export function StudioPageView({
                 title="Head Dim"
                 value={
                   backendAnalysis.summary.min_head_dim === null
-                    ? "n/a"
+                    ? "N/A"
                     : backendAnalysis.summary.min_head_dim ===
                         backendAnalysis.summary.max_head_dim
                       ? `${backendAnalysis.summary.min_head_dim}`
@@ -570,12 +633,12 @@ export function StudioPageView({
               <div className="workflowItem">
                 <div className="workflowTitle">Component counts</div>
                 <div className="analysisChipRow">
-                  <span>{backendAnalysis.summary.block_count} blocks</span>
-                  <span>{backendAnalysis.summary.component_count} components</span>
-                  <span>{backendAnalysis.summary.attention_component_count} attention</span>
-                  <span>{backendAnalysis.summary.mlp_component_count} mlp</span>
-                  <span>{backendAnalysis.summary.norm_component_count} norm</span>
-                  <span>{backendActivationTotal} activations</span>
+                  <span>{backendAnalysis.summary.block_count} Blocks</span>
+                  <span>{backendAnalysis.summary.component_count} Components</span>
+                  <span>{backendAnalysis.summary.attention_component_count} Attention</span>
+                  <span>{backendAnalysis.summary.mlp_component_count} MLP</span>
+                  <span>{backendAnalysis.summary.norm_component_count} Norm</span>
+                  <span>{backendActivationTotal} Activations</span>
                 </div>
               </div>
 
@@ -658,7 +721,7 @@ export function StudioPageView({
           <div className="panelHead">
             <div>
               <p className="panelEyebrow">Import / Workflow</p>
-              <h2>Import JSON</h2>
+              <h2>JSON Import</h2>
               <p className="panelCopy">
                 Paste or load a `/model` JSON document to rebuild the visual editor.
               </p>
@@ -679,8 +742,8 @@ export function StudioPageView({
               type="button"
               className="buttonGhost iconOnly"
               onClick={() => applyImportText(importDraft)}
-              aria-label="Apply import text"
-              title="Apply import text"
+                aria-label="Apply Import Text"
+                title="Apply Import Text"
             >
               <FiRefreshCw />
             </button>
@@ -688,15 +751,15 @@ export function StudioPageView({
               type="button"
               className="buttonGhost iconOnly"
               onClick={() => setImportDraft(JSON.stringify(modelConfig, null, 2))}
-              aria-label="Load current config into import editor"
-              title="Load current config into import editor"
+                aria-label="Load Current Config into Import Editor"
+                title="Load Current Config into Import Editor"
             >
               <FiCopy />
             </button>
           </div>
 
           <label className="fieldLabel" htmlFor="import-draft">
-            <span>Import JSON</span>
+            <span>JSON Import</span>
             <textarea
               id="import-draft"
               value={importDraft}

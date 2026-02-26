@@ -1,4 +1,5 @@
 import type {
+  ActivationType,
   ActivationComponentConfig,
   AttentionComponentConfig,
   BlockComponent,
@@ -338,6 +339,32 @@ export function labelForMlpStepKind(kind: MlpStepKind): string {
   return "Activation";
 }
 
+export function labelForNormType(type: NormConfig["type"]): string {
+  if (type === "layernorm") {
+    return "LayerNorm";
+  }
+  return "RMSNorm";
+}
+
+export function labelForActivationType(type: ActivationType): string {
+  if (type === "gelu") {
+    return "GELU";
+  }
+  if (type === "relu") {
+    return "ReLU";
+  }
+  if (type === "squared_relu") {
+    return "Squared ReLU";
+  }
+  if (type === "silu") {
+    return "SiLU";
+  }
+  if (type === "tanh") {
+    return "Tanh";
+  }
+  return "Sigmoid";
+}
+
 export function summarizeComponent(component: StudioComponent): string {
   if (component.kind === "attention") {
     return `${component.attention.n_head} heads / ${component.attention.n_kv_head} kv`;
@@ -347,24 +374,24 @@ export function summarizeComponent(component: StudioComponent): string {
   }
   if (component.kind === "norm") {
     if (component.norm.type === "layernorm") {
-      return "LayerNorm";
+      return labelForNormType(component.norm.type);
     }
     return component.norm.learnable_gamma ? "RMSNorm (learnable)" : "RMSNorm (fixed)";
   }
-  return component.activation.type.toUpperCase();
+  return labelForActivationType(component.activation.type);
 }
 
 export function summarizeMlpStep(step: StudioMlpStep): string {
   if (step.kind === "linear") {
-    return step.linear.bias ? "bias on" : "bias off";
+    return step.linear.bias ? "Bias on" : "Bias off";
   }
   if (step.kind === "norm") {
     if (step.norm.type === "layernorm") {
-      return "LayerNorm";
+      return labelForNormType(step.norm.type);
     }
     return step.norm.learnable_gamma ? "RMSNorm learnable" : "RMSNorm fixed";
   }
-  return step.activation.type;
+  return labelForActivationType(step.activation.type);
 }
 
 export function collectBuilderMetrics(document: StudioDocument): BuilderMetrics {

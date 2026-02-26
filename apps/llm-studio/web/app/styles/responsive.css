@@ -46,6 +46,10 @@
     justify-content: center;
   }
 
+  .heroMetaRow {
+    gap: 9px;
+  }
+
   .fieldGrid,
   .fieldGrid.compact {
     grid-template-columns: 1fr;
