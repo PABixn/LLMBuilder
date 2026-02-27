@@ -40,6 +40,8 @@
 
 .blockGroupCollapsedPreview {
   gap: 8px;
+  width: calc(clamp(300px, 30vw, 360px) + 22px);
+  min-width: 322px;
 }
 
 .blockGroupCollapsedPreview > .blockCard {
@@ -370,4 +372,3 @@
   color: var(--danger);
   box-shadow: 0 0 0 3px rgba(186, 45, 34, 0.13);
 }
-

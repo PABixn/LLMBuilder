@@ -40,7 +40,8 @@ export interface BuilderPanelProps {
   updateComponentPrefab: (
     prefabId: string,
     nextName: string,
-    nextComponent: StudioComponent
+    nextComponent: StudioComponent,
+    options?: { silent?: boolean }
   ) => string | null;
   deleteComponentPrefab: (prefabId: string) => void;
   insertComponentAt: (

@@ -62,7 +62,8 @@ export interface StudioWorkspaceState {
   updateComponentPrefab: (
     prefabId: string,
     nextName: string,
-    nextComponent: StudioComponent
+    nextComponent: StudioComponent,
+    options?: { silent?: boolean }
   ) => string | null;
   deleteComponentPrefab: (prefabId: string) => void;
   toggleExpandedComponent: (componentId: string) => void;
@@ -455,7 +456,8 @@ export function useStudioWorkspaceState(): StudioWorkspaceState {
   function updateComponentPrefab(
     prefabId: string,
     nextName: string,
-    nextComponent: StudioComponent
+    nextComponent: StudioComponent,
+    options?: { silent?: boolean }
   ): string | null {
     const targetPrefab = componentPrefabs.find((item) => item.id === prefabId);
     if (!targetPrefab) {
@@ -469,6 +471,15 @@ export function useStudioWorkspaceState(): StudioWorkspaceState {
     }
 
     const uniqueName = createUniquePrefabNameFromBase(nextName, componentPrefabs, prefabId);
+    const nextComponentConfig = studioComponentToConfig(nextComponent);
+    const targetSignature = JSON.stringify(targetPrefab.component);
+    const nextSignature = JSON.stringify(nextComponentConfig);
+    const changed = targetPrefab.name !== uniqueName || targetSignature !== nextSignature;
+
+    if (!changed) {
+      return uniqueName;
+    }
+
     setComponentPrefabs((current) =>
       current.map((prefab) =>
         prefab.id !== prefabId
@@ -476,11 +487,13 @@ export function useStudioWorkspaceState(): StudioWorkspaceState {
           : {
               ...prefab,
               name: uniqueName,
-              component: studioComponentToConfig(nextComponent),
+              component: nextComponentConfig,
             }
       )
     );
-    setNoticeMessage("success", `Updated prefab "${uniqueName}".`);
+    if (!options?.silent) {
+      setNoticeMessage("success", `Updated prefab "${uniqueName}".`);
+    }
     return uniqueName;
   }
 

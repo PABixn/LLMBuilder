@@ -135,15 +135,15 @@
 .prefabEditorPopover {
   position: fixed;
   z-index: 2100;
-  width: min(92vw, 420px);
-  max-height: min(86vh, 680px);
-  border-radius: 14px;
+  width: min(86vw, 352px);
+  max-height: min(72vh, 520px);
+  border-radius: 10px;
   border: 1px solid var(--line-strong);
   background: linear-gradient(180deg, var(--surface), var(--surface-soft));
   box-shadow: 0 24px 44px rgba(13, 21, 31, 0.24);
-  padding: 10px;
+  padding: 6px;
   display: grid;
-  gap: 10px;
+  gap: 6px;
   overflow: auto;
   overscroll-behavior: contain;
 }
@@ -154,40 +154,52 @@
 
 .prefabEditorHead {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 6px;
 }
 
 .prefabEditorHead h4 {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   line-height: 1.2;
 }
 
-.prefabEditorHead p {
-  margin: 2px 0 0;
-  font-size: 0.68rem;
-  color: var(--text-muted);
+.prefabEditorHeadActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.prefabEditorHeadActions .iconButton {
+  width: 23px;
+  height: 23px;
+  flex: 0 0 23px;
+  border-radius: 7px;
+}
+
+.prefabEditorHeadActions .iconButton svg {
+  width: 12px;
+  height: 12px;
 }
 
 .prefabNameField {
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .prefabFieldError {
-  margin: -2px 0 0;
-  font-size: 0.68rem;
+  margin: -1px 0 0;
+  font-size: 0.64rem;
   color: #ba2d22;
 }
 
 .prefabMiniDesignerShell {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 9px;
   background: var(--surface);
-  padding: 9px;
+  padding: 6px;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .prefabMiniHint {
@@ -196,69 +208,188 @@
   color: var(--text-muted);
 }
 
-.prefabMlpDesigner {
-  display: grid;
-  gap: 8px;
-}
-
 .prefabMlpFields {
-  grid-template-columns: minmax(0, 160px);
-}
-
-.prefabStepList {
-  display: grid;
-  gap: 6px;
-}
-
-.prefabStepCard {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface-soft);
-  padding: 7px;
-  display: grid;
-  gap: 6px;
-}
-
-.prefabStepHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  grid-template-columns: minmax(0, 120px);
 }
 
 .prefabStepActions {
   display: inline-flex;
   gap: 4px;
+  align-items: center;
 }
 
 .prefabStepInsertButtons {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .prefabMiniButton {
-  min-height: 26px;
-  padding: 0 8px;
+  min-height: 22px;
+  padding: 0 6px;
+  font-size: 0.64rem;
+}
+
+.prefabEditorPopover .mlpSequenceShell {
+  display: grid;
+  gap: 6px;
+}
+
+.prefabEditorPopover .fieldGrid {
+  margin-top: 6px;
+  gap: 6px;
+}
+
+.prefabEditorPopover .fieldGrid.compact {
+  gap: 6px;
+}
+
+.prefabEditorPopover .fieldLabel > span {
+  font-size: 0.64rem;
+}
+
+.prefabEditorPopover .fieldLabel input,
+.prefabEditorPopover .fieldLabel select {
+  border-radius: 7px;
+  padding: 5px 6px;
+  font-size: 0.69rem;
+}
+
+.prefabEditorPopover .toggleField {
+  min-height: 28px;
+  border-radius: 8px;
+  padding: 5px 7px;
+  gap: 6px;
   font-size: 0.68rem;
+}
+
+.prefabEditorPopover .toggleField input {
+  width: 13px;
+  height: 13px;
+}
+
+/* Keep top-level Norm prefab "Learnable" toggle as compact as inline controls. */
+.prefabEditorPopover .prefabMiniDesignerShell > .fieldGrid.compact > .toggleField {
+  align-self: end;
+  justify-self: start;
+  height: 26px;
+  min-height: 26px;
+  border-radius: 7px;
+  padding: 0 6px;
+  gap: 4px;
+  font-size: 0.69rem;
+  line-height: 1;
+}
+
+.prefabEditorPopover .prefabMiniDesignerShell > .fieldGrid.compact > .toggleField input {
+  width: 12px;
+  height: 12px;
+}
+
+.prefabEditorPopover .mlpSequenceList {
+  gap: 4px;
+  max-height: 170px;
+  overflow: auto;
+}
+
+.prefabEditorPopover .prefabStepEmpty {
+  margin: 0;
+  font-size: 0.64rem;
+  color: var(--text-muted);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.prefabEditorPopover .prefabMlpStepCard {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 4px;
+  display: grid;
+  gap: 4px;
+}
+
+.prefabEditorPopover .prefabStepHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.prefabEditorPopover .prefabStepLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.prefabEditorPopover .prefabStepIndex {
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.prefabEditorPopover .prefabStepKind {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.prefabEditorPopover .prefabStepInline {
+  min-width: 0;
+  display: flex;
+  justify-content: flex-start;
+  overflow-x: auto;
+}
+
+.prefabEditorPopover .prefabStepInline .componentHeadInlineFields {
+  width: auto;
+  justify-content: flex-start;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+.prefabEditorPopover .prefabStepInline .headerInlineField select {
+  max-width: 86px;
+  padding: 3px 5px;
+  font-size: 0.63rem;
+}
+
+.prefabEditorPopover .prefabStepInline .headerInlineToggle {
+  flex: 0 0 auto;
+  min-height: 22px;
+  padding: 3px 5px;
+  font-size: 0.62rem;
+  border-radius: 7px;
+}
+
+.prefabEditorPopover .prefabStepInline .headerInlineToggle input {
+  width: 12px;
+  height: 12px;
 }
 
 .prefabEditorActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   justify-content: flex-end;
 }
 
 .prefabEditorActions .buttonGhost {
-  min-height: 30px;
-  font-size: 0.72rem;
-  padding: 0 9px;
-}
-
-.prefabSaveButton {
-  border-color: rgba(22, 112, 79, 0.42);
-  background: rgba(24, 114, 76, 0.1);
+  min-height: 24px;
+  font-size: 0.64rem;
+  padding: 0 6px;
 }
 
 .prefabDeleteButton {
@@ -268,9 +399,9 @@
 
 @media (max-width: 860px) {
   .prefabEditorPopover {
-    width: min(96vw, 420px);
-    max-height: min(88vh, 700px);
-    padding: 9px;
+    width: min(96vw, 352px);
+    max-height: min(78vh, 520px);
+    padding: 6px;
   }
 
   .prefabEditorActions {

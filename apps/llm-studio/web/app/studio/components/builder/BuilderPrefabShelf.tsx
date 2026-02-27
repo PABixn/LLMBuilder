@@ -10,7 +10,8 @@ type BuilderPrefabShelfProps = {
   updateComponentPrefab: (
     prefabId: string,
     nextName: string,
-    nextComponent: StudioComponent
+    nextComponent: StudioComponent,
+    options?: { silent?: boolean }
   ) => string | null;
   replaceAllComponentsWithComponentSettings: (
     prefabName: string,
