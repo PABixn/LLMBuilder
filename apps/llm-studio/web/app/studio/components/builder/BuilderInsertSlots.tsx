@@ -1,7 +1,6 @@
 import type { DragEvent, MouseEvent } from "react";
 
 import {
-  labelForComponentKind,
   labelForMlpStepKind,
 } from "../../utils/document";
 import type {
@@ -28,16 +27,12 @@ type BlockInsertSlotProps = CommonSlotProps & {
 type ComponentInsertSlotProps = CommonSlotProps & {
   blockId: string;
   insertIndex: number;
+  menuItems: OpenInsertMenu["items"];
   markDropTarget: (event: DragEvent<HTMLElement>, key: string) => void;
   handleDropComponent: (
     event: DragEvent<HTMLElement>,
     targetBlockId: string,
     insertIndex: number
-  ) => void;
-  insertComponentAt: (
-    targetBlockId: string,
-    insertIndex: number,
-    componentKind: "attention" | "mlp" | "norm" | "activation"
   ) => void;
 };
 
@@ -116,12 +111,12 @@ export function BlockInsertSlot({
 export function ComponentInsertSlot({
   blockId,
   insertIndex,
+  menuItems,
   openInsertMenu,
   openInsertMenuFromEvent,
   dragOverKey,
   markDropTarget,
   handleDropComponent,
-  insertComponentAt,
 }: ComponentInsertSlotProps) {
   const menuKey = `component:${blockId}:${insertIndex}`;
   const slotKey = `component-slot::${encodeURIComponent(blockId)}::${insertIndex}`;
@@ -152,11 +147,7 @@ export function ComponentInsertSlot({
               menuKey,
               "Add component",
               "inline",
-              (["attention", "mlp", "norm", "activation"] as const).map((kind) => ({
-                id: kind,
-                label: labelForComponentKind(kind),
-                onSelect: () => insertComponentAt(blockId, insertIndex, kind),
-              }))
+              menuItems
             )
           )
         }

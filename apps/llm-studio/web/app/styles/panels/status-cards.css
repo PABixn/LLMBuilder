@@ -14,6 +14,7 @@
   grid-template-columns: auto 1fr;
   gap: 9px;
   align-items: flex-start;
+  position: relative;
 }
 
 .statusCardIcon {
@@ -55,6 +56,55 @@
   word-break: break-word;
 }
 
+.statusCard.hasTooltip {
+  cursor: help;
+}
+
+.statusCard.hasTooltip:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ok) 58%, transparent);
+  outline-offset: 2px;
+}
+
+.statusCardTooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  width: min(340px, calc(100vw - 34px));
+  transform: translate(-50%, 8px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 16;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--ok) 26%, var(--line));
+  background: color-mix(in srgb, var(--surface-soft) 86%, white);
+  box-shadow: 0 12px 28px rgba(8, 18, 30, 0.14);
+  padding: 10px;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.statusCardTooltip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid color-mix(in srgb, var(--ok) 26%, var(--line));
+  border-bottom: 1px solid color-mix(in srgb, var(--ok) 26%, var(--line));
+  background: color-mix(in srgb, var(--surface-soft) 86%, white);
+  transform: translateX(-50%) rotate(-45deg);
+}
+
+.statusCard.hasTooltip:hover .statusCardTooltip,
+.statusCard.hasTooltip:focus-within .statusCardTooltip,
+.statusCard.hasTooltip:focus-visible .statusCardTooltip {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
 .statusCard.tone-good {
   border-color: rgba(24, 114, 76, 0.25);
   background: linear-gradient(180deg, var(--ok-soft), var(--surface-soft));
@@ -84,4 +134,3 @@
   color: var(--danger);
   border-color: rgba(186, 45, 34, 0.24);
 }
-

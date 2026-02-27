@@ -3,6 +3,7 @@ import type {
   ActivationType,
   ActivationConfig,
   AttentionConfig,
+  BlockComponent,
   LinearConfig,
   ModelConfig,
   NormConfig,
@@ -26,6 +27,7 @@ export type BackendAnalysisPhase = "idle" | "running" | "success" | "error";
 export const THEME_STORAGE_KEY = "llm-studio-theme";
 export const DOCUMENT_STORAGE_KEY = "llm-studio-document";
 export const IMPORT_DRAFT_STORAGE_KEY = "llm-studio-import-draft";
+export const COMPONENT_PREFABS_STORAGE_KEY = "llm-studio-component-prefabs";
 export const VALIDATION_DEBOUNCE_MS = 420;
 export const DND_MIME = "application/x-llm-studio-dnd";
 
@@ -82,6 +84,14 @@ export interface StudioDocument {
   n_embd: number;
   weight_tying: boolean;
   blocks: StudioBlock[];
+}
+
+export interface StudioComponentPrefab {
+  id: string;
+  name: string;
+  kind: StudioComponentKind;
+  component: BlockComponent;
+  createdAt: number;
 }
 
 export interface Diagnostic {

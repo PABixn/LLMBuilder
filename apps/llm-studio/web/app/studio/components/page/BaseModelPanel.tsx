@@ -19,7 +19,7 @@ export function BaseModelPanel({
       <div className="panelHead">
         <div>
           <p className="panelEyebrow">Base Model</p>
-          <h2>Base dimensions</h2>
+          <h2>Core config</h2>
           <p className="panelCopy">
             Shared dimensions used by the builder and validation checks.
           </p>

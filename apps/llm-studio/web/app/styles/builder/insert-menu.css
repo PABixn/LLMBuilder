@@ -14,16 +14,17 @@
   position: fixed;
   z-index: 2000;
   max-height: min(60vh, 320px);
+  max-width: min(92vw, 320px);
   overflow: auto;
   overscroll-behavior: contain;
 }
 
 .insertMenuPortal.variant-rail {
-  width: 204px;
+  width: 228px;
 }
 
 .insertMenuPortal.variant-inline {
-  width: 156px;
+  width: 220px;
 }
 
 [data-theme="dark"] .blockInsertMenu {
@@ -75,6 +76,8 @@
 }
 
 .blockInsertMenuButtonHint {
+  display: block;
+  margin-top: 2px;
   font-size: 11px;
   color: var(--text-muted);
 }

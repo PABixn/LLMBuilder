@@ -1,6 +1,7 @@
-import { FiChevronDown, FiChevronRight, FiPlus } from "react-icons/fi";
+import { FiChevronDown, FiChevronRight, FiCornerUpLeft, FiCornerUpRight, FiPlus } from "react-icons/fi";
 
 import { BuilderCanvasContent } from "./BuilderCanvasContent";
+import { BuilderPrefabShelf } from "./BuilderPrefabShelf";
 import { InsertMenuPortal } from "./InsertMenuPortal";
 import type { BuilderPanelProps } from "./types";
 import { useBuilderInsertMenu } from "./useBuilderInsertMenu";
@@ -17,7 +18,20 @@ export function BuilderPanel(props: BuilderPanelProps) {
     handleToggleKeyDown,
   } = useBuilderInsertMenu();
 
-  const { addBlock, collapseAllCanvasNodes, expandAllCanvasNodes, metrics } = props;
+  const {
+    addBlock,
+    canRedoDocument,
+    canUndoDocument,
+    collapseAllCanvasNodes,
+    componentPrefabs,
+    deleteComponentPrefab,
+    expandAllCanvasNodes,
+    metrics,
+    redoDocument,
+    replaceAllComponentsWithComponentSettings,
+    undoDocument,
+    updateComponentPrefab,
+  } = props;
 
   return (
     <>
@@ -31,6 +45,24 @@ export function BuilderPanel(props: BuilderPanelProps) {
             </p>
           </div>
           <div className="actionCluster">
+            <button
+              type="button"
+              className="buttonGhost"
+              onClick={undoDocument}
+              disabled={!canUndoDocument}
+              title="Undo (Ctrl/Cmd+Z)"
+            >
+              <FiCornerUpLeft /> Undo
+            </button>
+            <button
+              type="button"
+              className="buttonGhost"
+              onClick={redoDocument}
+              disabled={!canRedoDocument}
+              title="Redo (Ctrl/Cmd+Shift+Z or Ctrl+Y)"
+            >
+              <FiCornerUpRight /> Redo
+            </button>
             <button type="button" className="buttonGhost" onClick={collapseAllCanvasNodes}>
               <FiChevronRight /> Collapse all
             </button>
@@ -54,6 +86,13 @@ export function BuilderPanel(props: BuilderPanelProps) {
             <span>{metrics.mlpStepCount} MLP steps</span>
           </div>
         </div>
+
+        <BuilderPrefabShelf
+          componentPrefabs={componentPrefabs}
+          updateComponentPrefab={updateComponentPrefab}
+          deleteComponentPrefab={deleteComponentPrefab}
+          replaceAllComponentsWithComponentSettings={replaceAllComponentsWithComponentSettings}
+        />
 
         <BuilderCanvasContent
           {...props}

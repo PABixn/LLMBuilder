@@ -1,4 +1,4 @@
-import type { DragEvent, ReactNode } from "react";
+import { useId, type DragEvent, type ReactNode } from "react";
 
 export function DropSlot({
   active,
@@ -63,15 +63,27 @@ export function StatusCard({
   detail,
   tone,
   icon,
+  tooltipContent,
+  tooltipLabel,
 }: {
   title: string;
   value: string;
   detail: string;
   tone?: "neutral" | "good" | "warn" | "bad";
   icon: ReactNode;
+  tooltipContent?: ReactNode;
+  tooltipLabel?: string;
 }) {
+  const tooltipId = useId();
+  const hasTooltip = tooltipContent != null;
+
   return (
-    <div className={`statusCard${tone ? ` tone-${tone}` : ""}`}>
+    <div
+      className={`statusCard${tone ? ` tone-${tone}` : ""}${hasTooltip ? " hasTooltip" : ""}`}
+      tabIndex={hasTooltip ? 0 : undefined}
+      aria-describedby={hasTooltip ? tooltipId : undefined}
+      title={hasTooltip ? tooltipLabel : undefined}
+    >
       <div className="statusCardIcon" aria-hidden>
         {icon}
       </div>
@@ -80,6 +92,11 @@ export function StatusCard({
         <div className="statusCardValue">{value}</div>
         <div className="statusCardDetail">{detail}</div>
       </div>
+      {hasTooltip ? (
+        <div id={tooltipId} className="statusCardTooltip" role="tooltip">
+          {tooltipContent}
+        </div>
+      ) : null}
     </div>
   );
 }

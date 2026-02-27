@@ -19,6 +19,7 @@ import type {
   StudioBlock,
   StudioComponent,
   StudioComponentKind,
+  StudioComponentPrefab,
   StudioDocument,
   StudioMlpStep,
 } from "../types";
@@ -214,6 +215,36 @@ export function studioComponentToConfig(component: StudioComponent): BlockCompon
   return out;
 }
 
+export function studioComponentKindFromConfig(component: BlockComponent): StudioComponentKind {
+  if ("attention" in component) {
+    return "attention";
+  }
+  if ("mlp" in component) {
+    return "mlp";
+  }
+  if ("norm" in component) {
+    return "norm";
+  }
+  return "activation";
+}
+
+export function createComponentPrefab(
+  component: StudioComponent,
+  name: string
+): StudioComponentPrefab {
+  return {
+    id: createId("prefab"),
+    name,
+    kind: component.kind,
+    component: studioComponentToConfig(component),
+    createdAt: Date.now(),
+  };
+}
+
+export function instantiateComponentFromPrefab(prefab: StudioComponentPrefab): StudioComponent {
+  return studioComponentFromConfig(prefab.component);
+}
+
 export function studioBlockToConfig(block: StudioBlock): ModelBlock {
   return {
     components: block.components.map(studioComponentToConfig),
@@ -373,6 +404,22 @@ export function summarizeComponent(component: StudioComponent): string {
     return `${component.mlp.sequence.length} steps, x${component.mlp.multiplier}`;
   }
   if (component.kind === "norm") {
+    if (component.norm.type === "layernorm") {
+      return labelForNormType(component.norm.type);
+    }
+    return component.norm.learnable_gamma ? "RMSNorm (learnable)" : "RMSNorm (fixed)";
+  }
+  return labelForActivationType(component.activation.type);
+}
+
+export function summarizeComponentConfig(component: BlockComponent): string {
+  if ("attention" in component) {
+    return `${component.attention.n_head} heads / ${component.attention.n_kv_head} kv`;
+  }
+  if ("mlp" in component) {
+    return `${component.mlp.sequence.length} steps, x${component.mlp.multiplier}`;
+  }
+  if ("norm" in component) {
     if (component.norm.type === "layernorm") {
       return labelForNormType(component.norm.type);
     }

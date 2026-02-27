@@ -1,6 +1,6 @@
 import { useRef, useState, type Dispatch, type DragEvent, type SetStateAction } from "react";
 
-import { createDefaultBlockConfig, createDefaultModelConfig } from "../../../lib/defaults";
+import { createDefaultBlockConfig, createDefaultModelConfig, type BlockComponent } from "../../../lib/defaults";
 
 import type {
   BlockInsertPreset,
@@ -8,6 +8,7 @@ import type {
   MlpStepKind,
   StudioComponent,
   StudioComponentKind,
+  StudioComponentPrefab,
   StudioDocument,
   StudioDocumentNumericField,
   StudioMlpStep,
@@ -22,6 +23,9 @@ import {
   findBlockIndex,
   findComponentIndex,
   getMlpComponent,
+  instantiateComponentFromPrefab,
+  labelForComponentKind,
+  studioComponentFromConfig,
   studioBlockFromConfig,
   studioDocumentFromConfig,
 } from "../utils/document";
@@ -55,6 +59,17 @@ export interface StudioDocumentEditor {
     targetBlockId: string,
     insertIndex: number,
     componentKind: StudioComponentKind
+  ) => void;
+  insertComponentFromPrefab: (
+    targetBlockId: string,
+    insertIndex: number,
+    prefabId: string
+  ) => void;
+  replaceAllComponentsWithPrefab: (prefabId: string) => void;
+  replaceAllComponentsWithComponentSettings: (
+    prefabName: string,
+    kind: StudioComponentKind,
+    component: BlockComponent
   ) => void;
   insertMlpStepAt: (
     targetBlockId: string,
@@ -91,6 +106,7 @@ export interface StudioDocumentEditor {
 
 type UseStudioDocumentEditorArgs = {
   documentState: StudioDocument;
+  componentPrefabs: StudioComponentPrefab[];
   setDocumentState: Dispatch<SetStateAction<StudioDocument>>;
   setExpandedComponentIds: SetIdSet;
   setExpandedMlpStepIds: SetIdSet;
@@ -99,6 +115,7 @@ type UseStudioDocumentEditorArgs = {
 
 export function useStudioDocumentEditor({
   documentState,
+  componentPrefabs,
   setDocumentState,
   setExpandedComponentIds,
   setExpandedMlpStepIds,
@@ -253,6 +270,94 @@ export function useStudioDocumentEditor({
         (current) => new Set([...current, ...createdComponent.mlp.sequence.map((step) => step.id)])
       );
     }
+  }
+
+  function insertComponentFromPrefab(
+    targetBlockId: string,
+    insertIndex: number,
+    prefabId: string
+  ): void {
+    const prefab = componentPrefabs.find((item) => item.id === prefabId);
+    if (!prefab) {
+      setNoticeMessage("error", "The selected prefab could not be found.");
+      return;
+    }
+
+    const createdComponent = instantiateComponentFromPrefab(prefab);
+
+    setDocumentState((current) => {
+      const next = clone(current);
+      const targetBlockIndex = findBlockIndex(next, targetBlockId);
+      if (targetBlockIndex < 0) {
+        return current;
+      }
+      const targetBlock = next.blocks[targetBlockIndex];
+      const targetInsertIndex = clamp(insertIndex, 0, targetBlock.components.length);
+      targetBlock.components.splice(targetInsertIndex, 0, createdComponent);
+      return next;
+    });
+
+    setExpandedComponentIds((current) => new Set([...current, createdComponent.id]));
+    if (createdComponent.kind === "mlp") {
+      setExpandedMlpStepIds(
+        (current) => new Set([...current, ...createdComponent.mlp.sequence.map((step) => step.id)])
+      );
+    }
+  }
+
+  function replaceAllComponentsWithPrefab(prefabId: string): void {
+    const prefab = componentPrefabs.find((item) => item.id === prefabId);
+    if (!prefab) {
+      setNoticeMessage("error", "The selected prefab could not be found.");
+      return;
+    }
+    replaceAllComponentsWithComponentSettings(prefab.name, prefab.kind, prefab.component);
+  }
+
+  function replaceAllComponentsWithComponentSettings(
+    prefabName: string,
+    kind: StudioComponentKind,
+    component: BlockComponent
+  ): void {
+    const replacementTemplate = studioComponentFromConfig(component);
+    if (replacementTemplate.kind !== kind) {
+      setNoticeMessage("error", "Prefab settings do not match the selected component type.");
+      return;
+    }
+
+    const targetCount = documentState.blocks.reduce(
+      (count, block) =>
+        count + block.components.filter((item) => item.kind === kind).length,
+      0
+    );
+
+    if (targetCount === 0) {
+      setNoticeMessage("info", `No ${labelForComponentKind(kind)} components to replace.`);
+      return;
+    }
+
+    setDocumentState((current) => {
+      const next = clone(current);
+      next.blocks = next.blocks.map((block) => ({
+        ...block,
+        components: block.components.map((item) => {
+          if (item.kind !== kind) {
+            return item;
+          }
+          const replacement = studioComponentFromConfig(component);
+          return {
+            ...replacement,
+            id: item.id,
+          };
+        }),
+      }));
+      return next;
+    });
+
+    setNoticeMessage(
+      "success",
+      `Replaced ${targetCount} ${labelForComponentKind(kind)} component${targetCount === 1 ? "" : "s"} with "${prefabName}".`
+    );
   }
 
   function insertMlpStepAt(
@@ -490,6 +595,9 @@ export function useStudioDocumentEditor({
     updateMlpStep,
     removeMlpStep,
     insertComponentAt,
+    insertComponentFromPrefab,
+    replaceAllComponentsWithPrefab,
+    replaceAllComponentsWithComponentSettings,
     insertMlpStepAt,
     clearDragState,
     beginDragComponent,

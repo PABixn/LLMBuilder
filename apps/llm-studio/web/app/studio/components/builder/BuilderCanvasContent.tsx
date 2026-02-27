@@ -1,6 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Fragment } from "react";
 import {
+  FiBookmark,
   FiChevronDown,
   FiChevronRight,
   FiCopy,
@@ -18,6 +19,7 @@ import {
   labelForComponentKind,
   labelForMlpStepKind,
   summarizeComponent,
+  summarizeComponentConfig,
   summarizeMlpStep,
 } from "../../utils/document";
 import {
@@ -68,9 +70,12 @@ export function BuilderCanvasContent({
   toggleExpandedMlpStep,
   duplicateBlock,
   deleteBlock,
+  componentPrefabs,
   removeComponent,
   removeMlpStep,
+  saveComponentAsPrefab,
   insertComponentAt,
+  insertComponentFromPrefab,
   insertMlpStepAt,
   updateComponent,
   updateMlpStep,
@@ -99,18 +104,42 @@ export function BuilderCanvasContent({
   }
 
   function renderComponentInsertSlot(blockId: string, insertIndex: number): ReactNode {
+    const menuItems = buildComponentInsertMenuItems(blockId, insertIndex);
     return (
       <ComponentInsertSlot
         blockId={blockId}
         insertIndex={insertIndex}
+        menuItems={menuItems}
         openInsertMenu={openInsertMenu}
         openInsertMenuFromEvent={openInsertMenuFromEvent}
         dragOverKey={dragOverKey}
         markDropTarget={markDropTarget}
         handleDropComponent={handleDropComponent}
-        insertComponentAt={insertComponentAt}
       />
     );
+  }
+
+  function buildComponentInsertMenuItems(
+    blockId: string,
+    insertIndex: number
+  ): OpenInsertMenu["items"] {
+    const defaultItems: OpenInsertMenu["items"] = (
+      ["attention", "mlp", "norm", "activation"] as const
+    ).map((kind) => ({
+      id: `default-${kind}`,
+      label: labelForComponentKind(kind),
+      hint: "Default settings",
+      onSelect: () => insertComponentAt(blockId, insertIndex, kind),
+    }));
+
+    const prefabItems: OpenInsertMenu["items"] = componentPrefabs.map((prefab) => ({
+      id: `prefab-${prefab.id}`,
+      label: `Prefab: ${prefab.name}`,
+      hint: `${labelForComponentKind(prefab.kind)} · ${summarizeComponentConfig(prefab.component)}`,
+      onSelect: () => insertComponentFromPrefab(blockId, insertIndex, prefab.id),
+    }));
+
+    return [...defaultItems, ...prefabItems];
   }
 
   function renderMlpStepInsertSlot(
@@ -134,6 +163,7 @@ export function BuilderCanvasContent({
   }
 
   function renderBlockCard(block: StudioBlock, blockIndex: number): ReactNode {
+    const insertMenuItems = buildComponentInsertMenuItems(block.id, block.components.length);
     return (
       <article className="blockCard">
         <div className="blockCardHead">
@@ -156,11 +186,7 @@ export function BuilderCanvasContent({
                   key: `component:${block.id}:${block.components.length}`,
                   title: "Add component",
                   variant: "inline",
-                  items: (["attention", "mlp", "norm", "activation"] as const).map((kind) => ({
-                    id: kind,
-                    label: labelForComponentKind(kind),
-                    onSelect: () => insertComponentAt(block.id, block.components.length, kind),
-                  })),
+                  items: insertMenuItems,
                 })
               }
             >
@@ -282,6 +308,18 @@ export function BuilderCanvasContent({
                           {componentIsExpanded ? <FiChevronDown /> : <FiChevronRight />}
                         </span>
                       ) : null}
+                      <button
+                        type="button"
+                        className="iconButton"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          saveComponentAsPrefab(component);
+                        }}
+                        aria-label="Save component as prefab"
+                        title="Save as prefab"
+                      >
+                        <FiBookmark />
+                      </button>
                       <button
                         type="button"
                         className="iconButton danger"

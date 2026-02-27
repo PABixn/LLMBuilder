@@ -174,3 +174,140 @@
   font-weight: 700;
 }
 
+.parameterBreakdownTooltip {
+  display: grid;
+  gap: 8px;
+}
+
+.parameterBreakdownHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.parameterBreakdownHeader {
+  display: grid;
+  gap: 2px;
+}
+
+.parameterBreakdownHeader strong {
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+}
+
+.parameterBreakdownHeader span {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.parameterBreakdownSubhead {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.parameterBreakdownToggleGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid color-mix(in srgb, var(--ok) 24%, var(--line));
+  border-radius: 999px;
+  padding: 2px;
+  background: color-mix(in srgb, var(--surface-soft) 80%, white);
+}
+
+.parameterBreakdownToggle {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.63rem;
+  font-weight: 760;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.parameterBreakdownToggle:hover:not(.isActive):not(:disabled) {
+  color: var(--text);
+}
+
+.parameterBreakdownToggle.isActive {
+  background: color-mix(in srgb, var(--ok) 18%, var(--surface));
+  color: color-mix(in srgb, var(--ok) 62%, var(--text));
+}
+
+.parameterBreakdownToggle:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.parameterBreakdownList {
+  display: grid;
+  gap: 7px;
+}
+
+.parameterBreakdownRow {
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--ok) 18%, var(--line));
+  background: color-mix(in srgb, var(--surface) 92%, white);
+  padding: 7px 8px;
+  display: grid;
+  gap: 5px;
+}
+
+.parameterBreakdownRowHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.parameterBreakdownLabel {
+  font-size: 0.7rem;
+  font-weight: 710;
+  line-height: 1.2;
+}
+
+.parameterBreakdownValue {
+  font-size: 0.7rem;
+  font-weight: 790;
+  color: color-mix(in srgb, var(--ok) 58%, var(--text));
+  letter-spacing: -0.01em;
+}
+
+.parameterBreakdownTrack {
+  border-radius: 999px;
+  height: 5px;
+  background: color-mix(in srgb, var(--surface-soft) 76%, var(--line));
+  overflow: hidden;
+}
+
+.parameterBreakdownFill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--ok) 64%, white),
+    color-mix(in srgb, var(--ok) 86%, var(--text))
+  );
+}
+
+.parameterBreakdownMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.64rem;
+  color: var(--text-muted);
+}
+
+.parameterBreakdownEmpty {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}

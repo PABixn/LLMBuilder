@@ -46,6 +46,7 @@ export function InsertMenuPortal({
           }}
         >
           <span className="blockInsertMenuButtonTitle">{item.label}</span>
+          {item.hint ? <span className="blockInsertMenuButtonHint">{item.hint}</span> : null}
         </button>
       ))}
     </div>,

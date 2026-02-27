@@ -1,4 +1,5 @@
 import type { DragEvent } from "react";
+import type { BlockComponent } from "../../../../lib/defaults";
 
 import type {
   BlockInsertPreset,
@@ -7,6 +8,7 @@ import type {
   MlpStepKind,
   StudioComponent,
   StudioComponentKind,
+  StudioComponentPrefab,
   StudioDocument,
   StudioMlpStep,
 } from "../../types";
@@ -19,9 +21,14 @@ export interface BuilderPanelProps {
   expandedComponentIds: Set<string>;
   expandedMlpStepIds: Set<string>;
   expandedBlockGroupKeys: Set<string>;
+  componentPrefabs: StudioComponentPrefab[];
   addBlock: () => void;
   expandAllCanvasNodes: () => void;
   collapseAllCanvasNodes: () => void;
+  canUndoDocument: boolean;
+  canRedoDocument: boolean;
+  undoDocument: () => void;
+  redoDocument: () => void;
   toggleExpandedBlockGroup: (groupKey: string) => void;
   toggleExpandedComponent: (componentId: string) => void;
   toggleExpandedMlpStep: (stepId: string) => void;
@@ -29,10 +36,28 @@ export interface BuilderPanelProps {
   deleteBlock: (blockId: string) => void;
   removeComponent: (blockId: string, componentId: string) => void;
   removeMlpStep: (blockId: string, componentId: string, stepId: string) => void;
+  saveComponentAsPrefab: (component: StudioComponent) => void;
+  updateComponentPrefab: (
+    prefabId: string,
+    nextName: string,
+    nextComponent: StudioComponent
+  ) => string | null;
+  deleteComponentPrefab: (prefabId: string) => void;
   insertComponentAt: (
     targetBlockId: string,
     insertIndex: number,
     componentKind: StudioComponentKind
+  ) => void;
+  insertComponentFromPrefab: (
+    targetBlockId: string,
+    insertIndex: number,
+    prefabId: string
+  ) => void;
+  replaceAllComponentsWithPrefab: (prefabId: string) => void;
+  replaceAllComponentsWithComponentSettings: (
+    prefabName: string,
+    kind: StudioComponentKind,
+    component: BlockComponent
   ) => void;
   insertMlpStepAt: (
     targetBlockId: string,
@@ -84,6 +109,7 @@ export type InsertMenuVariant = "rail" | "inline";
 export type InsertMenuAction = {
   id: string;
   label: string;
+  hint?: string;
   onSelect: () => void;
 };
 

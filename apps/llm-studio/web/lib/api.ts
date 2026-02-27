@@ -6,6 +6,16 @@ export interface ValidationIssue {
   path: string;
 }
 
+export interface ParameterBreakdownEntry {
+  key: string;
+  label: string;
+  parameters: number;
+  trainable_parameters: number;
+  module_count: number;
+  percentage: number;
+  trainable_percentage: number;
+}
+
 export interface ModelValidationResponse {
   valid: boolean;
   normalized_config: ModelConfig;
@@ -31,6 +41,7 @@ export interface ModelAnalysisSummary {
   max_head_dim: number | null;
   instantiation_time_ms: number;
   module_counts: Record<string, number>;
+  parameter_breakdown: ParameterBreakdownEntry[];
 }
 
 export interface ModelAnalysisResponse {
@@ -180,6 +191,69 @@ function isModelAnalysisSummary(value: unknown): value is ModelAnalysisSummary {
   );
 }
 
+function parseNumberRecord(value: unknown): Record<string, number> {
+  if (!isRecord(value)) {
+    return {};
+  }
+  const entries = Object.entries(value).filter(
+    (entry): entry is [string, number] => typeof entry[0] === "string" && typeof entry[1] === "number"
+  );
+  return Object.fromEntries(entries);
+}
+
+function parseParameterBreakdown(value: unknown): ParameterBreakdownEntry[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((entry) => {
+      if (!isRecord(entry)) {
+        return null;
+      }
+      const key = typeof entry.key === "string" ? entry.key : "";
+      const label = typeof entry.label === "string" ? entry.label : key;
+      const parameters = typeof entry.parameters === "number" ? entry.parameters : 0;
+      const trainableParameters =
+        typeof entry.trainable_parameters === "number"
+          ? entry.trainable_parameters
+          : parameters;
+      const moduleCount = typeof entry.module_count === "number" ? entry.module_count : 0;
+      const percentage = typeof entry.percentage === "number" ? entry.percentage : 0;
+      const trainablePercentage =
+        typeof entry.trainable_percentage === "number"
+          ? entry.trainable_percentage
+          : percentage;
+      if (!key || parameters < 0) {
+        return null;
+      }
+      const normalizedTrainableParameters = Math.min(
+        parameters,
+        Math.max(0, trainableParameters)
+      );
+      return {
+        key,
+        label,
+        parameters,
+        trainable_parameters: normalizedTrainableParameters,
+        module_count: moduleCount,
+        percentage: Math.max(0, percentage),
+        trainable_percentage: Math.max(0, trainablePercentage),
+      };
+    })
+    .filter((entry): entry is ParameterBreakdownEntry => entry !== null);
+}
+
+function parseModelAnalysisSummary(value: unknown): ModelAnalysisSummary | null {
+  if (!isModelAnalysisSummary(value)) {
+    return null;
+  }
+  return {
+    ...(value as ModelAnalysisSummary),
+    module_counts: parseNumberRecord(value.module_counts),
+    parameter_breakdown: parseParameterBreakdown(value.parameter_breakdown),
+  };
+}
+
 export function apiBaseUrl(): string {
   return API_BASE;
 }
@@ -220,7 +294,7 @@ export async function analyzeModelConfig(
   }
 
   const validation = parseModelValidationResponse(raw);
-  const analysis = isModelAnalysisSummary(raw.analysis) ? raw.analysis : null;
+  const analysis = parseModelAnalysisSummary(raw.analysis);
 
   return {
     ...validation,

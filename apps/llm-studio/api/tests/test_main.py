@@ -105,6 +105,16 @@ def test_analyze_model_endpoint_instantiates_model(monkeypatch, tmp_path: Path) 
         assert body["analysis"]["total_parameters"] > 0
         assert body["analysis"]["block_count"] == len(base_config["blocks"])
         assert body["analysis"]["mlp_activation_step_count"] > 0
+        breakdown = body["analysis"]["parameter_breakdown"]
+        assert isinstance(breakdown, list)
+        assert breakdown
+        assert sum(item["parameters"] for item in breakdown) == body["analysis"]["total_parameters"]
+        assert (
+            sum(item["trainable_parameters"] for item in breakdown)
+            == body["analysis"]["trainable_parameters"]
+        )
+        assert all(item["percentage"] >= 0 for item in breakdown)
+        assert all(item["trainable_percentage"] >= 0 for item in breakdown)
 
 
 def test_projects_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   FiHardDrive,
   FiLayers,
@@ -17,12 +18,29 @@ type BackendAnalysisPanelProps = {
   runBackendAnalysis: () => Promise<void>;
 };
 
+type ParameterBreakdownMode = "all" | "trainable";
+
+function formatPercentage(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0%";
+  }
+  if (value >= 10) {
+    return `${value.toFixed(1)}%`;
+  }
+  if (value >= 1) {
+    return `${value.toFixed(2)}%`;
+  }
+  return `${value.toFixed(3)}%`;
+}
+
 export function BackendAnalysisPanel({
   backendAnalysis,
   backendAnalysisStale,
   localErrorCount,
   runBackendAnalysis,
 }: BackendAnalysisPanelProps) {
+  const [parameterBreakdownMode, setParameterBreakdownMode] =
+    useState<ParameterBreakdownMode>("all");
   const moduleInventoryEntries = backendAnalysis.summary
     ? Object.entries(backendAnalysis.summary.module_counts).sort(
         ([nameA, countA], [nameB, countB]) =>
@@ -37,6 +55,44 @@ export function BackendAnalysisPanel({
   const backendActivationTotal =
     (backendAnalysis.summary?.activation_component_count ?? 0) +
     (backendAnalysis.summary?.mlp_activation_step_count ?? 0);
+  const parameterBreakdownTotal = backendAnalysis.summary
+    ? parameterBreakdownMode === "trainable"
+      ? backendAnalysis.summary.trainable_parameters
+      : backendAnalysis.summary.total_parameters
+    : 0;
+  const parameterBreakdownEntries = backendAnalysis.summary
+    ? backendAnalysis.summary.parameter_breakdown
+        .map((entry) => {
+          const displayCount =
+            parameterBreakdownMode === "trainable"
+              ? entry.trainable_parameters
+              : entry.parameters;
+          const displayPercentage =
+            parameterBreakdownMode === "trainable"
+              ? entry.trainable_percentage
+              : entry.percentage;
+          return {
+            ...entry,
+            displayCount,
+            displayPercentage,
+          };
+        })
+        .filter((entry) => entry.displayCount > 0)
+        .sort(
+          (entryA, entryB) =>
+            entryB.displayCount - entryA.displayCount ||
+            entryA.label.localeCompare(entryB.label)
+        )
+    : [];
+  const parameterBreakdownShownCount = parameterBreakdownEntries.reduce(
+    (sum, entry) => sum + entry.displayCount,
+    0
+  );
+  const parameterBreakdownCoverage =
+    parameterBreakdownTotal > 0
+      ? (parameterBreakdownShownCount / parameterBreakdownTotal) * 100
+      : 0;
+  const hasTrainableParameters = (backendAnalysis.summary?.trainable_parameters ?? 0) > 0;
   const backendAnalysisPhaseLabel =
     backendAnalysis.phase === "success"
       ? "Ready"
@@ -107,6 +163,92 @@ export function BackendAnalysisPanel({
               detail={`${formatBytes(backendAnalysis.summary.parameter_memory_bytes_fp32)} fp32 · ${formatBytes(backendAnalysis.summary.parameter_memory_bytes_bf16)} bf16`}
               tone="good"
               icon={<FiLayers />}
+              tooltipLabel="Parameter breakdown by layer type"
+              tooltipContent={
+                <div className="parameterBreakdownTooltip">
+                  <div className="parameterBreakdownHeaderRow">
+                    <div className="parameterBreakdownHeader">
+                      <strong>Parameter breakdown</strong>
+                      <span>
+                        {parameterBreakdownEntries.length} layer type
+                        {parameterBreakdownEntries.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <div
+                      className="parameterBreakdownToggleGroup"
+                      role="group"
+                      aria-label="Parameter breakdown mode"
+                    >
+                      <button
+                        type="button"
+                        className={`parameterBreakdownToggle${
+                          parameterBreakdownMode === "all" ? " isActive" : ""
+                        }`}
+                        aria-pressed={parameterBreakdownMode === "all"}
+                        onClick={() => setParameterBreakdownMode("all")}
+                      >
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        className={`parameterBreakdownToggle${
+                          parameterBreakdownMode === "trainable" ? " isActive" : ""
+                        }`}
+                        aria-pressed={parameterBreakdownMode === "trainable"}
+                        onClick={() => setParameterBreakdownMode("trainable")}
+                        disabled={!hasTrainableParameters}
+                      >
+                        Trainable
+                      </button>
+                    </div>
+                  </div>
+                  <div className="parameterBreakdownSubhead">
+                    {formatCompactCount(parameterBreakdownShownCount)} /{" "}
+                    {formatCompactCount(parameterBreakdownTotal)}{" "}
+                    {parameterBreakdownMode === "trainable" ? "trainable" : "all"} params ·{" "}
+                    {formatPercentage(parameterBreakdownCoverage)} coverage
+                  </div>
+                  {parameterBreakdownEntries.length > 0 ? (
+                    <div className="parameterBreakdownList">
+                      {parameterBreakdownEntries.map((entry) => {
+                        const widthPercent = Math.min(
+                          100,
+                          Math.max(entry.displayPercentage, 2)
+                        );
+                        return (
+                          <div key={entry.key} className="parameterBreakdownRow">
+                            <div className="parameterBreakdownRowHead">
+                              <span className="parameterBreakdownLabel">{entry.label}</span>
+                              <span className="parameterBreakdownValue">
+                                {formatCompactCount(entry.displayCount)}
+                              </span>
+                            </div>
+                            <div className="parameterBreakdownTrack" aria-hidden>
+                              <span
+                                className="parameterBreakdownFill"
+                                style={{ width: `${widthPercent}%` }}
+                              />
+                            </div>
+                            <div className="parameterBreakdownMeta">
+                              <span>{formatPercentage(entry.displayPercentage)}</span>
+                              <span>
+                                {entry.module_count} module
+                                {entry.module_count === 1 ? "" : "s"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="parameterBreakdownEmpty">
+                      {parameterBreakdownMode === "trainable"
+                        ? "No trainable parameters are currently enabled in this model."
+                        : "No parameterized layers were detected in the current model."}
+                    </div>
+                  )}
+                </div>
+              }
             />
             <StatusCard
               title="KV Cache / Token"

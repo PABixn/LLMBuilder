@@ -39,6 +39,16 @@ class AnalyzeModelRequest(BaseModel):
     config: dict[str, Any]
 
 
+class ParameterBreakdownEntry(BaseModel):
+    key: str
+    label: str
+    parameters: int
+    trainable_parameters: int
+    module_count: int
+    percentage: float
+    trainable_percentage: float
+
+
 class ModelAnalysisSummary(BaseModel):
     total_parameters: int
     trainable_parameters: int
@@ -57,6 +67,7 @@ class ModelAnalysisSummary(BaseModel):
     max_head_dim: int | None = None
     instantiation_time_ms: float
     module_counts: dict[str, int] = Field(default_factory=dict)
+    parameter_breakdown: list[ParameterBreakdownEntry] = Field(default_factory=list)
 
 
 class AnalyzeModelResponse(BaseModel):

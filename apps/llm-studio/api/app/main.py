@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, defaultdict
 import re
 import sys
 import time
@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
+import torch.nn as nn
 
 from .config import (
     MODEL_CONFIG_TEMPLATE_PATH,
@@ -30,6 +31,7 @@ from .models import (
     CreateProjectRequest,
     HealthResponse,
     ModelAnalysisSummary,
+    ParameterBreakdownEntry,
     ProjectDetailResponse,
     ProjectsListResponse,
     ProjectSummaryResponse,
@@ -50,11 +52,30 @@ from model.loader import (
     MLPComponent,
     NormComponent,
 )
-from model.model import ConfigurableGPT
+from model.model import (
+    CausalSelfAttention,
+    ConfigurableGPT,
+    ConfigurableMLP,
+    LearnableRMSNorm,
+    StaticRMSNorm,
+)
 
 _PROJECT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{6,64}$")
 _METADATA_FILE = "metadata.json"
 _ARTIFACT_FILE = "model_config.json"
+
+_PARAMETER_BREAKDOWN_LABELS: dict[str, str] = {
+    "embeddings": "Token Embeddings",
+    "embeddings_tied": "Token Embedding / LM Head (Tied)",
+    "attention_projections": "Attention Projections",
+    "attention_norms": "Attention Norms",
+    "mlp_projections": "MLP Projections",
+    "mlp_norms": "MLP Norms",
+    "model_norms": "Model Norms",
+    "output_projection": "LM Head Projection",
+    "linear_layers": "Other Linear Layers",
+    "other": "Other Parameters",
+}
 
 
 class RuntimeTokenMiddleware(BaseHTTPMiddleware):
@@ -198,6 +219,115 @@ def _parse_and_validate_payload_model(
     return parsed, normalized, warnings, errors
 
 
+def _parameter_layer_key(
+    *,
+    module_name: str,
+    module: nn.Module | None,
+    component_owner: nn.Module | None,
+    weight_tying: bool,
+) -> str:
+    if module_name == "transformer.wte":
+        return "embeddings_tied" if weight_tying else "embeddings"
+    if module_name == "lm_head":
+        return "output_projection"
+    if module_name in {"in_norm", "out_norm"}:
+        return "model_norms"
+
+    if isinstance(module, nn.Linear):
+        if isinstance(component_owner, CausalSelfAttention):
+            return "attention_projections"
+        if isinstance(component_owner, ConfigurableMLP):
+            return "mlp_projections"
+        return "linear_layers"
+
+    if isinstance(module, (LearnableRMSNorm, StaticRMSNorm, nn.LayerNorm)):
+        if isinstance(component_owner, CausalSelfAttention):
+            return "attention_norms"
+        if isinstance(component_owner, ConfigurableMLP):
+            return "mlp_norms"
+        return "model_norms"
+
+    if isinstance(module, nn.Embedding):
+        return "embeddings"
+
+    return "other"
+
+
+def _find_component_owner(module_name: str, module_lookup: dict[str, nn.Module]) -> nn.Module | None:
+    ancestor_name = module_name
+    while ancestor_name:
+        ancestor_name = ancestor_name.rsplit(".", 1)[0] if "." in ancestor_name else ""
+        if not ancestor_name:
+            return None
+        ancestor_module = module_lookup.get(ancestor_name)
+        if isinstance(ancestor_module, (CausalSelfAttention, ConfigurableMLP)):
+            return ancestor_module
+    return None
+
+
+def _build_parameter_breakdown(
+    *,
+    model: ConfigurableGPT,
+    total_parameters: int,
+    trainable_parameters: int,
+    weight_tying: bool,
+) -> list[ParameterBreakdownEntry]:
+    if total_parameters <= 0:
+        return []
+
+    module_lookup = dict(model.named_modules())
+    layer_parameter_counts: defaultdict[str, int] = defaultdict(int)
+    layer_trainable_parameter_counts: defaultdict[str, int] = defaultdict(int)
+    layer_module_names: defaultdict[str, set[str]] = defaultdict(set)
+
+    for parameter_name, parameter in model.named_parameters():
+        parameter_count = int(parameter.numel())
+        if parameter_count <= 0:
+            continue
+
+        module_name = parameter_name.rsplit(".", 1)[0] if "." in parameter_name else ""
+        module = module_lookup.get(module_name)
+        component_owner = _find_component_owner(module_name, module_lookup)
+
+        key = _parameter_layer_key(
+            module_name=module_name,
+            module=module,
+            component_owner=component_owner,
+            weight_tying=weight_tying,
+        )
+        layer_parameter_counts[key] += parameter_count
+        if parameter.requires_grad:
+            layer_trainable_parameter_counts[key] += parameter_count
+        if module_name:
+            layer_module_names[key].add(module_name)
+
+    sorted_items = sorted(
+        layer_parameter_counts.items(),
+        key=lambda item: (-item[1], _PARAMETER_BREAKDOWN_LABELS.get(item[0], item[0])),
+    )
+
+    breakdown: list[ParameterBreakdownEntry] = []
+    for key, parameters in sorted_items:
+        if parameters <= 0:
+            continue
+        breakdown.append(
+            ParameterBreakdownEntry(
+                key=key,
+                label=_PARAMETER_BREAKDOWN_LABELS.get(key, key.replace("_", " ").title()),
+                parameters=parameters,
+                trainable_parameters=layer_trainable_parameter_counts[key],
+                module_count=len(layer_module_names[key]),
+                percentage=round((parameters / total_parameters) * 100.0, 4),
+                trainable_percentage=round(
+                    (layer_trainable_parameter_counts[key] / trainable_parameters) * 100.0, 4
+                )
+                if trainable_parameters > 0
+                else 0.0,
+            )
+        )
+    return breakdown
+
+
 def _build_model_analysis(config: LLMConfig) -> ModelAnalysisSummary:
     attention_count = 0
     mlp_count = 0
@@ -238,6 +368,12 @@ def _build_model_analysis(config: LLMConfig) -> ModelAnalysisSummary:
     trainable_parameters = sum(
         parameter.numel() for parameter in model.parameters() if parameter.requires_grad
     )
+    parameter_breakdown = _build_parameter_breakdown(
+        model=model,
+        total_parameters=total_parameters,
+        trainable_parameters=trainable_parameters,
+        weight_tying=config.weight_tying,
+    )
     module_counts = dict(sorted(Counter(type(module).__name__ for module in model.modules()).items()))
 
     del model
@@ -261,6 +397,7 @@ def _build_model_analysis(config: LLMConfig) -> ModelAnalysisSummary:
         max_head_dim=max(head_dims) if head_dims else None,
         instantiation_time_ms=round(elapsed_ms, 3),
         module_counts=module_counts,
+        parameter_breakdown=parameter_breakdown,
     )
 
 
