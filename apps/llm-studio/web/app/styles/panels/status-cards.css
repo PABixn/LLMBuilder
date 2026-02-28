@@ -61,7 +61,7 @@
 }
 
 .statusCard.hasTooltip:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--ok) 58%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--brand) 52%, transparent);
   outline-offset: 2px;
 }
 
@@ -76,9 +76,9 @@
   pointer-events: none;
   z-index: 16;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--ok) 26%, var(--line));
-  background: color-mix(in srgb, var(--surface-soft) 86%, white);
-  box-shadow: 0 12px 28px rgba(8, 18, 30, 0.14);
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  box-shadow: 0 16px 30px rgba(8, 18, 30, 0.16);
   padding: 10px;
   transition: opacity 120ms ease, transform 120ms ease;
 }
@@ -90,9 +90,9 @@
   top: 100%;
   width: 10px;
   height: 10px;
-  border-left: 1px solid color-mix(in srgb, var(--ok) 26%, var(--line));
-  border-bottom: 1px solid color-mix(in srgb, var(--ok) 26%, var(--line));
-  background: color-mix(in srgb, var(--surface-soft) 86%, white);
+  border-left: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--surface-soft);
   transform: translateX(-50%) rotate(-45deg);
 }
 

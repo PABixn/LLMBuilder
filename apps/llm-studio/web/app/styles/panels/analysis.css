@@ -213,10 +213,10 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  border: 1px solid color-mix(in srgb, var(--ok) 24%, var(--line));
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
   padding: 2px;
-  background: color-mix(in srgb, var(--surface-soft) 80%, white);
+  background: color-mix(in srgb, var(--surface-soft) 92%, var(--surface));
 }
 
 .parameterBreakdownToggle {
@@ -238,8 +238,8 @@
 }
 
 .parameterBreakdownToggle.isActive {
-  background: color-mix(in srgb, var(--ok) 18%, var(--surface));
-  color: color-mix(in srgb, var(--ok) 62%, var(--text));
+  background: color-mix(in srgb, var(--brand) 15%, var(--surface));
+  color: var(--brand-strong);
 }
 
 .parameterBreakdownToggle:disabled {
@@ -254,8 +254,8 @@
 
 .parameterBreakdownRow {
   border-radius: 9px;
-  border: 1px solid color-mix(in srgb, var(--ok) 18%, var(--line));
-  background: color-mix(in srgb, var(--surface) 92%, white);
+  border: 1px solid var(--line);
+  background: var(--surface);
   padding: 7px 8px;
   display: grid;
   gap: 5px;
@@ -277,7 +277,7 @@
 .parameterBreakdownValue {
   font-size: 0.7rem;
   font-weight: 790;
-  color: color-mix(in srgb, var(--ok) 58%, var(--text));
+  color: var(--text);
   letter-spacing: -0.01em;
 }
 
@@ -293,8 +293,8 @@
   height: 100%;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--ok) 64%, white),
-    color-mix(in srgb, var(--ok) 86%, var(--text))
+    color-mix(in srgb, var(--brand) 52%, var(--surface-soft)),
+    var(--brand)
   );
 }
 
