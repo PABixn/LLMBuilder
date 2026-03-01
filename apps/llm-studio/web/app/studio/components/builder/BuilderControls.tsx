@@ -186,7 +186,7 @@ export function renderQuickMapChips(
 }
 
 export function isInlineSimpleComponent(component: StudioComponent): boolean {
-  return component.kind === "norm" || component.kind === "activation";
+  return component.kind === "activation";
 }
 
 export function isInlineSimpleMlpStep(_step: StudioMlpStep): boolean {

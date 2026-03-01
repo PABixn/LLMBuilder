@@ -279,7 +279,7 @@ export function BuilderCanvasContent({
                       <span className="componentTag">{labelForComponentKind(component.kind)}</span>
                       <span className="componentSummary">{summarizeComponent(component)}</span>
                     </div>
-                    {component.kind === "norm"
+                    {component.kind === "norm" && componentIsInlineSimple
                       ? renderInlineNormControls(
                           component.norm,
                           (nextNorm) => {
