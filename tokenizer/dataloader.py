@@ -13,8 +13,8 @@ except ImportError as exc:
     raise ImportError(
         "Failed to import HuggingFace 'datasets.load_dataset'. Install API dependencies in the "
         "interpreter used to run `make api` (for example: "
-        "`./.venv/bin/pip install -r apps/tokenizer-studio/api/requirements.txt`). If `datasets` "
-        "is resolving to `apps/tokenizer-studio/api/datasets/`, that interpreter is missing the "
+        "`./.venv/bin/pip install -r apps/llm-studio/api/requirements.txt`). If `datasets` "
+        "is resolving to a local `datasets/` folder, that interpreter is missing the "
         "HuggingFace `datasets` package."
     ) from exc
 

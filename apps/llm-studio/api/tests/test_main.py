@@ -44,6 +44,9 @@ def test_health_and_static_fallback(monkeypatch, tmp_path: Path) -> None:
         api_health = client.get("/api/v1/health")
         assert api_health.status_code == 200
         assert api_health.json() == {"ok": True}
+        tokenizer_health = client.get("/api/v1/tokenizer/health")
+        assert tokenizer_health.status_code == 200
+        assert tokenizer_health.json() == {"ok": True}
 
         index = client.get("/")
         assert index.status_code == 200
@@ -59,6 +62,53 @@ def test_health_and_static_fallback(monkeypatch, tmp_path: Path) -> None:
 
         missing_api = client.get("/api/v1/unknown-route")
         assert missing_api.status_code == 404
+
+
+def test_tokenizer_endpoints_validate_and_file_stats(monkeypatch, tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    sample_file = data_dir / "datasets" / "sample.txt"
+    sample_file.parent.mkdir(parents=True, exist_ok=True)
+    content = "ab\né🙂"
+    sample_file.write_text(content, encoding="utf-8")
+
+    monkeypatch.setenv("LLM_STUDIO_DATA_DIR", str(data_dir))
+    config.reset_settings_cache()
+    module = _load_app_module()
+
+    with TestClient(module.app) as client:
+        templates = client.get("/api/v1/tokenizer/config/templates")
+        assert templates.status_code == 200
+        template_payload = templates.json()
+        assert "tokenizer_config_template" in template_payload
+        assert "dataloader_config_template" in template_payload
+
+        tokenizer_validation = client.post(
+            "/api/v1/tokenizer/validate/tokenizer",
+            json={"config": template_payload["tokenizer_config_template"]},
+        )
+        assert tokenizer_validation.status_code == 200
+        tokenizer_validation_body = tokenizer_validation.json()
+        assert tokenizer_validation_body["valid"] is True
+        assert isinstance(tokenizer_validation_body["normalized_config"], dict)
+
+        dataloader_validation = client.post(
+            "/api/v1/tokenizer/validate/dataloader",
+            json={"config": template_payload["dataloader_config_template"]},
+        )
+        assert dataloader_validation.status_code == 200
+        dataloader_validation_body = dataloader_validation.json()
+        assert dataloader_validation_body["valid"] is True
+        assert isinstance(dataloader_validation_body["normalized_config"], dict)
+
+        file_stats = client.get(
+            "/api/v1/tokenizer/files/stats",
+            params={"file_path": str(sample_file)},
+        )
+        assert file_stats.status_code == 200
+        stats_body = file_stats.json()
+        assert stats_body["file_name"] == sample_file.name
+        assert stats_body["size_chars"] == len(content)
+        assert stats_body["size_bytes"] == len(content.encode("utf-8"))
 
 
 def test_validate_model_endpoint_reports_semantic_issues(monkeypatch, tmp_path: Path) -> None:

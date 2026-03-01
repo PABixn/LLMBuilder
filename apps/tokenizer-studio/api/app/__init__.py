@@ -1,1 +1,0 @@
-"""Tokenizer Studio FastAPI package."""

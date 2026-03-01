@@ -8,7 +8,7 @@ API_VENV_PY := $(API_DIR)/.venv/bin/python3
 PYTHON_BIN ?= $(if $(wildcard $(ROOT_VENV_PY)),$(ROOT_VENV_PY),$(if $(wildcard $(API_VENV_PY)),$(API_VENV_PY),python3))
 
 help:
-	@echo "LLM Studio targets:"
+	@echo "LLM Builder Studio targets:"
 	@echo "  make api           - Run FastAPI in reload mode on port 8000"
 	@echo "  make api-prod      - Run production API server (app.serve)"
 	@echo "  make web           - Run Next.js dev server"
@@ -18,7 +18,7 @@ help:
 	@echo "  make install       - Install both API and web dependencies"
 	@echo "  make api-compile   - Syntax-check API modules with py_compile"
 	@echo "  make api-test      - Run API pytest suite"
-	@echo "  make api-smoke     - Smoke-check validate/analyze endpoints"
+	@echo "  make api-smoke     - Smoke-check model + tokenizer endpoints"
 	@echo "  make web-typecheck - Run TypeScript typecheck"
 	@echo "  make check         - Run API compile + web typecheck"
 
@@ -45,13 +45,13 @@ install-web:
 install: install-api install-web
 
 api-compile:
-	cd $(API_DIR) && $(PYTHON_BIN) -m py_compile app/main.py app/models.py app/config.py app/schemas.py app/serve.py
+	cd $(API_DIR) && $(PYTHON_BIN) -m py_compile app/main.py app/models.py app/config.py app/schemas.py app/serve.py app/tokenizer_models.py app/tokenizer_storage.py app/tokenizer_jobs.py
 
 api-test:
 	cd $(API_DIR) && $(PYTHON_BIN) -m pytest -q
 
 api-smoke:
-	cd $(API_DIR) && LLM_STUDIO_DATA_DIR=$$(pwd)/.tmp-smoke $(PYTHON_BIN) -c 'import importlib; from pathlib import Path; from fastapi.testclient import TestClient; import app.config as config; from app.schemas import load_json; config.reset_settings_cache(); import app.main as main; main = importlib.reload(main); cfg = load_json(Path("../../..") / "model" / "gpt2_config.json"); client = TestClient(main.app); assert client.get("/api/v1/health").status_code == 200; assert client.post("/api/v1/validate/model", json={"config": cfg}).status_code == 200; analyze = client.post("/api/v1/analyze/model", json={"config": cfg}); assert analyze.status_code == 200; body = analyze.json(); assert body["instantiated"] is True; assert body["analysis"]["total_parameters"] > 0; print("LLM Studio API smoke passed.")'
+	cd $(API_DIR) && LLM_STUDIO_DATA_DIR=$$(pwd)/.tmp-smoke $(PYTHON_BIN) -c 'import importlib; from pathlib import Path; from fastapi.testclient import TestClient; import app.config as config; from app.schemas import load_json; config.reset_settings_cache(); import app.main as main; main = importlib.reload(main); cfg = load_json(Path("../../..") / "model" / "gpt2_config.json"); client = TestClient(main.app); assert client.get("/api/v1/health").status_code == 200; assert client.post("/api/v1/validate/model", json={"config": cfg}).status_code == 200; analyze = client.post("/api/v1/analyze/model", json={"config": cfg}); assert analyze.status_code == 200; body = analyze.json(); assert body["instantiated"] is True; assert body["analysis"]["total_parameters"] > 0; tokenizer_templates = client.get("/api/v1/tokenizer/config/templates"); assert tokenizer_templates.status_code == 200; tokenizer_validate = client.post("/api/v1/tokenizer/validate/tokenizer", json={"config": tokenizer_templates.json()["tokenizer_config_template"]}); assert tokenizer_validate.status_code == 200; print("LLM Builder Studio API smoke passed.")'
 
 web-typecheck:
 	cd $(WEB_DIR) && npm run typecheck
