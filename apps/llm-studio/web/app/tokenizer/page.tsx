@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -53,7 +54,8 @@ const FILTER_OPERATORS: FilterOperator[] = [
   "in",
   "not in",
 ];
-const THEME_STORAGE_KEY = "tokenizer-studio-theme";
+const THEME_STORAGE_KEY = "llm-studio-theme";
+const LEGACY_TOKENIZER_THEME_STORAGE_KEY = "tokenizer-studio-theme";
 const TOKENIZER_FORM_STORAGE_KEY = "tokenizer-studio-tokenizer-form";
 const DATASET_FORM_STORAGE_KEY = "tokenizer-studio-dataset-form";
 const TRAINING_FORM_STORAGE_KEY = "tokenizer-studio-training-form";
@@ -296,6 +298,18 @@ function readStoredValue(key: string): string | null {
   } catch {
     return null;
   }
+}
+
+function readStoredThemeMode(): ThemeMode {
+  const globalTheme = readStoredValue(THEME_STORAGE_KEY);
+  if (globalTheme === "dark" || globalTheme === "white") {
+    return globalTheme;
+  }
+  const legacyTheme = readStoredValue(LEGACY_TOKENIZER_THEME_STORAGE_KEY);
+  if (legacyTheme === "dark" || legacyTheme === "white") {
+    return legacyTheme;
+  }
+  return "white";
 }
 
 function readStoredJson(key: string): unknown | null {
@@ -1465,6 +1479,7 @@ export default function Home() {
   const localTrainFileStatsPendingIdsRef = useRef<Set<string>>(new Set());
   const localTrainFileStatsFailedIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedLocalStateRef = useRef(false);
+  const hasHydratedThemeRef = useRef(false);
   const settingsCategoryHighlightTimeoutRef = useRef<number | null>(null);
   const tokenizerAndTrainingPanelRef = useRef<HTMLDetailsElement | null>(null);
   const datasetPanelRef = useRef<HTMLDetailsElement | null>(null);
@@ -1524,10 +1539,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const storedTheme = readStoredValue(THEME_STORAGE_KEY);
-    if (storedTheme) {
-      setThemeMode(asThemeMode(storedTheme));
-    }
+    setThemeMode(readStoredThemeMode());
 
     const storedTokenizerForm = readStoredJson(TOKENIZER_FORM_STORAGE_KEY);
     if (storedTokenizerForm !== null) {
@@ -1563,9 +1575,25 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!hasHydratedThemeRef.current) {
+      hasHydratedThemeRef.current = true;
+      return;
+    }
     document.documentElement.dataset.theme = themeMode;
     writeStoredValue(THEME_STORAGE_KEY, themeMode);
   }, [themeMode]);
+
+  useEffect(() => {
+    function handleStorageChange(event: StorageEvent): void {
+      if (event.key !== THEME_STORAGE_KEY || event.newValue === null) {
+        return;
+      }
+      setThemeMode(asThemeMode(event.newValue));
+    }
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   useEffect(() => {
     if (!hasHydratedLocalState) {
@@ -2523,18 +2551,18 @@ export default function Home() {
       <header className="studioNav" role="navigation" aria-label="Primary">
         <div className="studioNavBrand">
           <span className="studioNavDot" aria-hidden="true" />
-          <span>Tokenizer Studio</span>
+          <span>LLM Builder</span>
         </div>
-        <nav className="studioNavLinks" aria-label="Sections">
-          <a className="studioNavLink" href="#workflow">
-            Workflow
-          </a>
-          <a className="studioNavLink" href="#results">
-            Results
-          </a>
-          <a className="studioNavLink" href="#settings">
-            Settings
-          </a>
+        <nav className="studioNavLinks" aria-label="Primary routes">
+          <Link className="studioNavLink" href="/">
+            Home
+          </Link>
+          <Link className="studioNavLink" href="/studio">
+            LLM Studio
+          </Link>
+          <Link className="studioNavLink" href="/tokenizer" aria-current="page">
+            Tokenizer Studio
+          </Link>
         </nav>
         <button
           type="button"

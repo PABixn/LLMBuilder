@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Dispatch, SetStateAction } from "react";
 import { FiMoon, FiSun } from "react-icons/fi";
 
@@ -13,24 +14,18 @@ export function StudioTopNav({ theme, setTheme }: StudioTopNavProps) {
     <nav className="studioNav" aria-label="LLM Studio navigation">
       <div className="studioNavBrand">
         <span className="studioNavDot" />
-        <span>LLM Studio</span>
+        <span>LLM Builder</span>
       </div>
       <div className="studioNavLinks">
-        <a className="studioNavLink" href="#base-model">
-          Base Model
-        </a>
-        <a className="studioNavLink" href="#block-builder">
-          Builder
-        </a>
-        <a className="studioNavLink" href="#diagnostics">
-          Diagnostics
-        </a>
-        <a className="studioNavLink" href="#model-analysis">
-          Analysis
-        </a>
-        <a className="studioNavLink" href="#json-preview">
-          JSON
-        </a>
+        <Link className="studioNavLink" href="/">
+          Home
+        </Link>
+        <Link className="studioNavLink" href="/studio" aria-current="page">
+          LLM Studio
+        </Link>
+        <Link className="studioNavLink" href="/tokenizer">
+          Tokenizer Studio
+        </Link>
       </div>
       <button
         type="button"

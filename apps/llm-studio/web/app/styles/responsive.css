@@ -16,10 +16,11 @@
   }
 
   .studioNav {
-    width: calc(100% - 4px);
-    justify-self: stretch;
+    width: fit-content;
+    max-width: calc(100% - 6px);
+    justify-self: center;
     justify-content: space-between;
-    gap: 6px;
+    gap: 8px;
     padding-inline: 8px;
   }
 

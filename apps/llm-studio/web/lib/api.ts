@@ -54,6 +54,15 @@ export interface ModelAnalysisResponse {
   instantiation_error: string | null;
 }
 
+export interface ProjectSummary {
+  id: string;
+  name: string | null;
+  created_at: string;
+  artifact_file: string;
+  artifact_path: string;
+  size_bytes: number;
+}
+
 const API_BASE = resolveApiBaseUrl();
 const RUNTIME_TOKEN =
   process.env.NEXT_PUBLIC_RUNTIME_TOKEN &&
@@ -254,6 +263,42 @@ function parseModelAnalysisSummary(value: unknown): ModelAnalysisSummary | null 
   };
 }
 
+function parseProjectSummary(value: unknown): ProjectSummary | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = typeof value.id === "string" ? value.id : "";
+  const createdAt = typeof value.created_at === "string" ? value.created_at : "";
+  const artifactFile =
+    typeof value.artifact_file === "string" ? value.artifact_file : "";
+  const artifactPath =
+    typeof value.artifact_path === "string" ? value.artifact_path : "";
+  const sizeBytes = typeof value.size_bytes === "number" ? value.size_bytes : -1;
+
+  if (!id || !createdAt || !artifactFile || !artifactPath || sizeBytes < 0) {
+    return null;
+  }
+
+  return {
+    id,
+    name: typeof value.name === "string" ? value.name : null,
+    created_at: createdAt,
+    artifact_file: artifactFile,
+    artifact_path: artifactPath,
+    size_bytes: sizeBytes,
+  };
+}
+
+function parseProjectsList(value: unknown): ProjectSummary[] {
+  if (!isRecord(value) || !Array.isArray(value.projects)) {
+    return [];
+  }
+  return value.projects
+    .map((entry) => parseProjectSummary(entry))
+    .filter((entry): entry is ProjectSummary => entry !== null);
+}
+
 export function apiBaseUrl(): string {
   return API_BASE;
 }
@@ -303,4 +348,12 @@ export async function analyzeModelConfig(
     instantiation_error:
       typeof raw.instantiation_error === "string" ? raw.instantiation_error : null,
   };
+}
+
+export async function fetchProjects(signal?: AbortSignal): Promise<ProjectSummary[]> {
+  const raw = await request<unknown>("/projects", {
+    method: "GET",
+    signal,
+  });
+  return parseProjectsList(raw);
 }

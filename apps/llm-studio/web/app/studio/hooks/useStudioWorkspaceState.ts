@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 import { ACTIVATION_TYPES, createDefaultModelConfig, type BlockComponent } from "../../../lib/defaults";
 import type {
@@ -275,6 +275,7 @@ export function useStudioWorkspaceState(): StudioWorkspaceState {
   const [componentPrefabs, setComponentPrefabs] = useState<StudioComponentPrefab[]>([]);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [notice, setNotice] = useState<NoticeState | null>(null);
+  const hasHydratedTheme = useRef(false);
   const documentState = documentHistory.present;
   const canUndoDocument = documentHistory.past.length > 0;
   const canRedoDocument = documentHistory.future.length > 0;
@@ -378,6 +379,10 @@ export function useStudioWorkspaceState(): StudioWorkspaceState {
   }, []);
 
   useEffect(() => {
+    if (!hasHydratedTheme.current) {
+      hasHydratedTheme.current = true;
+      return;
+    }
     if (typeof document !== "undefined") {
       document.documentElement.dataset.theme = theme;
     }
@@ -385,6 +390,24 @@ export function useStudioWorkspaceState(): StudioWorkspaceState {
       window.localStorage.setItem(THEME_STORAGE_KEY, theme);
     }
   }, [theme]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    function handleStorageChange(event: StorageEvent): void {
+      if (event.key !== THEME_STORAGE_KEY || event.newValue === null) {
+        return;
+      }
+      if (event.newValue === "dark" || event.newValue === "white") {
+        setTheme(event.newValue);
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {

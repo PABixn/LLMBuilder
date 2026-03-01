@@ -11,7 +11,7 @@ body {
     radial-gradient(circle at 100% 0%, var(--bg-accent-b) 0, transparent 34%),
     var(--bg);
   color: var(--text);
-  font-family: "Sora", "Avenir Next", "Segoe UI", sans-serif;
+  font-family: var(--font-sans), "Sora", "Avenir Next", "Segoe UI", sans-serif;
 }
 
 body {
@@ -34,5 +34,5 @@ button {
 }
 
 code {
-  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: var(--font-mono), "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
 }
