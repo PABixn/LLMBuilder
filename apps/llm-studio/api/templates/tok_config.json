@@ -1,0 +1,10 @@
+{
+  "name": "shake_bpe_bytelevel",
+  "tokenizer_type": "bpe",
+  "byte_fallback": true,
+  "vocab_size": 1000,
+  "min_frequency": 2,
+  "special_tokens": ["<|endoftext|>", "<|pad|>"],
+  "pre_tokenizer": "byte_level",
+  "decoder": "byte_level"
+}
