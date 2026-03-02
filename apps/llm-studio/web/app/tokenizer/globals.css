@@ -843,20 +843,33 @@ button:focus-visible,
 }
 
 .jobRow {
-  width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  text-align: left;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
   background: var(--input-bg);
   transition:
     border-color 0.16s ease,
     background-color 0.16s ease,
     box-shadow 0.16s ease,
     transform 0.16s ease;
+}
+
+.jobRowSelect {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
 }
 
 .jobRow p {
@@ -877,16 +890,48 @@ button:focus-visible,
 }
 
 .jobRow-active:hover,
-.jobRow-active:focus-visible {
+.jobRow-active:focus-within {
   background: var(--brand-soft);
 }
 
 .jobRow:hover,
-.jobRow:focus-visible {
+.jobRow:focus-within {
   border-color: var(--brand);
   background: var(--surface-soft);
   box-shadow: 0 6px 14px rgba(20, 35, 53, 0.1);
   transform: translateY(-1px);
+}
+
+.jobRowRemove {
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  margin-right: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.jobRowRemove svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.jobRowRemove:hover,
+.jobRowRemove:focus-visible {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
+  outline: none;
 }
 
 .jobBadge {

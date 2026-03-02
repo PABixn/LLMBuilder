@@ -11,7 +11,7 @@ import {
   type DragEvent,
   type MouseEvent,
 } from "react";
-import { FiMoon, FiSun, FiX } from "react-icons/fi";
+import { FiMoon, FiSun, FiTrash2, FiX } from "react-icons/fi";
 
 import {
   artifactDownloadUrl,
@@ -61,6 +61,7 @@ const DATASET_FORM_STORAGE_KEY = "tokenizer-studio-dataset-form";
 const TRAINING_FORM_STORAGE_KEY = "tokenizer-studio-training-form";
 const ACTIVE_JOB_STORAGE_KEY = "tokenizer-studio-active-job-id";
 const PREVIEW_TEXT_STORAGE_KEY = "tokenizer-studio-preview-text";
+const HIDDEN_RECENT_JOB_IDS_STORAGE_KEY = "tokenizer-studio-hidden-recent-job-ids";
 const SETTINGS_CATEGORY_HASH_MAP: Record<SettingsCategory, string> = {
   tokenizer: "#settings-tokenizer",
   dataset: "#settings-dataset",
@@ -322,6 +323,17 @@ function readStoredJson(key: string): unknown | null {
   } catch {
     return null;
   }
+}
+
+function readStoredStringArray(key: string): string[] {
+  const raw = readStoredJson(key);
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const values = raw
+    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+    .filter((entry) => entry !== "");
+  return Array.from(new Set(values));
 }
 
 function writeStoredValue(key: string, value: string): void {
@@ -1447,6 +1459,7 @@ export default function Home() {
   const [themeMode, setThemeMode] = useState<ThemeMode>("white");
 
   const [jobs, setJobs] = useState<TrainingJob[]>([]);
+  const [hiddenRecentJobIds, setHiddenRecentJobIds] = useState<string[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [activeJob, setActiveJob] = useState<TrainingJob | null>(null);
   const [previewText, setPreviewText] = useState(
@@ -1569,6 +1582,7 @@ export default function Home() {
     if (storedActiveJobId !== null && storedActiveJobId.trim() !== "") {
       setActiveJobId(storedActiveJobId.trim());
     }
+    setHiddenRecentJobIds(readStoredStringArray(HIDDEN_RECENT_JOB_IDS_STORAGE_KEY));
 
     hasHydratedLocalStateRef.current = true;
     setHasHydratedLocalState(true);
@@ -1745,6 +1759,18 @@ export default function Home() {
     }
     writeStoredValue(ACTIVE_JOB_STORAGE_KEY, activeJobId);
   }, [activeJobId, hasHydratedLocalState]);
+
+  useEffect(() => {
+    if (!hasHydratedLocalState) {
+      return;
+    }
+    writeStoredJson(HIDDEN_RECENT_JOB_IDS_STORAGE_KEY, hiddenRecentJobIds);
+  }, [hasHydratedLocalState, hiddenRecentJobIds]);
+
+  const hiddenRecentJobIdSet = useMemo(
+    () => new Set(hiddenRecentJobIds),
+    [hiddenRecentJobIds]
+  );
 
   const tokenizerBuild = useMemo(
     () => buildResult(() => buildTokenizerConfigFromForm(tokenizerForm)),
@@ -2174,30 +2200,51 @@ export default function Home() {
     try {
       const latest = await fetchTrainingJobs();
       setJobs(latest);
+      const visibleRecentJobs = latest.filter((job) => !hiddenRecentJobIdSet.has(job.id));
 
-      if (latest.length === 0) {
+      if (visibleRecentJobs.length === 0) {
         setActiveJobId(null);
         setActiveJob(null);
         return;
       }
 
-      if (!activeJobId) {
-        setActiveJobId(latest[0].id);
-        setActiveJob(latest[0]);
+      if (!activeJobId || hiddenRecentJobIdSet.has(activeJobId)) {
+        setActiveJobId(visibleRecentJobs[0].id);
+        setActiveJob(visibleRecentJobs[0]);
         return;
       }
 
-      const selected = latest.find((job) => job.id === activeJobId);
+      const selected = visibleRecentJobs.find((job) => job.id === activeJobId);
       if (selected) {
         setActiveJob(selected);
       } else {
-        setActiveJobId(latest[0].id);
-        setActiveJob(latest[0]);
+        setActiveJobId(visibleRecentJobs[0].id);
+        setActiveJob(visibleRecentJobs[0]);
       }
     } catch {
       // Non-blocking background refresh failure.
     }
-  }, [activeJobId]);
+  }, [activeJobId, hiddenRecentJobIdSet]);
+
+  const visibleRecentJobs = useMemo(
+    () => jobs.filter((job) => !hiddenRecentJobIdSet.has(job.id)),
+    [jobs, hiddenRecentJobIdSet]
+  );
+
+  const handleRemoveRecentJob = useCallback(
+    (jobId: string) => {
+      if (activeJobId === jobId) {
+        const nextVisibleJob =
+          jobs.find((job) => job.id !== jobId && !hiddenRecentJobIdSet.has(job.id)) ?? null;
+        setActiveJobId(nextVisibleJob?.id ?? null);
+        setActiveJob(nextVisibleJob);
+      }
+      setHiddenRecentJobIds((previous) =>
+        previous.includes(jobId) ? previous : [...previous, jobId]
+      );
+    },
+    [activeJobId, hiddenRecentJobIdSet, jobs]
+  );
 
   useEffect(() => {
     void refreshJobs();
@@ -2994,33 +3041,49 @@ export default function Home() {
             </button>
           </div>
 
-          {jobs.length === 0 ? (
-            <p className="metaLine">No jobs yet.</p>
+          {visibleRecentJobs.length === 0 ? (
+            <p className="metaLine">No recent jobs.</p>
           ) : (
             <div className="jobsList">
-              {jobs.map((job) => (
-                <button
-                  key={job.id}
-                  type="button"
-                  className={`jobRow ${activeJobId === job.id ? "jobRow-active" : ""}`}
-                  onClick={() => {
-                    setActiveJobId(job.id);
-                    setActiveJob(job);
-                  }}
-                >
-                  <div>
-                    <strong>{String(job.tokenizer_config.name ?? "tokenizer")}</strong>
-                    <p>{job.id.slice(0, 8)}</p>
-                    <p>{job.stage}</p>
+              {visibleRecentJobs.map((job) => {
+                const jobName = String(job.tokenizer_config.name ?? "tokenizer");
+                return (
+                  <div
+                    key={job.id}
+                    className={`jobRow ${activeJobId === job.id ? "jobRow-active" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className="jobRowSelect"
+                      onClick={() => {
+                        setActiveJobId(job.id);
+                        setActiveJob(job);
+                      }}
+                    >
+                      <div>
+                        <strong>{jobName}</strong>
+                        <p>{job.id.slice(0, 8)}</p>
+                        <p>{job.stage}</p>
+                      </div>
+                      <div className="jobRowMeta">
+                        <JobBadge job={job} />
+                        {job.status === "completed" || job.status === "failed" ? null : (
+                          <p>{formatPercent(job.progress)}</p>
+                        )}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className="jobRowRemove"
+                      onClick={() => handleRemoveRecentJob(job.id)}
+                      aria-label={`Remove ${jobName} from recent jobs`}
+                      title="Remove from recent jobs"
+                    >
+                      <FiTrash2 aria-hidden="true" />
+                    </button>
                   </div>
-                  <div className="jobRowMeta">
-                    <JobBadge job={job} />
-                    {job.status === "completed" || job.status === "failed" ? null : (
-                      <p>{formatPercent(job.progress)}</p>
-                    )}
-                  </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </article>

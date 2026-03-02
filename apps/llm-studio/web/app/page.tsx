@@ -11,6 +11,7 @@ import {
   FiFolder,
   FiMoon,
   FiRefreshCw,
+  FiSearch,
   FiSun,
   FiZap,
 } from "react-icons/fi";
@@ -87,6 +88,17 @@ function tokenizerName(job: TrainingJob): string {
   return `Tokenizer ${job.id.slice(0, 8)}`;
 }
 
+type WorkspaceAsset = {
+  id: string;
+  name: string;
+  type: "model" | "tokenizer";
+  createdAt: string;
+  size?: number;
+  downloadUrl?: string;
+  fileName?: string | null;
+  status?: string;
+};
+
 export default function WorkspaceHomePage() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [jobs, setJobs] = useState<TrainingJob[]>([]);
@@ -95,6 +107,7 @@ export default function WorkspaceHomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const hasHydratedTheme = useRef(false);
 
   const loadSnapshot = useCallback(async (background = false) => {
@@ -144,17 +157,46 @@ export default function WorkspaceHomePage() {
     return () => clearInterval(timer);
   }, [loadSnapshot]);
 
-  const sortedProjects = useMemo(() => 
-    [...projects].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)), 
-  [projects]);
+  const allAssets = useMemo(() => {
+    const modelAssets: WorkspaceAsset[] = projects.map(p => ({
+      id: p.id,
+      name: p.name || `Project ${p.id.slice(0, 8)}`,
+      type: "model",
+      createdAt: p.created_at,
+      size: p.size_bytes,
+      downloadUrl: modelArtifactDownloadUrl(p.id),
+      fileName: p.artifact_file,
+    }));
 
-  const completedJobs = useMemo(() => 
-    jobs.filter(j => j.status === "completed").sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)),
-  [jobs]);
+    const tokenizerAssets: WorkspaceAsset[] = jobs
+      .filter(j => j.status === "completed")
+      .map(j => ({
+        id: j.id,
+        name: tokenizerName(j),
+        type: "tokenizer",
+        createdAt: j.created_at,
+        downloadUrl: artifactDownloadUrl(j.id),
+        fileName: j.artifact_file,
+        status: "COMPLETED",
+      }));
 
+    return [...modelAssets, ...tokenizerAssets].sort(
+      (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
+    );
+  }, [projects, jobs]);
+
+  const filteredAssets = useMemo(() => {
+    if (!searchQuery.trim()) return allAssets;
+    const q = searchQuery.toLowerCase();
+    return allAssets.filter(a => 
+      a.name.toLowerCase().includes(q) || 
+      a.type.toLowerCase().includes(q)
+    );
+  }, [allAssets, searchQuery]);
+
+  const completedJobs = useMemo(() => jobs.filter(j => j.status === "completed"), [jobs]);
   const activeJobs = useMemo(() => jobs.filter(j => j.status === "pending" || j.status === "running"), [jobs]);
   const failedJobs = useMemo(() => jobs.filter(j => j.status === "failed"), [jobs]);
-
   const totalBytes = useMemo(() => projects.reduce((acc, p) => acc + p.size_bytes, 0), [projects]);
 
   return (
@@ -183,7 +225,7 @@ export default function WorkspaceHomePage() {
         </div>
       )}
 
-      <header className={styles.heroSection}>
+      <header className={styles.centeredHeader}>
         <h1 className={styles.heroTitle}>Build better models, faster.</h1>
         <p className={styles.heroSubtitle}>
           The all-in-one workspace for designing LLM architectures, training custom tokenizers, 
@@ -191,7 +233,7 @@ export default function WorkspaceHomePage() {
         </p>
         <div className={styles.heroActions}>
           <Link href="/studio" className={styles.primaryButton}>
-            <FiZap /> Launch LLM Studio
+            <FiZap /> LLM Studio
           </Link>
           <Link href="/tokenizer" className={styles.secondaryButton}>
             <FiCpu /> Tokenizer Studio
@@ -203,117 +245,92 @@ export default function WorkspaceHomePage() {
         <div className={styles.statCard}>
           <div className={styles.statIcon}><FiFolder /></div>
           <div className={styles.statContent}>
-            <span className={styles.statLabel}>Model Configs</span>
+            <span className={styles.statLabel}>Models</span>
             <span className={styles.statValue}>{projects.length}</span>
-            <span className={styles.statDetail}>{formatBytes(totalBytes)} storage</span>
+            <span className={styles.statDetail}>{formatBytes(totalBytes)}</span>
           </div>
         </div>
         <div className={`${styles.statCard} ${styles.toneGood}`}>
           <div className={styles.statIcon}><FiArchive /></div>
           <div className={styles.statContent}>
-            <span className={styles.statLabel}>Artifacts</span>
+            <span className={styles.statLabel}>Tokenizers</span>
             <span className={styles.statValue}>{completedJobs.length}</span>
-            <span className={styles.statDetail}>Ready to deploy</span>
+            <span className={styles.statDetail}>Completed</span>
           </div>
         </div>
         <div className={`${styles.statCard} ${styles.toneWarn}`}>
           <div className={styles.statIcon}><FiActivity /></div>
           <div className={styles.statContent}>
-            <span className={styles.statLabel}>Active Jobs</span>
+            <span className={styles.statLabel}>Active</span>
             <span className={styles.statValue}>{activeJobs.length}</span>
-            <span className={styles.statDetail}>Running in background</span>
+            <span className={styles.statDetail}>Running</span>
           </div>
         </div>
         <div className={`${styles.statCard} ${failedJobs.length > 0 ? styles.toneError : ""}`}>
           <div className={styles.statIcon}><FiRefreshCw /></div>
           <div className={styles.statContent}>
-            <span className={styles.statLabel}>Failed Jobs</span>
+            <span className={styles.statLabel}>Failed</span>
             <span className={styles.statValue}>{failedJobs.length}</span>
-            <span className={styles.statDetail}>{failedJobs.length > 0 ? "Attention required" : "All systems go"}</span>
+            <span className={styles.statDetail}>Attention required</span>
           </div>
         </div>
       </section>
 
       <section>
         <div className={styles.sectionHeader}>
-          <div>
-            <h2 className={styles.sectionTitle}>Recent Model Configs</h2>
-            <p className={styles.sectionSubtitle}>Quickly access and download your latest architecture designs.</p>
+          <h2 className={styles.sectionTitle}>Workspace Assets</h2>
+          <div className={styles.searchWrapper}>
+            <FiSearch className={styles.searchIcon} />
+            <input 
+              type="text" 
+              placeholder="Search assets..." 
+              className={styles.searchInput}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <Link href="/studio" className={styles.secondaryButton} style={{ padding: '10px 20px', fontSize: '0.9rem' }}>
-            View All <FiArrowRight />
-          </Link>
         </div>
         
         <div className={styles.assetGrid}>
-          {sortedProjects.slice(0, 3).map(project => (
-            <div key={project.id} className={styles.assetCard}>
+          {filteredAssets.map(asset => (
+            <div key={`${asset.type}-${asset.id}`} className={styles.assetCard}>
               <div className={styles.assetHeader}>
-                <div className={styles.assetIcon}><FiFolder /></div>
+                <div className={styles.assetIcon}>
+                  {asset.type === "model" ? <FiFolder /> : <FiArchive />}
+                </div>
+                <div className={styles.assetMain}>
+                  <span className={styles.assetName}>{asset.name}</span>
+                  <span className={styles.assetMeta}>
+                    {asset.type === "model" ? "Model Config" : "Tokenizer Artifact"} • {formatAge(asset.createdAt)}
+                  </span>
+                </div>
+              </div>
+              <div className={styles.assetFooter}>
+                <span className={styles.assetMeta} style={{ fontSize: "0.7rem" }}>
+                  {formatDate(asset.createdAt)}
+                </span>
+                <span className={styles.assetTag}>
+                  {asset.type === "model" ? formatBytes(asset.size || 0) : asset.status}
+                </span>
+              </div>
+              {asset.downloadUrl && (
                 <a 
-                  href={modelArtifactDownloadUrl(project.id)} 
-                  download={project.artifact_file}
+                  href={asset.downloadUrl} 
+                  download={asset.fileName}
                   className={styles.downloadButton}
-                  title="Download JSON"
+                  title="Download"
                 >
                   <FiDownload />
                 </a>
-              </div>
-              <div className={styles.assetMain}>
-                <span className={styles.assetName}>{project.name || `Project ${project.id.slice(0, 8)}`}</span>
-                <span className={styles.assetMeta}>Created {formatAge(project.created_at)}</span>
-              </div>
-              <div className={styles.assetFooter}>
-                <span className={styles.assetTag}>{formatBytes(project.size_bytes)}</span>
-                <span className={styles.assetMeta} style={{ fontSize: '0.7rem' }}>JSON Config</span>
-              </div>
+              )}
             </div>
           ))}
-          {sortedProjects.length === 0 && (
-            <p className={styles.heroSubtitle}>No model configurations found. Start by creating one in the Studio.</p>
-          )}
-        </div>
-      </section>
-
-      <section>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2 className={styles.sectionTitle}>Trained Tokenizers</h2>
-            <p className={styles.sectionSubtitle}>Manage and download your custom trained tokenizer artifacts.</p>
-          </div>
-          <Link href="/tokenizer" className={styles.secondaryButton} style={{ padding: '10px 20px', fontSize: '0.9rem' }}>
-            View All <FiArrowRight />
-          </Link>
-        </div>
-
-        <div className={styles.assetGrid}>
-          {completedJobs.slice(0, 3).map(job => (
-            <div key={job.id} className={styles.assetCard}>
-              <div className={styles.assetHeader}>
-                <div className={styles.assetIcon}><FiArchive /></div>
-                {job.artifact_file && (
-                  <a 
-                    href={artifactDownloadUrl(job.id)} 
-                    download={job.artifact_file}
-                    className={styles.downloadButton}
-                    title="Download Artifact"
-                  >
-                    <FiDownload />
-                  </a>
-                )}
-              </div>
-              <div className={styles.assetMain}>
-                <span className={styles.assetName}>{tokenizerName(job)}</span>
-                <span className={styles.assetMeta}>Trained {formatAge(job.created_at)}</span>
-              </div>
-              <div className={styles.assetFooter}>
-                <span className={styles.assetTag}>COMPLETED</span>
-                <span className={styles.assetMeta} style={{ fontSize: '0.7rem' }}>{formatDate(job.created_at)}</span>
-              </div>
+          {filteredAssets.length === 0 && (
+            <div className={styles.emptyState}>
+              <p className={styles.heroSubtitle}>
+                {searchQuery ? "No assets match your search." : "No assets found in this workspace."}
+              </p>
             </div>
-          ))}
-          {completedJobs.length === 0 && (
-            <p className={styles.heroSubtitle}>No tokenizer artifacts found. Train your first tokenizer in Tokenizer Studio.</p>
           )}
         </div>
       </section>
@@ -321,7 +338,7 @@ export default function WorkspaceHomePage() {
       {lastRefreshedAt && (
         <div className={styles.syncIndicator}>
           <FiRefreshCw className={refreshing ? styles.refreshIconSpinning : ""} />
-          <span>Last synced {formatAge(new Date(lastRefreshedAt).toISOString())}</span>
+          <span>Synced {formatAge(new Date(lastRefreshedAt).toISOString())}</span>
         </div>
       )}
     </main>
