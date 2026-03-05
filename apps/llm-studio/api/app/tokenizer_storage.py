@@ -130,6 +130,16 @@ class StudioStore:
             ).all()
             return [_row_to_stored_job(row) for row in rows]
 
+    def delete_job(self, job_id: str) -> StoredJob | None:
+        with self._session() as session:
+            row = session.get(TrainingJobRow, job_id)
+            if row is None:
+                return None
+            stored = _row_to_stored_job(row)
+            session.delete(row)
+            session.flush()
+            return stored
+
     def update_job(self, job_id: str, **updates: Any) -> StoredJob | None:
         with self._session() as session:
             row = session.get(TrainingJobRow, job_id)

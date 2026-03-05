@@ -47,30 +47,50 @@ export function BuilderPanel(props: BuilderPanelProps) {
           <div className="actionCluster">
             <button
               type="button"
-              className="buttonGhost"
+              className="buttonGhost iconOnly"
               onClick={undoDocument}
               disabled={!canUndoDocument}
+              aria-label="Undo"
               title="Undo (Ctrl/Cmd+Z)"
             >
-              <FiCornerUpLeft /> Undo
+              <FiCornerUpLeft />
             </button>
             <button
               type="button"
-              className="buttonGhost"
+              className="buttonGhost iconOnly"
               onClick={redoDocument}
               disabled={!canRedoDocument}
+              aria-label="Redo"
               title="Redo (Ctrl/Cmd+Shift+Z or Ctrl+Y)"
             >
-              <FiCornerUpRight /> Redo
+              <FiCornerUpRight />
             </button>
-            <button type="button" className="buttonGhost" onClick={collapseAllCanvasNodes}>
-              <FiChevronRight /> Collapse all
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={collapseAllCanvasNodes}
+              aria-label="Collapse all"
+              title="Collapse all"
+            >
+              <FiChevronRight />
             </button>
-            <button type="button" className="buttonGhost" onClick={expandAllCanvasNodes}>
-              <FiChevronDown /> Expand all
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={expandAllCanvasNodes}
+              aria-label="Expand all"
+              title="Expand all"
+            >
+              <FiChevronDown />
             </button>
-            <button type="button" className="buttonGhost" onClick={addBlock}>
-              <FiPlus /> Add block
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={addBlock}
+              aria-label="Add block"
+              title="Add block"
+            >
+              <FiPlus />
             </button>
           </div>
         </div>

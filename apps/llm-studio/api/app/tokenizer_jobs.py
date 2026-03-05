@@ -95,6 +95,26 @@ class TrainingJobManager:
             raise KeyError(job_id)
         return self._to_response(job)
 
+    def delete_job(self, job_id: str) -> None:
+        job = self._store.get_job(job_id)
+        if job is None:
+            raise KeyError(job_id)
+
+        if job.status in {JobStatus.pending, JobStatus.running}:
+            raise RuntimeError("Only completed or failed jobs can be deleted")
+
+        if job.artifact_path:
+            artifact_path = Path(job.artifact_path)
+            if artifact_path.exists():
+                try:
+                    artifact_path.unlink()
+                except OSError as exc:
+                    raise ValueError(f"Failed to delete artifact file: {artifact_path}") from exc
+
+        deleted = self._store.delete_job(job_id)
+        if deleted is None:
+            raise KeyError(job_id)
+
     def get_artifact_path(self, job_id: str) -> Path:
         job = self._store.get_job(job_id)
         if job is None:

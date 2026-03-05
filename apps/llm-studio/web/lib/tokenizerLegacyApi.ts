@@ -230,6 +230,12 @@ export async function fetchTrainingJob(jobId: string): Promise<TrainingJob> {
   return request<TrainingJob>(`/jobs/${jobId}`);
 }
 
+export async function deleteTrainingJob(jobId: string): Promise<void> {
+  await request<void>(`/jobs/${jobId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function previewJobTokenizer(
   jobId: string,
   payload: { text: string }

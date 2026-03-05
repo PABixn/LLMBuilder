@@ -357,3 +357,10 @@ export async function fetchProjects(signal?: AbortSignal): Promise<ProjectSummar
   });
   return parseProjectsList(raw);
 }
+
+export async function deleteProject(projectId: string, signal?: AbortSignal): Promise<void> {
+  await request<void>(`/projects/${projectId}`, {
+    method: "DELETE",
+    signal,
+  });
+}

@@ -93,8 +93,8 @@ export function HeroSection({
             type="button"
             className="buttonGhost iconOnly"
             onClick={exportJson}
-            aria-label="Export JSON"
-            title="Export JSON"
+            aria-label="Save model JSON (download)"
+            title="Save model JSON (download)"
           >
             <FiDownload />
           </button>
@@ -131,6 +131,10 @@ export function HeroSection({
             •
           </span>
           <span>Auto-saved {formatTimeAgo(lastSavedAt)}</span>
+          <span className="heroMetaSeparator" aria-hidden>
+            •
+          </span>
+          <span>Saved in this browser; use Save/Download to keep a file.</span>
           {heroBackendHint ? (
             <>
               <span className="heroMetaSeparator" aria-hidden>

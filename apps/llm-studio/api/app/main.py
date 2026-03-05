@@ -3,6 +3,7 @@ from __future__ import annotations
 import codecs
 from collections import Counter, defaultdict
 import re
+import shutil
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -10,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
@@ -367,6 +368,20 @@ def get_tokenizer_job(job_id: str) -> TrainingJobResponse:
         return manager.get_job(job_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Unknown job id: {job_id}") from exc
+
+
+@tokenizer_api.delete("/jobs/{job_id}", status_code=204)
+def delete_tokenizer_job(job_id: str) -> Response:
+    manager = app.state.tokenizer_jobs
+    try:
+        manager.delete_job(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown job id: {job_id}") from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return Response(status_code=204)
 
 
 @tokenizer_api.post("/jobs/{job_id}/preview", response_model=TokenizerPreviewResponse)
@@ -842,6 +857,18 @@ def download_project_artifact(project_id: str) -> FileResponse:
     if not path.exists() or not path.is_file():
         raise HTTPException(status_code=404, detail="Project artifact not found")
     return FileResponse(path, filename=path.name, media_type="application/json")
+
+
+@api.delete("/projects/{project_id}", status_code=204)
+def delete_project(project_id: str) -> Response:
+    project_dir = _project_dir(project_id)
+    if not project_dir.exists() or not project_dir.is_dir():
+        raise HTTPException(status_code=404, detail="Project not found")
+    try:
+        shutil.rmtree(project_dir)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="Failed to delete project") from exc
+    return Response(status_code=204)
 
 
 app.include_router(api)

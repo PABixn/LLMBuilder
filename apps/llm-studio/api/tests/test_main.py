@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from datetime import datetime, timezone
 import importlib
 from pathlib import Path
 
@@ -197,3 +198,79 @@ def test_projects_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
         artifact = client.get(f"/api/v1/projects/{project_id}/artifact")
         assert artifact.status_code == 200
         assert artifact.json()["n_embd"] == base_config["n_embd"]
+
+        deleted = client.delete(f"/api/v1/projects/{project_id}")
+        assert deleted.status_code == 204
+
+        missing_detail = client.get(f"/api/v1/projects/{project_id}")
+        assert missing_detail.status_code == 404
+
+        missing_artifact = client.get(f"/api/v1/projects/{project_id}/artifact")
+        assert missing_artifact.status_code == 404
+
+
+def test_tokenizer_job_delete_endpoint(monkeypatch, tmp_path: Path) -> None:
+    from app.tokenizer_models import JobStatus
+    from app.tokenizer_storage import StoredJob
+
+    data_dir = tmp_path / "data"
+    tokenizer_output = data_dir / "artifacts" / "tokenizers"
+    tokenizer_output.mkdir(parents=True, exist_ok=True)
+    artifact_path = tokenizer_output / "demo-tokenizer.json"
+    artifact_path.write_text("{\"vocab\": []}", encoding="utf-8")
+
+    monkeypatch.setenv("LLM_STUDIO_DATA_DIR", str(data_dir))
+    config.reset_settings_cache()
+    module = _load_app_module()
+    now = datetime.now(timezone.utc)
+
+    with TestClient(module.app) as client:
+        store = module.app.state.tokenizer_store
+        store.create_job(
+            StoredJob(
+                id="completed-job",
+                status=JobStatus.completed,
+                stage="Completed",
+                progress=1.0,
+                created_at=now,
+                started_at=now,
+                finished_at=now,
+                tokenizer_config={"name": "demo"},
+                dataloader_config={"source": "local"},
+                evaluation_thresholds=[5],
+                evaluation_text_path="__training_dataset__",
+                artifact_file=artifact_path.name,
+                artifact_path=str(artifact_path),
+                stats=None,
+                error=None,
+            )
+        )
+        store.create_job(
+            StoredJob(
+                id="running-job",
+                status=JobStatus.running,
+                stage="Training tokenizer",
+                progress=0.4,
+                created_at=now,
+                started_at=now,
+                finished_at=None,
+                tokenizer_config={"name": "running"},
+                dataloader_config={"source": "local"},
+                evaluation_thresholds=[5],
+                evaluation_text_path="__training_dataset__",
+                artifact_file=None,
+                artifact_path=None,
+                stats=None,
+                error=None,
+            )
+        )
+
+        delete_running = client.delete("/api/v1/tokenizer/jobs/running-job")
+        assert delete_running.status_code == 409
+
+        delete_completed = client.delete("/api/v1/tokenizer/jobs/completed-job")
+        assert delete_completed.status_code == 204
+        assert not artifact_path.exists()
+
+        missing = client.get("/api/v1/tokenizer/jobs/completed-job")
+        assert missing.status_code == 404
