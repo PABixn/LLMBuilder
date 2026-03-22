@@ -89,16 +89,13 @@
 .studioNavLink:hover,
 .studioNavLink:focus-visible {
   color: var(--text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
   outline: none;
 }
 
 .studioNavLink[aria-current="page"] {
   color: var(--text);
-  text-decoration: underline;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 4px;
+  text-decoration: none;
 }
 
 .themeToggle {
