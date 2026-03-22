@@ -1,4 +1,4 @@
-import { useDeferredValue, useRef } from "react";
+import { useDeferredValue, useRef, type ChangeEvent } from "react";
 
 import type { StudioPageViewProps } from "../components/StudioPageView";
 import type { Diagnostic } from "../types";
@@ -7,7 +7,7 @@ import {
   collectConsecutiveIdenticalBlockGroups,
   studioDocumentToConfig,
 } from "../utils/document";
-import { pushDiagnostic, validateLocalConfig } from "../utils/validation";
+import { validateLocalConfig } from "../utils/validation";
 import {
   buildBackendDiagnostics,
   useStudioBackendAnalysis,
@@ -17,6 +17,7 @@ import {
   useStudioDocumentEditor,
 } from "./useStudioDocumentEditor";
 import { useStudioImportExport } from "./useStudioImportExport";
+import { useStudioProjectManager } from "./useStudioProjectManager";
 import { useStudioWorkspaceState } from "./useStudioWorkspaceState";
 
 function buildValidationStatusLabel(totalErrors: number, totalWarnings: number): string {
@@ -94,15 +95,39 @@ export function useStudioPageController(): StudioPageViewProps {
   const backendAnalysisStale =
     backendAnalysis.configSignature !== null && backendAnalysis.configSignature !== compactJson;
   const validationStatusLabel = buildValidationStatusLabel(totalErrors, totalWarnings);
+  const projectManager = useStudioProjectManager({
+    modelConfig,
+    replaceDocumentState: workspace.replaceDocumentState,
+    setNoticeMessage: workspace.setNoticeMessage,
+  });
+
+  async function importFromFile(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const imported = await io.importFromFile(event);
+    if (imported) {
+      projectManager.detachProject({ clearName: true });
+    }
+  }
+
+  function applyImportText(text: string): void {
+    const imported = io.applyImportText(text);
+    if (imported) {
+      projectManager.detachProject({ clearName: true });
+    }
+  }
+
+  function resetDefaults(): void {
+    projectManager.detachProject({ clearName: true });
+    editor.resetDefaults();
+  }
 
   return {
     fileInputRef,
-    importFromFile: io.importFromFile,
+    importFromFile,
     theme: workspace.theme,
     setTheme: workspace.setTheme,
     addBlock: editor.addBlock,
     exportJson: io.exportJson,
-    resetDefaults: editor.resetDefaults,
+    resetDefaults,
     notice: workspace.notice,
     validationStatusLabel,
     backendValidation,
@@ -124,8 +149,14 @@ export function useStudioPageController(): StudioPageViewProps {
     copyJson: io.copyJson,
     importDraft: workspace.importDraft,
     setImportDraft: workspace.setImportDraft,
-    applyImportText: io.applyImportText,
+    applyImportText,
     modelConfig,
+    projectName: projectManager.projectName,
+    setProjectName: projectManager.setProjectName,
+    currentProjectId: projectManager.currentProjectId,
+    isProjectLoading: projectManager.isProjectLoading,
+    isProjectSaving: projectManager.isProjectSaving,
+    createNewProject: projectManager.createNewProject,
     consecutiveBlockGroups,
     dragOverKey: editor.dragOverKey,
     expandedComponentIds: workspace.expandedComponentIds,

@@ -820,6 +820,45 @@ def create_project(payload: CreateProjectRequest) -> ProjectDetailResponse:
     )
 
 
+@api.put("/projects/{project_id}", response_model=ProjectDetailResponse)
+def update_project(project_id: str, payload: CreateProjectRequest) -> ProjectDetailResponse:
+    project_dir = _project_dir(project_id)
+    metadata_path = project_dir / _METADATA_FILE
+    artifact_path = project_dir / _ARTIFACT_FILE
+    if not project_dir.exists() or not project_dir.is_dir() or not metadata_path.exists():
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    try:
+        metadata = load_json(metadata_path)
+    except (OSError, ValueError) as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
+
+    created_at = metadata.get("created_at")
+    if not isinstance(created_at, str) or created_at.strip() == "":
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    _, normalized, warnings, errors = _parse_and_validate_payload_model(payload.model_payload)
+
+    updated_metadata = {
+        "id": project_id,
+        "name": payload.name,
+        "created_at": created_at,
+        "artifact_file": _ARTIFACT_FILE,
+    }
+
+    write_json(metadata_path, updated_metadata)
+    write_json(artifact_path, normalized)
+
+    summary = _project_summary_from_metadata(updated_metadata, artifact_path)
+    return ProjectDetailResponse(
+        **summary.model_dump(),
+        model_payload=normalized,
+        valid=not errors,
+        warnings=warnings,
+        errors=errors,
+    )
+
+
 @api.get("/projects", response_model=ProjectsListResponse)
 def list_projects() -> ProjectsListResponse:
     root = _projects_root()

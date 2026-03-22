@@ -17,8 +17,8 @@ type UseStudioImportExportArgs = {
 };
 
 export interface StudioImportExportActions {
-  applyImportText: (text: string) => void;
-  importFromFile: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
+  applyImportText: (text: string) => boolean;
+  importFromFile: (event: ChangeEvent<HTMLInputElement>) => Promise<boolean>;
   exportJson: () => void;
   copyJson: () => Promise<void>;
 }
@@ -29,38 +29,41 @@ export function useStudioImportExport({
   setImportDraft,
   setNoticeMessage,
 }: UseStudioImportExportArgs): StudioImportExportActions {
-  function applyImportText(text: string): void {
+  function applyImportText(text: string): boolean {
     try {
       const parsedJson = JSON.parse(text) as unknown;
       const imported = parseImportedModelConfig(parsedJson);
       if (!imported.config) {
         setNoticeMessage("error", `Import failed: ${imported.errors.slice(0, 3).join(" ")}`);
-        return;
+        return false;
       }
       startTransition(() => {
         setDocumentState(studioDocumentFromConfig(imported.config as ModelConfig));
       });
       setNoticeMessage("success", "Imported model config JSON into visual builder.");
+      return true;
     } catch (error) {
       setNoticeMessage(
         "error",
         error instanceof Error ? `Import failed: ${error.message}` : "Import failed."
       );
+      return false;
     }
   }
 
-  async function importFromFile(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+  async function importFromFile(event: ChangeEvent<HTMLInputElement>): Promise<boolean> {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) {
-      return;
+      return false;
     }
     try {
       const text = await file.text();
       setImportDraft(text);
-      applyImportText(text);
+      return applyImportText(text);
     } catch {
       setNoticeMessage("error", "Failed to read selected JSON file.");
+      return false;
     }
   }
 

@@ -63,6 +63,13 @@ export interface ProjectSummary {
   size_bytes: number;
 }
 
+export interface ProjectDetail extends ProjectSummary {
+  model_config: ModelConfig;
+  valid: boolean;
+  warnings: ValidationIssue[];
+  errors: ValidationIssue[];
+}
+
 const API_BASE = resolveApiBaseUrl();
 const RUNTIME_TOKEN =
   process.env.NEXT_PUBLIC_RUNTIME_TOKEN &&
@@ -299,6 +306,21 @@ function parseProjectsList(value: unknown): ProjectSummary[] {
     .filter((entry): entry is ProjectSummary => entry !== null);
 }
 
+function parseProjectDetail(value: unknown): ProjectDetail | null {
+  const summary = parseProjectSummary(value);
+  if (!summary || !isRecord(value)) {
+    return null;
+  }
+
+  return {
+    ...summary,
+    model_config: value.model_config as ModelConfig,
+    valid: typeof value.valid === "boolean" ? value.valid : true,
+    warnings: parseValidationIssues(value.warnings),
+    errors: parseValidationIssues(value.errors),
+  };
+}
+
 export function apiBaseUrl(): string {
   return API_BASE;
 }
@@ -356,6 +378,56 @@ export async function fetchProjects(signal?: AbortSignal): Promise<ProjectSummar
     signal,
   });
   return parseProjectsList(raw);
+}
+
+export async function fetchProject(
+  projectId: string,
+  signal?: AbortSignal
+): Promise<ProjectDetail> {
+  const raw = await request<unknown>(`/projects/${projectId}`, {
+    method: "GET",
+    signal,
+  });
+  const parsed = parseProjectDetail(raw);
+  if (!parsed) {
+    throw new Error("Malformed project detail response.");
+  }
+  return parsed;
+}
+
+export async function createProject(
+  name: string | null,
+  config: ModelConfig,
+  signal?: AbortSignal
+): Promise<ProjectDetail> {
+  const raw = await request<unknown>("/projects", {
+    method: "POST",
+    body: JSON.stringify({ name, model_config: config }),
+    signal,
+  });
+  const parsed = parseProjectDetail(raw);
+  if (!parsed) {
+    throw new Error("Malformed project creation response.");
+  }
+  return parsed;
+}
+
+export async function updateProject(
+  projectId: string,
+  name: string | null,
+  config: ModelConfig,
+  signal?: AbortSignal
+): Promise<ProjectDetail> {
+  const raw = await request<unknown>(`/projects/${projectId}`, {
+    method: "PUT",
+    body: JSON.stringify({ name, model_config: config }),
+    signal,
+  });
+  const parsed = parseProjectDetail(raw);
+  if (!parsed) {
+    throw new Error("Malformed project update response.");
+  }
+  return parsed;
 }
 
 export async function deleteProject(projectId: string, signal?: AbortSignal): Promise<void> {

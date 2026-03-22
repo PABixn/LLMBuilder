@@ -42,6 +42,7 @@ export interface StudioWorkspaceState {
   setTheme: Dispatch<SetStateAction<ThemeMode>>;
   documentState: StudioDocument;
   setDocumentState: Dispatch<SetStateAction<StudioDocument>>;
+  replaceDocumentState: (nextDocument: StudioDocument) => void;
   canUndoDocument: boolean;
   canRedoDocument: boolean;
   undoDocument: () => void;
@@ -604,6 +605,7 @@ export function useStudioWorkspaceState(): StudioWorkspaceState {
     setTheme,
     documentState,
     setDocumentState,
+    replaceDocumentState: replaceDocumentStateWithoutHistory,
     canUndoDocument,
     canRedoDocument,
     undoDocument,

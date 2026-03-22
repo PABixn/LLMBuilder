@@ -186,18 +186,34 @@ def test_projects_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
         assert created["valid"] is True
         assert created["model_config"]["n_embd"] == base_config["n_embd"]
 
+        updated_config = copy.deepcopy(base_config)
+        updated_config["n_embd"] = 1024
+        update = client.put(
+            f"/api/v1/projects/{project_id}",
+            json={"name": "GPT-2 widened", "model_config": updated_config},
+        )
+        assert update.status_code == 200
+        updated = update.json()
+        assert updated["id"] == project_id
+        assert updated["name"] == "GPT-2 widened"
+        assert updated["model_config"]["n_embd"] == 1024
+
         listing = client.get("/api/v1/projects")
         assert listing.status_code == 200
-        listed_ids = [item["id"] for item in listing.json()["projects"]]
+        listing_body = listing.json()["projects"]
+        listed_ids = [item["id"] for item in listing_body]
         assert project_id in listed_ids
+        listed_project = next(item for item in listing_body if item["id"] == project_id)
+        assert listed_project["name"] == "GPT-2 widened"
 
         detail = client.get(f"/api/v1/projects/{project_id}")
         assert detail.status_code == 200
         assert detail.json()["id"] == project_id
+        assert detail.json()["model_config"]["n_embd"] == 1024
 
         artifact = client.get(f"/api/v1/projects/{project_id}/artifact")
         assert artifact.status_code == 200
-        assert artifact.json()["n_embd"] == base_config["n_embd"]
+        assert artifact.json()["n_embd"] == 1024
 
         deleted = client.delete(f"/api/v1/projects/{project_id}")
         assert deleted.status_code == 204

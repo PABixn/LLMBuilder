@@ -7,13 +7,40 @@ type BaseModelPanelProps = {
   documentState: StudioDocument;
   updateBaseField: (key: StudioDocumentNumericField, value: number) => void;
   setDocumentState: Dispatch<SetStateAction<StudioDocument>>;
+  projectName: string;
+  setProjectName: Dispatch<SetStateAction<string>>;
+  currentProjectId: string | null;
+  isProjectLoading: boolean;
+  isProjectSaving: boolean;
+  createNewProject: () => Promise<void>;
 };
 
 export function BaseModelPanel({
   documentState,
   updateBaseField,
   setDocumentState,
+  projectName,
+  setProjectName,
+  currentProjectId,
+  isProjectLoading,
+  isProjectSaving,
+  createNewProject,
 }: BaseModelPanelProps) {
+  const normalizedProjectName = projectName.trim();
+  const actionButtonLabel = isProjectSaving ? "Working..." : "New config";
+  const actionButtonDisabled = isProjectLoading || isProjectSaving;
+  const projectStatusCopy = isProjectLoading
+    ? "Loading saved model config..."
+    : isProjectSaving
+      ? currentProjectId
+        ? "Auto-saving changes..."
+        : "Creating saved model config..."
+      : currentProjectId
+        ? `Changes auto-save to saved config ${currentProjectId.slice(0, 8)}. Click New config to create another one.`
+        : normalizedProjectName === ""
+          ? "Enter a config name to create a saved model config. Nothing is saved to the workspace while the name is empty."
+          : "A new saved model config will be created automatically.";
+
   return (
     <section id="base-model" className="panelCard">
       <div className="panelHead">
@@ -26,6 +53,33 @@ export function BaseModelPanel({
         </div>
       </div>
       <div className="fieldGrid">
+        <div className="fieldInlineRow coreConfigProjectRow">
+          <label className="fieldLabel inlineField" htmlFor="model_project_name">
+            <span>Config Name</span>
+            <input
+              id="model_project_name"
+              type="text"
+              value={projectName}
+              onChange={(event) => setProjectName(event.target.value)}
+              placeholder="GPT-2 baseline"
+              maxLength={200}
+              autoComplete="off"
+            />
+          </label>
+          <button
+            type="button"
+            className="buttonGhost"
+            onClick={() => {
+              void createNewProject();
+            }}
+            disabled={actionButtonDisabled}
+          >
+            {actionButtonLabel}
+          </button>
+        </div>
+        <p className="fieldNote fullWidthField coreConfigProjectNote" aria-live="polite">
+          {projectStatusCopy}
+        </p>
         <label className="fieldLabel" htmlFor="context_length">
           <span>Context Length</span>
           <input

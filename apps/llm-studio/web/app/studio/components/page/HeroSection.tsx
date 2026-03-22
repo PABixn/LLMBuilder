@@ -134,7 +134,7 @@ export function HeroSection({
           <span className="heroMetaSeparator" aria-hidden>
             •
           </span>
-          <span>Saved in this browser; use Save/Download to keep a file.</span>
+          <span>Saved in this browser; use New config to create a saved model config or Download to keep a file.</span>
           {heroBackendHint ? (
             <>
               <span className="heroMetaSeparator" aria-hidden>

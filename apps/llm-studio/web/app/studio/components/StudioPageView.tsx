@@ -63,6 +63,12 @@ export interface StudioPageViewProps extends BuilderPanelProps {
   setImportDraft: Dispatch<SetStateAction<string>>;
   applyImportText: (text: string) => void;
   modelConfig: ModelConfig;
+  projectName: string;
+  setProjectName: Dispatch<SetStateAction<string>>;
+  currentProjectId: string | null;
+  isProjectLoading: boolean;
+  isProjectSaving: boolean;
+  createNewProject: () => Promise<void>;
 }
 
 function maybeSelectZeroNumberInput(target: EventTarget | null): void {
@@ -156,6 +162,12 @@ export function StudioPageView({
   setImportDraft,
   applyImportText,
   modelConfig,
+  projectName,
+  setProjectName,
+  currentProjectId,
+  isProjectLoading,
+  isProjectSaving,
+  createNewProject,
   ...builderPanelProps
 }: StudioPageViewProps) {
   useEffect(() => {
@@ -224,6 +236,12 @@ export function StudioPageView({
           documentState={documentState}
           updateBaseField={updateBaseField}
           setDocumentState={setDocumentState}
+          projectName={projectName}
+          setProjectName={setProjectName}
+          currentProjectId={currentProjectId}
+          isProjectLoading={isProjectLoading}
+          isProjectSaving={isProjectSaving}
+          createNewProject={createNewProject}
         />
         <DiagnosticsPanel
           diagnostics={diagnostics}
