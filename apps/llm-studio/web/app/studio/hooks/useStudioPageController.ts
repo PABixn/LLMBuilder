@@ -97,7 +97,6 @@ export function useStudioPageController(): StudioPageViewProps {
   const validationStatusLabel = buildValidationStatusLabel(totalErrors, totalWarnings);
   const projectManager = useStudioProjectManager({
     modelConfig,
-    replaceDocumentState: workspace.replaceDocumentState,
     setNoticeMessage: workspace.setNoticeMessage,
   });
 

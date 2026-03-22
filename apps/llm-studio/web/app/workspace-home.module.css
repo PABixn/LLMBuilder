@@ -170,6 +170,12 @@
   padding: 0 8px;
 }
 
+.sectionLead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .sectionTitle {
   font-size: 1.75rem;
   font-weight: 800;
@@ -180,6 +186,14 @@
   padding: 0 0 2px;
   display: inline-block;
   overflow: visible;
+}
+
+.sectionCopy {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  max-width: 60ch;
 }
 
 .searchWrapper {
@@ -242,6 +256,16 @@
   background: var(--surface-soft);
   transform: none;
   box-shadow: none;
+}
+
+.loadingRow {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
 }
 
 .assetHeader {
@@ -307,6 +331,59 @@
   text-align: center;
 }
 
+.loadingText {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(420px, 100%);
+  min-width: 180px;
+}
+
+.loadingLine,
+.loadingBlock {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-muted);
+}
+
+.loadingLine::after,
+.loadingBlock::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+  animation: shimmer 1.25s ease-in-out infinite;
+}
+
+[data-theme="dark"] .loadingLine::after,
+[data-theme="dark"] .loadingBlock::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.loadingLine {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.loadingLineWide {
+  width: 70%;
+}
+
+.loadingLineMedium {
+  width: 42%;
+}
+
+.loadingLineNarrow {
+  width: 92px;
+}
+
+.loadingTag {
+  color: transparent;
+  min-width: 80px;
+}
+
 .downloadButton {
   width: 34px;
   height: 34px;
@@ -356,6 +433,12 @@
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .refreshIconSpinning {

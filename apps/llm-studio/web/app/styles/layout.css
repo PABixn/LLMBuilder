@@ -28,32 +28,32 @@
   z-index: 50;
   justify-self: center;
   width: fit-content;
-  max-width: calc(100% - 8px);
+  max-width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), var(--surface));
-  box-shadow: 0 8px 22px rgba(9, 25, 49, 0.08);
+  gap: 8px;
+  padding: 6px 9px 6px 10px;
+  border: 1px solid rgba(188, 201, 216, 0.75);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 8px 20px rgba(10, 30, 55, 0.12);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
 [data-theme="dark"] .studioNav {
-  border-color: var(--line);
-  background: linear-gradient(180deg, rgba(20, 34, 52, 0.94), var(--surface));
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  border-color: rgba(53, 83, 116, 0.8);
+  background: rgba(17, 30, 46, 0.6);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
 .studioNavBrand {
+  min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.86rem;
-  font-weight: 750;
+  gap: 7px;
+  font-size: 0.8rem;
+  font-weight: 700;
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
@@ -67,47 +67,56 @@
 }
 
 .studioNavLinks {
+  margin-left: 2px;
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
   min-width: 0;
-  flex-wrap: nowrap;
 }
 
 .studioNavLink {
-  border: 0;
-  background: transparent;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 4px 8px;
   text-decoration: none;
   color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 650;
-  line-height: 1.2;
-  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+  font-size: 0.78rem;
+  font-weight: 640;
+  white-space: nowrap;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
 }
 
 .studioNavLink:hover,
 .studioNavLink:focus-visible {
+  background: var(--surface-soft);
+  border-color: var(--line-strong);
   color: var(--text);
-  text-decoration: none;
   outline: none;
 }
 
 .studioNavLink[aria-current="page"] {
+  background: var(--surface-soft);
+  border-color: var(--line-strong);
   color: var(--text);
-  text-decoration: none;
 }
 
 .themeToggle {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
   border: 1px solid var(--line-strong);
   background: var(--surface-soft);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
   color: var(--text-muted);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .themeToggle:hover,

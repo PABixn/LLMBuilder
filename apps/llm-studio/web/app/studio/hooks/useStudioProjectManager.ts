@@ -1,0 +1,250 @@
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+
+import { createProject, updateProject } from "../../../lib/api";
+import type { ModelConfig } from "../../../lib/defaults";
+import { upsertCachedWorkspaceProject } from "../../../lib/workspaceAssets";
+
+const AUTO_SAVE_DELAY_MS = 800;
+
+type SetNoticeMessage = (tone: "info" | "success" | "error", message: string) => void;
+
+type UseStudioProjectManagerArgs = {
+  modelConfig: ModelConfig;
+  setNoticeMessage: SetNoticeMessage;
+};
+
+type DetachProjectOptions = {
+  clearName?: boolean;
+};
+
+type ProjectSnapshot = {
+  projectId: string | null;
+  name: string | null;
+  config: ModelConfig;
+  configSignature: string;
+};
+
+type SavedSnapshot = {
+  projectId: string | null;
+  name: string | null;
+  configSignature: string;
+};
+
+export interface StudioProjectManager {
+  projectName: string;
+  setProjectName: Dispatch<SetStateAction<string>>;
+  currentProjectId: string | null;
+  isProjectLoading: boolean;
+  isProjectSaving: boolean;
+  createNewProject: () => Promise<void>;
+  detachProject: (options?: DetachProjectOptions) => void;
+}
+
+function normalizedName(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+export function useStudioProjectManager({
+  modelConfig,
+  setNoticeMessage,
+}: UseStudioProjectManagerArgs): StudioProjectManager {
+  const [projectName, setProjectName] = useState("");
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [isProjectSaving, setIsProjectSaving] = useState(false);
+  const isProjectLoading = false;
+  const saveTimerRef = useRef<number | null>(null);
+  const activeControllerRef = useRef<AbortController | null>(null);
+  const activeRequestIdRef = useRef(0);
+  const lastSavedRef = useRef<SavedSnapshot | null>(null);
+  const currentProjectIdRef = useRef<string | null>(null);
+  const currentNameRef = useRef<string | null>(null);
+  const currentConfigSignatureRef = useRef("");
+  const configSignature = JSON.stringify(modelConfig);
+  const nextName = normalizedName(projectName);
+  currentProjectIdRef.current = currentProjectId;
+  currentNameRef.current = nextName;
+  currentConfigSignatureRef.current = configSignature;
+
+  function clearScheduledSave(): void {
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+  }
+
+  function cancelInFlightSave(): void {
+    if (activeControllerRef.current) {
+      activeControllerRef.current.abort();
+      activeControllerRef.current = null;
+    }
+  }
+
+  function clearPendingPersistence(): void {
+    clearScheduledSave();
+    cancelInFlightSave();
+  }
+
+  function createSnapshot(projectId: string | null): ProjectSnapshot {
+    return {
+      projectId,
+      name: nextName,
+      config: modelConfig,
+      configSignature,
+    };
+  }
+
+  function markSaved(projectId: string, savedName: string | null, savedConfig: ModelConfig): void {
+    lastSavedRef.current = {
+      projectId,
+      name: savedName,
+      configSignature: JSON.stringify(savedConfig),
+    };
+  }
+
+  function isSavedSnapshot(projectId: string | null, name: string | null): boolean {
+    const lastSaved = lastSavedRef.current;
+    if (!lastSaved) {
+      return false;
+    }
+    return (
+      lastSaved.projectId === projectId &&
+      lastSaved.name === name &&
+      lastSaved.configSignature === configSignature
+    );
+  }
+
+  function isSnapshotCurrent(snapshot: ProjectSnapshot): boolean {
+    return (
+      snapshot.projectId === currentProjectIdRef.current &&
+      snapshot.name === currentNameRef.current &&
+      snapshot.configSignature === currentConfigSignatureRef.current
+    );
+  }
+
+  async function persistProject(
+    snapshot: ProjectSnapshot,
+    mode: "create" | "update"
+  ): Promise<void> {
+    if (activeControllerRef.current !== null) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const requestId = ++activeRequestIdRef.current;
+    activeControllerRef.current = controller;
+    setIsProjectSaving(true);
+
+    try {
+      const savedProject =
+        mode === "create" || snapshot.projectId === null
+          ? await createProject(snapshot.name, snapshot.config, controller.signal)
+          : await updateProject(
+              snapshot.projectId,
+              snapshot.name,
+              snapshot.config,
+              controller.signal
+            );
+
+      if (controller.signal.aborted || requestId !== activeRequestIdRef.current) {
+        return;
+      }
+
+      setCurrentProjectId(savedProject.id);
+      setProjectName(savedProject.name ?? "");
+      markSaved(savedProject.id, savedProject.name, savedProject.model_config);
+      upsertCachedWorkspaceProject(savedProject);
+    } catch (error) {
+      if (controller.signal.aborted || requestId !== activeRequestIdRef.current) {
+        return;
+      }
+
+      setNoticeMessage(
+        "error",
+        error instanceof Error
+          ? `Couldn't save model config: ${error.message}`
+          : "Couldn't save model config."
+      );
+    } finally {
+      if (activeControllerRef.current === controller) {
+        activeControllerRef.current = null;
+      }
+      if (requestId === activeRequestIdRef.current) {
+        setIsProjectSaving(false);
+      }
+    }
+  }
+
+  function detachProject(options: DetachProjectOptions = {}): void {
+    clearPendingPersistence();
+    lastSavedRef.current = null;
+    setCurrentProjectId(null);
+    setIsProjectSaving(false);
+    if (options.clearName) {
+      setProjectName("");
+    }
+  }
+
+  async function createNewProject(): Promise<void> {
+    if (isProjectSaving || activeControllerRef.current !== null) {
+      return;
+    }
+
+    clearPendingPersistence();
+    lastSavedRef.current = null;
+
+    if (nextName === null) {
+      setIsProjectSaving(false);
+      return;
+    }
+
+    await persistProject(createSnapshot(null), "create");
+  }
+
+  useEffect(() => {
+    return () => {
+      clearScheduledSave();
+    };
+  }, []);
+
+  useEffect(() => {
+    clearScheduledSave();
+
+    if (isProjectSaving) {
+      return;
+    }
+
+    if (currentProjectId === null && nextName === null) {
+      setIsProjectSaving(false);
+      return;
+    }
+
+    if (isSavedSnapshot(currentProjectId, nextName)) {
+      setIsProjectSaving(false);
+      return;
+    }
+
+    const snapshot = createSnapshot(currentProjectId);
+
+    saveTimerRef.current = window.setTimeout(() => {
+      if (!isSnapshotCurrent(snapshot)) {
+        return;
+      }
+      void persistProject(snapshot, snapshot.projectId === null ? "create" : "update");
+    }, AUTO_SAVE_DELAY_MS);
+
+    return () => {
+      clearScheduledSave();
+    };
+  }, [configSignature, currentProjectId, isProjectSaving, nextName]);
+
+  return {
+    projectName,
+    setProjectName,
+    currentProjectId,
+    isProjectLoading,
+    isProjectSaving,
+    createNewProject,
+    detachProject,
+  };
+}

@@ -43,6 +43,7 @@ export default function WorkspaceHomePage() {
   const inventory = useWorkspaceAssetInventory({
     autoRefreshMs: AUTO_REFRESH_SECONDS * 1000,
   });
+  const showInitialWorkspaceLoading = inventory.loading && inventory.lastRefreshedAt === null;
 
   useEffect(() => {
     setTheme(readStoredTheme());
@@ -124,8 +125,12 @@ export default function WorkspaceHomePage() {
           </div>
           <div className={styles.statContent}>
             <span className={styles.statLabel}>Models</span>
-            <span className={styles.statValue}>{counts.modelCount}</span>
-            <span className={styles.statDetail}>{formatBytes(counts.totalModelBytes)}</span>
+            <span className={styles.statValue}>
+              {showInitialWorkspaceLoading ? "..." : counts.modelCount}
+            </span>
+            <span className={styles.statDetail}>
+              {showInitialWorkspaceLoading ? "Scanning workspace" : formatBytes(counts.totalModelBytes)}
+            </span>
           </div>
         </div>
         <div className={`${styles.statCard} ${styles.toneGood}`}>
@@ -134,8 +139,12 @@ export default function WorkspaceHomePage() {
           </div>
           <div className={styles.statContent}>
             <span className={styles.statLabel}>Tokenizers</span>
-            <span className={styles.statValue}>{counts.tokenizerCompletedCount}</span>
-            <span className={styles.statDetail}>Completed</span>
+            <span className={styles.statValue}>
+              {showInitialWorkspaceLoading ? "..." : counts.tokenizerCompletedCount}
+            </span>
+            <span className={styles.statDetail}>
+              {showInitialWorkspaceLoading ? "Reading artifacts" : "Completed"}
+            </span>
           </div>
         </div>
         <div className={`${styles.statCard} ${styles.toneWarn}`}>
@@ -144,8 +153,12 @@ export default function WorkspaceHomePage() {
           </div>
           <div className={styles.statContent}>
             <span className={styles.statLabel}>Active</span>
-            <span className={styles.statValue}>{counts.tokenizerRunningCount}</span>
-            <span className={styles.statDetail}>Running</span>
+            <span className={styles.statValue}>
+              {showInitialWorkspaceLoading ? "..." : counts.tokenizerRunningCount}
+            </span>
+            <span className={styles.statDetail}>
+              {showInitialWorkspaceLoading ? "Checking jobs" : "Running"}
+            </span>
           </div>
         </div>
         <div
@@ -158,8 +171,12 @@ export default function WorkspaceHomePage() {
           </div>
           <div className={styles.statContent}>
             <span className={styles.statLabel}>Failed</span>
-            <span className={styles.statValue}>{counts.tokenizerFailedCount}</span>
-            <span className={styles.statDetail}>Attention required</span>
+            <span className={styles.statValue}>
+              {showInitialWorkspaceLoading ? "..." : counts.tokenizerFailedCount}
+            </span>
+            <span className={styles.statDetail}>
+              {showInitialWorkspaceLoading ? "Syncing state" : "Attention required"}
+            </span>
           </div>
         </div>
       </section>
@@ -167,16 +184,20 @@ export default function WorkspaceHomePage() {
       <WorkspaceAssetManager
         inventory={inventory}
         title="Workspace Assets"
-        description="A unified manager for model configs and tokenizer jobs across your workspace."
+        description="A unified manager for model configs and tokenizers across your workspace."
       />
 
-      {inventory.lastRefreshedAt ? (
+      {showInitialWorkspaceLoading || inventory.lastRefreshedAt ? (
         <div className={styles.syncIndicator}>
           <FiRefreshCw
-            className={inventory.refreshing ? styles.refreshIconSpinning : ""}
+            className={
+              inventory.refreshing || showInitialWorkspaceLoading ? styles.refreshIconSpinning : ""
+            }
           />
           <span>
-            Synced {formatAge(new Date(inventory.lastRefreshedAt).toISOString())}
+            {showInitialWorkspaceLoading
+              ? "Scanning workspace assets..."
+              : `Synced ${formatAge(new Date(inventory.lastRefreshedAt as number).toISOString())}`}
           </span>
         </div>
       ) : null}
