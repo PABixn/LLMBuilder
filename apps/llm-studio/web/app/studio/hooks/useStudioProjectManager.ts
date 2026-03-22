@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { createProject, fetchProject, updateProject } from "../../../lib/api";
 import type { ModelConfig } from "../../../lib/defaults";
@@ -54,6 +54,8 @@ export function useStudioProjectManager({
   setNoticeMessage,
   replaceDocumentState,
 }: UseStudioProjectManagerArgs): StudioProjectManager {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [projectName, setProjectName] = useState("");
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
@@ -63,6 +65,7 @@ export function useStudioProjectManager({
   const activeControllerRef = useRef<AbortController | null>(null);
   const activeRequestIdRef = useRef(0);
   const lastSavedRef = useRef<SavedSnapshot | null>(null);
+  const ignoredUrlProjectIdRef = useRef<string | null>(null);
   const currentProjectIdRef = useRef<string | null>(null);
   const currentNameRef = useRef<string | null>(null);
   const currentConfigSignatureRef = useRef("");
@@ -89,6 +92,17 @@ export function useStudioProjectManager({
   function clearPendingPersistence(): void {
     clearScheduledSave();
     cancelInFlightSave();
+  }
+
+  function replaceProjectParam(projectId: string | null): void {
+    const params = new URLSearchParams(searchParams.toString());
+    if (projectId === null) {
+      params.delete("project");
+    } else {
+      params.set("project", projectId);
+    }
+    const query = params.toString();
+    router.replace(query === "" ? pathname : `${pathname}?${query}`, { scroll: false });
   }
 
   function createSnapshot(projectId: string | null): ProjectSnapshot {
@@ -160,6 +174,7 @@ export function useStudioProjectManager({
       setProjectName(savedProject.name ?? "");
       markSaved(savedProject.id, savedProject.name, savedProject.model_config);
       upsertCachedWorkspaceProject(savedProject);
+      replaceProjectParam(savedProject.id);
     } catch (error) {
       if (controller.signal.aborted || requestId !== activeRequestIdRef.current) {
         return;
@@ -184,8 +199,10 @@ export function useStudioProjectManager({
   function detachProject(options: DetachProjectOptions = {}): void {
     clearPendingPersistence();
     lastSavedRef.current = null;
+    ignoredUrlProjectIdRef.current = currentProjectIdRef.current;
     setCurrentProjectId(null);
     setIsProjectSaving(false);
+    replaceProjectParam(null);
     if (options.clearName) {
       setProjectName("");
     }
@@ -196,19 +213,17 @@ export function useStudioProjectManager({
       return;
     }
 
-    clearPendingPersistence();
-    lastSavedRef.current = null;
-
-    if (nextName === null) {
-      setIsProjectSaving(false);
-      return;
-    }
-
-    await persistProject(createSnapshot(null), "create");
+    detachProject({ clearName: true });
   }
 
   useEffect(() => {
     const projectIdFromUrl = searchParams.get("project");
+    if (projectIdFromUrl !== ignoredUrlProjectIdRef.current) {
+      ignoredUrlProjectIdRef.current = null;
+    }
+    if (projectIdFromUrl && projectIdFromUrl === ignoredUrlProjectIdRef.current) {
+      return;
+    }
     if (!projectIdFromUrl || projectIdFromUrl === currentProjectId) {
       return;
     }
@@ -229,7 +244,7 @@ export function useStudioProjectManager({
     }
 
     void loadProject();
-  }, [searchParams, currentProjectId]);
+  }, [searchParams, currentProjectId, replaceDocumentState, setNoticeMessage]);
 
   useEffect(() => {
     return () => {

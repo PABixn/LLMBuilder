@@ -44,6 +44,7 @@ export function WorkspaceAssetManager({
   const [sortBy, setSortBy] = useState<SortBy>("date-desc");
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
+  const hasAssets = inventory.assets.length > 0;
   const showLoadingState = inventory.loading && inventory.lastRefreshedAt === null;
 
   const filteredAndSortedAssets = useMemo(() => {
@@ -127,7 +128,7 @@ export function WorkspaceAssetManager({
             <h2 className={styles.sectionTitle}>{title}</h2>
             {description ? <p className={styles.sectionCopy}>{description}</p> : null}
           </div>
-          {inventory.assets.length > 0 && (
+          {hasAssets && (
             <button 
               className={styles.removeAllButton}
               onClick={handleRemoveAll}
@@ -138,48 +139,50 @@ export function WorkspaceAssetManager({
           )}
         </div>
         
-        <div className={styles.controlsRow}>
-          <div className={styles.searchWrapper}>
-            <FiSearch className={styles.searchIcon} />
-            <input
-              type="text"
-              placeholder="Search assets..."
-              className={styles.searchInput}
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-            />
-          </div>
-          <div className={styles.filterControls}>
-            <div className={styles.selectWrapper}>
-              <FiLayers className={styles.controlIcon} />
-              <select 
-                value={filterType} 
-                onChange={(e) => setFilterType(e.target.value as FilterType)}
-                className={styles.controlSelect}
-              >
-                <option value="all">All Assets</option>
-                <option value="model">Models</option>
-                <option value="tokenizer">Tokenizers</option>
-              </select>
-              <FiChevronDown className={styles.chevronIcon} />
+        {hasAssets && (
+          <div className={styles.controlsRow}>
+            <div className={styles.searchWrapper}>
+              <FiSearch className={styles.searchIcon} />
+              <input
+                type="text"
+                placeholder="Search assets..."
+                className={styles.searchInput}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
             </div>
-            <div className={styles.selectWrapper}>
-              <FiFilter className={styles.controlIcon} />
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className={styles.controlSelect}
-              >
-                <option value="date-desc">Newest</option>
-                <option value="date-asc">Oldest</option>
-                <option value="name-asc">Name A-Z</option>
-                <option value="name-desc">Name Z-A</option>
-                <option value="size-desc">Largest</option>
-              </select>
-              <FiChevronDown className={styles.chevronIcon} />
+            <div className={styles.filterControls}>
+              <div className={styles.selectWrapper}>
+                <FiLayers className={styles.controlIcon} />
+                <select 
+                  value={filterType} 
+                  onChange={(e) => setFilterType(e.target.value as FilterType)}
+                  className={styles.controlSelect}
+                >
+                  <option value="all">All Assets</option>
+                  <option value="model">Models</option>
+                  <option value="tokenizer">Tokenizers</option>
+                </select>
+                <FiChevronDown className={styles.chevronIcon} />
+              </div>
+              <div className={styles.selectWrapper}>
+                <FiFilter className={styles.controlIcon} />
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value as SortBy)}
+                  className={styles.controlSelect}
+                >
+                  <option value="date-desc">Newest</option>
+                  <option value="date-asc">Oldest</option>
+                  <option value="name-asc">Name A-Z</option>
+                  <option value="name-desc">Name Z-A</option>
+                  <option value="size-desc">Largest</option>
+                </select>
+                <FiChevronDown className={styles.chevronIcon} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className={styles.assetGrid}>
@@ -198,103 +201,101 @@ export function WorkspaceAssetManager({
                 </div>
               </div>
             ))
-          : filteredAndSortedAssets.length > 0 ? (
-              filteredAndSortedAssets.map((asset) => (
-                <div 
-                  key={`${asset.type}-${asset.id}`} 
-                  className={styles.assetCard}
-                  onClick={() => handleCardClick(asset)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCardClick(asset)}
-                >
-                  <div className={styles.assetHeader}>
-                    <div className={styles.assetIcon}>
-                      {asset.type === "model" ? <FiBox /> : <FiCpu />}
-                    </div>
-                    <div className={styles.assetMain}>
-                      <span className={styles.assetName}>{asset.name}</span>
-                      <div className={styles.assetMeta}>
-                        <span>{asset.type === "model" ? "Model Architecture" : "Tokenizer Model"}</span>
+          : hasAssets ? (
+              filteredAndSortedAssets.length > 0 ? (
+                filteredAndSortedAssets.map((asset) => (
+                  <div 
+                    key={`${asset.type}-${asset.id}`} 
+                    className={styles.assetCard}
+                    onClick={() => handleCardClick(asset)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCardClick(asset)}
+                  >
+                    <div className={styles.assetHeader}>
+                      <div className={styles.assetIcon}>
+                        {asset.type === "model" ? <FiBox /> : <FiCpu />}
+                      </div>
+                      <div className={styles.assetMain}>
+                        <span className={styles.assetName}>{asset.name}</span>
+                        <div className={styles.assetMeta}>
+                          <span>{asset.type === "model" ? "Model Architecture" : "Tokenizer Model"}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className={styles.assetInfo}>
-                     <div className={styles.assetAge}>
-                      {formatAge(asset.createdAt)}
+                    
+                    <div className={styles.assetInfo}>
+                       <div className={styles.assetAge}>
+                        {formatAge(asset.createdAt)}
+                      </div>
+                      <span className={`${styles.assetTag} ${asset.type === "tokenizer" || asset.status === "READY" ? getStatusClass(asset.status) : ""}`}>
+                        {asset.type === "model" ? formatBytes(asset.size ?? 0) : asset.status}
+                      </span>
                     </div>
-                    <span className={`${styles.assetTag} ${asset.type === "tokenizer" || asset.status === "READY" ? getStatusClass(asset.status) : ""}`}>
-                      {asset.type === "model" ? formatBytes(asset.size ?? 0) : asset.status}
-                    </span>
-                  </div>
 
-                  <div className={styles.assetActions} onClick={(e) => e.stopPropagation()}>
-                    {asset.downloadUrl ? (
-                      <a
-                        href={asset.downloadUrl}
-                        download={asset.fileName ?? undefined}
-                        className={styles.actionButton}
-                        title="Download Artifact"
+                    <div className={styles.assetActions} onClick={(e) => e.stopPropagation()}>
+                      {asset.downloadUrl ? (
+                        <a
+                          href={asset.downloadUrl}
+                          download={asset.fileName ?? undefined}
+                          className={styles.actionButton}
+                          title="Download Artifact"
+                        >
+                          <FiDownload />
+                        </a>
+                      ) : null}
+
+                      <button 
+                        onClick={(e) => handleDelete(asset, e)} 
+                        className={`${styles.actionButton} ${styles.actionButtonDanger}`}
+                        title="Delete Asset"
                       >
-                        <FiDownload />
-                      </a>
-                    ) : null}
-
-                    <button 
-                      onClick={(e) => handleDelete(asset, e)} 
-                      className={`${styles.actionButton} ${styles.actionButtonDanger}`}
-                      title="Delete Asset"
-                    >
-                      <FiTrash2 />
-                    </button>
+                        <FiTrash2 />
+                      </button>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className={styles.emptyState}>
+                  <FiSearch style={{ fontSize: "3.5rem", color: "var(--text-muted)", opacity: 0.2, marginBottom: "8px" }} />
+                  <h3 className={styles.emptyStateTitle}>No matches found</h3>
+                  <p className={styles.heroSubtitle}>
+                    We couldn't find any assets matching "{searchQuery}".
+                  </p>
                 </div>
-              ))
+              )
             ) : (
               <div className={styles.emptyState}>
-                {searchQuery ? (
-                  <>
-                    <FiSearch style={{ fontSize: "3.5rem", color: "var(--text-muted)", opacity: 0.2, marginBottom: "8px" }} />
-                    <h3 className={styles.emptyStateTitle}>No matches found</h3>
-                    <p className={styles.heroSubtitle}>
-                      We couldn't find any assets matching "{searchQuery}".
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h3 className={styles.emptyStateTitle}>Your workspace is ready</h3>
-                    <p className={styles.heroSubtitle}>
-                      Start building your first LLM component by choosing a path below.
-                    </p>
-                    <div className={styles.emptyStateGrid}>
-                      <Link href="/studio" className={styles.emptyActionCard}>
-                        <div className={styles.emptyActionIcon}>
-                          <FiBox />
-                        </div>
-                        <div className={styles.emptyActionContent}>
-                          <h4 className={styles.emptyActionTitle}>Design Model</h4>
-                          <p className={styles.emptyActionText}>
-                            Configure architecture, layers, and hyperparameters.
-                          </p>
-                        </div>
-                        <FiArrowRight style={{ marginTop: "auto", fontSize: "1.2rem", opacity: 0.4 }} />
-                      </Link>
-                      <Link href="/tokenizer" className={styles.emptyActionCard}>
-                        <div className={styles.emptyActionIcon}>
-                          <FiCpu />
-                        </div>
-                        <div className={styles.emptyActionContent}>
-                          <h4 className={styles.emptyActionTitle}>Train Tokenizer</h4>
-                          <p className={styles.emptyActionText}>
-                            Build a custom vocabulary for your training data.
-                          </p>
-                        </div>
-                        <FiArrowRight style={{ marginTop: "auto", fontSize: "1.2rem", opacity: 0.4 }} />
-                      </Link>
+                <h3 className={styles.emptyStateTitle}>Your workspace is ready</h3>
+                <p className={styles.heroSubtitle}>
+                  Start building your first LLM component by choosing a path below.
+                </p>
+                <div className={styles.emptyStateGrid}>
+                  <Link href="/studio" className={styles.emptyActionCard}>
+                    <div className={styles.emptyActionIcon}>
+                      <FiBox />
                     </div>
-                  </>
-                )}
+                    <div className={styles.emptyActionContent}>
+                      <h4 className={styles.emptyActionTitle}>Design Model</h4>
+                      <p className={styles.emptyActionText}>
+                        Configure architecture, layers, and hyperparameters.
+                      </p>
+                    </div>
+                    <FiArrowRight style={{ marginTop: "auto", fontSize: "1.2rem", opacity: 0.4 }} />
+                  </Link>
+                  <Link href="/tokenizer" className={styles.emptyActionCard}>
+                    <div className={styles.emptyActionIcon}>
+                      <FiCpu />
+                    </div>
+                    <div className={styles.emptyActionContent}>
+                      <h4 className={styles.emptyActionTitle}>Train Tokenizer</h4>
+                      <p className={styles.emptyActionText}>
+                        Build a custom vocabulary for your training data.
+                      </p>
+                    </div>
+                    <FiArrowRight style={{ marginTop: "auto", fontSize: "1.2rem", opacity: 0.4 }} />
+                  </Link>
+                </div>
               </div>
             )}
       </div>
