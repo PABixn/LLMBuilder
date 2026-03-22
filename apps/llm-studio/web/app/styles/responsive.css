@@ -12,7 +12,7 @@
   .studioRoot {
     width: min(100%, calc(100% - 12px));
     gap: 12px;
-    margin-top: 8px;
+    margin-top: 18px;
   }
 
   .studioNav {

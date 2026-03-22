@@ -1,6 +1,6 @@
 .studioRoot {
   width: min(1380px, calc(100% - 24px));
-  margin: 12px auto 0;
+  margin: 18px auto 0;
   display: grid;
   gap: 18px;
 }
@@ -24,7 +24,7 @@
 
 .studioNav {
   position: sticky;
-  top: 8px;
+  top: 18px;
   z-index: 50;
   justify-self: center;
   width: fit-content;

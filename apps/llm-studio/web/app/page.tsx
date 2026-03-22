@@ -61,7 +61,7 @@ export default function WorkspaceHomePage() {
 
   return (
     <main className={styles.homeRoot}>
-      <nav className="studioNav">
+      <nav className={`${styles.homeNav} studioNav`}>
         <div className="studioNavBrand">
           <span className="studioNavDot" />
           <span>LLM Builder</span>

@@ -88,7 +88,7 @@ body {
 
 .studioRoot {
   width: min(1280px, calc(100% - 32px));
-  margin: 20px auto 44px;
+  margin: 18px auto 44px;
   display: grid;
   gap: 18px;
 }
@@ -102,7 +102,7 @@ body {
 
 .studioNav {
   position: sticky;
-  top: 10px;
+  top: 18px;
   z-index: 40;
   justify-self: center;
   width: fit-content;
@@ -1107,6 +1107,7 @@ button:focus-visible,
 .sourceModeRow {
   display: grid;
   gap: 8px;
+  margin-bottom: 10px;
 }
 
 .sourceModeRow > span {
@@ -1597,7 +1598,7 @@ pre {
 @media (max-width: 760px) {
   .studioRoot {
     width: min(1280px, calc(100% - 20px));
-    margin-top: 14px;
+    margin-top: 18px;
   }
 
   .panelCard {

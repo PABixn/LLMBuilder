@@ -1,10 +1,14 @@
 .homeRoot {
   width: min(1200px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 16px 0 64px;
+  padding: 18px 0 64px;
   display: flex;
   flex-direction: column;
-  gap: 48px;
+  gap: 40px;
+}
+
+.homeNav {
+  align-self: center;
 }
 
 .centeredHeader {
@@ -12,9 +16,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px 32px;
+  padding: 20px 24px 28px;
   text-align: center;
-  gap: 24px;
+  gap: 20px;
 }
 
 .heroTitle {

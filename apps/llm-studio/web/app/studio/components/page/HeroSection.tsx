@@ -131,10 +131,6 @@ export function HeroSection({
             •
           </span>
           <span>Auto-saved {formatTimeAgo(lastSavedAt)}</span>
-          <span className="heroMetaSeparator" aria-hidden>
-            •
-          </span>
-          <span>Saved in this browser; use New config to create a saved model config or Download to keep a file.</span>
           {heroBackendHint ? (
             <>
               <span className="heroMetaSeparator" aria-hidden>
