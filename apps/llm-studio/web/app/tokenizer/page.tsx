@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -1447,6 +1448,7 @@ function JobBadge({ job }: { job: TrainingJob }) {
 }
 
 export default function Home() {
+  const searchParams = useSearchParams();
   const [tokenizerForm, setTokenizerForm] = useState<TokenizerFormState>(() =>
     tokenizerFormFromConfig(defaultTokenizerConfig)
   );
@@ -1550,6 +1552,39 @@ export default function Home() {
       toastTimeoutsRef.current = {};
     };
   }, []);
+
+  useEffect(() => {
+    const jobIdFromUrl = searchParams.get("job");
+    if (!jobIdFromUrl || jobIdFromUrl === activeJobId) {
+      return;
+    }
+
+    async function loadJob() {
+      try {
+        const job = await fetchTrainingJob(jobIdFromUrl as string);
+        setActiveJobId(job.id);
+        setActiveJob(job);
+        
+        // Populate forms from job config
+        const tokConfig = asRecord(job.tokenizer_config);
+        const datConfig = asRecord(job.dataloader_config);
+        
+        if (Object.keys(tokConfig).length > 0) {
+          setTokenizerForm(tokenizerFormFromConfig(tokConfig));
+        }
+        if (Object.keys(datConfig).length > 0) {
+          setDatasetForm(datasetFormFromConfig(datConfig));
+          setTrainingForm(trainingFormFromConfig(datConfig));
+        }
+        
+        notify("info", `Loaded tokenizer job ${job.id.slice(0, 8)}`);
+      } catch (err) {
+        notify("error", `Failed to load job: ${err instanceof Error ? err.message : "Unknown error"}`);
+      }
+    }
+
+    void loadJob();
+  }, [searchParams, activeJobId, notify]);
 
   useEffect(() => {
     setThemeMode(readStoredThemeMode());

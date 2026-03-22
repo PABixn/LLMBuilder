@@ -98,6 +98,7 @@ export function useStudioPageController(): StudioPageViewProps {
   const projectManager = useStudioProjectManager({
     modelConfig,
     setNoticeMessage: workspace.setNoticeMessage,
+    replaceDocumentState: workspace.replaceDocumentState,
   });
 
   async function importFromFile(event: ChangeEvent<HTMLInputElement>): Promise<void> {

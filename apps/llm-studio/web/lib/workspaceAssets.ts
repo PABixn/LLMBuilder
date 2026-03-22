@@ -2,8 +2,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { apiBaseUrl, fetchProjects, type ProjectSummary } from "./api";
-import { artifactDownloadUrl, fetchTrainingJobs, type TrainingJob } from "./tokenizerLegacyApi";
+import { apiBaseUrl, deleteProject, fetchProject, fetchProjects, type ProjectSummary, updateProject } from "./api";
+import { artifactDownloadUrl, deleteTrainingJob, fetchTrainingJobs, type TrainingJob } from "./tokenizerLegacyApi";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
@@ -38,6 +38,10 @@ export type WorkspaceAssetInventory = {
   refreshing: boolean;
   error: string | null;
   lastRefreshedAt: number | null;
+  deleteAsset: (asset: WorkspaceAsset) => Promise<void>;
+  renameAsset: (asset: WorkspaceAsset, newName: string) => Promise<void>;
+  deleteAllAssets: () => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 export interface UseWorkspaceAssetInventoryOptions {
@@ -83,8 +87,8 @@ function readCachedSnapshot(): WorkspaceAssetCache | null {
     }
 
     return {
-      projects: parsed.projects as ProjectSummary[],
-      jobs: parsed.jobs as TrainingJob[],
+      projects: (parsed.projects as ProjectSummary[]).filter(p => p && typeof p.id === 'string'),
+      jobs: (parsed.jobs as TrainingJob[]).filter(j => j && typeof j.id === 'string'),
       lastRefreshedAt:
         typeof parsed.lastRefreshedAt === "number" ? parsed.lastRefreshedAt : null,
     };
@@ -183,18 +187,18 @@ function buildAssets(projects: ProjectSummary[], jobs: TrainingJob[]): Workspace
     size: project.size_bytes,
     downloadUrl: modelArtifactDownloadUrl(project.id),
     fileName: project.artifact_file,
+    status: "READY",
   }));
 
   const tokenizerAssets: WorkspaceAsset[] = jobs
-    .filter((job) => job.status === "completed")
     .map((job) => ({
       id: job.id,
       name: tokenizerName(job),
       type: "tokenizer",
       createdAt: job.created_at,
-      downloadUrl: artifactDownloadUrl(job.id),
+      downloadUrl: job.status === "completed" ? artifactDownloadUrl(job.id) : undefined,
       fileName: job.artifact_file,
-      status: "COMPLETED",
+      status: job.status.toUpperCase(),
     }));
 
   return [...modelAssets, ...tokenizerAssets].sort(
@@ -250,10 +254,14 @@ export function formatAge(isoLike: string): string {
   }
 
   const diffMs = Date.now() - timestamp;
-  const diffMinutes = Math.max(0, Math.floor(diffMs / 60_000));
-  if (diffMinutes < 1) {
-    return "just now";
+  const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
+  
+  if (diffSeconds < 60) {
+    if (diffSeconds < 5) return "just now";
+    return `${diffSeconds}s ago`;
   }
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
   if (diffMinutes < 60) {
     return `${diffMinutes}m ago`;
   }
@@ -320,61 +328,61 @@ export function useWorkspaceAssetInventory(
     setLastRefreshedAt(cached.lastRefreshedAt);
   }, []);
 
-  useEffect(() => {
-    async function loadSnapshot(background = false): Promise<void> {
-      const requestId = ++requestIdRef.current;
+  async function loadSnapshot(background = false): Promise<void> {
+    const requestId = ++requestIdRef.current;
 
-      if (background) {
-        setRefreshing(true);
-      }
-
-      const [projectsResult, jobsResult] = await Promise.allSettled([
-        fetchProjects(),
-        fetchTrainingJobs(),
-      ]);
-
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-
-      const issues: string[] = [];
-      let hasAnySuccess = false;
-
-      if (projectsResult.status === "fulfilled") {
-        setProjects(projectsResult.value);
-        hasAnySuccess = true;
-      } else {
-        issues.push(resolveIssueMessage("Models", projectsResult.reason));
-      }
-
-      if (jobsResult.status === "fulfilled") {
-        setJobs(jobsResult.value);
-        hasAnySuccess = true;
-      } else {
-        issues.push(resolveIssueMessage("Tokenizers", jobsResult.reason));
-      }
-
-      if (hasAnySuccess) {
-        const refreshedAt = Date.now();
-        const nextProjects =
-          projectsResult.status === "fulfilled"
-            ? projectsResult.value
-            : latestProjectsRef.current;
-        const nextJobs =
-          jobsResult.status === "fulfilled" ? jobsResult.value : latestJobsRef.current;
-        setLastRefreshedAt(refreshedAt);
-        writeCachedSnapshot({
-          projects: nextProjects,
-          jobs: nextJobs,
-          lastRefreshedAt: refreshedAt,
-        });
-      }
-
-      setError(issues.length > 0 ? issues.join(" | ") : null);
-      setLoading(false);
-      setRefreshing(false);
+    if (background) {
+      setRefreshing(true);
     }
 
+    const [projectsResult, jobsResult] = await Promise.allSettled([
+      fetchProjects(),
+      fetchTrainingJobs(),
+    ]);
+
+    if (requestId !== requestIdRef.current) {
+      return;
+    }
+
+    const issues: string[] = [];
+    let hasAnySuccess = false;
+
+    if (projectsResult.status === "fulfilled") {
+      setProjects(projectsResult.value);
+      hasAnySuccess = true;
+    } else {
+      issues.push(resolveIssueMessage("Models", projectsResult.reason));
+    }
+
+    if (jobsResult.status === "fulfilled") {
+      setJobs(jobsResult.value);
+      hasAnySuccess = true;
+    } else {
+      issues.push(resolveIssueMessage("Tokenizers", jobsResult.reason));
+    }
+
+    if (hasAnySuccess) {
+      const refreshedAt = Date.now();
+      const nextProjects =
+        projectsResult.status === "fulfilled"
+          ? projectsResult.value
+          : latestProjectsRef.current;
+      const nextJobs =
+        jobsResult.status === "fulfilled" ? jobsResult.value : latestJobsRef.current;
+      setLastRefreshedAt(refreshedAt);
+      writeCachedSnapshot({
+        projects: nextProjects,
+        jobs: nextJobs,
+        lastRefreshedAt: refreshedAt,
+      });
+    }
+
+    setError(issues.length > 0 ? issues.join(" | ") : null);
+    setLoading(false);
+    setRefreshing(false);
+  }
+
+  useEffect(() => {
     void loadSnapshot(false);
 
     if (autoRefreshMs <= 0) {
@@ -422,6 +430,55 @@ export function useWorkspaceAssetInventory(
     };
   }, []);
 
+  async function deleteAsset(asset: WorkspaceAsset) {
+    try {
+      if (asset.type === "model") {
+        await deleteProject(asset.id);
+      } else {
+        await deleteTrainingJob(asset.id);
+      }
+      void loadSnapshot(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Delete failed";
+      setError(message);
+      throw err;
+    }
+  }
+
+  async function renameAsset(asset: WorkspaceAsset, newName: string) {
+    if (asset.type !== "model") {
+      throw new Error("Only models can be renamed currently.");
+    }
+    try {
+      // Need to fetch full project detail to get config for updateProject
+      const project = await fetchProject(asset.id);
+      await updateProject(asset.id, newName, project.model_config);
+      void loadSnapshot(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Rename failed";
+      setError(message);
+      throw err;
+    }
+  }
+
+  async function deleteAllAssets() {
+    try {
+      setRefreshing(true);
+      const allAssets = buildAssets(latestProjectsRef.current, latestJobsRef.current);
+      
+      // Delete in parallel
+      await Promise.allSettled(allAssets.map(asset => 
+        asset.type === "model" ? deleteProject(asset.id) : deleteTrainingJob(asset.id)
+      ));
+      
+      void loadSnapshot(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete all assets";
+      setError(message);
+      throw err;
+    }
+  }
+
   return {
     assets: buildAssets(projects, jobs),
     counts: buildCounts(projects, jobs),
@@ -429,5 +486,9 @@ export function useWorkspaceAssetInventory(
     refreshing,
     error,
     lastRefreshedAt,
+    deleteAsset,
+    renameAsset,
+    deleteAllAssets,
+    refresh: () => loadSnapshot(true),
   };
 }

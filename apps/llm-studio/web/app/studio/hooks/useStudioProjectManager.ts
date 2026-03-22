@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useSearchParams } from "next/navigation";
 
-import { createProject, updateProject } from "../../../lib/api";
+import { createProject, fetchProject, updateProject } from "../../../lib/api";
 import type { ModelConfig } from "../../../lib/defaults";
 import { upsertCachedWorkspaceProject } from "../../../lib/workspaceAssets";
+import { studioDocumentFromConfig } from "../utils/document";
+import type { StudioDocument } from "../types";
 
 const AUTO_SAVE_DELAY_MS = 800;
 
@@ -11,6 +14,7 @@ type SetNoticeMessage = (tone: "info" | "success" | "error", message: string) =>
 type UseStudioProjectManagerArgs = {
   modelConfig: ModelConfig;
   setNoticeMessage: SetNoticeMessage;
+  replaceDocumentState: (nextDocument: StudioDocument) => void;
 };
 
 type DetachProjectOptions = {
@@ -48,11 +52,13 @@ function normalizedName(value: string): string | null {
 export function useStudioProjectManager({
   modelConfig,
   setNoticeMessage,
+  replaceDocumentState,
 }: UseStudioProjectManagerArgs): StudioProjectManager {
+  const searchParams = useSearchParams();
   const [projectName, setProjectName] = useState("");
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isProjectSaving, setIsProjectSaving] = useState(false);
-  const isProjectLoading = false;
+  const [isProjectLoading, setIsProjectLoading] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
   const activeControllerRef = useRef<AbortController | null>(null);
   const activeRequestIdRef = useRef(0);
@@ -202,6 +208,30 @@ export function useStudioProjectManager({
   }
 
   useEffect(() => {
+    const projectIdFromUrl = searchParams.get("project");
+    if (!projectIdFromUrl || projectIdFromUrl === currentProjectId) {
+      return;
+    }
+
+    async function loadProject() {
+      setIsProjectLoading(true);
+      try {
+        const project = await fetchProject(projectIdFromUrl as string);
+        setCurrentProjectId(project.id);
+        setProjectName(project.name ?? "");
+        replaceDocumentState(studioDocumentFromConfig(project.model_config));
+        markSaved(project.id, project.name, project.model_config);
+      } catch (err) {
+        setNoticeMessage("error", `Failed to load project: ${err instanceof Error ? err.message : "Unknown error"}`);
+      } finally {
+        setIsProjectLoading(false);
+      }
+    }
+
+    void loadProject();
+  }, [searchParams, currentProjectId]);
+
+  useEffect(() => {
     return () => {
       clearScheduledSave();
     };
@@ -210,7 +240,7 @@ export function useStudioProjectManager({
   useEffect(() => {
     clearScheduledSave();
 
-    if (isProjectSaving) {
+    if (isProjectSaving || isProjectLoading) {
       return;
     }
 
@@ -236,7 +266,7 @@ export function useStudioProjectManager({
     return () => {
       clearScheduledSave();
     };
-  }, [configSignature, currentProjectId, isProjectSaving, nextName]);
+  }, [configSignature, currentProjectId, isProjectSaving, isProjectLoading, nextName]);
 
   return {
     projectName,
