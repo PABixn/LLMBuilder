@@ -19,6 +19,9 @@ def test_settings_resolve_from_data_root(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("LLM_STUDIO_TOKENIZER_HF_HOME", "cache/hf")
     monkeypatch.setenv("LLM_STUDIO_TOKENIZER_HF_DATASETS_CACHE", "cache/hf/datasets")
     monkeypatch.setenv("LLM_STUDIO_TOKENIZER_MAX_WORKERS", "3")
+    monkeypatch.setenv("LLM_STUDIO_TRAINING_JOBS_DIR", "training/jobs")
+    monkeypatch.setenv("LLM_STUDIO_TRAINING_EXPORT_DIR", "training/exports")
+    monkeypatch.setenv("LLM_STUDIO_TRAINING_DB_PATH", "db/training.db")
 
     config.reset_settings_cache()
     settings = config.get_settings()
@@ -33,6 +36,9 @@ def test_settings_resolve_from_data_root(monkeypatch, tmp_path: Path) -> None:
     assert settings.tokenizer_hf_home == data_root / "cache" / "hf"
     assert settings.tokenizer_hf_datasets_cache == data_root / "cache" / "hf" / "datasets"
     assert settings.tokenizer_max_workers == 3
+    assert settings.training_jobs_dir == data_root / "training" / "jobs"
+    assert settings.training_exports_dir == data_root / "training" / "exports"
+    assert settings.training_database_path == data_root / "db" / "training.db"
 
 
 def test_runtime_directories(monkeypatch, tmp_path: Path) -> None:
@@ -52,6 +58,9 @@ def test_runtime_directories(monkeypatch, tmp_path: Path) -> None:
     assert settings.tokenizer_database_path.parent.exists()
     assert settings.tokenizer_hf_home.exists()
     assert settings.tokenizer_hf_datasets_cache.exists()
+    assert settings.training_jobs_dir.exists()
+    assert settings.training_exports_dir.exists()
+    assert settings.training_database_path.parent.exists()
     assert Path(os.environ["HF_HOME"]) == settings.tokenizer_hf_home
     assert Path(os.environ["HF_DATASETS_CACHE"]) == settings.tokenizer_hf_datasets_cache
     assert Path(os.environ["HUGGINGFACE_HUB_CACHE"]) == settings.tokenizer_hf_home / "hub"

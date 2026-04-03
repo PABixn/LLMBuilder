@@ -1,16 +1,28 @@
+.buttonPrimary,
+.buttonDanger,
 .buttonGhost {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   border-radius: 10px;
-  border: 1px solid var(--line-strong);
-  background: var(--surface-soft);
-  color: var(--text);
   padding: 8px 10px;
   cursor: pointer;
   font-size: 0.84rem;
   font-weight: 650;
   white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.buttonGhost {
+  border: 1px solid var(--line-strong);
+  background: var(--surface-soft);
+  color: var(--text);
 }
 
 .buttonGhost:hover,
@@ -26,9 +38,61 @@
   box-shadow: none;
 }
 
+.buttonPrimary {
+  border: 1px solid color-mix(in srgb, var(--brand) 72%, transparent);
+  background: var(--brand);
+  color: white;
+  box-shadow: 0 10px 20px rgba(9, 25, 49, 0.14);
+}
+
+.buttonPrimary:hover,
+.buttonPrimary:focus-visible {
+  background: var(--brand-strong);
+  border-color: color-mix(in srgb, var(--brand-strong) 76%, transparent);
+  box-shadow: 0 0 0 3px var(--focus);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.buttonPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.buttonDanger {
+  border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.buttonDanger:hover,
+.buttonDanger:focus-visible {
+  border-color: color-mix(in srgb, var(--danger) 44%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.buttonDanger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.buttonPrimary svg,
+.buttonDanger svg,
 .buttonGhost svg {
   width: 14px;
   height: 14px;
+}
+
+.buttonSmall {
+  border-radius: 10px;
+  padding: 6px 9px;
+  font-size: 0.78rem;
 }
 
 .buttonGhost.iconOnly {

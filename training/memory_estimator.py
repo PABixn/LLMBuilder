@@ -34,7 +34,13 @@ class DeviceMemorySnapshot:
     reserved_bytes: int
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {
+            "device": str(self.device),
+            "free_bytes": self.free_bytes,
+            "total_bytes": self.total_bytes,
+            "allocated_bytes": self.allocated_bytes,
+            "reserved_bytes": self.reserved_bytes,
+        }
 
 
 @dataclass(slots=True)

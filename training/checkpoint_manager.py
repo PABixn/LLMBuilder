@@ -1,22 +1,50 @@
+from __future__ import annotations
+
 import json
-import os
+from pathlib import Path
+from typing import Any
+
 import torch
 
+
 class CheckpointManager:
-    def __init__(self, checkpoints_dir: str = "checkpoints"):
-        self.checkpoints_dir = checkpoints_dir
+    def __init__(self, checkpoints_dir: str | Path) -> None:
+        self.checkpoints_dir = Path(checkpoints_dir)
+        self.checkpoints_dir.mkdir(parents=True, exist_ok=True)
 
-    def save(self, model_data, optimizer_data, meta_data, step):
-        final_dir = os.path.join(self.checkpoints_dir, str(step))
-        os.makedirs(final_dir, exist_ok=True)
+    def save(
+        self,
+        *,
+        model_data: Any,
+        optimizer_data: Any,
+        meta_data: dict[str, Any],
+        step: int,
+    ) -> dict[str, Any]:
+        final_dir = self.checkpoints_dir / str(step)
+        final_dir.mkdir(parents=True, exist_ok=True)
 
-        model_path = os.path.join(final_dir, f"model-{step}.pt")
+        model_path = final_dir / f"model-{step}.pt"
         torch.save(model_data, model_path)
 
-        meta_path = os.path.join(final_dir, f"meta-{step}.pt")
-        with open(meta_path, "w", encoding="utf-8") as f:
-            f.write(json.dumps(meta_data, indent=4))
+        meta_path = final_dir / f"meta-{step}.json"
+        with meta_path.open("w", encoding="utf-8") as handle:
+            json.dump(meta_data, handle, indent=2)
+            handle.write("\n")
 
+        optimizer_path: Path | None = None
         if optimizer_data is not None:
-            optimizer_path = os.path.join(final_dir, f"optimizer-{step}.pt")
+            optimizer_path = final_dir / f"optimizer-{step}.pt"
             torch.save(optimizer_data, optimizer_path)
+
+        files = [
+            str(model_path),
+            str(meta_path),
+        ]
+        if optimizer_path is not None:
+            files.append(str(optimizer_path))
+
+        return {
+            "step": int(step),
+            "directory": str(final_dir),
+            "files": files,
+        }

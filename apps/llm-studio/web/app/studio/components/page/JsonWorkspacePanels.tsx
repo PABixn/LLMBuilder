@@ -3,8 +3,6 @@ import { FiCopy, FiDownload, FiRefreshCw, FiUpload } from "react-icons/fi";
 
 import type { ModelConfig } from "../../../../lib/defaults";
 
-import type { BuilderMetrics } from "../../types";
-
 type JsonWorkspacePanelsProps = {
   fileInputRef: RefObject<HTMLInputElement | null>;
   previewJson: string;
@@ -14,7 +12,6 @@ type JsonWorkspacePanelsProps = {
   setImportDraft: Dispatch<SetStateAction<string>>;
   applyImportText: (text: string) => void;
   modelConfig: ModelConfig;
-  metrics: BuilderMetrics;
 };
 
 export function JsonWorkspacePanels({
@@ -26,10 +23,7 @@ export function JsonWorkspacePanels({
   setImportDraft,
   applyImportText,
   modelConfig,
-  metrics,
 }: JsonWorkspacePanelsProps) {
-  const localActivationTotal = metrics.activationCount + metrics.mlpActivationStepCount;
-
   return (
     <div id="json-preview" className="twoColLayout previewLayout">
       <section className="panelCard previewPanel">
@@ -118,18 +112,6 @@ export function JsonWorkspacePanels({
             rows={16}
           />
         </label>
-
-        <div className="workflowList">
-          <div className="workflowItem">
-            <div className="workflowTitle">Counts</div>
-            <div className="workflowStats">
-              <span>{metrics.attentionCount} attention</span>
-              <span>{metrics.mlpCount} mlp</span>
-              <span>{metrics.normCount} norm</span>
-              <span>{localActivationTotal} activations</span>
-            </div>
-          </div>
-        </div>
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 import { ACTIVATION_TYPES, createDefaultModelConfig, type BlockComponent } from "../../../lib/defaults";
+import { useThemeMode } from "../../../lib/theme";
 import type {
   NoticeState,
   NoticeTone,
@@ -14,7 +15,6 @@ import {
   COMPONENT_PREFABS_STORAGE_KEY,
   DOCUMENT_STORAGE_KEY,
   IMPORT_DRAFT_STORAGE_KEY,
-  THEME_STORAGE_KEY,
 } from "../types";
 import {
   collectAllComponentIds,
@@ -261,7 +261,7 @@ function createUniquePrefabNameFromBase(
 }
 
 export function useStudioWorkspaceState(): StudioWorkspaceState {
-  const [theme, setTheme] = useState<ThemeMode>("white");
+  const [theme, setTheme] = useThemeMode();
   const [documentHistory, setDocumentHistory] = useState<DocumentHistoryState>(() => ({
     past: [],
     present: studioDocumentFromConfig(createDefaultModelConfig()),
@@ -276,7 +276,6 @@ export function useStudioWorkspaceState(): StudioWorkspaceState {
   const [componentPrefabs, setComponentPrefabs] = useState<StudioComponentPrefab[]>([]);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [notice, setNotice] = useState<NoticeState | null>(null);
-  const hasHydratedTheme = useRef(false);
   const documentState = documentHistory.present;
   const canUndoDocument = documentHistory.past.length > 0;
   const canRedoDocument = documentHistory.future.length > 0;
@@ -352,11 +351,6 @@ export function useStudioWorkspaceState(): StudioWorkspaceState {
     }
 
     try {
-      const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-      if (savedTheme === "dark" || savedTheme === "white") {
-        setTheme(savedTheme);
-      }
-
       const savedImportDraft = window.localStorage.getItem(IMPORT_DRAFT_STORAGE_KEY);
       if (typeof savedImportDraft === "string") {
         setImportDraft(savedImportDraft);
@@ -377,37 +371,6 @@ export function useStudioWorkspaceState(): StudioWorkspaceState {
     } catch {
       // ignore corrupted local storage and continue with defaults
     }
-  }, []);
-
-  useEffect(() => {
-    if (!hasHydratedTheme.current) {
-      hasHydratedTheme.current = true;
-      return;
-    }
-    if (typeof document !== "undefined") {
-      document.documentElement.dataset.theme = theme;
-    }
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-    }
-  }, [theme]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    function handleStorageChange(event: StorageEvent): void {
-      if (event.key !== THEME_STORAGE_KEY || event.newValue === null) {
-        return;
-      }
-      if (event.newValue === "dark" || event.newValue === "white") {
-        setTheme(event.newValue);
-      }
-    }
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   useEffect(() => {

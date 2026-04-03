@@ -1,14 +1,12 @@
 .previewLayout {
-  align-items: start;
+  align-items: stretch;
 }
 
 .previewPanel,
 .importPanel {
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
-}
-
-.importPanel .panelHead {
-  margin-top: 8px;
 }
 
 .jsonPreview {
@@ -18,6 +16,7 @@
   background: linear-gradient(180deg, rgba(7, 17, 31, 0.92), var(--pre-bg));
   color: var(--pre-text);
   padding: 11px;
+  flex: 1;
   min-height: 380px;
   max-height: 680px;
   overflow: auto;
@@ -38,5 +37,12 @@
 
 .importPanel > .fieldLabel {
   margin-top: 14px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
+.importPanel > .fieldLabel textarea {
+  flex: 1;
+  min-height: 380px;
+}

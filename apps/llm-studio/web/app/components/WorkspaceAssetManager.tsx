@@ -9,6 +9,7 @@ import {
   FiChevronDown,
   FiBox,
   FiCpu,
+  FiActivity,
   FiLayers,
   FiPlus,
   FiArrowRight
@@ -28,15 +29,23 @@ interface WorkspaceAssetManagerProps {
   inventory: WorkspaceAssetInventory;
   title: string;
   description?: string;
+  selectedModelId?: string | null;
+  selectedTokenizerId?: string | null;
+  onUseAsModel?: (asset: WorkspaceAsset) => void;
+  onUseAsTokenizer?: (asset: WorkspaceAsset) => void;
 }
 
-type FilterType = "all" | "model" | "tokenizer";
+type FilterType = "all" | "model" | "tokenizer" | "training_run";
 type SortBy = "date-desc" | "date-asc" | "name-asc" | "name-desc" | "size-desc";
 
 export function WorkspaceAssetManager({
   inventory,
   title,
   description,
+  selectedModelId = null,
+  selectedTokenizerId = null,
+  onUseAsModel,
+  onUseAsTokenizer,
 }: WorkspaceAssetManagerProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,7 +115,12 @@ export function WorkspaceAssetManager({
   };
 
   const handleCardClick = (asset: WorkspaceAsset) => {
-    const url = asset.type === "model" ? `/studio?project=${asset.id}` : `/tokenizer?job=${asset.id}`;
+    const url =
+      asset.type === "model"
+        ? `/studio?project=${asset.id}`
+        : asset.type === "tokenizer"
+          ? `/tokenizer?job=${asset.id}`
+          : `/training?run=${asset.id}`;
     router.push(url);
   };
 
@@ -162,6 +176,7 @@ export function WorkspaceAssetManager({
                   <option value="all">All Assets</option>
                   <option value="model">Models</option>
                   <option value="tokenizer">Tokenizers</option>
+                  <option value="training_run">Training Runs</option>
                 </select>
                 <FiChevronDown className={styles.chevronIcon} />
               </div>
@@ -214,12 +229,19 @@ export function WorkspaceAssetManager({
                   >
                     <div className={styles.assetHeader}>
                       <div className={styles.assetIcon}>
-                        {asset.type === "model" ? <FiBox /> : <FiCpu />}
+                        {asset.type === "model" ? <FiBox /> : asset.type === "tokenizer" ? <FiCpu /> : <FiActivity />}
                       </div>
                       <div className={styles.assetMain}>
                         <span className={styles.assetName}>{asset.name}</span>
                         <div className={styles.assetMeta}>
-                          <span>{asset.type === "model" ? "Model Architecture" : "Tokenizer Model"}</span>
+                          <span>
+                            {asset.subtitle ??
+                              (asset.type === "model"
+                                ? "Model Architecture"
+                                : asset.type === "tokenizer"
+                                  ? "Tokenizer Artifact"
+                                  : "Training Run")}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -228,12 +250,35 @@ export function WorkspaceAssetManager({
                        <div className={styles.assetAge}>
                         {formatAge(asset.createdAt)}
                       </div>
-                      <span className={`${styles.assetTag} ${asset.type === "tokenizer" || asset.status === "READY" ? getStatusClass(asset.status) : ""}`}>
-                        {asset.type === "model" ? formatBytes(asset.size ?? 0) : asset.status}
+                      <span className={`${styles.assetTag} ${asset.type !== "model" || asset.status === "READY" ? getStatusClass(asset.status) : ""}`}>
+                        {asset.type === "model"
+                          ? formatBytes(asset.size ?? 0)
+                          : asset.status ?? formatBytes(asset.size ?? 0)}
                       </span>
                     </div>
 
                     <div className={styles.assetActions} onClick={(e) => e.stopPropagation()}>
+                      {asset.type === "model" && onUseAsModel ? (
+                        <button
+                          type="button"
+                          className={`${styles.assetSelectButton} ${selectedModelId === asset.id ? styles.assetSelectButtonActive : ""}`}
+                          onClick={() => onUseAsModel(asset)}
+                        >
+                          {selectedModelId === asset.id ? "Model selected" : "Use as model"}
+                        </button>
+                      ) : null}
+
+                      {asset.type === "tokenizer" && onUseAsTokenizer ? (
+                        <button
+                          type="button"
+                          className={`${styles.assetSelectButton} ${selectedTokenizerId === asset.id ? styles.assetSelectButtonActive : ""}`}
+                          onClick={() => onUseAsTokenizer(asset)}
+                          disabled={asset.status !== "COMPLETED"}
+                        >
+                          {selectedTokenizerId === asset.id ? "Tokenizer selected" : "Use as tokenizer"}
+                        </button>
+                      ) : null}
+
                       {asset.downloadUrl ? (
                         <a
                           href={asset.downloadUrl}
@@ -291,6 +336,18 @@ export function WorkspaceAssetManager({
                       <h4 className={styles.emptyActionTitle}>Train Tokenizer</h4>
                       <p className={styles.emptyActionText}>
                         Build a custom vocabulary for your training data.
+                      </p>
+                    </div>
+                    <FiArrowRight style={{ marginTop: "auto", fontSize: "1.2rem", opacity: 0.4 }} />
+                  </Link>
+                  <Link href="/training" className={styles.emptyActionCard}>
+                    <div className={styles.emptyActionIcon}>
+                      <FiActivity />
+                    </div>
+                    <div className={styles.emptyActionContent}>
+                      <h4 className={styles.emptyActionTitle}>Launch Training</h4>
+                      <p className={styles.emptyActionText}>
+                        Validate a full run and monitor live metrics, logs, and checkpoints.
                       </p>
                     </div>
                     <FiArrowRight style={{ marginTop: "auto", fontSize: "1.2rem", opacity: 0.4 }} />

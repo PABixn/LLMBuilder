@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 from datetime import datetime, timezone
 import importlib
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -15,10 +16,113 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 MODEL_TEMPLATE_PATH = REPO_ROOT / "model" / "gpt2_config.json"
 
 
+class FakeProcess:
+    def __init__(self, pid: int = 43210) -> None:
+        self.pid = pid
+        self._returncode: int | None = None
+
+    def poll(self) -> int | None:
+        return self._returncode
+
+    def terminate(self) -> None:
+        self._returncode = 2
+
+
 def _load_app_module() -> object:
     import app.main as main_module
 
     return importlib.reload(main_module)
+
+
+def _small_model_config(vocab_size: int) -> dict[str, object]:
+    return {
+        "context_length": 16,
+        "vocab_size": vocab_size,
+        "n_embd": 8,
+        "weight_tying": True,
+        "blocks": [
+            {
+                "components": [
+                    {"norm": {"type": "layernorm"}},
+                    {"attention": {"n_head": 2, "n_kv_head": 2}},
+                    {"norm": {"type": "layernorm"}},
+                    {
+                        "mlp": {
+                            "multiplier": 2,
+                            "sequence": [
+                                {"linear": {"bias": True}},
+                                {"activation": {"type": "relu"}},
+                                {"linear": {"bias": True}},
+                            ],
+                        }
+                    },
+                ]
+            }
+        ],
+    }
+
+
+def _training_payload(local_dataset_path: Path) -> dict[str, object]:
+    return {
+        "training_config": {
+            "max_steps": 6,
+            "total_batch_size": 32,
+            "seq_len": 8,
+            "sample_every": 3,
+            "sampler": {
+                "prompts": [
+                    {
+                        "prompt": "hello",
+                        "max_tokens": 4,
+                        "temperature": 0.5,
+                        "top_k": 2,
+                    }
+                ]
+            },
+            "save_every": 3,
+            "optimizer": {
+                "lr": 0.001,
+                "weight_decay": 0.01,
+                "betas": [0.9, 0.95],
+                "eps": 1e-8,
+            },
+            "lr_scheduler": {
+                "type": "sequential",
+                "schedulers": [
+                    {
+                        "type": "linear",
+                        "steps": 2,
+                        "start_factor": 0.2,
+                        "end_factor": 1.0,
+                    },
+                    {
+                        "type": "cosine_annealing",
+                        "steps": 4,
+                        "eta_min": 1e-5,
+                    },
+                ],
+            },
+        },
+        "dataloader_config": {
+            "datasets": [
+                {
+                    "name": "text",
+                    "data_files": {"train": str(local_dataset_path)},
+                    "split": "train",
+                    "text_columns": ["text"],
+                    "weight": 1.0,
+                    "streaming": True,
+                }
+            ],
+            "add_eos": True,
+            "eos_token": "<|endoftext|>",
+            "drop_last": True,
+            "mixing": {
+                "seed": 42,
+                "exhausted_policy": "stop",
+            },
+        },
+    }
 
 
 def test_health_and_static_fallback(monkeypatch, tmp_path: Path) -> None:
@@ -48,6 +152,9 @@ def test_health_and_static_fallback(monkeypatch, tmp_path: Path) -> None:
         tokenizer_health = client.get("/api/v1/tokenizer/health")
         assert tokenizer_health.status_code == 200
         assert tokenizer_health.json() == {"ok": True}
+        training_health = client.get("/api/v1/training/health")
+        assert training_health.status_code == 200
+        assert training_health.json() == {"ok": True}
 
         index = client.get("/")
         assert index.status_code == 200
@@ -110,6 +217,289 @@ def test_tokenizer_endpoints_validate_and_file_stats(monkeypatch, tmp_path: Path
         assert stats_body["file_name"] == sample_file.name
         assert stats_body["size_chars"] == len(content)
         assert stats_body["size_bytes"] == len(content.encode("utf-8"))
+
+
+def test_training_endpoints_validate_and_preflight(monkeypatch, tmp_path: Path) -> None:
+    from app.tokenizer_models import JobStatus
+    from app.tokenizer_storage import StoredJob
+    from tokenizers import Tokenizer
+    from tokenizers.models import WordLevel
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    local_dataset = data_dir / "datasets" / "train.txt"
+    local_dataset.parent.mkdir(parents=True, exist_ok=True)
+    local_dataset.write_text("hello world\nhello again\n", encoding="utf-8")
+
+    tokenizer_output = data_dir / "artifacts" / "tokenizers"
+    tokenizer_output.mkdir(parents=True, exist_ok=True)
+    tokenizer_path = tokenizer_output / "tiny-tokenizer.json"
+    tokenizer = Tokenizer(WordLevel({"<|endoftext|>": 0, "hello": 1, "world": 2}, unk_token="<|endoftext|>"))
+    tokenizer.save(str(tokenizer_path))
+
+    monkeypatch.setenv("LLM_STUDIO_DATA_DIR", str(data_dir))
+    config.reset_settings_cache()
+    module = _load_app_module()
+    payload = _training_payload(local_dataset)
+
+    with TestClient(module.app) as client:
+        store = module.app.state.tokenizer_store
+        store.create_job(
+            StoredJob(
+                id="completed-tokenizer",
+                status=JobStatus.completed,
+                stage="Completed",
+                progress=1.0,
+                created_at=datetime.now(timezone.utc),
+                started_at=datetime.now(timezone.utc),
+                finished_at=datetime.now(timezone.utc),
+                tokenizer_config={"name": "tiny-tokenizer"},
+                dataloader_config={"source": "local"},
+                evaluation_thresholds=[5],
+                evaluation_text_path="__training_dataset__",
+                artifact_file=tokenizer_path.name,
+                artifact_path=str(tokenizer_path),
+                stats=None,
+                error=None,
+            )
+        )
+
+        project = client.post(
+            "/api/v1/projects",
+            json={"name": "tiny-model", "model_config": _small_model_config(vocab_size=3)},
+        )
+        assert project.status_code == 201
+        project_id = project.json()["id"]
+
+        templates = client.get("/api/v1/training/config/templates")
+        assert templates.status_code == 200
+        templates_body = templates.json()
+        assert "training_config_template" in templates_body
+        assert "dataloader_config_template" in templates_body
+
+        schemas = client.get("/api/v1/training/config/schemas")
+        assert schemas.status_code == 200
+        schemas_body = schemas.json()
+        assert "training_config_schema" in schemas_body
+        assert "dataloader_schema" in schemas_body
+
+        validate_training = client.post(
+            "/api/v1/training/validate/training-config",
+            json={"config": payload["training_config"]},
+        )
+        assert validate_training.status_code == 200
+        assert validate_training.json()["valid"] is True
+
+        validate_dataloader = client.post(
+            "/api/v1/training/validate/dataloader",
+            json={"config": payload["dataloader_config"]},
+        )
+        assert validate_dataloader.status_code == 200
+        assert validate_dataloader.json()["valid"] is True
+
+        preflight = client.post(
+            "/api/v1/training/validate/preflight",
+            json={
+                "project_id": project_id,
+                "tokenizer_job_id": "completed-tokenizer",
+                **payload,
+            },
+        )
+        assert preflight.status_code == 200
+        preflight_body = preflight.json()
+        assert preflight_body["valid"] is True
+        assert preflight_body["compatibility"]["tokenizer_vocab_size"] == 3
+        assert preflight_body["compatibility"]["model_vocab_size"] == 3
+        assert preflight_body["derived_runtime"]["micro_batch_size"] > 0
+        assert preflight_body["memory_estimate"]["max_batch_size"] > 0
+
+
+def test_training_job_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
+    from app.tokenizer_models import JobStatus
+    from app.tokenizer_storage import StoredJob
+    from tokenizers import Tokenizer
+    from tokenizers.models import WordLevel
+
+    data_dir = tmp_path / "data"
+    local_dataset = data_dir / "datasets" / "train.txt"
+    local_dataset.parent.mkdir(parents=True, exist_ok=True)
+    local_dataset.write_text("hello world\nhello again\n", encoding="utf-8")
+
+    tokenizer_output = data_dir / "artifacts" / "tokenizers"
+    tokenizer_output.mkdir(parents=True, exist_ok=True)
+    tokenizer_path = tokenizer_output / "tiny-tokenizer.json"
+    tokenizer = Tokenizer(WordLevel({"<|endoftext|>": 0, "hello": 1, "world": 2}, unk_token="<|endoftext|>"))
+    tokenizer.save(str(tokenizer_path))
+
+    monkeypatch.setenv("LLM_STUDIO_DATA_DIR", str(data_dir))
+    config.reset_settings_cache()
+    module = _load_app_module()
+    payload = _training_payload(local_dataset)
+
+    with TestClient(module.app) as client:
+        tokenizer_store = module.app.state.tokenizer_store
+        tokenizer_store.create_job(
+            StoredJob(
+                id="completed-tokenizer",
+                status=JobStatus.completed,
+                stage="Completed",
+                progress=1.0,
+                created_at=datetime.now(timezone.utc),
+                started_at=datetime.now(timezone.utc),
+                finished_at=datetime.now(timezone.utc),
+                tokenizer_config={"name": "tiny-tokenizer"},
+                dataloader_config={"source": "local"},
+                evaluation_thresholds=[5],
+                evaluation_text_path="__training_dataset__",
+                artifact_file=tokenizer_path.name,
+                artifact_path=str(tokenizer_path),
+                stats=None,
+                error=None,
+            )
+        )
+
+        project = client.post(
+            "/api/v1/projects",
+            json={"name": "tiny-model", "model_config": _small_model_config(vocab_size=3)},
+        )
+        assert project.status_code == 201
+        project_id = project.json()["id"]
+
+        manager = module.app.state.training_jobs
+
+        def fake_spawn_process(**kwargs):
+            output_dir = kwargs["output_dir"]
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "runtime_state.json").write_text(
+                json.dumps(
+                    {
+                        "job_id": kwargs["job_id"],
+                        "status": "running",
+                        "state": "training",
+                        "stage": "Training step 3 / 6",
+                        "progress": 0.5,
+                        "started_at": datetime.now(timezone.utc).isoformat(),
+                        "last_step": 3,
+                        "max_steps": 6,
+                        "latest_loss": 1.23,
+                        "latest_grad_norm": 0.45,
+                        "latest_lr": 0.001,
+                        "latest_tokens_per_sec": 512.0,
+                        "checkpoint_count": 1,
+                        "sample_count": 1,
+                        "resolved_runtime": {
+                            "device": "cpu",
+                            "device_type": "cpu",
+                            "micro_batch_size": 4,
+                            "tokens_per_micro_step": 32,
+                            "tokens_per_world_step": 32,
+                            "grad_accum_steps": 1,
+                            "max_batch_size_from_total": 4,
+                            "max_batch_size_from_memory": 8,
+                            "max_allowed_batch_size": 4,
+                            "ddp": False,
+                            "ddp_rank": 0,
+                            "ddp_world_size": 1,
+                        },
+                        "memory_estimate": {"max_batch_size": 8},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (output_dir / "metadata.json").write_text(
+                json.dumps(
+                    {
+                        "job_id": kwargs["job_id"],
+                        "status": "running",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (output_dir / "stats.jsonl").write_text(
+                json.dumps({"step": 1, "loss": 2.0, "norm": 0.8, "dt": 0.1, "tok_per_sec": 256, "lr": 0.001})
+                + "\n"
+                + json.dumps({"step": 3, "loss": 1.23, "norm": 0.45, "dt": 0.08, "tok_per_sec": 512, "lr": 0.001})
+                + "\n",
+                encoding="utf-8",
+            )
+            (output_dir / "samples.jsonl").write_text(
+                json.dumps(
+                    {
+                        "step": 3,
+                        "samples": [
+                            {"index": 0, "prompt": "hello", "text": "hello world"},
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (output_dir / "stdout.log").write_text("training started\ntraining running\n", encoding="utf-8")
+            (output_dir / "stderr.log").write_text("", encoding="utf-8")
+            checkpoint_dir = output_dir / "checkpoints" / "3"
+            checkpoint_dir.mkdir(parents=True, exist_ok=True)
+            (checkpoint_dir / "model-3.pt").write_text("weights", encoding="utf-8")
+            (checkpoint_dir / "meta-3.json").write_text("{}", encoding="utf-8")
+            return FakeProcess()
+
+        manager._spawn_process = fake_spawn_process
+
+        create = client.post(
+            "/api/v1/training/jobs",
+            json={
+                "name": "run-one",
+                "project_id": project_id,
+                "tokenizer_job_id": "completed-tokenizer",
+                **payload,
+            },
+        )
+        assert create.status_code == 201
+        created = create.json()
+        job_id = created["id"]
+        assert created["name"] == "run-one"
+        assert created["project_id"] == project_id
+        assert created["tokenizer_job_id"] == "completed-tokenizer"
+        assert created["latest_loss"] == 1.23
+        assert created["checkpoint_count"] == 1
+
+        listing = client.get("/api/v1/training/jobs")
+        assert listing.status_code == 200
+        listing_jobs = listing.json()["jobs"]
+        assert any(job["id"] == job_id for job in listing_jobs)
+
+        detail = client.get(f"/api/v1/training/jobs/{job_id}")
+        assert detail.status_code == 200
+        assert detail.json()["last_step"] == 3
+
+        metrics = client.get(f"/api/v1/training/jobs/{job_id}/metrics")
+        assert metrics.status_code == 200
+        assert len(metrics.json()["metrics"]) == 2
+
+        samples = client.get(f"/api/v1/training/jobs/{job_id}/samples")
+        assert samples.status_code == 200
+        assert samples.json()["samples"][0]["samples"][0]["text"] == "hello world"
+
+        logs = client.get(f"/api/v1/training/jobs/{job_id}/logs")
+        assert logs.status_code == 200
+        assert "training running" in logs.json()["stdout_lines"][-1]
+
+        checkpoints = client.get(f"/api/v1/training/jobs/{job_id}/checkpoints")
+        assert checkpoints.status_code == 200
+        assert checkpoints.json()["checkpoints"][0]["step"] == 3
+
+        stop = client.post(f"/api/v1/training/jobs/{job_id}/stop")
+        assert stop.status_code == 200
+        assert stop.json()["status"] == "cancelled"
+
+        artifact = client.get(f"/api/v1/training/jobs/{job_id}/artifact")
+        assert artifact.status_code == 200
+        assert artifact.headers["content-type"] == "application/zip"
+
+        deleted = client.delete(f"/api/v1/training/jobs/{job_id}")
+        assert deleted.status_code == 204
+
+        missing = client.get(f"/api/v1/training/jobs/{job_id}")
+        assert missing.status_code == 404
 
 
 def test_validate_model_endpoint_reports_semantic_issues(monkeypatch, tmp_path: Path) -> None:

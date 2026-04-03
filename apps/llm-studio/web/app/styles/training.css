@@ -1,0 +1,405 @@
+.trainingPage {
+  padding-bottom: 72px;
+}
+
+.trainingHero {
+  display: grid;
+  gap: 16px;
+}
+
+.trainingHeroActions {
+  align-self: flex-start;
+}
+
+.trainingHeroBody {
+  display: grid;
+  gap: 14px;
+}
+
+.trainingPairGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trainingAssetCard {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--surface), var(--surface-raised));
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+  min-height: 110px;
+}
+
+.trainingAssetLabel,
+.trainingWorkflowStep {
+  font-size: 0.71rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 760;
+  color: var(--text-muted);
+}
+
+.trainingAssetName,
+.trainingWorkflowTitle {
+  font-size: 0.96rem;
+  font-weight: 760;
+  letter-spacing: -0.02em;
+  word-break: break-word;
+}
+
+.trainingAssetMeta,
+.trainingWorkflowMeta,
+.trainingIssueMeta,
+.trainingRecentMeta,
+.trainingCheckpointMeta,
+.trainingSampleMeta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.42;
+}
+
+.trainingWorkflowGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.trainingWorkflowCard {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.trainingWorkflowCard.tone-good {
+  border-color: rgba(24, 114, 76, 0.24);
+  background: linear-gradient(180deg, var(--ok-soft), var(--surface-soft));
+}
+
+.trainingWorkflowCard.tone-warn {
+  border-color: rgba(168, 93, 8, 0.22);
+  background: linear-gradient(180deg, var(--warn-soft), var(--surface-soft));
+}
+
+.trainingWorkflowTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trainingResultsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.95fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.trainingPanelStack {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.trainingProgress {
+  display: grid;
+  gap: 8px;
+}
+
+.trainingProgressBar {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+}
+
+.trainingProgressBar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 40%, white));
+}
+
+.trainingInlineMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.trainingIssueList,
+.trainingFixList,
+.trainingPromptList,
+.trainingDatasetList,
+.trainingRecentList,
+.trainingCheckpointList,
+.trainingSampleList,
+.trainingSettingsStack {
+  display: grid;
+  gap: 12px;
+}
+
+.trainingIssueCard,
+.trainingFixCard,
+.trainingPromptCard,
+.trainingDatasetCard,
+.trainingRecentCard,
+.trainingCheckpointCard,
+.trainingSampleCard,
+.trainingSettingsSection {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.trainingIssueCard.tone-error {
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+  background: linear-gradient(180deg, var(--danger-soft), var(--surface-soft));
+}
+
+.trainingIssueCard.tone-warning {
+  border-color: color-mix(in srgb, var(--warn) 28%, transparent);
+  background: linear-gradient(180deg, var(--warn-soft), var(--surface-soft));
+}
+
+.trainingRecentCard {
+  transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+
+.trainingRecentCard:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  box-shadow: 0 12px 24px rgba(9, 25, 49, 0.08);
+}
+
+.trainingRecentCard.is-active {
+  border-color: color-mix(in srgb, var(--brand) 36%, var(--line));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand-soft) 45%, var(--surface)), var(--surface-soft));
+  box-shadow: 0 12px 24px rgba(9, 25, 49, 0.1);
+}
+
+.trainingIssueTitle,
+.trainingPromptTitle,
+.trainingDatasetTitle,
+.trainingCheckpointTitle,
+.trainingRecentTitle,
+.trainingSampleTitle {
+  font-size: 0.88rem;
+  font-weight: 760;
+  letter-spacing: -0.01em;
+}
+
+.trainingFixActions,
+.trainingRecentActions,
+.trainingDatasetActions,
+.trainingPromptActions,
+.trainingCheckpointActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trainingCodeBlock,
+.trainingLogBox {
+  margin: 0;
+  border-radius: 16px;
+  border: 1px solid var(--pre-line);
+  background: var(--pre-bg);
+  color: var(--pre-text);
+  padding: 12px;
+  font-size: 0.78rem;
+  line-height: 1.48;
+  overflow: auto;
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  white-space: pre-wrap;
+}
+
+.trainingChartGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trainingChartCard {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--surface-raised));
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.trainingChartHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.trainingChartHead strong {
+  font-size: 0.84rem;
+  font-weight: 760;
+}
+
+.trainingChartHead span {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.trainingChartSvg {
+  width: 100%;
+  height: 112px;
+  display: block;
+}
+
+.trainingSettingsStudio {
+  display: grid;
+  gap: 16px;
+}
+
+.trainingSettingsSectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.trainingSettingsSectionHead h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 760;
+  letter-spacing: -0.015em;
+}
+
+.trainingSettingsSectionCopy {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  max-width: 70ch;
+}
+
+.trainingAdvancedDisclosure {
+  margin-top: 0;
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+}
+
+.trainingJsonGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trainingToastStack {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  gap: 10px;
+  z-index: 50;
+}
+
+.trainingToast {
+  min-width: min(360px, calc(100vw - 36px));
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.trainingToast.tone-success {
+  border-color: color-mix(in srgb, var(--ok) 28%, transparent);
+}
+
+.trainingToast.tone-error {
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+}
+
+.trainingToastTitle {
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.trainingToastBody {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.trainingEmpty {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.trainingEmptyAction {
+  margin-top: 10px;
+}
+
+.trainingDualLog {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trainingSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trainingSectionHeader h3,
+.trainingSectionHeader h4 {
+  margin: 0;
+}
+
+@media (max-width: 1180px) {
+  .trainingResultsGrid,
+  .trainingJsonGrid,
+  .trainingDualLog {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .trainingPairGrid,
+  .trainingChartGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .trainingHeroActions,
+  .trainingHeroActions > .buttonGhost,
+  .trainingHeroActions > .buttonPrimary,
+  .trainingHeroActions > .buttonDanger {
+    width: 100%;
+  }
+
+  .trainingHeroActions > .buttonGhost,
+  .trainingHeroActions > .buttonPrimary,
+  .trainingHeroActions > .buttonDanger {
+    justify-content: center;
+  }
+
+  .trainingWorkflowTop,
+  .trainingSectionHeader,
+  .trainingSettingsSectionHead {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

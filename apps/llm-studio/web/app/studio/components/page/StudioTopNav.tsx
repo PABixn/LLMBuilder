@@ -26,6 +26,9 @@ export function StudioTopNav({ theme, setTheme }: StudioTopNavProps) {
         <Link className="studioNavLink" href="/tokenizer">
           Tokenizer Studio
         </Link>
+        <Link className="studioNavLink" href="/training">
+          Training
+        </Link>
       </div>
       <button
         type="button"

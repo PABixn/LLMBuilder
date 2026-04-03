@@ -9,6 +9,7 @@ from pathlib import Path
 APP_NAME = "LLMStudio"
 API_ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_DIR = API_ROOT / "templates"
+REPO_ROOT = Path(__file__).resolve().parents[4]
 
 MODEL_CONFIG_TEMPLATE_PATH = TEMPLATE_DIR / "model_config.json"
 MODEL_SCHEMA_PATH = TEMPLATE_DIR / "model_config_schema.json"
@@ -16,6 +17,10 @@ TOKENIZER_CONFIG_TEMPLATE_PATH = TEMPLATE_DIR / "tok_config.json"
 DATALOADER_CONFIG_TEMPLATE_PATH = TEMPLATE_DIR / "dataloader_config.json"
 TOKENIZER_SCHEMA_PATH = TEMPLATE_DIR / "tokenizer_config_schema.json"
 DATALOADER_SCHEMA_PATH = TEMPLATE_DIR / "dataloader_config_schema.json"
+TRAINING_LOOP_TEMPLATE_PATH = REPO_ROOT / "training" / "training_config.json"
+TRAINING_LOOP_SCHEMA_PATH = REPO_ROOT / "training" / "training_config_schema.json"
+TRAINING_DATALOADER_TEMPLATE_PATH = REPO_ROOT / "training" / "dataloader_config.json"
+TRAINING_DATALOADER_SCHEMA_PATH = REPO_ROOT / "training" / "dataloader_config_schema.json"
 
 
 @dataclass(frozen=True)
@@ -31,6 +36,10 @@ class RuntimeSettings:
     tokenizer_hf_datasets_cache: Path
     tokenizer_max_workers: int
     tokenizer_database_url: str
+    training_jobs_dir: Path
+    training_exports_dir: Path
+    training_database_path: Path
+    training_database_url: str
     host: str
     port: int
     serve_web: bool
@@ -105,12 +114,34 @@ def get_settings() -> RuntimeSettings:
         preferred_var_name="LLM_STUDIO_TOKENIZER_HF_DATASETS_CACHE",
         fallback_var_name="TOKENIZER_STUDIO_HF_DATASETS_CACHE",
         default_path=tokenizer_hf_home / "datasets",
-        relative_base=tokenizer_hf_home,
+        relative_base=data_dir,
     )
     tokenizer_database_url = _read_first_non_empty_env(
         "LLM_STUDIO_TOKENIZER_DATABASE_URL",
         "TOKENIZER_STUDIO_DATABASE_URL",
     ) or f"sqlite:///{tokenizer_database_path.resolve()}"
+    training_jobs_dir = _resolve_compat_env_path(
+        preferred_var_name="LLM_STUDIO_TRAINING_JOBS_DIR",
+        fallback_var_name="TOKENIZER_STUDIO_TRAINING_JOBS_DIR",
+        default_path=data_dir / "training" / "jobs",
+        relative_base=data_dir,
+    )
+    training_exports_dir = _resolve_compat_env_path(
+        preferred_var_name="LLM_STUDIO_TRAINING_EXPORT_DIR",
+        fallback_var_name="TOKENIZER_STUDIO_TRAINING_EXPORT_DIR",
+        default_path=data_dir / "training" / "exports",
+        relative_base=data_dir,
+    )
+    training_database_path = _resolve_compat_env_path(
+        preferred_var_name="LLM_STUDIO_TRAINING_DB_PATH",
+        fallback_var_name="TOKENIZER_STUDIO_TRAINING_DB_PATH",
+        default_path=data_dir / "db" / "training_studio.db",
+        relative_base=data_dir,
+    )
+    training_database_url = _read_first_non_empty_env(
+        "LLM_STUDIO_TRAINING_DATABASE_URL",
+        "TOKENIZER_STUDIO_TRAINING_DATABASE_URL",
+    ) or f"sqlite:///{training_database_path.resolve()}"
 
     host = _read_first_non_empty_env("LLM_STUDIO_HOST", "TOKENIZER_STUDIO_HOST") or "127.0.0.1"
     port = _read_port(("LLM_STUDIO_PORT", "TOKENIZER_STUDIO_PORT"), default=8000)
@@ -136,6 +167,10 @@ def get_settings() -> RuntimeSettings:
         tokenizer_hf_datasets_cache=tokenizer_hf_datasets_cache,
         tokenizer_max_workers=tokenizer_max_workers,
         tokenizer_database_url=tokenizer_database_url,
+        training_jobs_dir=training_jobs_dir,
+        training_exports_dir=training_exports_dir,
+        training_database_path=training_database_path,
+        training_database_url=training_database_url,
         host=host,
         port=port,
         serve_web=serve_web,
@@ -158,6 +193,9 @@ def ensure_runtime_directories(settings: RuntimeSettings | None = None) -> None:
         selected.tokenizer_logs_dir,
         selected.tokenizer_hf_home,
         selected.tokenizer_hf_datasets_cache,
+        selected.training_jobs_dir,
+        selected.training_exports_dir,
+        selected.training_database_path.parent,
     ):
         path.mkdir(parents=True, exist_ok=True)
 
@@ -183,6 +221,18 @@ def tokenizer_database_url() -> str:
 
 def tokenizer_max_job_workers() -> int:
     return get_settings().tokenizer_max_workers
+
+
+def training_jobs_dir() -> Path:
+    return get_settings().training_jobs_dir
+
+
+def training_exports_dir() -> Path:
+    return get_settings().training_exports_dir
+
+
+def training_database_url() -> str:
+    return get_settings().training_database_url
 
 
 def _resolve_env_path(var_name: str, default_path: Path, *, relative_base: Path) -> Path:

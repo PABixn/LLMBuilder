@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   FiActivity,
   FiArchive,
   FiCpu,
   FiFolder,
+  FiPlay,
   FiMoon,
   FiRefreshCw,
   FiSun,
@@ -14,51 +16,44 @@ import {
 } from "react-icons/fi";
 
 import { WorkspaceAssetManager } from "./components/WorkspaceAssetManager";
+import { useThemeMode } from "../lib/theme";
 import { formatAge, formatBytes, useWorkspaceAssetInventory } from "../lib/workspaceAssets";
 import styles from "./workspace-home.module.css";
 
-type ThemeMode = "white" | "dark";
-
-const THEME_STORAGE_KEY = "llm-studio-theme";
 const AUTO_REFRESH_SECONDS = 30;
 
-function readStoredTheme(): ThemeMode {
-  if (typeof window === "undefined") {
-    return "white";
-  }
-  try {
-    const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (raw === "dark" || raw === "white") {
-      return raw;
-    }
-  } catch {
-    // Ignore local storage failures in local workspace mode.
-  }
-  return "white";
-}
-
 export default function WorkspaceHomePage() {
-  const [theme, setTheme] = useState<ThemeMode>("white");
-  const hasHydratedTheme = useRef(false);
+  const router = useRouter();
+  const [theme, setTheme] = useThemeMode();
+  const [selectedTrainingModelId, setSelectedTrainingModelId] = useState<string | null>(null);
+  const [selectedTrainingTokenizerId, setSelectedTrainingTokenizerId] = useState<string | null>(null);
   const inventory = useWorkspaceAssetInventory({
     autoRefreshMs: AUTO_REFRESH_SECONDS * 1000,
   });
   const showInitialWorkspaceLoading = inventory.loading && inventory.lastRefreshedAt === null;
 
-  useEffect(() => {
-    setTheme(readStoredTheme());
-  }, []);
-
-  useEffect(() => {
-    if (!hasHydratedTheme.current) {
-      hasHydratedTheme.current = true;
-      return;
-    }
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
-  }, [theme]);
-
   const counts = inventory.counts;
+  const selectedTrainingModel = useMemo(
+    () =>
+      inventory.assets.find(
+        (asset) => asset.type === "model" && asset.id === selectedTrainingModelId
+      ) ?? null,
+    [inventory.assets, selectedTrainingModelId]
+  );
+  const selectedTrainingTokenizer = useMemo(
+    () =>
+      inventory.assets.find(
+        (asset) => asset.type === "tokenizer" && asset.id === selectedTrainingTokenizerId
+      ) ?? null,
+    [inventory.assets, selectedTrainingTokenizerId]
+  );
+  const trainingLaunchReady =
+    selectedTrainingModel !== null &&
+    selectedTrainingTokenizer !== null &&
+    selectedTrainingTokenizer.status === "COMPLETED";
+
+  const activeCount = counts.tokenizerRunningCount + counts.trainingRunningCount;
+  const failedCount = counts.tokenizerFailedCount + counts.trainingFailedCount;
 
   return (
     <main className={styles.homeRoot}>
@@ -76,6 +71,9 @@ export default function WorkspaceHomePage() {
           </Link>
           <Link className="studioNavLink" href="/tokenizer">
             Tokenizer Studio
+          </Link>
+          <Link className="studioNavLink" href="/training">
+            Training
           </Link>
         </div>
         <button
@@ -115,6 +113,9 @@ export default function WorkspaceHomePage() {
           <Link href="/tokenizer" className={styles.secondaryButton}>
             <FiCpu /> Tokenizer Studio
           </Link>
+          <Link href="/training" className={styles.secondaryButton}>
+            <FiActivity /> LLM Training
+          </Link>
         </div>
       </header>
 
@@ -152,30 +153,105 @@ export default function WorkspaceHomePage() {
             <FiActivity />
           </div>
           <div className={styles.statContent}>
-            <span className={styles.statLabel}>Active</span>
+            <span className={styles.statLabel}>Training Runs</span>
             <span className={styles.statValue}>
-              {showInitialWorkspaceLoading ? "..." : counts.tokenizerRunningCount}
+              {showInitialWorkspaceLoading ? "..." : counts.trainingCompletedCount}
             </span>
             <span className={styles.statDetail}>
-              {showInitialWorkspaceLoading ? "Checking jobs" : "Running"}
+              {showInitialWorkspaceLoading ? "Checking jobs" : "Completed"}
             </span>
           </div>
         </div>
         <div
           className={`${styles.statCard} ${
-            counts.tokenizerFailedCount > 0 ? styles.toneError : ""
+            activeCount > 0 ? styles.toneWarn : ""
+          }`}
+        >
+          <div className={styles.statIcon}>
+            <FiActivity />
+          </div>
+          <div className={styles.statContent}>
+            <span className={styles.statLabel}>Active</span>
+            <span className={styles.statValue}>
+              {showInitialWorkspaceLoading ? "..." : activeCount}
+            </span>
+            <span className={styles.statDetail}>
+              {showInitialWorkspaceLoading ? "Syncing state" : "Tokenizer + training jobs"}
+            </span>
+          </div>
+        </div>
+        <div
+          className={`${styles.statCard} ${
+            failedCount > 0 ? styles.toneError : ""
           }`}
         >
           <div className={styles.statIcon}>
             <FiRefreshCw />
           </div>
           <div className={styles.statContent}>
-            <span className={styles.statLabel}>Failed</span>
+            <span className={styles.statLabel}>Needs Attention</span>
             <span className={styles.statValue}>
-              {showInitialWorkspaceLoading ? "..." : counts.tokenizerFailedCount}
+              {showInitialWorkspaceLoading ? "..." : failedCount}
             </span>
             <span className={styles.statDetail}>
-              {showInitialWorkspaceLoading ? "Syncing state" : "Attention required"}
+              {showInitialWorkspaceLoading ? "Syncing state" : "Failed or cancelled runs"}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.launchpadCard}>
+        <div className={styles.launchpadHeader}>
+          <div className={styles.sectionLead}>
+            <h2 className={styles.sectionTitle}>Training Launchpad</h2>
+            <p className={styles.sectionCopy}>
+              Pair one saved model config with one completed tokenizer artifact, then open the
+              training page with both already selected.
+            </p>
+          </div>
+          <div className={styles.launchpadActions}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => {
+                setSelectedTrainingModelId(null);
+                setSelectedTrainingTokenizerId(null);
+              }}
+              disabled={!selectedTrainingModel && !selectedTrainingTokenizer}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={() => {
+                if (!trainingLaunchReady || !selectedTrainingModel || !selectedTrainingTokenizer) {
+                  return;
+                }
+                router.push(
+                  `/training?project=${selectedTrainingModel.id}&tokenizerJob=${selectedTrainingTokenizer.id}`
+                );
+              }}
+              disabled={!trainingLaunchReady}
+            >
+              <FiPlay /> Open Training Page
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.launchpadGrid}>
+          <div className={styles.launchpadSlot}>
+            <span className={styles.launchpadLabel}>Selected model</span>
+            <strong>{selectedTrainingModel?.name ?? "Choose a model config below"}</strong>
+            <span>{selectedTrainingModel?.fileName ?? "Saved model projects appear in Workspace Assets."}</span>
+          </div>
+          <div className={styles.launchpadSlot}>
+            <span className={styles.launchpadLabel}>Selected tokenizer</span>
+            <strong>{selectedTrainingTokenizer?.name ?? "Choose a completed tokenizer below"}</strong>
+            <span>
+              {selectedTrainingTokenizer
+                ? `${selectedTrainingTokenizer.status ?? "UNKNOWN"} • ${selectedTrainingTokenizer.fileName ?? "artifact"}`
+                : "Only completed tokenizer jobs can launch training."}
             </span>
           </div>
         </div>
@@ -184,7 +260,11 @@ export default function WorkspaceHomePage() {
       <WorkspaceAssetManager
         inventory={inventory}
         title="Workspace Assets"
-        description="A unified manager for model configs and tokenizers across your workspace."
+        description="A unified manager for model configs, tokenizers, and model-training runs across your workspace."
+        selectedModelId={selectedTrainingModelId}
+        selectedTokenizerId={selectedTrainingTokenizerId}
+        onUseAsModel={(asset) => setSelectedTrainingModelId(asset.id)}
+        onUseAsTokenizer={(asset) => setSelectedTrainingTokenizerId(asset.id)}
       />
 
       {showInitialWorkspaceLoading || inventory.lastRefreshedAt ? (

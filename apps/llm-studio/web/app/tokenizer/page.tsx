@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -34,6 +35,7 @@ import {
   defaultDataloaderConfig,
   defaultTokenizerConfig,
 } from "../../lib/tokenizerLegacyDefaults";
+import { useThemeMode } from "../../lib/theme";
 
 type TokenizerType = "bpe" | "wordpiece" | "unigram";
 type PreTokenizerType = "byte_level" | "whitespace" | "metaspace";
@@ -42,7 +44,6 @@ type BudgetUnit = "chars" | "bytes";
 type BudgetBehavior = "stop" | "truncate";
 type DatasetSourceMode = "local_file" | "streaming_hf";
 type FilterOperator = "==" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "not in";
-type ThemeMode = "white" | "dark";
 type SettingsCategory = "tokenizer" | "dataset" | "training";
 
 const FILTER_OPERATORS: FilterOperator[] = [
@@ -55,7 +56,6 @@ const FILTER_OPERATORS: FilterOperator[] = [
   "in",
   "not in",
 ];
-const THEME_STORAGE_KEY = "llm-studio-theme";
 const LEGACY_TOKENIZER_THEME_STORAGE_KEY = "tokenizer-studio-theme";
 const TOKENIZER_FORM_STORAGE_KEY = "tokenizer-studio-tokenizer-form";
 const DATASET_FORM_STORAGE_KEY = "tokenizer-studio-dataset-form";
@@ -232,10 +232,6 @@ function asBudgetBehavior(value: unknown): BudgetBehavior {
   return "truncate";
 }
 
-function asThemeMode(value: unknown): ThemeMode {
-  return value === "dark" ? "dark" : "white";
-}
-
 function makeStreamingDatasetEntry(
   value?: Partial<StreamingDatasetFormState>
 ): StreamingDatasetFormState {
@@ -300,18 +296,6 @@ function readStoredValue(key: string): string | null {
   } catch {
     return null;
   }
-}
-
-function readStoredThemeMode(): ThemeMode {
-  const globalTheme = readStoredValue(THEME_STORAGE_KEY);
-  if (globalTheme === "dark" || globalTheme === "white") {
-    return globalTheme;
-  }
-  const legacyTheme = readStoredValue(LEGACY_TOKENIZER_THEME_STORAGE_KEY);
-  if (legacyTheme === "dark" || legacyTheme === "white") {
-    return legacyTheme;
-  }
-  return "white";
 }
 
 function readStoredJson(key: string): unknown | null {
@@ -1447,7 +1431,7 @@ function JobBadge({ job }: { job: TrainingJob }) {
   return <span className={`jobBadge jobBadge-${tone}`}>{label}</span>;
 }
 
-export default function Home() {
+function TokenizerPageContent() {
   const searchParams = useSearchParams();
   const [tokenizerForm, setTokenizerForm] = useState<TokenizerFormState>(() =>
     tokenizerFormFromConfig(defaultTokenizerConfig)
@@ -1458,7 +1442,9 @@ export default function Home() {
   const [trainingForm, setTrainingForm] = useState<TrainingFormState>(() =>
     trainingFormFromConfig(defaultDataloaderConfig)
   );
-  const [themeMode, setThemeMode] = useState<ThemeMode>("white");
+  const [themeMode, setThemeMode] = useThemeMode({
+    legacyStorageKeys: [LEGACY_TOKENIZER_THEME_STORAGE_KEY],
+  });
 
   const [jobs, setJobs] = useState<TrainingJob[]>([]);
   const [hiddenRecentJobIds, setHiddenRecentJobIds] = useState<string[]>([]);
@@ -1494,7 +1480,6 @@ export default function Home() {
   const localTrainFileStatsPendingIdsRef = useRef<Set<string>>(new Set());
   const localTrainFileStatsFailedIdsRef = useRef<Set<string>>(new Set());
   const hasHydratedLocalStateRef = useRef(false);
-  const hasHydratedThemeRef = useRef(false);
   const settingsCategoryHighlightTimeoutRef = useRef<number | null>(null);
   const tokenizerAndTrainingPanelRef = useRef<HTMLDetailsElement | null>(null);
   const datasetPanelRef = useRef<HTMLDetailsElement | null>(null);
@@ -1587,8 +1572,6 @@ export default function Home() {
   }, [searchParams, activeJobId, notify]);
 
   useEffect(() => {
-    setThemeMode(readStoredThemeMode());
-
     const storedTokenizerForm = readStoredJson(TOKENIZER_FORM_STORAGE_KEY);
     if (storedTokenizerForm !== null) {
       setTokenizerForm((previous) =>
@@ -1621,27 +1604,6 @@ export default function Home() {
 
     hasHydratedLocalStateRef.current = true;
     setHasHydratedLocalState(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hasHydratedThemeRef.current) {
-      hasHydratedThemeRef.current = true;
-      return;
-    }
-    document.documentElement.dataset.theme = themeMode;
-    writeStoredValue(THEME_STORAGE_KEY, themeMode);
-  }, [themeMode]);
-
-  useEffect(() => {
-    function handleStorageChange(event: StorageEvent): void {
-      if (event.key !== THEME_STORAGE_KEY || event.newValue === null) {
-        return;
-      }
-      setThemeMode(asThemeMode(event.newValue));
-    }
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   useEffect(() => {
@@ -2644,6 +2606,9 @@ export default function Home() {
           </Link>
           <Link className="studioNavLink" href="/tokenizer" aria-current="page">
             Tokenizer Studio
+          </Link>
+          <Link className="studioNavLink" href="/training">
+            Training
           </Link>
         </nav>
         <button
@@ -3813,5 +3778,13 @@ export default function Home() {
         ))}
       </aside>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <TokenizerPageContent />
+    </Suspense>
   );
 }

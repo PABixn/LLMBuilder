@@ -23,6 +23,10 @@ from .config import (
     DATALOADER_SCHEMA_PATH,
     MODEL_CONFIG_TEMPLATE_PATH,
     MODEL_SCHEMA_PATH,
+    TRAINING_DATALOADER_SCHEMA_PATH,
+    TRAINING_DATALOADER_TEMPLATE_PATH,
+    TRAINING_LOOP_SCHEMA_PATH,
+    TRAINING_LOOP_TEMPLATE_PATH,
     TOKENIZER_CONFIG_TEMPLATE_PATH,
     TOKENIZER_SCHEMA_PATH,
     apply_runtime_environment,
@@ -61,6 +65,23 @@ from .tokenizer_models import (
     ValidateConfigResponse,
 )
 from .tokenizer_storage import StudioStore as TokenizerStudioStore
+from .training_jobs import TrainingRunManager
+from .training_models import (
+    TrainingCheckpointsResponse,
+    TrainingConfigSchemasResponse,
+    TrainingConfigTemplatesResponse,
+    CreateTrainingJobRequest,
+    TrainingJobsListResponse as LLMTrainingJobsListResponse,
+    TrainingLogsResponse,
+    TrainingMetricsResponse,
+    TrainingPreflightRequest,
+    TrainingPreflightResponse,
+    TrainingSamplesResponse,
+    TrainingJobResponse as LLMTrainingJobResponse,
+    ValidateConfigRequest as TrainingValidateConfigRequest,
+    ValidateConfigResponse as TrainingValidateConfigResponse,
+)
+from .training_storage import TrainingStudioStore
 from .schemas import load_json, write_json
 
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
@@ -83,6 +104,8 @@ from model.model import (
 )
 from tokenizer.dataloader_config import DataloaderConfig
 from tokenizer.loader import TokenizerConfig
+from training.dataloader_config import TrainingDataloaderConfig
+from training.training_config import TrainingConfig
 
 _PROJECT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{6,64}$")
 _METADATA_FILE = "metadata.json"
@@ -112,7 +135,7 @@ class RuntimeTokenMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if not path.startswith("/api/v1"):
             return await call_next(request)
-        if path in {"/api/v1/health", "/api/v1/tokenizer/health"}:
+        if path in {"/api/v1/health", "/api/v1/tokenizer/health", "/api/v1/training/health"}:
             return await call_next(request)
 
         provided = (
@@ -131,16 +154,28 @@ async def lifespan(app: FastAPI):
     apply_runtime_environment(settings)
     ensure_runtime_directories(settings)
     tokenizer_store = TokenizerStudioStore()
+    training_store = TrainingStudioStore()
     tokenizer_store.initialize()
+    training_store.initialize()
     tokenizer_store.mark_incomplete_jobs_failed(
+        "Training was interrupted because the API restarted before completion."
+    )
+    training_store.mark_incomplete_jobs_failed(
         "Training was interrupted because the API restarted before completion."
     )
 
     app.state.settings = settings
     app.state.tokenizer_store = tokenizer_store
+    app.state.training_store = training_store
     app.state.tokenizer_jobs = TrainingJobManager(store=tokenizer_store)
+    app.state.training_jobs = TrainingRunManager(
+        store=training_store,
+        tokenizer_store=tokenizer_store,
+    )
     yield
+    app.state.training_jobs.shutdown()
     app.state.tokenizer_jobs.shutdown()
+    app.state.training_store.dispose()
     app.state.tokenizer_store.dispose()
 
 
@@ -166,6 +201,7 @@ app.add_middleware(
 
 api = APIRouter(prefix="/api/v1", tags=["llm-studio"])
 tokenizer_api = APIRouter(prefix="/api/v1/tokenizer", tags=["tokenizer-workspace"])
+training_api = APIRouter(prefix="/api/v1/training", tags=["training-workspace"])
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
@@ -422,6 +458,155 @@ def tokenizer_artifact_download(job_id: str) -> FileResponse:
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return FileResponse(path, filename=path.name, media_type="application/json")
+
+
+@training_api.get("/health", response_model=HealthResponse)
+def training_health() -> HealthResponse:
+    return HealthResponse()
+
+
+@training_api.get("/config/templates", response_model=TrainingConfigTemplatesResponse)
+def training_config_templates() -> TrainingConfigTemplatesResponse:
+    return TrainingConfigTemplatesResponse(
+        training_config_template=load_json(TRAINING_LOOP_TEMPLATE_PATH),
+        dataloader_config_template=load_json(TRAINING_DATALOADER_TEMPLATE_PATH),
+    )
+
+
+@training_api.get("/config/schemas", response_model=TrainingConfigSchemasResponse)
+def training_config_schemas() -> TrainingConfigSchemasResponse:
+    return TrainingConfigSchemasResponse(
+        training_config_schema=load_json(TRAINING_LOOP_SCHEMA_PATH),
+        dataloader_schema=load_json(TRAINING_DATALOADER_SCHEMA_PATH),
+    )
+
+
+@training_api.post("/validate/dataloader", response_model=TrainingValidateConfigResponse)
+def validate_training_dataloader(payload: TrainingValidateConfigRequest) -> TrainingValidateConfigResponse:
+    try:
+        normalized = TrainingDataloaderConfig.model_validate(payload.config).model_dump(mode="json")
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+    return TrainingValidateConfigResponse(normalized_config=normalized)
+
+
+@training_api.post("/validate/training-config", response_model=TrainingValidateConfigResponse)
+def validate_training_config(payload: TrainingValidateConfigRequest) -> TrainingValidateConfigResponse:
+    try:
+        normalized = TrainingConfig.model_validate(payload.config).model_dump(mode="json")
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+    return TrainingValidateConfigResponse(normalized_config=normalized)
+
+
+@training_api.post("/validate/preflight", response_model=TrainingPreflightResponse)
+def validate_training_preflight(payload: TrainingPreflightRequest) -> TrainingPreflightResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.build_preflight(payload)
+    except KeyError as exc:
+        missing_id = str(exc).strip("'")
+        raise HTTPException(status_code=404, detail=f"Unknown asset id: {missing_id}") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@training_api.post("/jobs", response_model=LLMTrainingJobResponse, status_code=201)
+def create_training_job(payload: CreateTrainingJobRequest) -> LLMTrainingJobResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.create_job(payload)
+    except KeyError as exc:
+        missing_id = str(exc).strip("'")
+        raise HTTPException(status_code=404, detail=f"Unknown asset id: {missing_id}") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@training_api.get("/jobs", response_model=LLMTrainingJobsListResponse)
+def list_training_jobs() -> LLMTrainingJobsListResponse:
+    manager = app.state.training_jobs
+    return LLMTrainingJobsListResponse(jobs=manager.list_jobs())
+
+
+@training_api.get("/jobs/{job_id}", response_model=LLMTrainingJobResponse)
+def get_training_job(job_id: str) -> LLMTrainingJobResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.get_job(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+
+
+@training_api.delete("/jobs/{job_id}", status_code=204)
+def delete_training_job(job_id: str) -> Response:
+    manager = app.state.training_jobs
+    try:
+        manager.delete_job(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return Response(status_code=204)
+
+
+@training_api.get("/jobs/{job_id}/metrics", response_model=TrainingMetricsResponse)
+def get_training_metrics(job_id: str, limit: int = 200) -> TrainingMetricsResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.get_metrics(job_id, limit=limit)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+
+
+@training_api.get("/jobs/{job_id}/samples", response_model=TrainingSamplesResponse)
+def get_training_samples(job_id: str, limit: int = 50) -> TrainingSamplesResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.get_samples(job_id, limit=limit)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+
+
+@training_api.get("/jobs/{job_id}/logs", response_model=TrainingLogsResponse)
+def get_training_logs(job_id: str, lines: int = 200) -> TrainingLogsResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.get_logs(job_id, lines=lines)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+
+
+@training_api.get("/jobs/{job_id}/checkpoints", response_model=TrainingCheckpointsResponse)
+def get_training_checkpoints(job_id: str) -> TrainingCheckpointsResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.get_checkpoints(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+
+
+@training_api.post("/jobs/{job_id}/stop", response_model=LLMTrainingJobResponse)
+def stop_training_job(job_id: str) -> LLMTrainingJobResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.stop_job(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+
+
+@training_api.get("/jobs/{job_id}/artifact")
+def download_training_job_artifact(job_id: str) -> FileResponse:
+    manager = app.state.training_jobs
+    try:
+        path = manager.build_artifact_bundle(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+    return FileResponse(path, filename=path.name, media_type="application/zip")
 
 
 def _validation_issue(code: str, message: str, path: str) -> ValidationIssue:
@@ -912,6 +1097,7 @@ def delete_project(project_id: str) -> Response:
 
 app.include_router(api)
 app.include_router(tokenizer_api)
+app.include_router(training_api)
 
 if _settings.serve_web and _settings.web_index_path.exists():
 

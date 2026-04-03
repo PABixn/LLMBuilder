@@ -288,7 +288,6 @@ export function StudioPageView({
         setImportDraft={setImportDraft}
         applyImportText={applyImportText}
         modelConfig={modelConfig}
-        metrics={metrics}
       />
 
       <input

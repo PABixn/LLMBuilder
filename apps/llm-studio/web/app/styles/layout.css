@@ -26,6 +26,7 @@
   position: sticky;
   top: 18px;
   z-index: 50;
+  align-self: center;
   justify-self: center;
   width: fit-content;
   max-width: 100%;

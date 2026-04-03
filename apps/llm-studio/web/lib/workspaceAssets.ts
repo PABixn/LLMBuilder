@@ -3,24 +3,36 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { apiBaseUrl, deleteProject, fetchProject, fetchProjects, type ProjectSummary, updateProject } from "./api";
-import { artifactDownloadUrl, deleteTrainingJob, fetchTrainingJobs, type TrainingJob } from "./tokenizerLegacyApi";
+import {
+  artifactDownloadUrl as tokenizerArtifactDownloadUrl,
+  deleteTrainingJob as deleteTokenizerJob,
+  fetchTrainingJobs as fetchTokenizerJobs,
+  type TrainingJob as TokenizerTrainingJob,
+} from "./tokenizerLegacyApi";
+import {
+  deleteTrainingJob as deleteModelTrainingJob,
+  fetchTrainingJobs as fetchModelTrainingJobs,
+  trainingArtifactDownloadUrl,
+  type TrainingJob as ModelTrainingJob,
+} from "./trainingApi";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeStyle: "short",
 });
-const WORKSPACE_ASSET_CACHE_KEY = "llm-studio-workspace-asset-cache-v1";
+const WORKSPACE_ASSET_CACHE_KEY = "llm-studio-workspace-asset-cache-v2";
 const WORKSPACE_ASSET_CHANGED_EVENT = "llm-studio:workspace-assets-changed";
 
 export type WorkspaceAsset = {
   id: string;
   name: string;
-  type: "model" | "tokenizer";
+  type: "model" | "tokenizer" | "training_run";
   createdAt: string;
   size?: number;
   downloadUrl?: string;
   fileName?: string | null;
   status?: string;
+  subtitle?: string;
 };
 
 export type WorkspaceAssetCounts = {
@@ -29,6 +41,9 @@ export type WorkspaceAssetCounts = {
   tokenizerCompletedCount: number;
   tokenizerRunningCount: number;
   tokenizerFailedCount: number;
+  trainingCompletedCount: number;
+  trainingRunningCount: number;
+  trainingFailedCount: number;
 };
 
 export type WorkspaceAssetInventory = {
@@ -50,7 +65,8 @@ export interface UseWorkspaceAssetInventoryOptions {
 
 interface WorkspaceAssetCache {
   projects: ProjectSummary[];
-  jobs: TrainingJob[];
+  tokenizerJobs: TokenizerTrainingJob[];
+  trainingJobs: ModelTrainingJob[];
   lastRefreshedAt: number | null;
 }
 
@@ -82,13 +98,16 @@ function readCachedSnapshot(): WorkspaceAssetCache | null {
     }
 
     const parsed = JSON.parse(raw) as Partial<WorkspaceAssetCache>;
-    if (!Array.isArray(parsed.projects) || !Array.isArray(parsed.jobs)) {
+    if (!Array.isArray(parsed.projects) || !Array.isArray(parsed.tokenizerJobs)) {
       return null;
     }
 
     return {
       projects: (parsed.projects as ProjectSummary[]).filter(p => p && typeof p.id === 'string'),
-      jobs: (parsed.jobs as TrainingJob[]).filter(j => j && typeof j.id === 'string'),
+      tokenizerJobs: (parsed.tokenizerJobs as TokenizerTrainingJob[]).filter(j => j && typeof j.id === 'string'),
+      trainingJobs: Array.isArray(parsed.trainingJobs)
+        ? (parsed.trainingJobs as ModelTrainingJob[]).filter(j => j && typeof j.id === 'string')
+        : [],
       lastRefreshedAt:
         typeof parsed.lastRefreshedAt === "number" ? parsed.lastRefreshedAt : null,
     };
@@ -142,14 +161,16 @@ export function upsertCachedWorkspaceProject(project: ProjectSummary): void {
     readCachedSnapshot() ??
     ({
       projects: [],
-      jobs: [],
+      tokenizerJobs: [],
+      trainingJobs: [],
       lastRefreshedAt: null,
     } satisfies WorkspaceAssetCache);
   const refreshedAt = Date.now();
 
   writeCachedSnapshot({
     projects: mergeProjects(cached.projects, project),
-    jobs: cached.jobs,
+    tokenizerJobs: cached.tokenizerJobs,
+    trainingJobs: cached.trainingJobs,
     lastRefreshedAt: refreshedAt,
   });
   dispatchWorkspaceAssetChange({ type: "project-upsert", project });
@@ -165,7 +186,7 @@ function modelArtifactDownloadUrl(projectId: string): string {
   return `${resolvedBase}/projects/${projectId}/artifact`;
 }
 
-function tokenizerName(job: TrainingJob): string {
+function tokenizerName(job: TokenizerTrainingJob): string {
   const rawName = job.tokenizer_config.name;
   if (typeof rawName === "string" && rawName.trim() !== "") {
     return rawName.trim();
@@ -178,7 +199,18 @@ function tokenizerName(job: TrainingJob): string {
   return `Tokenizer ${job.id.slice(0, 8)}`;
 }
 
-function buildAssets(projects: ProjectSummary[], jobs: TrainingJob[]): WorkspaceAsset[] {
+function trainingRunName(job: ModelTrainingJob): string {
+  if (typeof job.name === "string" && job.name.trim() !== "") {
+    return job.name.trim();
+  }
+  return `Training ${job.id.slice(0, 8)}`;
+}
+
+function buildAssets(
+  projects: ProjectSummary[],
+  tokenizerJobs: TokenizerTrainingJob[],
+  trainingJobs: ModelTrainingJob[]
+): WorkspaceAsset[] {
   const modelAssets: WorkspaceAsset[] = projects.map((project) => ({
     id: project.id,
     name: project.name || `Project ${project.id.slice(0, 8)}`,
@@ -190,33 +222,53 @@ function buildAssets(projects: ProjectSummary[], jobs: TrainingJob[]): Workspace
     status: "READY",
   }));
 
-  const tokenizerAssets: WorkspaceAsset[] = jobs
+  const tokenizerAssets: WorkspaceAsset[] = tokenizerJobs
     .map((job) => ({
       id: job.id,
       name: tokenizerName(job),
       type: "tokenizer",
       createdAt: job.created_at,
-      downloadUrl: job.status === "completed" ? artifactDownloadUrl(job.id) : undefined,
+      downloadUrl: job.status === "completed" ? tokenizerArtifactDownloadUrl(job.id) : undefined,
       fileName: job.artifact_file,
       status: job.status.toUpperCase(),
+      subtitle: "Tokenizer artifact",
     }));
 
-  return [...modelAssets, ...tokenizerAssets].sort(
+  const trainingAssets: WorkspaceAsset[] = trainingJobs.map((job) => ({
+    id: job.id,
+    name: trainingRunName(job),
+    type: "training_run",
+    createdAt: job.created_at,
+    size: job.output_size_bytes,
+    downloadUrl: trainingArtifactDownloadUrl(job.id),
+    fileName: job.artifact_bundle_file,
+    status: job.status.toUpperCase(),
+    subtitle: `${job.project_name} • ${job.tokenizer_name}`,
+    }));
+
+  return [...modelAssets, ...tokenizerAssets, ...trainingAssets].sort(
     (left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt)
   );
 }
 
-function buildCounts(projects: ProjectSummary[], jobs: TrainingJob[]): WorkspaceAssetCounts {
+function buildCounts(
+  projects: ProjectSummary[],
+  tokenizerJobs: TokenizerTrainingJob[],
+  trainingJobs: ModelTrainingJob[]
+): WorkspaceAssetCounts {
   let totalModelBytes = 0;
   let tokenizerCompletedCount = 0;
   let tokenizerRunningCount = 0;
   let tokenizerFailedCount = 0;
+  let trainingCompletedCount = 0;
+  let trainingRunningCount = 0;
+  let trainingFailedCount = 0;
 
   for (const project of projects) {
     totalModelBytes += project.size_bytes;
   }
 
-  for (const job of jobs) {
+  for (const job of tokenizerJobs) {
     if (job.status === "completed") {
       tokenizerCompletedCount += 1;
       continue;
@@ -230,12 +282,29 @@ function buildCounts(projects: ProjectSummary[], jobs: TrainingJob[]): Workspace
     }
   }
 
+  for (const job of trainingJobs) {
+    if (job.status === "completed") {
+      trainingCompletedCount += 1;
+      continue;
+    }
+    if (job.status === "pending" || job.status === "running") {
+      trainingRunningCount += 1;
+      continue;
+    }
+    if (job.status === "failed" || job.status === "cancelled") {
+      trainingFailedCount += 1;
+    }
+  }
+
   return {
     modelCount: projects.length,
     totalModelBytes,
     tokenizerCompletedCount,
     tokenizerRunningCount,
     tokenizerFailedCount,
+    trainingCompletedCount,
+    trainingRunningCount,
+    trainingFailedCount,
   };
 }
 
@@ -300,22 +369,28 @@ export function useWorkspaceAssetInventory(
 ): WorkspaceAssetInventory {
   const { autoRefreshMs = 30_000 } = options;
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [jobs, setJobs] = useState<TrainingJob[]>([]);
+  const [tokenizerJobs, setTokenizerJobs] = useState<TokenizerTrainingJob[]>([]);
+  const [trainingJobs, setTrainingJobs] = useState<ModelTrainingJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
   const requestIdRef = useRef(0);
   const latestProjectsRef = useRef<ProjectSummary[]>([]);
-  const latestJobsRef = useRef<TrainingJob[]>([]);
+  const latestTokenizerJobsRef = useRef<TokenizerTrainingJob[]>([]);
+  const latestTrainingJobsRef = useRef<ModelTrainingJob[]>([]);
 
   useEffect(() => {
     latestProjectsRef.current = projects;
   }, [projects]);
 
   useEffect(() => {
-    latestJobsRef.current = jobs;
-  }, [jobs]);
+    latestTokenizerJobsRef.current = tokenizerJobs;
+  }, [tokenizerJobs]);
+
+  useEffect(() => {
+    latestTrainingJobsRef.current = trainingJobs;
+  }, [trainingJobs]);
 
   useLayoutEffect(() => {
     const cached = readCachedSnapshot();
@@ -324,7 +399,8 @@ export function useWorkspaceAssetInventory(
     }
 
     setProjects(cached.projects);
-    setJobs(cached.jobs);
+    setTokenizerJobs(cached.tokenizerJobs);
+    setTrainingJobs(cached.trainingJobs);
     setLastRefreshedAt(cached.lastRefreshedAt);
   }, []);
 
@@ -335,9 +411,10 @@ export function useWorkspaceAssetInventory(
       setRefreshing(true);
     }
 
-    const [projectsResult, jobsResult] = await Promise.allSettled([
+    const [projectsResult, tokenizerJobsResult, trainingJobsResult] = await Promise.allSettled([
       fetchProjects(),
-      fetchTrainingJobs(),
+      fetchTokenizerJobs(),
+      fetchModelTrainingJobs(),
     ]);
 
     if (requestId !== requestIdRef.current) {
@@ -354,11 +431,18 @@ export function useWorkspaceAssetInventory(
       issues.push(resolveIssueMessage("Models", projectsResult.reason));
     }
 
-    if (jobsResult.status === "fulfilled") {
-      setJobs(jobsResult.value);
+    if (tokenizerJobsResult.status === "fulfilled") {
+      setTokenizerJobs(tokenizerJobsResult.value);
       hasAnySuccess = true;
     } else {
-      issues.push(resolveIssueMessage("Tokenizers", jobsResult.reason));
+      issues.push(resolveIssueMessage("Tokenizers", tokenizerJobsResult.reason));
+    }
+
+    if (trainingJobsResult.status === "fulfilled") {
+      setTrainingJobs(trainingJobsResult.value);
+      hasAnySuccess = true;
+    } else {
+      issues.push(resolveIssueMessage("Training", trainingJobsResult.reason));
     }
 
     if (hasAnySuccess) {
@@ -367,12 +451,19 @@ export function useWorkspaceAssetInventory(
         projectsResult.status === "fulfilled"
           ? projectsResult.value
           : latestProjectsRef.current;
-      const nextJobs =
-        jobsResult.status === "fulfilled" ? jobsResult.value : latestJobsRef.current;
+      const nextTokenizerJobs =
+        tokenizerJobsResult.status === "fulfilled"
+          ? tokenizerJobsResult.value
+          : latestTokenizerJobsRef.current;
+      const nextTrainingJobs =
+        trainingJobsResult.status === "fulfilled"
+          ? trainingJobsResult.value
+          : latestTrainingJobsRef.current;
       setLastRefreshedAt(refreshedAt);
       writeCachedSnapshot({
         projects: nextProjects,
-        jobs: nextJobs,
+        tokenizerJobs: nextTokenizerJobs,
+        trainingJobs: nextTrainingJobs,
         lastRefreshedAt: refreshedAt,
       });
     }
@@ -418,7 +509,8 @@ export function useWorkspaceAssetInventory(
         return;
       }
       setProjects(cached.projects);
-      setJobs(cached.jobs);
+      setTokenizerJobs(cached.tokenizerJobs);
+      setTrainingJobs(cached.trainingJobs);
       setLastRefreshedAt(cached.lastRefreshedAt);
       setError(null);
       setLoading(false);
@@ -434,8 +526,10 @@ export function useWorkspaceAssetInventory(
     try {
       if (asset.type === "model") {
         await deleteProject(asset.id);
+      } else if (asset.type === "tokenizer") {
+        await deleteTokenizerJob(asset.id);
       } else {
-        await deleteTrainingJob(asset.id);
+        await deleteModelTrainingJob(asset.id);
       }
       void loadSnapshot(true);
     } catch (err) {
@@ -464,11 +558,19 @@ export function useWorkspaceAssetInventory(
   async function deleteAllAssets() {
     try {
       setRefreshing(true);
-      const allAssets = buildAssets(latestProjectsRef.current, latestJobsRef.current);
+      const allAssets = buildAssets(
+        latestProjectsRef.current,
+        latestTokenizerJobsRef.current,
+        latestTrainingJobsRef.current
+      );
       
       // Delete in parallel
       await Promise.allSettled(allAssets.map(asset => 
-        asset.type === "model" ? deleteProject(asset.id) : deleteTrainingJob(asset.id)
+        asset.type === "model"
+          ? deleteProject(asset.id)
+          : asset.type === "tokenizer"
+            ? deleteTokenizerJob(asset.id)
+            : deleteModelTrainingJob(asset.id)
       ));
       
       void loadSnapshot(true);
@@ -480,8 +582,8 @@ export function useWorkspaceAssetInventory(
   }
 
   return {
-    assets: buildAssets(projects, jobs),
-    counts: buildCounts(projects, jobs),
+    assets: buildAssets(projects, tokenizerJobs, trainingJobs),
+    counts: buildCounts(projects, tokenizerJobs, trainingJobs),
     loading,
     refreshing,
     error,
