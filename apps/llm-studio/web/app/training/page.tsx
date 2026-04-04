@@ -27,12 +27,18 @@ import {
   FiPlay,
   FiPlus,
   FiRefreshCw,
+  FiSearch,
   FiSun,
   FiTrash2,
   FiXCircle,
 } from "react-icons/fi";
 
-import { fetchProject, type ProjectDetail } from "../../lib/api";
+import {
+  fetchProject,
+  fetchProjects,
+  type ProjectDetail,
+  type ProjectSummary,
+} from "../../lib/api";
 import { useThemeMode } from "../../lib/theme";
 import {
   formatAge,
@@ -42,7 +48,6 @@ import {
 import {
   deleteTrainingJob,
   fetchTrainingCheckpoints,
-  fetchTrainingConfigSchemas,
   fetchTrainingConfigTemplates,
   fetchTrainingJob,
   fetchTrainingJobs,
@@ -63,6 +68,7 @@ import {
 } from "../../lib/trainingApi";
 import {
   fetchTrainingJob as fetchTokenizerJob,
+  fetchTrainingJobs as fetchTokenizerJobs,
   type TrainingJob as TokenizerTrainingJob,
 } from "../../lib/tokenizerLegacyApi";
 
@@ -74,6 +80,8 @@ interface ToastState {
   title: string;
   body: string;
 }
+
+type AssetPickerKind = "project" | "tokenizer";
 
 const TRAINING_CONFIG_STORAGE_KEY = "llm-training-config-v1";
 const DATALOADER_CONFIG_STORAGE_KEY = "llm-training-dataloader-v1";
@@ -284,7 +292,6 @@ function TrainingPageContent() {
   const [theme, setTheme] = useThemeMode();
   const [trainingConfig, setTrainingConfig] = useState<Record<string, unknown> | null>(null);
   const [dataloaderConfig, setDataloaderConfig] = useState<Record<string, unknown> | null>(null);
-  const [schemas, setSchemas] = useState<Record<string, unknown> | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedTokenizerJobId, setSelectedTokenizerJobId] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<ProjectDetail | null>(null);
@@ -306,7 +313,14 @@ function TrainingPageContent() {
   const [checkpoints, setCheckpoints] = useState<TrainingCheckpointEntry[]>([]);
   const [launching, setLaunching] = useState(false);
   const [toasts, setToasts] = useState<ToastState[]>([]);
+  const [pickerKind, setPickerKind] = useState<AssetPickerKind | null>(null);
+  const [pickerQuery, setPickerQuery] = useState("");
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerError, setPickerError] = useState<string | null>(null);
+  const [pickerProjects, setPickerProjects] = useState<ProjectSummary[]>([]);
+  const [pickerTokenizerJobs, setPickerTokenizerJobs] = useState<TokenizerTrainingJob[]>([]);
   const initializedRef = useRef(false);
+  const pickerRequestIdRef = useRef(0);
 
   const deferredTrainingConfig = useDeferredValue(trainingConfig);
   const deferredDataloaderConfig = useDeferredValue(dataloaderConfig);
@@ -365,15 +379,11 @@ function TrainingPageContent() {
     setSelectedProjectId(searchParams.get("project") ?? storedSelection.projectId);
     setSelectedTokenizerJobId(searchParams.get("tokenizerJob") ?? storedSelection.tokenizerJobId);
 
-    void Promise.all([fetchTrainingConfigTemplates(), fetchTrainingConfigSchemas(), fetchTrainingJobs()])
-      .then(([templates, fetchedSchemas, jobs]) => {
+    void Promise.all([fetchTrainingConfigTemplates(), fetchTrainingJobs()])
+      .then(([templates, jobs]) => {
         startTransition(() => {
           setTrainingConfig(storedTraining ?? templates.training_config_template);
           setDataloaderConfig(storedDataloader ?? templates.dataloader_config_template);
-          setSchemas({
-            training: fetchedSchemas.training_config_schema,
-            dataloader: fetchedSchemas.dataloader_schema,
-          });
           setRecentRuns(jobs);
           if (!searchParams.get("run") && !storedActiveRun) {
             const nextVisible = jobs.find((job) => !storedHiddenRuns.includes(job.id)) ?? jobs[0] ?? null;
@@ -579,6 +589,38 @@ function TrainingPageContent() {
     [hiddenRunIds, recentRuns]
   );
 
+  const normalizedPickerQuery = pickerQuery.trim().toLowerCase();
+
+  const visiblePickerProjects = useMemo(() => {
+    return [...pickerProjects]
+      .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
+      .filter((project) => {
+        if (normalizedPickerQuery === "") {
+          return true;
+        }
+        return [project.name, project.id, project.artifact_file, project.artifact_path].some(
+          (value) =>
+            typeof value === "string" && value.toLowerCase().includes(normalizedPickerQuery)
+        );
+      });
+  }, [normalizedPickerQuery, pickerProjects]);
+
+  const visiblePickerTokenizerJobs = useMemo(() => {
+    return [...pickerTokenizerJobs]
+      .filter((job) => job.status === "completed")
+      .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))
+      .filter((job) => {
+        if (normalizedPickerQuery === "") {
+          return true;
+        }
+        const tokenizerName = asString(job.tokenizer_config.name, job.id);
+        return [tokenizerName, job.id, job.artifact_file, job.artifact_path].some(
+          (value) =>
+            typeof value === "string" && value.toLowerCase().includes(normalizedPickerQuery)
+        );
+      });
+  }, [normalizedPickerQuery, pickerTokenizerJobs]);
+
   const handleAddDataset = () => {
     const next = cloneRecord(dataloaderConfig ?? {});
     const datasets = asRecordArray(next.datasets);
@@ -684,6 +726,75 @@ function TrainingPageContent() {
       notify("success", fix.label, fix.description);
     }
   };
+
+  const closePicker = useCallback(() => {
+    pickerRequestIdRef.current += 1;
+    setPickerKind(null);
+    setPickerQuery("");
+    setPickerError(null);
+    setPickerLoading(false);
+  }, []);
+
+  const openPicker = useCallback(async (kind: AssetPickerKind) => {
+    const requestId = pickerRequestIdRef.current + 1;
+    pickerRequestIdRef.current = requestId;
+
+    setPickerKind(kind);
+    setPickerQuery("");
+    setPickerError(null);
+    setPickerLoading(true);
+
+    try {
+      if (kind === "project") {
+        const projects = await fetchProjects();
+        if (pickerRequestIdRef.current !== requestId) {
+          return;
+        }
+        startTransition(() => {
+          setPickerProjects(projects);
+        });
+        return;
+      }
+
+      const jobs = await fetchTokenizerJobs();
+      if (pickerRequestIdRef.current !== requestId) {
+        return;
+      }
+      startTransition(() => {
+        setPickerTokenizerJobs(jobs);
+      });
+    } catch (error) {
+      if (pickerRequestIdRef.current !== requestId) {
+        return;
+      }
+      setPickerError(error instanceof Error ? error.message : "Failed to load workspace assets.");
+    } finally {
+      if (pickerRequestIdRef.current === requestId) {
+        setPickerLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!pickerKind) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closePicker();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closePicker, pickerKind]);
 
   const handleStartTraining = async () => {
     if (!selectedProjectId || !selectedTokenizerJobId || !trainingConfig || !dataloaderConfig || !preflight?.valid) {
@@ -890,6 +1001,19 @@ function TrainingPageContent() {
                   ? `${formatDate(selectedProject.created_at)} • vocab ${selectedProject.model_config.vocab_size}`
                   : "Choose a saved model config from Home or pass ?project=..."}
               </span>
+              <div className="trainingAssetActions">
+                <button
+                  type="button"
+                  className="buttonGhost buttonSmall"
+                  aria-haspopup="dialog"
+                  aria-expanded={pickerKind === "project"}
+                  onClick={() => {
+                    void openPicker("project");
+                  }}
+                >
+                  <FiSearch /> {selectedProject ? "Change model config" : "Choose model config"}
+                </button>
+              </div>
             </div>
             <div className="trainingAssetCard">
               <span className="trainingAssetLabel">Tokenizer Artifact</span>
@@ -903,6 +1027,19 @@ function TrainingPageContent() {
                   ? `${formatDate(selectedTokenizer.created_at)} • ${selectedTokenizer.status.toUpperCase()}`
                   : "Choose a completed tokenizer artifact from Home or pass ?tokenizerJob=..."}
               </span>
+              <div className="trainingAssetActions">
+                <button
+                  type="button"
+                  className="buttonGhost buttonSmall"
+                  aria-haspopup="dialog"
+                  aria-expanded={pickerKind === "tokenizer"}
+                  onClick={() => {
+                    void openPicker("tokenizer");
+                  }}
+                >
+                  <FiSearch /> {selectedTokenizer ? "Change tokenizer" : "Choose tokenizer"}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1559,17 +1696,184 @@ function TrainingPageContent() {
       <section className="panelCard">
         <div className="panelHead">
           <div>
-            <h2>Generated JSON and Schemas</h2>
+            <h2>Generated JSON</h2>
             <p className="panelCopy">The page stays form-first, but the underlying resolved JSON remains visible for debugging and advanced inspection.</p>
           </div>
         </div>
         <div className="trainingJsonGrid">
           <pre className="trainingCodeBlock">{prettyJson(trainingConfig)}</pre>
           <pre className="trainingCodeBlock">{prettyJson(dataloaderConfig)}</pre>
-          <pre className="trainingCodeBlock">{prettyJson(preflight?.memory_estimate ?? activeRun?.memory_estimate ?? schemas?.training)}</pre>
-          <pre className="trainingCodeBlock">{prettyJson(preflight?.derived_runtime ?? activeRun?.resolved_runtime ?? schemas?.dataloader)}</pre>
         </div>
       </section>
+
+      {pickerKind ? (
+        <div
+          className="trainingAssetPickerOverlay"
+          onClick={closePicker}
+          role="presentation"
+        >
+          <section
+            id="training-asset-picker"
+            className="panelCard trainingAssetPickerDialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="training-asset-picker-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="trainingAssetPickerHeader">
+              <div>
+                <h2 id="training-asset-picker-title">
+                  {pickerKind === "project" ? "Choose model config" : "Choose tokenizer artifact"}
+                </h2>
+                <p className="panelCopy">
+                  {pickerKind === "project"
+                    ? "Select a saved model project from the workspace to pair with this run."
+                    : "Select a completed tokenizer artifact. Only completed tokenizer jobs are shown here."}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="buttonGhost iconOnly"
+                onClick={closePicker}
+                aria-label="Close asset picker"
+              >
+                <FiXCircle />
+              </button>
+            </div>
+
+            <div className="trainingAssetPickerControls">
+              <label className="trainingAssetPickerSearch">
+                <FiSearch />
+                <input
+                  value={pickerQuery}
+                  onChange={(event) => setPickerQuery(event.target.value)}
+                  placeholder={
+                    pickerKind === "project"
+                      ? "Search model configs by name, id, or file"
+                      : "Search tokenizers by name, id, or artifact"
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                className="buttonGhost"
+                onClick={() => {
+                  void openPicker(pickerKind);
+                }}
+              >
+                <FiRefreshCw /> Refresh
+              </button>
+            </div>
+
+            <div className="trainingAssetPickerResults">
+              {pickerLoading ? <div className="trainingEmpty">Loading workspace assets…</div> : null}
+
+              {!pickerLoading && pickerError ? (
+                <div className="inlineNotice tone-info">{pickerError}</div>
+              ) : null}
+
+              {!pickerLoading && !pickerError && pickerKind === "project" && visiblePickerProjects.length === 0 ? (
+                <div className="trainingAssetPickerEmpty">
+                  <h3>No saved model configs found.</h3>
+                  <p className="panelCopy">
+                    Create or save a model config from the Home workspace, then reopen the picker.
+                  </p>
+                  <Link className="buttonGhost" href="/">
+                    <FiLayers /> Open Workspace Assets
+                  </Link>
+                </div>
+              ) : null}
+
+              {!pickerLoading && !pickerError && pickerKind === "tokenizer" && visiblePickerTokenizerJobs.length === 0 ? (
+                <div className="trainingAssetPickerEmpty">
+                  <h3>No completed tokenizer artifacts found.</h3>
+                  <p className="panelCopy">
+                    Finish a tokenizer training job first, then reopen the picker to pair it with this run.
+                  </p>
+                  <Link className="buttonGhost" href="/tokenizer">
+                    <FiCpu /> Open Tokenizer Studio
+                  </Link>
+                </div>
+              ) : null}
+
+              {!pickerLoading && !pickerError && pickerKind === "project"
+                ? visiblePickerProjects.map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      className={`trainingAssetPickerOption ${
+                        selectedProjectId === project.id ? "is-selected" : ""
+                      }`}
+                      onClick={() => {
+                        setSelectedProjectId(project.id);
+                        closePicker();
+                      }}
+                    >
+                      <div className="trainingAssetPickerOptionHead">
+                        <div>
+                          <div className="trainingAssetName">
+                            {project.name ?? project.id}
+                          </div>
+                          <div className="trainingAssetPickerOptionMeta">{project.id}</div>
+                        </div>
+                        <span
+                          className={`pillBadge ${
+                            selectedProjectId === project.id ? "tone-good" : "tone-neutral"
+                          }`}
+                        >
+                          {selectedProjectId === project.id ? "Selected" : "Use model"}
+                        </span>
+                      </div>
+                      <div className="trainingAssetPickerOptionMeta">
+                        {formatDate(project.created_at)} • {formatBytes(project.size_bytes)}
+                      </div>
+                      <div className="trainingAssetPickerOptionMeta">{project.artifact_file}</div>
+                    </button>
+                  ))
+                : null}
+
+              {!pickerLoading && !pickerError && pickerKind === "tokenizer"
+                ? visiblePickerTokenizerJobs.map((job) => (
+                    <button
+                      key={job.id}
+                      type="button"
+                      className={`trainingAssetPickerOption ${
+                        selectedTokenizerJobId === job.id ? "is-selected" : ""
+                      }`}
+                      onClick={() => {
+                        setSelectedTokenizerJobId(job.id);
+                        closePicker();
+                      }}
+                    >
+                      <div className="trainingAssetPickerOptionHead">
+                        <div>
+                          <div className="trainingAssetName">
+                            {asString(job.tokenizer_config.name, job.id)}
+                          </div>
+                          <div className="trainingAssetPickerOptionMeta">{job.id}</div>
+                        </div>
+                        <span
+                          className={`pillBadge ${
+                            selectedTokenizerJobId === job.id ? "tone-good" : "tone-neutral"
+                          }`}
+                        >
+                          {selectedTokenizerJobId === job.id ? "Selected" : "Use tokenizer"}
+                        </span>
+                      </div>
+                      <div className="trainingAssetPickerOptionMeta">
+                        {formatDate(job.created_at)}
+                        {job.stats?.vocab_size ? ` • vocab ${formatInteger(job.stats.vocab_size)}` : ""}
+                      </div>
+                      <div className="trainingAssetPickerOptionMeta">
+                        {job.artifact_file ?? job.artifact_path ?? "Tokenizer artifact path unavailable"}
+                      </div>
+                    </button>
+                  ))
+                : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <div className="trainingToastStack" aria-live="polite">
         {toasts.map((toast) => (
