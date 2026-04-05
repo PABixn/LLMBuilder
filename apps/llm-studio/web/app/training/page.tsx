@@ -327,6 +327,42 @@ function sanitizeWeightInput(value: string): string {
   return parseWeightInput(sanitized) === null ? "0" : sanitized;
 }
 
+function sanitizePositiveIntegerInput(value: string): string {
+  return value.replace(/[^0-9]/g, "");
+}
+
+function formatNumberInputValue(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "";
+  }
+  const asText = String(value);
+  if (!/[eE]/.test(asText)) {
+    return asText;
+  }
+  return value.toLocaleString("en-US", {
+    useGrouping: false,
+    maximumFractionDigits: 20,
+  });
+}
+
+function parseConfigNumberInput(
+  value: string,
+  mode: "integer" | "decimal"
+): number | null {
+  const trimmed = value.trim();
+  if (trimmed === "" || trimmed === ".") {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  if (mode === "integer" && !Number.isInteger(parsed)) {
+    return null;
+  }
+  return parsed;
+}
+
 function normalizeWeights(weights: number[]): number[] {
   if (weights.length === 0) {
     return [];
@@ -534,7 +570,11 @@ function hydrateDatasetUiFromConfig(config: Record<string, unknown> | null): {
               config: asString(datasetRecord.config),
               split: asString(datasetRecord.split, "train"),
               textColumns: datasetTextColumns,
-              weight: sanitizeWeightInput(asString(datasetRecord.weight, "1")),
+              weight: sanitizeWeightInput(
+                typeof datasetRecord.weight === "number" || typeof datasetRecord.weight === "string"
+                  ? String(datasetRecord.weight)
+                  : "1"
+              ),
               filters: datasetFiltersRaw.map((filter) => {
                 const filterRecord = asRecord(filter);
                 return makeStreamingFilterEntry({
@@ -826,6 +866,64 @@ function Sparkline({
         <div className="trainingEmpty">Metrics will appear after the first logged steps.</div>
       )}
     </div>
+  );
+}
+
+function ConfigNumberInput({
+  value,
+  onCommit,
+  mode = "integer",
+  step,
+  min,
+  max,
+  placeholder,
+}: {
+  value: number;
+  onCommit: (value: number) => void;
+  mode?: "integer" | "decimal";
+  step?: number | string;
+  min?: number | string;
+  max?: number | string;
+  placeholder?: string;
+}) {
+  const [draft, setDraft] = useState(() => formatNumberInputValue(value));
+  const [focused, setFocused] = useState(false);
+  const formattedValue = formatNumberInputValue(value);
+
+  useEffect(() => {
+    if (!focused) {
+      setDraft(formattedValue);
+    }
+  }, [focused, formattedValue]);
+
+  const sanitize =
+    mode === "decimal" ? sanitizePositiveDecimalInput : sanitizePositiveIntegerInput;
+
+  return (
+    <input
+      type="text"
+      inputMode={mode === "decimal" ? "decimal" : "numeric"}
+      pattern={mode === "decimal" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
+      step={step}
+      min={min}
+      max={max}
+      placeholder={placeholder}
+      value={draft}
+      onFocus={() => setFocused(true)}
+      onChange={(event) => {
+        setDraft(sanitize(event.target.value));
+      }}
+      onBlur={() => {
+        setFocused(false);
+        const parsed = parseConfigNumberInput(draft, mode);
+        if (parsed === null) {
+          setDraft(formattedValue);
+          return;
+        }
+        onCommit(parsed);
+        setDraft(formatNumberInputValue(parsed));
+      }}
+    />
   );
 }
 
@@ -2301,88 +2399,70 @@ function TrainingPageContent() {
                   <div className="fieldGrid trainingSettingsCompactGrid">
                     <label className="fieldLabel">
                       <span>Sequence length</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
                         value={asNumber(trainingConfig.seq_len, 128)}
-                        onChange={(event) =>
-                          handleTrainingField(["seq_len"], Number(event.target.value))
-                        }
+                        onCommit={(value) => handleTrainingField(["seq_len"], value)}
                       />
                     </label>
                     <label className="fieldLabel">
                       <span>Max steps</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
                         value={asNumber(trainingConfig.max_steps, 0)}
-                        onChange={(event) =>
-                          handleTrainingField(["max_steps"], Number(event.target.value))
-                        }
+                        onCommit={(value) => handleTrainingField(["max_steps"], value)}
                       />
                     </label>
                     <label className="fieldLabel">
                       <span>Total batch size</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
                         value={asNumber(trainingConfig.total_batch_size, 0)}
-                        onChange={(event) =>
-                          handleTrainingField(["total_batch_size"], Number(event.target.value))
-                        }
+                        onCommit={(value) => handleTrainingField(["total_batch_size"], value)}
                       />
                     </label>
                     <label className="fieldLabel">
                       <span>Learning rate</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
+                        mode="decimal"
                         step="0.000001"
                         value={asNumber(asRecord(trainingConfig.optimizer).lr, 0.0003)}
-                        onChange={(event) =>
-                          handleTrainingField(["optimizer", "lr"], Number(event.target.value))
-                        }
+                        onCommit={(value) => handleTrainingField(["optimizer", "lr"], value)}
                       />
                     </label>
                     <label className="fieldLabel">
                       <span>Weight decay</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
+                        mode="decimal"
                         step="0.0001"
                         value={asNumber(asRecord(trainingConfig.optimizer).weight_decay, 0.1)}
-                        onChange={(event) =>
+                        onCommit={(value) =>
                           handleTrainingField(
                             ["optimizer", "weight_decay"],
-                            Number(event.target.value)
+                            value
                           )
                         }
                       />
                     </label>
                     <label className="fieldLabel">
                       <span>Save every</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
                         value={asNumber(trainingConfig.save_every, 0)}
-                        onChange={(event) =>
-                          handleTrainingField(["save_every"], Number(event.target.value))
-                        }
+                        onCommit={(value) => handleTrainingField(["save_every"], value)}
                       />
                     </label>
                     <label className="fieldLabel">
                       <span>Sample every</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
                         value={asNumber(trainingConfig.sample_every, 0)}
-                        onChange={(event) =>
-                          handleTrainingField(["sample_every"], Number(event.target.value))
-                        }
+                        onCommit={(value) => handleTrainingField(["sample_every"], value)}
                       />
                     </label>
                     <label className="fieldLabel">
                       <span>Dataset shuffle buffer</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
                         value={asNumber(asRecord(dataloaderConfig.shuffle).buffer_size, 1000)}
-                        onChange={(event) =>
+                        onCommit={(value) =>
                           handleDataloaderField(
                             ["shuffle", "buffer_size"],
-                            Number(event.target.value)
+                            value
                           )
                         }
                       />
@@ -2562,11 +2642,13 @@ function TrainingPageContent() {
                               <strong>Streaming dataset {index + 1}</strong>
                               <button
                                 type="button"
-                                className="textButton"
+                                className="textButton datasetRemoveButton"
                                 onClick={() => removeStreamingDataset(entry.id)}
                                 disabled={streamingDatasets.length <= 1}
+                                aria-label={`Remove streaming dataset ${index + 1}`}
+                                title={`Remove streaming dataset ${index + 1}`}
                               >
-                                Remove
+                                <FiTrash2 aria-hidden="true" />
                               </button>
                             </div>
 
@@ -2784,7 +2866,7 @@ function TrainingPageContent() {
                             aria-label={`Remove prompt ${index + 1}`}
                             title={`Remove prompt ${index + 1}`}
                           >
-                            <FiTrash2 /> Remove
+                            <FiTrash2 aria-hidden="true" />
                           </button>
                         </div>
 
@@ -2803,41 +2885,37 @@ function TrainingPageContent() {
                         <div className="trainingPromptFields">
                           <label className="fieldLabel">
                             <span>Max tokens</span>
-                            <input
-                              type="number"
+                            <ConfigNumberInput
                               value={asNumber(prompt.max_tokens, 64)}
-                              onChange={(event) =>
+                              onCommit={(value) =>
                                 handlePromptChange(
                                   index,
                                   "max_tokens",
-                                  Number(event.target.value)
+                                  value
                                 )
                               }
                             />
                           </label>
                           <label className="fieldLabel">
                             <span>Temperature</span>
-                            <input
-                              type="number"
+                            <ConfigNumberInput
+                              mode="decimal"
                               step="0.05"
                               value={asNumber(prompt.temperature, 0.7)}
-                              onChange={(event) =>
+                              onCommit={(value) =>
                                 handlePromptChange(
                                   index,
                                   "temperature",
-                                  Number(event.target.value)
+                                  value
                                 )
                               }
                             />
                           </label>
                           <label className="fieldLabel">
                             <span>Top-k</span>
-                            <input
-                              type="number"
+                            <ConfigNumberInput
                               value={asNumber(prompt.top_k, 40)}
-                              onChange={(event) =>
-                                handlePromptChange(index, "top_k", Number(event.target.value))
-                              }
+                              onCommit={(value) => handlePromptChange(index, "top_k", value)}
                             />
                           </label>
                         </div>
@@ -2903,13 +2981,12 @@ function TrainingPageContent() {
                     </label>
                     <label className="fieldLabel">
                       <span>Pretokenize batch size</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
                         value={asNumber(dataloaderConfig.pretokenize_batch_size, 1000)}
-                        onChange={(event) =>
+                        onCommit={(value) =>
                           handleDataloaderField(
                             ["pretokenize_batch_size"],
-                            Number(event.target.value)
+                            value
                           )
                         }
                       />
@@ -2946,13 +3023,11 @@ function TrainingPageContent() {
                     </label>
                     <label className="fieldLabel">
                       <span>Optimizer eps</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
+                        mode="decimal"
                         step="0.00000001"
                         value={asNumber(asRecord(trainingConfig.optimizer).eps, 1e-8)}
-                        onChange={(event) =>
-                          handleTrainingField(["optimizer", "eps"], Number(event.target.value))
-                        }
+                        onCommit={(value) => handleTrainingField(["optimizer", "eps"], value)}
                       />
                     </label>
                     <label className="fieldLabel">
@@ -2972,22 +3047,16 @@ function TrainingPageContent() {
                     </label>
                     <label className="fieldLabel">
                       <span>Node rank</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
                         value={asNumber(dataloaderConfig.node_rank, 0)}
-                        onChange={(event) =>
-                          handleDataloaderField(["node_rank"], Number(event.target.value))
-                        }
+                        onCommit={(value) => handleDataloaderField(["node_rank"], value)}
                       />
                     </label>
                     <label className="fieldLabel">
                       <span>Node world size</span>
-                      <input
-                        type="number"
+                      <ConfigNumberInput
                         value={asNumber(dataloaderConfig.node_world_size, 1)}
-                        onChange={(event) =>
-                          handleDataloaderField(["node_world_size"], Number(event.target.value))
-                        }
+                        onCommit={(value) => handleDataloaderField(["node_world_size"], value)}
                       />
                     </label>
                   </div>

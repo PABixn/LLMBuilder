@@ -3505,13 +3505,15 @@ function TokenizerPageContent() {
                         <strong>Streaming dataset {index + 1}</strong>
                         <button
                           type="button"
-                          className="textButton"
+                          className="textButton datasetRemoveButton"
                           onClick={() => removeStreamingDataset(entry.id)}
                           disabled={
                             controlsDisabled || datasetForm.streamingDatasets.length <= 1
                           }
+                          aria-label={`Remove streaming dataset ${index + 1}`}
+                          title={`Remove streaming dataset ${index + 1}`}
                         >
-                          Remove
+                          <FiTrash2 aria-hidden="true" />
                         </button>
                       </div>
 

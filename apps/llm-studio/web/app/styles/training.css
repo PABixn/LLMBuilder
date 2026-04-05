@@ -266,8 +266,27 @@
 
 .trainingPromptRemoveButton {
   min-height: 32px;
-  padding-inline: 10px;
+  min-width: 32px;
+  padding: 0;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.trainingPromptRemoveButton:hover,
+.trainingPromptRemoveButton:focus-visible {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  outline: none;
+}
+
+.trainingPromptRemoveButton svg {
+  width: 14px;
+  height: 14px;
+  display: block;
 }
 
 .trainingPromptEditor {
@@ -764,6 +783,13 @@
   outline: none;
 }
 
+.textButton.trainingPromptRemoveButton:hover:not(:disabled),
+.textButton.trainingPromptRemoveButton:focus-visible {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .secondaryButton:disabled,
 .textButton:disabled {
   opacity: 0.6;
@@ -1065,6 +1091,31 @@
   align-self: end;
 }
 
+.datasetRemoveButton {
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.textButton.datasetRemoveButton:hover:not(:disabled),
+.textButton.datasetRemoveButton:focus-visible {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  outline: none;
+}
+
+.datasetRemoveButton svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 @media (max-width: 1180px) {
   .trainingResultsGrid,
   .trainingJsonGrid,
@@ -1125,6 +1176,10 @@
   .modeSwitchButton,
   .datasetCardHeader .textButton {
     width: 100%;
+  }
+
+  .datasetCardHeader .datasetRemoveButton {
+    width: auto;
   }
 
   .actionRow {

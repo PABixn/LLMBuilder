@@ -1457,6 +1457,31 @@ button:focus-visible,
   align-self: end;
 }
 
+.datasetRemoveButton {
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.textButton.datasetRemoveButton:hover:not(:disabled),
+.textButton.datasetRemoveButton:focus-visible {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  outline: none;
+}
+
+.datasetRemoveButton svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
 .jsonGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1666,6 +1691,10 @@ pre {
   .modeSwitchButton,
   .datasetCardHeader .textButton {
     width: 100%;
+  }
+
+  .datasetCardHeader .datasetRemoveButton {
+    width: auto;
   }
 
   .actionRow {
