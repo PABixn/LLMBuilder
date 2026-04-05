@@ -217,6 +217,80 @@
   gap: 8px;
 }
 
+.trainingPromptToolbar {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.trainingPromptHintLine {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  max-width: 64ch;
+}
+
+.trainingPromptGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.trainingPromptCard {
+  align-content: start;
+  gap: 12px;
+}
+
+.trainingPromptCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trainingPromptTitleGroup {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.trainingPromptMeta {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.trainingPromptRemoveButton {
+  min-height: 32px;
+  padding-inline: 10px;
+  flex: 0 0 auto;
+}
+
+.trainingPromptEditor {
+  gap: 7px;
+}
+
+.trainingPromptEditor textarea {
+  min-height: 104px;
+  resize: vertical;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.trainingPromptFields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trainingPromptFields .fieldLabel {
+  width: 100%;
+}
+
 .trainingCodeBlock,
 .trainingLogBox {
   margin: 0;
@@ -272,10 +346,64 @@
 
 .trainingSettingsStudio {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
-.trainingSettingsSectionHead {
+.trainingSettingsStudio .settingsPanel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+
+.trainingSettingsStudio .settingsPanel > summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 700;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trainingSettingsStudio .settingsPanel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.trainingSettingsStudio .settingsPanel > summary::after {
+  content: "▾";
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1;
+  transition: transform 0.16s ease;
+}
+
+.trainingSettingsStudio .settingsPanel[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.trainingSettingsStudio .settingsPanel[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.trainingSettingsStudio .settingsGrid {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.trainingSettingsStudio .settingsGroup {
+  display: grid;
+  gap: 10px;
+}
+
+.trainingSettingsStudio .settingsGroup + .settingsGroup {
+  padding-top: 10px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.trainingSettingsSectionHead,
+.trainingSettingsPanelHead {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -283,24 +411,51 @@
   flex-wrap: wrap;
 }
 
-.trainingSettingsSectionHead h3 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 760;
-  letter-spacing: -0.015em;
+.trainingSettingsStudio .settingsGroupHeader {
+  display: grid;
+  gap: 4px;
 }
 
-.trainingSettingsSectionCopy {
+.trainingSettingsSectionHead h3,
+.trainingSettingsStudio .settingsGroupHeader h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 760;
+  letter-spacing: -0.01em;
+}
+
+.trainingSettingsSectionCopy,
+.trainingSettingsStudio .settingsGroupHint {
   margin: 6px 0 0;
   font-size: 0.82rem;
   color: var(--text-muted);
   line-height: 1.45;
-  max-width: 70ch;
+}
+
+.trainingSettingsStudio .trainingSettingsCompactGrid > .fieldLabel {
+  justify-self: start;
+  width: min(100%, 260px);
+}
+
+.trainingSettingsStudio .trainingSettingsCompactGrid > .fieldLabel.fullWidthField {
+  width: min(100%, 560px);
 }
 
 .trainingAdvancedDisclosure {
   margin-top: 0;
   background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+}
+
+.trainingSettingsStudio .trainingPromptCard,
+.trainingSettingsStudio .datasetCard {
+  border-radius: 12px;
+  padding: 12px;
+  gap: 8px;
+  background: var(--surface);
+}
+
+.trainingSettingsStudio .trainingPromptFields > .fieldLabel {
+  width: 100%;
 }
 
 .trainingJsonGrid {
@@ -940,6 +1095,7 @@
   .trainingWorkflowTop,
   .trainingSectionHeader,
   .trainingSettingsSectionHead,
+  .trainingPromptCardHead,
   .trainingAssetPickerHeader,
   .trainingAssetPickerOptionHead {
     flex-direction: column;
@@ -1000,6 +1156,10 @@
   .localFileList {
     display: grid;
     gap: 4px;
+  }
+
+  .trainingPromptFields {
+    grid-template-columns: 1fr;
   }
 
   .localFileItem,

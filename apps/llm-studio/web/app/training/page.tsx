@@ -1515,14 +1515,14 @@ function TrainingPageContent() {
     setIsLoadingDatasetTemplate(true);
     try {
       const templates = await fetchTrainingConfigTemplates();
-      const hydrated = hydrateDatasetUiFromConfig(
+      const templateDataloaderConfig = cloneRecord(
         asRecord(templates.dataloader_config_template)
       );
+      const hydrated = hydrateDatasetUiFromConfig(templateDataloaderConfig);
       setDatasetSourceMode("streaming_hf");
       setHfToken(hydrated.hfToken);
-      setStreamingDatasets(
-        normalizeStreamingDatasetWeights(hydrated.streamingDatasets)
-      );
+      setStreamingDatasets(hydrated.streamingDatasets);
+      setDataloaderConfig(templateDataloaderConfig);
       notify("success", "Template loaded", "Loaded streaming dataset defaults.");
     } catch (error) {
       notify(
@@ -2269,11 +2269,15 @@ function TrainingPageContent() {
         </div>
       </section>
 
-      <section className="panelCard trainingSettingsStudio">
+      <section className="panelCard trainingSettingsStudio settingsStudio">
         <div className="panelHead">
           <div>
-            <h2>Training Settings Studio</h2>
-            <p className="panelCopy">High-value controls stay front and center; advanced runtime knobs live behind disclosures instead of blocking the first screen.</p>
+            <p className="panelEyebrow">Settings</p>
+            <h2>Configuration Studio</h2>
+            <p className="panelCopy">
+              Core launch fields stay visible. Dataset, prompts, and runtime controls live in
+              foldable sections so the page stays compact like the tokenizer workflow.
+            </p>
           </div>
           <div className="heroMetaPills">
             <span className="pillBadge tone-neutral">{datasetEntries.length} dataset source{datasetEntries.length === 1 ? "" : "s"}</span>
@@ -2283,541 +2287,727 @@ function TrainingPageContent() {
 
         {trainingConfig && dataloaderConfig ? (
           <div className="trainingSettingsStack">
-            <section className="trainingSettingsSection">
-              <div className="trainingSettingsSectionHead">
-                <div>
-                  <h3>Core launch knobs</h3>
-                  <p className="trainingSettingsSectionCopy">
-                    Tune the values you are most likely to touch between runs before opening the deeper runtime controls.
-                  </p>
+            <details className="settingsPanel" open>
+              <summary>Training plan</summary>
+              <div className="settingsGrid">
+                <div className="settingsGroup">
+                  <div className="settingsGroupHeader">
+                    <h3>Core launch knobs</h3>
+                    <p className="settingsGroupHint">
+                      Tune the values you are most likely to touch between runs before opening the
+                      deeper runtime controls.
+                    </p>
+                  </div>
+                  <div className="fieldGrid trainingSettingsCompactGrid">
+                    <label className="fieldLabel">
+                      <span>Sequence length</span>
+                      <input
+                        type="number"
+                        value={asNumber(trainingConfig.seq_len, 128)}
+                        onChange={(event) =>
+                          handleTrainingField(["seq_len"], Number(event.target.value))
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Max steps</span>
+                      <input
+                        type="number"
+                        value={asNumber(trainingConfig.max_steps, 0)}
+                        onChange={(event) =>
+                          handleTrainingField(["max_steps"], Number(event.target.value))
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Total batch size</span>
+                      <input
+                        type="number"
+                        value={asNumber(trainingConfig.total_batch_size, 0)}
+                        onChange={(event) =>
+                          handleTrainingField(["total_batch_size"], Number(event.target.value))
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Learning rate</span>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={asNumber(asRecord(trainingConfig.optimizer).lr, 0.0003)}
+                        onChange={(event) =>
+                          handleTrainingField(["optimizer", "lr"], Number(event.target.value))
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Weight decay</span>
+                      <input
+                        type="number"
+                        step="0.0001"
+                        value={asNumber(asRecord(trainingConfig.optimizer).weight_decay, 0.1)}
+                        onChange={(event) =>
+                          handleTrainingField(
+                            ["optimizer", "weight_decay"],
+                            Number(event.target.value)
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Save every</span>
+                      <input
+                        type="number"
+                        value={asNumber(trainingConfig.save_every, 0)}
+                        onChange={(event) =>
+                          handleTrainingField(["save_every"], Number(event.target.value))
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Sample every</span>
+                      <input
+                        type="number"
+                        value={asNumber(trainingConfig.sample_every, 0)}
+                        onChange={(event) =>
+                          handleTrainingField(["sample_every"], Number(event.target.value))
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Dataset shuffle buffer</span>
+                      <input
+                        type="number"
+                        value={asNumber(asRecord(dataloaderConfig.shuffle).buffer_size, 1000)}
+                        onChange={(event) =>
+                          handleDataloaderField(
+                            ["shuffle", "buffer_size"],
+                            Number(event.target.value)
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
-              <div className="fieldGrid">
-                <label className="fieldLabel">
-                  <span>Sequence length</span>
-                  <input
-                    type="number"
-                    value={asNumber(trainingConfig.seq_len, 128)}
-                    onChange={(event) => handleTrainingField(["seq_len"], Number(event.target.value))}
-                  />
-                </label>
-                <label className="fieldLabel">
-                  <span>Max steps</span>
-                  <input
-                    type="number"
-                    value={asNumber(trainingConfig.max_steps, 0)}
-                    onChange={(event) => handleTrainingField(["max_steps"], Number(event.target.value))}
-                  />
-                </label>
-                <label className="fieldLabel">
-                  <span>Total batch size</span>
-                  <input
-                    type="number"
-                    value={asNumber(trainingConfig.total_batch_size, 0)}
-                    onChange={(event) => handleTrainingField(["total_batch_size"], Number(event.target.value))}
-                  />
-                </label>
-                <label className="fieldLabel">
-                  <span>Learning rate</span>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={asNumber(asRecord(trainingConfig.optimizer).lr, 0.0003)}
-                    onChange={(event) => handleTrainingField(["optimizer", "lr"], Number(event.target.value))}
-                  />
-                </label>
-                <label className="fieldLabel">
-                  <span>Weight decay</span>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={asNumber(asRecord(trainingConfig.optimizer).weight_decay, 0.1)}
-                    onChange={(event) => handleTrainingField(["optimizer", "weight_decay"], Number(event.target.value))}
-                  />
-                </label>
-                <label className="fieldLabel">
-                  <span>Save every</span>
-                  <input
-                    type="number"
-                    value={asNumber(trainingConfig.save_every, 0)}
-                    onChange={(event) => handleTrainingField(["save_every"], Number(event.target.value))}
-                  />
-                </label>
-                <label className="fieldLabel">
-                  <span>Sample every</span>
-                  <input
-                    type="number"
-                    value={asNumber(trainingConfig.sample_every, 0)}
-                    onChange={(event) => handleTrainingField(["sample_every"], Number(event.target.value))}
-                  />
-                </label>
-                <label className="fieldLabel">
-                  <span>Dataset shuffle buffer</span>
-                  <input
-                    type="number"
-                    value={asNumber(asRecord(dataloaderConfig.shuffle).buffer_size, 1000)}
-                    onChange={(event) => handleDataloaderField(["shuffle", "buffer_size"], Number(event.target.value))}
-                  />
-                </label>
-              </div>
-            </section>
+            </details>
 
-            <section className="trainingSettingsSection">
-              <div className="trainingSettingsSectionHead">
-                <div>
-                  <h3>Dataset Sources</h3>
-                  <p className="trainingSettingsSectionCopy">
-                    Match the tokenizer trainer exactly: choose one source mode and configure the full dataset stack here.
-                  </p>
-                </div>
-              </div>
-              <div className="sourceModeRow trainingTokenizerDatasetSection">
-                <span>Dataset source</span>
-                <div className="modeSwitch">
-                  <button
-                    type="button"
-                    className={`modeSwitchButton ${
-                      datasetSourceMode === "local_file" ? "modeSwitchButton-active" : ""
-                    }`}
-                    onClick={() => setDatasetSourceMode("local_file")}
-                  >
-                    Local files
-                  </button>
-                  <button
-                    type="button"
-                    className={`modeSwitchButton ${
-                      datasetSourceMode === "streaming_hf" ? "modeSwitchButton-active" : ""
-                    }`}
-                    onClick={() => {
-                      setDatasetSourceMode("streaming_hf");
-                      setStreamingDatasets((previous) =>
-                        normalizeStreamingDatasetWeights(previous)
-                      );
-                    }}
-                  >
-                    Streaming HF datasets
-                  </button>
-                </div>
-              </div>
+            <details className="settingsPanel" open>
+              <summary>Core dataset settings</summary>
+              <div className="settingsGrid">
+                <div className="settingsGroup">
+                  <div className="settingsGroupHeader">
+                    <h3>Dataset sources</h3>
+                    <p className="settingsGroupHint">
+                      Match the tokenizer trainer: choose one source mode and configure the full
+                      dataset stack here.
+                    </p>
+                  </div>
 
-              {datasetSourceMode === "local_file" ? (
-                <div className="datasetConfigurator trainingTokenizerDatasetSection">
-                  <div
-                    className={`localFileManager ${
-                      isDraggingTrainFiles ? "localFileManager-dragging" : ""
-                    }`}
-                    onDragEnter={handleLocalTrainFilesDragEnter}
-                    onDragOver={handleLocalTrainFilesDragOver}
-                    onDragLeave={handleLocalTrainFilesDragLeave}
-                    onDrop={handleLocalTrainFilesDrop}
-                  >
-                    <div className="localFileManagerHeader">
-                      <div>
-                        <strong>Local training files</strong>
-                        <p>Training and evaluation use this same file set.</p>
-                      </div>
-                      <div className="localFileHeaderActions">
-                        <div className="localFileHeaderButtons">
-                          <label
-                            className={`secondaryButton localFileUploadButton localFileHeaderButton ${
-                              isUploadingTrainFile ? "localFileUploadButton-disabled" : ""
-                            }`}
-                            aria-disabled={isUploadingTrainFile}
-                          >
-                            {isUploadingTrainFile ? "Uploading..." : "Add files"}
-                            <input
-                              type="file"
-                              multiple
-                              onChange={handleTrainFilesSelected}
-                              disabled={isUploadingTrainFile}
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            className="textButton localFileHeaderButton"
-                            onClick={clearLocalTrainFiles}
-                            disabled={localTrainFiles.length === 0}
-                          >
-                            Remove all
-                          </button>
+                  <div className="sourceModeRow trainingTokenizerDatasetSection">
+                    <span>Dataset source</span>
+                    <div className="modeSwitch">
+                      <button
+                        type="button"
+                        className={`modeSwitchButton ${
+                          datasetSourceMode === "local_file" ? "modeSwitchButton-active" : ""
+                        }`}
+                        onClick={() => setDatasetSourceMode("local_file")}
+                      >
+                        Local files
+                      </button>
+                      <button
+                        type="button"
+                        className={`modeSwitchButton ${
+                          datasetSourceMode === "streaming_hf" ? "modeSwitchButton-active" : ""
+                        }`}
+                        onClick={() => {
+                          setDatasetSourceMode("streaming_hf");
+                          setStreamingDatasets((previous) =>
+                            normalizeStreamingDatasetWeights(previous)
+                          );
+                        }}
+                      >
+                        Streaming HF datasets
+                      </button>
+                    </div>
+                  </div>
+
+                  {datasetSourceMode === "local_file" ? (
+                    <div className="datasetConfigurator trainingTokenizerDatasetSection">
+                      <div
+                        className={`localFileManager ${
+                          isDraggingTrainFiles ? "localFileManager-dragging" : ""
+                        }`}
+                        onDragEnter={handleLocalTrainFilesDragEnter}
+                        onDragOver={handleLocalTrainFilesDragOver}
+                        onDragLeave={handleLocalTrainFilesDragLeave}
+                        onDrop={handleLocalTrainFilesDrop}
+                      >
+                        <div className="localFileManagerHeader">
+                          <div>
+                            <strong>Local training files</strong>
+                            <p>Training and evaluation use this same file set.</p>
+                          </div>
+                          <div className="localFileHeaderActions">
+                            <div className="localFileHeaderButtons">
+                              <label
+                                className={`secondaryButton localFileUploadButton localFileHeaderButton ${
+                                  isUploadingTrainFile ? "localFileUploadButton-disabled" : ""
+                                }`}
+                                aria-disabled={isUploadingTrainFile}
+                              >
+                                {isUploadingTrainFile ? "Uploading..." : "Add files"}
+                                <input
+                                  type="file"
+                                  multiple
+                                  onChange={handleTrainFilesSelected}
+                                  disabled={isUploadingTrainFile}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                className="textButton localFileHeaderButton"
+                                onClick={clearLocalTrainFiles}
+                                disabled={localTrainFiles.length === 0}
+                              >
+                                Remove all
+                              </button>
+                            </div>
+                            <span className="localFileCount">
+                              {localTrainFiles.length} file
+                              {localTrainFiles.length === 1 ? "" : "s"}
+                            </span>
+                          </div>
                         </div>
-                        <span className="localFileCount">
-                          {localTrainFiles.length} file{localTrainFiles.length === 1 ? "" : "s"}
-                        </span>
+
+                        {localTrainFiles.length === 0 ? (
+                          <p className="filterEmpty">
+                            No local files added yet. Add one or more files to train.
+                          </p>
+                        ) : (
+                          <ul className="localFileList">
+                            {localTrainFiles.map((entry) => {
+                              const fileCharLabel = formatCharCount(entry.sizeChars);
+                              return (
+                                <li key={entry.id} className="localFileItem">
+                                  <strong className="localFileName" title={entry.fileName}>
+                                    {entry.fileName}
+                                  </strong>
+                                  <div className="localFileActions">
+                                    <span className="localFileStat">
+                                      {fileCharLabel
+                                        ? `${fileCharLabel} chars`
+                                        : "char count pending"}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      className="textButton localFileRemoveIconButton"
+                                      onClick={() => removeLocalTrainFile(entry.id)}
+                                      aria-label={`Remove ${entry.fileName}`}
+                                      title={`Remove ${entry.fileName}`}
+                                    >
+                                      <FiX aria-hidden="true" />
+                                    </button>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+
+                        <span className="fieldNote">Files are deduplicated by stored path.</span>
                       </div>
                     </div>
+                  ) : (
+                    <div className="datasetConfigurator trainingTokenizerDatasetSection">
+                      <label className="fieldLabel fullWidthField">
+                        <span>HF access token (optional)</span>
+                        <input
+                          type="password"
+                          value={hfToken}
+                          onChange={(event) => setHfToken(event.target.value)}
+                          autoComplete="off"
+                          placeholder="hf_..."
+                        />
+                        <span className="fieldNote">Required for gated/private datasets.</span>
+                      </label>
 
-                    {localTrainFiles.length === 0 ? (
-                      <p className="filterEmpty">
-                        No local files added yet. Add one or more files to train.
-                      </p>
-                    ) : (
-                      <ul className="localFileList">
-                        {localTrainFiles.map((entry) => {
-                          const fileCharLabel = formatCharCount(entry.sizeChars);
-                          return (
-                            <li key={entry.id} className="localFileItem">
-                              <strong className="localFileName" title={entry.fileName}>
-                                {entry.fileName}
-                              </strong>
-                              <div className="localFileActions">
-                                <span className="localFileStat">
-                                  {fileCharLabel ? `${fileCharLabel} chars` : "char count pending"}
-                                </span>
-                                <button
-                                  type="button"
-                                  className="textButton localFileRemoveIconButton"
-                                  onClick={() => removeLocalTrainFile(entry.id)}
-                                  aria-label={`Remove ${entry.fileName}`}
-                                  title={`Remove ${entry.fileName}`}
-                                >
-                                  <FiX aria-hidden="true" />
-                                </button>
+                      <div className="actionRow">
+                        <button
+                          type="button"
+                          className="secondaryButton"
+                          onClick={addStreamingDataset}
+                        >
+                          Add dataset
+                        </button>
+                        <button
+                          type="button"
+                          className="secondaryButton"
+                          onClick={() => {
+                            void handleLoadStreamingTemplate();
+                          }}
+                          disabled={isLoadingDatasetTemplate}
+                        >
+                          {isLoadingDatasetTemplate
+                            ? "Loading template..."
+                            : "Load streaming template"}
+                        </button>
+                      </div>
+
+                      <div className="datasetList">
+                        {streamingDatasets.map((entry, index) => (
+                          <div key={entry.id} className="datasetCard">
+                            <div className="datasetCardHeader">
+                              <strong>Streaming dataset {index + 1}</strong>
+                              <button
+                                type="button"
+                                className="textButton"
+                                onClick={() => removeStreamingDataset(entry.id)}
+                                disabled={streamingDatasets.length <= 1}
+                              >
+                                Remove
+                              </button>
+                            </div>
+
+                            <div className="fieldGrid">
+                              <label className="fieldLabel">
+                                <span>HF dataset name</span>
+                                <input
+                                  value={entry.name}
+                                  onChange={(event) =>
+                                    updateStreamingDataset(entry.id, {
+                                      name: event.target.value,
+                                    })
+                                  }
+                                  placeholder="HuggingFaceFW/fineweb-edu"
+                                />
+                              </label>
+
+                              <label className="fieldLabel">
+                                <span>Split</span>
+                                <input
+                                  value={entry.split}
+                                  onChange={(event) =>
+                                    updateStreamingDataset(entry.id, {
+                                      split: event.target.value,
+                                    })
+                                  }
+                                  placeholder="train"
+                                />
+                              </label>
+
+                              <label className="fieldLabel">
+                                <span>Weight</span>
+                                <input
+                                  inputMode="decimal"
+                                  pattern="[0-9]*[.]?[0-9]*"
+                                  min="0"
+                                  max="1"
+                                  step="0.000001"
+                                  value={entry.weight}
+                                  onChange={(event) =>
+                                    updateStreamingWeight(entry.id, event.target.value)
+                                  }
+                                  placeholder="1.0"
+                                />
+                              </label>
+
+                              <label className="fieldLabel fullWidthField">
+                                <span>Text columns</span>
+                                <input
+                                  value={entry.textColumns}
+                                  onChange={(event) =>
+                                    updateStreamingDataset(entry.id, {
+                                      textColumns: event.target.value,
+                                    })
+                                  }
+                                  placeholder="text"
+                                />
+                              </label>
+                            </div>
+
+                            <details className="subPanel">
+                              <summary>Advanced source options</summary>
+                              <div className="fieldGrid">
+                                <label className="fieldLabel">
+                                  <span>Config (optional)</span>
+                                  <input
+                                    value={entry.config}
+                                    onChange={(event) =>
+                                      updateStreamingDataset(entry.id, {
+                                        config: event.target.value,
+                                      })
+                                    }
+                                  />
+                                </label>
+
+                                <div className="fullWidthField filterBuilder">
+                                  <div className="filterBuilderHeader">
+                                    <span className="filterBuilderTitle">Filters (optional)</span>
+                                    <button
+                                      type="button"
+                                      className="secondaryButton"
+                                      onClick={() => addStreamingFilter(entry.id)}
+                                    >
+                                      Add filter
+                                    </button>
+                                  </div>
+
+                                  {entry.filters.length === 0 ? (
+                                    <p className="filterEmpty">No filters yet.</p>
+                                  ) : (
+                                    <div className="filterList">
+                                      {entry.filters.map((filter) => (
+                                        <div key={filter.id} className="filterRow">
+                                          <label className="fieldLabel">
+                                            <span>Column</span>
+                                            <input
+                                              value={filter.column}
+                                              onChange={(event) =>
+                                                updateStreamingFilter(entry.id, filter.id, {
+                                                  column: event.target.value,
+                                                })
+                                              }
+                                              placeholder="language_score"
+                                            />
+                                          </label>
+
+                                          <label className="fieldLabel">
+                                            <span>Operator</span>
+                                            <select
+                                              value={filter.operator}
+                                              onChange={(event) =>
+                                                updateStreamingFilter(entry.id, filter.id, {
+                                                  operator: event.target
+                                                    .value as FilterOperator,
+                                                })
+                                              }
+                                            >
+                                              {FILTER_OPERATORS.map((operator) => (
+                                                <option key={operator} value={operator}>
+                                                  {operator}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          </label>
+
+                                          <label className="fieldLabel">
+                                            <span>Value</span>
+                                            <input
+                                              value={filter.value}
+                                              onChange={(event) =>
+                                                updateStreamingFilter(entry.id, filter.id, {
+                                                  value: event.target.value,
+                                                })
+                                              }
+                                              placeholder={
+                                                filter.operator === "in" ||
+                                                filter.operator === "not in"
+                                                  ? '["en", "de"] or en,de'
+                                                  : 'en, true, 0.95, {"k":1}'
+                                              }
+                                            />
+                                          </label>
+
+                                          <button
+                                            type="button"
+                                            className="textButton filterRemoveButton"
+                                            onClick={() =>
+                                              removeStreamingFilter(entry.id, filter.id)
+                                            }
+                                          >
+                                            Remove
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <p className="fieldNote">
+                                    Values are inferred automatically. For `in`/`not in`, use a
+                                    JSON array or comma-separated values.
+                                  </p>
+                                </div>
                               </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-
-                    <span className="fieldNote">Files are deduplicated by stored path.</span>
-                  </div>
+                            </details>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="datasetConfigurator trainingTokenizerDatasetSection">
-                  <label className="fieldLabel fullWidthField">
-                    <span>HF access token (optional)</span>
-                    <input
-                      type="password"
-                      value={hfToken}
-                      onChange={(event) => setHfToken(event.target.value)}
-                      autoComplete="off"
-                      placeholder="hf_..."
-                    />
-                    <span className="fieldNote">Required for gated/private datasets.</span>
-                  </label>
+              </div>
+            </details>
 
-                  <div className="actionRow">
-                    <button type="button" className="secondaryButton" onClick={addStreamingDataset}>
-                      Add dataset
-                    </button>
-                    <button
-                      type="button"
-                      className="secondaryButton"
-                      onClick={() => {
-                        void handleLoadStreamingTemplate();
-                      }}
-                      disabled={isLoadingDatasetTemplate}
-                    >
-                      {isLoadingDatasetTemplate ? "Loading template..." : "Load streaming template"}
-                    </button>
+            <details className="settingsPanel" open>
+              <summary>Sampling prompts</summary>
+              <div className="settingsGrid">
+                <div className="settingsGroup">
+                  <div className="trainingSettingsPanelHead">
+                    <div className="settingsGroupHeader">
+                      <h3>Prompt presets</h3>
+                      <p className="settingsGroupHint">
+                        These prompts power the live sample viewer during the run.
+                      </p>
+                    </div>
+                    <div className="trainingPromptToolbar">
+                      <span className="pillBadge tone-neutral">
+                        {promptEntries.length} preset{promptEntries.length === 1 ? "" : "s"}
+                      </span>
+                      <button
+                        type="button"
+                        className="buttonGhost buttonSmall"
+                        onClick={handleAddPrompt}
+                      >
+                        <FiPlus /> Add prompt
+                      </button>
+                    </div>
                   </div>
-
-                  <div className="datasetList">
-                    {streamingDatasets.map((entry, index) => (
-                      <div key={entry.id} className="datasetCard">
-                        <div className="datasetCardHeader">
-                          <strong>Streaming dataset {index + 1}</strong>
+                  <p className="trainingPromptHintLine">
+                    Keep a small mix of short, medium, and edge-case prompts so the live samples
+                    reveal regressions quickly.
+                  </p>
+                  <div className="trainingPromptGrid">
+                    {promptEntries.map((prompt, index) => (
+                      <article key={`prompt-${index}`} className="trainingPromptCard">
+                        <div className="trainingPromptCardHead">
+                          <div className="trainingPromptTitleGroup">
+                            <div className="trainingPromptTitle">Prompt {index + 1}</div>
+                            <p className="trainingPromptMeta">
+                              {Math.max(0, asString(prompt.prompt).trim().length)} chars
+                            </p>
+                          </div>
                           <button
                             type="button"
-                            className="textButton"
-                            onClick={() => removeStreamingDataset(entry.id)}
-                            disabled={streamingDatasets.length <= 1}
+                            className="textButton trainingPromptRemoveButton"
+                            onClick={() => handleRemovePrompt(index)}
+                            aria-label={`Remove prompt ${index + 1}`}
+                            title={`Remove prompt ${index + 1}`}
                           >
-                            Remove
+                            <FiTrash2 /> Remove
                           </button>
                         </div>
 
-                        <div className="fieldGrid">
+                        <label className="fieldLabel trainingPromptEditor">
+                          <span>Prompt text</span>
+                          <textarea
+                            rows={4}
+                            value={asString(prompt.prompt)}
+                            onChange={(event) =>
+                              handlePromptChange(index, "prompt", event.target.value)
+                            }
+                            placeholder="Write a short evaluation prompt..."
+                          />
+                        </label>
+
+                        <div className="trainingPromptFields">
                           <label className="fieldLabel">
-                            <span>HF dataset name</span>
+                            <span>Max tokens</span>
                             <input
-                              value={entry.name}
+                              type="number"
+                              value={asNumber(prompt.max_tokens, 64)}
                               onChange={(event) =>
-                                updateStreamingDataset(entry.id, { name: event.target.value })
+                                handlePromptChange(
+                                  index,
+                                  "max_tokens",
+                                  Number(event.target.value)
+                                )
                               }
-                              placeholder="HuggingFaceFW/fineweb-edu"
                             />
                           </label>
-
                           <label className="fieldLabel">
-                            <span>Split</span>
+                            <span>Temperature</span>
                             <input
-                              value={entry.split}
+                              type="number"
+                              step="0.05"
+                              value={asNumber(prompt.temperature, 0.7)}
                               onChange={(event) =>
-                                updateStreamingDataset(entry.id, { split: event.target.value })
+                                handlePromptChange(
+                                  index,
+                                  "temperature",
+                                  Number(event.target.value)
+                                )
                               }
-                              placeholder="train"
                             />
                           </label>
-
                           <label className="fieldLabel">
-                            <span>Weight</span>
+                            <span>Top-k</span>
                             <input
-                              inputMode="decimal"
-                              pattern="[0-9]*[.]?[0-9]*"
-                              min="0"
-                              max="1"
-                              step="0.000001"
-                              value={entry.weight}
+                              type="number"
+                              value={asNumber(prompt.top_k, 40)}
                               onChange={(event) =>
-                                updateStreamingWeight(entry.id, event.target.value)
+                                handlePromptChange(index, "top_k", Number(event.target.value))
                               }
-                              placeholder="1.0"
-                            />
-                          </label>
-
-                          <label className="fieldLabel fullWidthField">
-                            <span>Text columns</span>
-                            <input
-                              value={entry.textColumns}
-                              onChange={(event) =>
-                                updateStreamingDataset(entry.id, {
-                                  textColumns: event.target.value,
-                                })
-                              }
-                              placeholder="text"
                             />
                           </label>
                         </div>
-
-                        <details className="subPanel">
-                          <summary>Advanced source options</summary>
-                          <div className="fieldGrid">
-                            <label className="fieldLabel">
-                              <span>Config (optional)</span>
-                              <input
-                                value={entry.config}
-                                onChange={(event) =>
-                                  updateStreamingDataset(entry.id, {
-                                    config: event.target.value,
-                                  })
-                                }
-                              />
-                            </label>
-
-                            <div className="fullWidthField filterBuilder">
-                              <div className="filterBuilderHeader">
-                                <span className="filterBuilderTitle">Filters (optional)</span>
-                                <button
-                                  type="button"
-                                  className="secondaryButton"
-                                  onClick={() => addStreamingFilter(entry.id)}
-                                >
-                                  Add filter
-                                </button>
-                              </div>
-
-                              {entry.filters.length === 0 ? (
-                                <p className="filterEmpty">No filters yet.</p>
-                              ) : (
-                                <div className="filterList">
-                                  {entry.filters.map((filter) => (
-                                    <div key={filter.id} className="filterRow">
-                                      <label className="fieldLabel">
-                                        <span>Column</span>
-                                        <input
-                                          value={filter.column}
-                                          onChange={(event) =>
-                                            updateStreamingFilter(entry.id, filter.id, {
-                                              column: event.target.value,
-                                            })
-                                          }
-                                          placeholder="language_score"
-                                        />
-                                      </label>
-
-                                      <label className="fieldLabel">
-                                        <span>Operator</span>
-                                        <select
-                                          value={filter.operator}
-                                          onChange={(event) =>
-                                            updateStreamingFilter(entry.id, filter.id, {
-                                              operator: event.target.value as FilterOperator,
-                                            })
-                                          }
-                                        >
-                                          {FILTER_OPERATORS.map((operator) => (
-                                            <option key={operator} value={operator}>
-                                              {operator}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </label>
-
-                                      <label className="fieldLabel">
-                                        <span>Value</span>
-                                        <input
-                                          value={filter.value}
-                                          onChange={(event) =>
-                                            updateStreamingFilter(entry.id, filter.id, {
-                                              value: event.target.value,
-                                            })
-                                          }
-                                          placeholder={
-                                            filter.operator === "in" ||
-                                            filter.operator === "not in"
-                                              ? '["en", "de"] or en,de'
-                                              : 'en, true, 0.95, {"k":1}'
-                                          }
-                                        />
-                                      </label>
-
-                                      <button
-                                        type="button"
-                                        className="textButton filterRemoveButton"
-                                        onClick={() => removeStreamingFilter(entry.id, filter.id)}
-                                      >
-                                        Remove
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              <p className="fieldNote">
-                                Values are inferred automatically. For `in`/`not in`, use a JSON
-                                array or comma-separated values.
-                              </p>
-                            </div>
-                          </div>
-                        </details>
-                      </div>
+                      </article>
                     ))}
                   </div>
                 </div>
-              )}
-            </section>
-
-            <section className="trainingSettingsSection">
-              <div className="trainingSettingsSectionHead">
-                <div>
-                  <h3>Sampling Prompts</h3>
-                  <p className="trainingSettingsSectionCopy">These prompts power the live sample viewer during the run.</p>
-                </div>
-                <button type="button" className="buttonGhost buttonSmall" onClick={handleAddPrompt}>
-                  <FiPlus /> Add prompt
-                </button>
               </div>
-              <div className="trainingPromptList">
-                {promptEntries.map((prompt, index) => (
-                  <div key={`prompt-${index}`} className="trainingPromptCard">
-                    <div className="trainingSectionHeader">
-                      <div className="trainingPromptTitle">Prompt {index + 1}</div>
-                      <button type="button" className="buttonDanger buttonSmall" onClick={() => handleRemovePrompt(index)}>
-                        <FiTrash2 /> Remove
-                      </button>
-                    </div>
-                    <div className="fieldGrid compact">
-                      <label className="fieldLabel fullWidthField">
-                        <span>Prompt text</span>
-                        <textarea
-                          value={asString(prompt.prompt)}
-                          onChange={(event) => handlePromptChange(index, "prompt", event.target.value)}
-                        />
-                      </label>
-                      <label className="fieldLabel">
-                        <span>Max tokens</span>
-                        <input type="number" value={asNumber(prompt.max_tokens, 64)} onChange={(event) => handlePromptChange(index, "max_tokens", Number(event.target.value))} />
-                      </label>
-                      <label className="fieldLabel">
-                        <span>Temperature</span>
-                        <input type="number" step="0.05" value={asNumber(prompt.temperature, 0.7)} onChange={(event) => handlePromptChange(index, "temperature", Number(event.target.value))} />
-                      </label>
-                      <label className="fieldLabel">
-                        <span>Top-k</span>
-                        <input type="number" value={asNumber(prompt.top_k, 40)} onChange={(event) => handlePromptChange(index, "top_k", Number(event.target.value))} />
-                      </label>
-                    </div>
+            </details>
+
+            <details className="settingsPanel">
+              <summary>Advanced runtime controls</summary>
+              <div className="settingsGrid">
+                <div className="settingsGroup">
+                  <div className="settingsGroupHeader">
+                    <h3>Deeper runtime options</h3>
+                    <p className="settingsGroupHint">
+                      Token formatting, optimizer internals, and multi-node controls stay available
+                      without taking over the main workflow.
+                    </p>
                   </div>
-                ))}
+                  <div className="fieldGrid trainingSettingsCompactGrid">
+                    <label className="fieldLabel">
+                      <span>BOS token</span>
+                      <input
+                        value={asString(dataloaderConfig.bos_token)}
+                        onChange={(event) =>
+                          handleDataloaderField(["bos_token"], event.target.value)
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>EOS token</span>
+                      <input
+                        value={asString(dataloaderConfig.eos_token)}
+                        onChange={(event) =>
+                          handleDataloaderField(["eos_token"], event.target.value)
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>PAD token</span>
+                      <input
+                        value={asString(dataloaderConfig.pad_token)}
+                        onChange={(event) =>
+                          handleDataloaderField(["pad_token"], event.target.value)
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Token dtype</span>
+                      <select
+                        value={asString(dataloaderConfig.token_dtype, "int64")}
+                        onChange={(event) =>
+                          handleDataloaderField(["token_dtype"], event.target.value)
+                        }
+                      >
+                        <option value="int64">int64</option>
+                        <option value="int32">int32</option>
+                        <option value="int16">int16</option>
+                        <option value="uint8">uint8</option>
+                      </select>
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Pretokenize batch size</span>
+                      <input
+                        type="number"
+                        value={asNumber(dataloaderConfig.pretokenize_batch_size, 1000)}
+                        onChange={(event) =>
+                          handleDataloaderField(
+                            ["pretokenize_batch_size"],
+                            Number(event.target.value)
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Cache dir</span>
+                      <input
+                        value={asString(dataloaderConfig.cache_dir)}
+                        onChange={(event) =>
+                          handleDataloaderField(["cache_dir"], event.target.value)
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Optimizer betas</span>
+                      <input
+                        value={
+                          Array.isArray(asRecord(trainingConfig.optimizer).betas)
+                            ? (asRecord(trainingConfig.optimizer).betas as unknown[])
+                                .map(String)
+                                .join(", ")
+                            : "0.9, 0.95"
+                        }
+                        onChange={(event) =>
+                          handleTrainingField(
+                            ["optimizer", "betas"],
+                            event.target.value
+                              .split(",")
+                              .map((item) => Number(item.trim()))
+                              .filter((value) => Number.isFinite(value))
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Optimizer eps</span>
+                      <input
+                        type="number"
+                        step="0.00000001"
+                        value={asNumber(asRecord(trainingConfig.optimizer).eps, 1e-8)}
+                        onChange={(event) =>
+                          handleTrainingField(["optimizer", "eps"], Number(event.target.value))
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Node split</span>
+                      <select
+                        value={String(Boolean(dataloaderConfig.node_split))}
+                        onChange={(event) =>
+                          handleDataloaderField(
+                            ["node_split"],
+                            event.target.value === "true"
+                          )
+                        }
+                      >
+                        <option value="false">Disabled</option>
+                        <option value="true">Enabled</option>
+                      </select>
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Node rank</span>
+                      <input
+                        type="number"
+                        value={asNumber(dataloaderConfig.node_rank, 0)}
+                        onChange={(event) =>
+                          handleDataloaderField(["node_rank"], Number(event.target.value))
+                        }
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Node world size</span>
+                      <input
+                        type="number"
+                        value={asNumber(dataloaderConfig.node_world_size, 1)}
+                        onChange={(event) =>
+                          handleDataloaderField(["node_world_size"], Number(event.target.value))
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
-            </section>
+            </details>
 
-            <details className="sectionDisclosure trainingAdvancedDisclosure" open>
-              <summary className="sectionDisclosureSummary">Advanced runtime controls</summary>
-              <div className="fieldGrid">
-                  <label className="fieldLabel">
-                    <span>BOS token</span>
-                    <input value={asString(dataloaderConfig.bos_token)} onChange={(event) => handleDataloaderField(["bos_token"], event.target.value)} />
-                  </label>
-                  <label className="fieldLabel">
-                    <span>EOS token</span>
-                    <input value={asString(dataloaderConfig.eos_token)} onChange={(event) => handleDataloaderField(["eos_token"], event.target.value)} />
-                  </label>
-                  <label className="fieldLabel">
-                    <span>PAD token</span>
-                    <input value={asString(dataloaderConfig.pad_token)} onChange={(event) => handleDataloaderField(["pad_token"], event.target.value)} />
-                  </label>
-                  <label className="fieldLabel">
-                    <span>Token dtype</span>
-                    <select value={asString(dataloaderConfig.token_dtype, "int64")} onChange={(event) => handleDataloaderField(["token_dtype"], event.target.value)}>
-                      <option value="int64">int64</option>
-                      <option value="int32">int32</option>
-                      <option value="int16">int16</option>
-                      <option value="uint8">uint8</option>
-                    </select>
-                  </label>
-                  <label className="fieldLabel">
-                    <span>Pretokenize batch size</span>
-                    <input type="number" value={asNumber(dataloaderConfig.pretokenize_batch_size, 1000)} onChange={(event) => handleDataloaderField(["pretokenize_batch_size"], Number(event.target.value))} />
-                  </label>
-                  <label className="fieldLabel">
-                    <span>Cache dir</span>
-                    <input value={asString(dataloaderConfig.cache_dir)} onChange={(event) => handleDataloaderField(["cache_dir"], event.target.value)} />
-                  </label>
-                  <label className="fieldLabel">
-                    <span>Optimizer betas</span>
-                    <input
-                      value={Array.isArray(asRecord(trainingConfig.optimizer).betas) ? (asRecord(trainingConfig.optimizer).betas as unknown[]).map(String).join(", ") : "0.9, 0.95"}
-                      onChange={(event) =>
-                        handleTrainingField(
-                          ["optimizer", "betas"],
-                          event.target.value
-                            .split(",")
-                            .map((item) => Number(item.trim()))
-                            .filter((value) => Number.isFinite(value))
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="fieldLabel">
-                    <span>Optimizer eps</span>
-                    <input type="number" step="0.00000001" value={asNumber(asRecord(trainingConfig.optimizer).eps, 1e-8)} onChange={(event) => handleTrainingField(["optimizer", "eps"], Number(event.target.value))} />
-                  </label>
-                  <label className="fieldLabel">
-                    <span>Node split</span>
-                    <select value={String(Boolean(dataloaderConfig.node_split))} onChange={(event) => handleDataloaderField(["node_split"], event.target.value === "true")}>
-                      <option value="false">Disabled</option>
-                      <option value="true">Enabled</option>
-                    </select>
-                  </label>
-                  <label className="fieldLabel">
-                    <span>Node rank</span>
-                    <input type="number" value={asNumber(dataloaderConfig.node_rank, 0)} onChange={(event) => handleDataloaderField(["node_rank"], Number(event.target.value))} />
-                  </label>
-                  <label className="fieldLabel">
-                    <span>Node world size</span>
-                    <input type="number" value={asNumber(dataloaderConfig.node_world_size, 1)} onChange={(event) => handleDataloaderField(["node_world_size"], Number(event.target.value))} />
-                  </label>
+            <details className="settingsPanel">
+              <summary>Generated config JSON</summary>
+              <div className="settingsGrid">
+                <div className="trainingJsonGrid">
+                  <pre className="trainingCodeBlock">{prettyJson(trainingConfig)}</pre>
+                  <pre className="trainingCodeBlock">{prettyJson(dataloaderConfig)}</pre>
+                </div>
               </div>
             </details>
           </div>
         ) : (
           <div className="trainingEmpty">Loading starter templates…</div>
         )}
-      </section>
-
-      <section className="panelCard">
-        <div className="panelHead">
-          <div>
-            <h2>Generated JSON</h2>
-            <p className="panelCopy">The page stays form-first, but the underlying resolved JSON remains visible for debugging and advanced inspection.</p>
-          </div>
-        </div>
-        <div className="trainingJsonGrid">
-          <pre className="trainingCodeBlock">{prettyJson(trainingConfig)}</pre>
-          <pre className="trainingCodeBlock">{prettyJson(dataloaderConfig)}</pre>
-        </div>
       </section>
 
       {pickerKind ? (
