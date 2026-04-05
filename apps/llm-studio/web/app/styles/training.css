@@ -379,7 +379,7 @@
   overflow: auto;
   display: grid;
   gap: 12px;
-  padding-right: 4px;
+  padding: 4px 4px 6px 0;
 }
 
 .trainingAssetPickerOption {
@@ -504,6 +504,412 @@
   margin: 0;
 }
 
+.trainingTokenizerDatasetSection {
+  margin-top: 12px;
+}
+
+.sourceModeRow {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sourceModeRow > span {
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.modeSwitch {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  width: fit-content;
+}
+
+.modeSwitchButton {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 650;
+  padding: 7px 10px;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.modeSwitchButton-active {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.modeSwitchButton:hover:not(:disabled),
+.modeSwitchButton:focus-visible {
+  background: var(--surface-soft);
+  border-color: var(--line-strong);
+  color: var(--text);
+  outline: none;
+}
+
+.datasetConfigurator {
+  display: grid;
+  gap: 10px;
+}
+
+.secondaryButton,
+.textButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 650;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.secondaryButton {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.secondaryButton:hover:not(:disabled),
+.secondaryButton:focus-visible {
+  border-color: var(--brand);
+  background: var(--surface-raised);
+  color: var(--text);
+  outline: none;
+}
+
+.textButton {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.textButton:hover:not(:disabled),
+.textButton:focus-visible {
+  background: var(--surface-raised);
+  color: var(--text);
+  outline: none;
+}
+
+.secondaryButton:disabled,
+.textButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.localFileManager {
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  width: min(100%, 620px);
+  padding: 8px;
+  display: grid;
+  gap: 7px;
+}
+
+.localFileManager-dragging {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px var(--focus);
+}
+
+.localFileManagerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.localFileHeaderActions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.localFileHeaderButtons {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.localFileManagerHeader strong {
+  font-size: 0.86rem;
+}
+
+.localFileManagerHeader p {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.localFileCount {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  padding: 3px 7px;
+}
+
+.localFileUploadButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.localFileUploadButton input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.localFileUploadButton-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.localFileHeaderButton {
+  min-height: 24px;
+  padding: 2px 7px;
+  font-size: 0.68rem;
+  border-radius: 7px;
+}
+
+.localFileList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.localFileItem {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  width: min(100%, 280px);
+  padding: 4px 6px;
+  min-height: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.localFileName {
+  min-width: 0;
+  font-size: 0.74rem;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.localFileActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.localFileActions .textButton {
+  padding: 2px 6px;
+  min-height: 24px;
+  font-size: 0.68rem;
+  border-radius: 7px;
+}
+
+.localFileRemoveIconButton {
+  width: auto;
+  min-width: 26px;
+  height: auto;
+  margin: -4px -6px -4px 0;
+  border: 0;
+  border-left: 1px solid var(--line-strong);
+  border-radius: 0 6px 6px 0;
+  background: transparent;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+}
+
+.localFileRemoveIconButton:hover:not(:disabled),
+.localFileRemoveIconButton:focus-visible {
+  border-left-color: var(--line-strong);
+  background: var(--surface-raised);
+}
+
+.localFileRemoveIconButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.localFileStat {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-raised);
+  border-radius: 999px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.actionRow {
+  margin-top: 2px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.datasetList {
+  display: grid;
+  gap: 10px;
+}
+
+.datasetCard {
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--surface);
+  display: grid;
+  gap: 8px;
+}
+
+.datasetCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.subPanel {
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+
+.subPanel > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 650;
+  color: var(--text-muted);
+  padding: 10px;
+}
+
+.subPanel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.subPanel > summary::after {
+  content: "▾";
+  font-size: 0.72rem;
+  line-height: 1;
+  color: var(--text-muted);
+  transition: transform 0.16s ease;
+}
+
+.subPanel[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.subPanel > .fieldGrid,
+.subPanel > .filterBuilder,
+.subPanel > div {
+  padding: 0 10px 10px;
+}
+
+.filterBuilder {
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  padding: 9px;
+  background: var(--surface-raised);
+  display: grid;
+  gap: 8px;
+}
+
+.filterBuilderHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.filterBuilderTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.filterEmpty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.filterList {
+  display: grid;
+  gap: 8px;
+}
+
+.filterRow {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 8px;
+  background: var(--surface);
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1.2fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.filterRemoveButton {
+  align-self: end;
+}
+
 @media (max-width: 1180px) {
   .trainingResultsGrid,
   .trainingJsonGrid,
@@ -552,5 +958,60 @@
 
   .trainingAssetPickerControls {
     grid-template-columns: 1fr;
+  }
+
+  .modeSwitch {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .modeSwitchButton,
+  .datasetCardHeader .textButton {
+    width: 100%;
+  }
+
+  .actionRow {
+    flex-direction: column;
+  }
+
+  .localFileUploadButton {
+    width: 100%;
+  }
+
+  .localFileHeaderActions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .localFileHeaderButtons {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .localFileHeaderButtons .localFileUploadButton,
+  .localFileHeaderButtons .localFileHeaderButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .localFileList {
+    display: grid;
+    gap: 4px;
+  }
+
+  .localFileItem,
+  .filterRow {
+    width: 100%;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 4px;
+  }
+
+  .localFileActions {
+    width: 100%;
+    justify-content: space-between;
   }
 }

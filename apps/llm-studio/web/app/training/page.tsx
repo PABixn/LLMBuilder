@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import {
   Suspense,
   startTransition,
+  type ChangeEvent,
+  type DragEvent,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -30,6 +32,7 @@ import {
   FiSearch,
   FiSun,
   FiTrash2,
+  FiX,
   FiXCircle,
 } from "react-icons/fi";
 
@@ -67,9 +70,11 @@ import {
   createTrainingJob,
 } from "../../lib/trainingApi";
 import {
+  fetchLocalTrainFileStats,
   fetchTrainingJob as fetchTokenizerJob,
   fetchTrainingJobs as fetchTokenizerJobs,
   type TrainingJob as TokenizerTrainingJob,
+  uploadTrainFile,
 } from "../../lib/tokenizerLegacyApi";
 
 type ToastLevel = "info" | "success" | "error";
@@ -82,6 +87,37 @@ interface ToastState {
 }
 
 type AssetPickerKind = "project" | "tokenizer";
+type DatasetSourceMode = "local_file" | "streaming_hf";
+type FilterOperator = "==" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "not in";
+
+interface StreamingFilterFormState {
+  id: string;
+  column: string;
+  operator: FilterOperator;
+  value: string;
+}
+
+interface StreamingDatasetFormState {
+  id: string;
+  name: string;
+  config: string;
+  split: string;
+  textColumns: string;
+  weight: string;
+  filters: StreamingFilterFormState[];
+}
+
+interface LocalTrainFileFormState {
+  id: string;
+  fileName: string;
+  filePath: string;
+  sizeBytes: number | null;
+  sizeChars: number | null;
+}
+
+const FILTER_OPERATORS: FilterOperator[] = ["==", "!=", ">", ">=", "<", "<=", "in", "not in"];
+const WEIGHT_SUM_EPSILON = 1e-9;
+const WEIGHT_SCALE = 1_000_000;
 
 const TRAINING_CONFIG_STORAGE_KEY = "llm-training-config-v1";
 const DATALOADER_CONFIG_STORAGE_KEY = "llm-training-dataloader-v1";
@@ -89,6 +125,512 @@ const TRAINING_SELECTION_STORAGE_KEY = "llm-training-selection-v1";
 const ACTIVE_RUN_STORAGE_KEY = "llm-training-active-run-v1";
 const HIDDEN_RUNS_STORAGE_KEY = "llm-training-hidden-runs-v1";
 const POLL_INTERVAL_MS = 1800;
+
+function stripGeneratedUploadPrefix(value: string): string {
+  const trimmed = value.trim();
+  const separatorIndex = trimmed.indexOf("-");
+  if (separatorIndex <= 0) {
+    return trimmed;
+  }
+  const prefix = trimmed.slice(0, separatorIndex);
+  if (!/^[0-9a-f]{12}$/i.test(prefix)) {
+    return trimmed;
+  }
+  const stripped = trimmed.slice(separatorIndex + 1).trim();
+  return stripped === "" ? trimmed : stripped;
+}
+
+function fileNameFromPath(value: string): string {
+  const normalized = value.replaceAll("\\", "/");
+  const parts = normalized.split("/");
+  return parts[parts.length - 1] ?? "";
+}
+
+function makeStreamingFilterEntry(
+  value?: Partial<StreamingFilterFormState>
+): StreamingFilterFormState {
+  return {
+    id: value?.id ?? `filter-${Math.random().toString(36).slice(2, 10)}`,
+    column: value?.column ?? "",
+    operator: value?.operator ?? "==",
+    value: value?.value ?? "",
+  };
+}
+
+function makeStreamingDatasetEntry(
+  value?: Partial<StreamingDatasetFormState>
+): StreamingDatasetFormState {
+  return {
+    id: value?.id ?? `dataset-${Math.random().toString(36).slice(2, 10)}`,
+    name: value?.name ?? "",
+    config: value?.config ?? "",
+    split: value?.split ?? "train",
+    textColumns: value?.textColumns ?? "text",
+    weight: value?.weight ?? "1",
+    filters: value?.filters ?? [],
+  };
+}
+
+function makeLocalTrainFileEntry(
+  value?: Partial<LocalTrainFileFormState>
+): LocalTrainFileFormState {
+  const filePath = value?.filePath?.trim() ?? "";
+  const fallbackFileName = stripGeneratedUploadPrefix(fileNameFromPath(filePath));
+  const providedFileName = stripGeneratedUploadPrefix(value?.fileName?.trim() ?? "");
+  return {
+    id: value?.id ?? `train-file-${Math.random().toString(36).slice(2, 10)}`,
+    fileName: providedFileName || fallbackFileName || "uploaded-file.txt",
+    filePath,
+    sizeBytes:
+      typeof value?.sizeBytes === "number" &&
+      Number.isFinite(value.sizeBytes) &&
+      value.sizeBytes >= 0
+        ? value.sizeBytes
+        : null,
+    sizeChars:
+      typeof value?.sizeChars === "number" &&
+      Number.isFinite(value.sizeChars) &&
+      value.sizeChars >= 0
+        ? value.sizeChars
+        : typeof value?.sizeBytes === "number" &&
+            Number.isFinite(value.sizeBytes) &&
+            value.sizeBytes >= 0
+          ? Math.trunc(value.sizeBytes)
+          : null,
+  };
+}
+
+function normalizeLocalTrainFiles(
+  files: LocalTrainFileFormState[]
+): LocalTrainFileFormState[] {
+  const dedupedByPath = new Map<string, LocalTrainFileFormState>();
+  files.forEach((entry) => {
+    const filePath = entry.filePath.trim();
+    if (filePath === "") {
+      return;
+    }
+    dedupedByPath.set(filePath, {
+      ...entry,
+      filePath,
+      fileName:
+        stripGeneratedUploadPrefix(entry.fileName.trim()) ||
+        stripGeneratedUploadPrefix(fileNameFromPath(filePath)),
+      sizeBytes:
+        typeof entry.sizeBytes === "number" && Number.isFinite(entry.sizeBytes) && entry.sizeBytes >= 0
+          ? entry.sizeBytes
+          : null,
+      sizeChars:
+        typeof entry.sizeChars === "number" && Number.isFinite(entry.sizeChars) && entry.sizeChars >= 0
+          ? entry.sizeChars
+          : null,
+    });
+  });
+  return Array.from(dedupedByPath.values());
+}
+
+function extractTrainFilePaths(dataFiles: unknown): string[] {
+  if (typeof dataFiles === "string") {
+    const trimmed = dataFiles.trim();
+    return trimmed === "" ? [] : [trimmed];
+  }
+  if (Array.isArray(dataFiles)) {
+    return dataFiles
+      .filter((entry) => typeof entry === "string")
+      .map((entry) => String(entry).trim())
+      .filter((entry) => entry !== "");
+  }
+  const record = asRecord(dataFiles);
+  const trainField = record.train;
+  if (typeof trainField === "string") {
+    const trimmed = trainField.trim();
+    return trimmed === "" ? [] : [trimmed];
+  }
+  if (Array.isArray(trainField)) {
+    return trainField
+      .filter((entry) => typeof entry === "string")
+      .map((entry) => String(entry).trim())
+      .filter((entry) => entry !== "");
+  }
+  return [];
+}
+
+function formatCharCount(value: number | null): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return null;
+  }
+  return new Intl.NumberFormat().format(Math.trunc(value));
+}
+
+function asFilterOperator(value: unknown): FilterOperator {
+  return FILTER_OPERATORS.includes(value as FilterOperator)
+    ? (value as FilterOperator)
+    : "==";
+}
+
+function stringifyFilterValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (value === null) {
+    return "null";
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function sanitizePositiveDecimalInput(value: string): string {
+  const digitsAndDot = value.replace(/[^0-9.]/g, "");
+  const firstDotIndex = digitsAndDot.indexOf(".");
+  if (firstDotIndex === -1) {
+    return digitsAndDot;
+  }
+  return `${digitsAndDot.slice(0, firstDotIndex + 1)}${digitsAndDot
+    .slice(firstDotIndex + 1)
+    .replace(/\./g, "")}`;
+}
+
+function parseWeightInput(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return parsed;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function formatWeight(value: number): string {
+  const rounded = Math.round(clamp(value, 0, 1) * WEIGHT_SCALE) / WEIGHT_SCALE;
+  return Number(rounded.toFixed(6)).toString();
+}
+
+function sanitizeWeightInput(value: string): string {
+  const sanitized = sanitizePositiveDecimalInput(value);
+  if (sanitized === "") {
+    return "0";
+  }
+  if (sanitized === ".") {
+    return "0.";
+  }
+  return parseWeightInput(sanitized) === null ? "0" : sanitized;
+}
+
+function normalizeWeights(weights: number[]): number[] {
+  if (weights.length === 0) {
+    return [];
+  }
+  const safeWeights = weights.map((weight) => (Number.isFinite(weight) ? Math.max(0, weight) : 0));
+  const total = safeWeights.reduce((sum, weight) => sum + weight, 0);
+  if (total <= WEIGHT_SUM_EPSILON) {
+    const shared = 1 / safeWeights.length;
+    return safeWeights.map(() => shared);
+  }
+  return safeWeights.map((weight) => weight / total);
+}
+
+function normalizeWeightsWithLockedIndex(weights: number[], lockedIndex: number): number[] {
+  if (weights.length === 0) {
+    return [];
+  }
+  if (weights.length === 1) {
+    return [1];
+  }
+  const safeWeights = weights.map((weight) => (Number.isFinite(weight) ? Math.max(0, weight) : 0));
+  const normalized = new Array(safeWeights.length).fill(0);
+  const lockedWeight = clamp(safeWeights[lockedIndex] ?? 0, 0, 1);
+  normalized[lockedIndex] = lockedWeight;
+  const otherIndexes = safeWeights.map((_, index) => index).filter((index) => index !== lockedIndex);
+  const remaining = 1 - lockedWeight;
+  if (remaining <= WEIGHT_SUM_EPSILON) {
+    otherIndexes.forEach((index) => {
+      normalized[index] = 0;
+    });
+    return normalized;
+  }
+  const totalOthers = otherIndexes.reduce((sum, index) => sum + safeWeights[index], 0);
+  if (totalOthers <= WEIGHT_SUM_EPSILON) {
+    const shared = remaining / otherIndexes.length;
+    otherIndexes.forEach((index) => {
+      normalized[index] = shared;
+    });
+  } else {
+    otherIndexes.forEach((index) => {
+      normalized[index] = (safeWeights[index] / totalOthers) * remaining;
+    });
+  }
+  return normalized;
+}
+
+function normalizeStreamingDatasetWeights(
+  datasets: StreamingDatasetFormState[],
+  lockedId?: string,
+  lockedRawWeight?: string
+): StreamingDatasetFormState[] {
+  if (datasets.length === 0) {
+    return [];
+  }
+  if (datasets.length === 1) {
+    return [{ ...datasets[0], weight: "1" }];
+  }
+  const lockedIndex =
+    typeof lockedId === "string" ? datasets.findIndex((entry) => entry.id === lockedId) : -1;
+  const weights = datasets.map((entry) => Math.max(0, parseWeightInput(entry.weight) ?? 0));
+  if (lockedIndex >= 0 && typeof lockedRawWeight === "string") {
+    weights[lockedIndex] = Math.max(0, parseWeightInput(lockedRawWeight) ?? 0);
+  }
+  const lockedRawParsed =
+    typeof lockedRawWeight === "string" ? parseWeightInput(lockedRawWeight) : null;
+  const shouldLock =
+    lockedIndex >= 0 && lockedRawParsed !== null && lockedRawParsed <= 1;
+  const normalizedWeights = shouldLock
+    ? normalizeWeightsWithLockedIndex(weights, lockedIndex)
+    : normalizeWeights(weights);
+  const roundedWeights = normalizedWeights.map(
+    (weight) => Math.round(weight * WEIGHT_SCALE) / WEIGHT_SCALE
+  );
+  const roundedSum = roundedWeights.reduce((sum, weight) => sum + weight, 0);
+  const drift = 1 - roundedSum;
+  const adjustmentIndex =
+    lockedIndex >= 0
+      ? lockedIndex
+      : roundedWeights.reduce(
+          (bestIndex, weight, index) =>
+            weight > roundedWeights[bestIndex] ? index : bestIndex,
+          0
+        );
+  roundedWeights[adjustmentIndex] = clamp(roundedWeights[adjustmentIndex] + drift, 0, 1);
+  return datasets.map((entry, index) => ({
+    ...entry,
+    weight:
+      shouldLock &&
+      index === lockedIndex &&
+      typeof lockedRawWeight === "string" &&
+      lockedRawParsed !== null &&
+      Math.abs(lockedRawParsed - roundedWeights[index]) <= WEIGHT_SUM_EPSILON
+        ? lockedRawWeight
+        : formatWeight(roundedWeights[index]),
+  }));
+}
+
+function parseFilterValue(value: string, operator: FilterOperator, label: string): unknown {
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    throw new Error(`${label} value is required`);
+  }
+  if (operator === "in" || operator === "not in") {
+    try {
+      const parsedJson = JSON.parse(trimmed);
+      if (Array.isArray(parsedJson)) {
+        return parsedJson;
+      }
+    } catch {
+      // fall back to comma-separated inference
+    }
+    const parts = value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry !== "");
+    if (parts.length === 0) {
+      throw new Error(`${label} value is required`);
+    }
+    return parts.map((entry) => parseFilterValue(entry, "==", label));
+  }
+  if (trimmed === "true") {
+    return true;
+  }
+  if (trimmed === "false") {
+    return false;
+  }
+  if (/^-?(?:\d+|\d*\.\d+)(?:[eE][+-]?\d+)?$/.test(trimmed)) {
+    const parsed = Number(trimmed);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  if (
+    trimmed === "null" ||
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      throw new Error(`${label} value must be valid JSON`);
+    }
+  }
+  return trimmed;
+}
+
+function buildFiltersFromForm(filters: StreamingFilterFormState[]): Record<string, unknown>[] {
+  return filters.map((filter, index) => {
+    const label = `Streaming dataset filter ${index + 1}`;
+    const column = filter.column.trim();
+    if (column === "") {
+      throw new Error(`${label} column is required`);
+    }
+    return {
+      column,
+      operator: filter.operator,
+      value: parseFilterValue(filter.value, filter.operator, label),
+    };
+  });
+}
+
+function hydrateDatasetUiFromConfig(config: Record<string, unknown> | null): {
+  sourceMode: DatasetSourceMode;
+  localTrainFiles: LocalTrainFileFormState[];
+  hfToken: string;
+  streamingDatasets: StreamingDatasetFormState[];
+} {
+  const datasetsRaw = asRecordArray(config?.datasets);
+  const firstDataset = asRecord(datasetsRaw[0]);
+  const localTrainPaths = extractTrainFilePaths(firstDataset.data_files);
+  const sourceMode: DatasetSourceMode =
+    datasetsRaw.length === 1 && localTrainPaths.length > 0 ? "local_file" : "streaming_hf";
+
+  const localTrainFiles =
+    sourceMode === "local_file"
+      ? normalizeLocalTrainFiles(
+          localTrainPaths.map((filePath) =>
+            makeLocalTrainFileEntry({
+              filePath,
+              fileName: fileNameFromPath(filePath),
+            })
+          )
+        )
+      : [];
+
+  const hfToken =
+    sourceMode === "streaming_hf"
+      ? asString(firstDataset.hf_token).trim()
+      : "";
+
+  const streamingDatasets =
+    sourceMode === "streaming_hf" && datasetsRaw.length > 0
+      ? normalizeStreamingDatasetWeights(
+          datasetsRaw.map((entry) => {
+            const datasetRecord = asRecord(entry);
+            const datasetTextColumnsRaw = datasetRecord.text_columns;
+            const datasetTextColumns = Array.isArray(datasetTextColumnsRaw)
+              ? datasetTextColumnsRaw.map((item) => String(item)).join(", ")
+              : "text";
+            const datasetFiltersRaw = Array.isArray(datasetRecord.filters)
+              ? datasetRecord.filters
+              : [];
+            return makeStreamingDatasetEntry({
+              name: asString(datasetRecord.name),
+              config: asString(datasetRecord.config),
+              split: asString(datasetRecord.split, "train"),
+              textColumns: datasetTextColumns,
+              weight: sanitizeWeightInput(asString(datasetRecord.weight, "1")),
+              filters: datasetFiltersRaw.map((filter) => {
+                const filterRecord = asRecord(filter);
+                return makeStreamingFilterEntry({
+                  column: asString(filterRecord.column),
+                  operator: asFilterOperator(filterRecord.operator),
+                  value: stringifyFilterValue(filterRecord.value),
+                });
+              }),
+            });
+          })
+        )
+      : [makeStreamingDatasetEntry()];
+
+  return {
+    sourceMode,
+    localTrainFiles,
+    hfToken,
+    streamingDatasets,
+  };
+}
+
+function buildDatasetsFromUi(
+  sourceMode: DatasetSourceMode,
+  localTrainFiles: LocalTrainFileFormState[],
+  hfToken: string,
+  streamingDatasets: StreamingDatasetFormState[]
+): Record<string, unknown>[] {
+  if (sourceMode === "local_file") {
+    const filePaths = normalizeLocalTrainFiles(localTrainFiles)
+      .map((entry) => entry.filePath.trim())
+      .filter((entry) => entry !== "");
+    return [
+      {
+        name: "text",
+        split: "train",
+        text_columns: ["text"],
+        weight: 1,
+        streaming: true,
+        data_files: {
+          train: filePaths.length <= 1 ? (filePaths[0] ?? "") : filePaths,
+        },
+      },
+    ];
+  }
+
+  const normalizedDatasets =
+    streamingDatasets.length > 0
+      ? normalizeStreamingDatasetWeights(streamingDatasets)
+      : [makeStreamingDatasetEntry()];
+  const token = hfToken.trim();
+
+  return normalizedDatasets.map((entry) => {
+    const datasetConfig: Record<string, unknown> = {
+      name: entry.name.trim(),
+      split: entry.split.trim() || "train",
+      text_columns: entry.textColumns
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => item !== ""),
+      weight: Math.max(0, parseWeightInput(entry.weight) ?? 0),
+      streaming: true,
+    };
+    const configName = entry.config.trim();
+    if (configName !== "") {
+      datasetConfig.config = configName;
+    }
+    if (token !== "") {
+      datasetConfig.hf_token = token;
+    }
+    const filters = entry.filters
+      .filter((filter) => filter.column.trim() !== "" && filter.value.trim() !== "")
+      .map((filter, index) => {
+        try {
+          return {
+            column: filter.column.trim(),
+            operator: filter.operator,
+            value: parseFilterValue(
+              filter.value,
+              filter.operator,
+              `Streaming dataset filter ${index + 1}`
+            ),
+          };
+        } catch {
+          return {
+            column: filter.column.trim(),
+            operator: filter.operator,
+            value: filter.value,
+          };
+        }
+      });
+    if (filters.length > 0) {
+      datasetConfig.filters = filters;
+    }
+    return datasetConfig;
+  });
+}
 
 function readStoredJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") {
@@ -319,8 +861,21 @@ function TrainingPageContent() {
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [pickerProjects, setPickerProjects] = useState<ProjectSummary[]>([]);
   const [pickerTokenizerJobs, setPickerTokenizerJobs] = useState<TokenizerTrainingJob[]>([]);
+  const [datasetSourceMode, setDatasetSourceMode] = useState<DatasetSourceMode>("streaming_hf");
+  const [localTrainFiles, setLocalTrainFiles] = useState<LocalTrainFileFormState[]>([]);
+  const [hfToken, setHfToken] = useState("");
+  const [streamingDatasets, setStreamingDatasets] = useState<StreamingDatasetFormState[]>([
+    makeStreamingDatasetEntry(),
+  ]);
+  const [isDraggingTrainFiles, setIsDraggingTrainFiles] = useState(false);
+  const [isUploadingTrainFile, setIsUploadingTrainFile] = useState(false);
+  const [isLoadingDatasetTemplate, setIsLoadingDatasetTemplate] = useState(false);
   const initializedRef = useRef(false);
   const pickerRequestIdRef = useRef(0);
+  const datasetUiHydratedRef = useRef(false);
+  const localFileDragDepthRef = useRef(0);
+  const localTrainFileStatsPendingIdsRef = useRef(new Set<string>());
+  const localTrainFileStatsFailedIdsRef = useRef(new Set<string>());
 
   const deferredTrainingConfig = useDeferredValue(trainingConfig);
   const deferredDataloaderConfig = useDeferredValue(dataloaderConfig);
@@ -621,54 +1176,364 @@ function TrainingPageContent() {
       });
   }, [normalizedPickerQuery, pickerTokenizerJobs]);
 
-  const handleAddDataset = () => {
-    const next = cloneRecord(dataloaderConfig ?? {});
-    const datasets = asRecordArray(next.datasets);
-    datasets.push({
-      name: "text",
-      data_files: { train: "" },
-      split: "train",
-      text_columns: ["text"],
-      weight: 1,
-      streaming: true,
-    });
-    next.datasets = datasets;
-    setDataloaderConfig(next);
-  };
-
-  const handleDatasetChange = (index: number, field: string, value: unknown) => {
-    const next = cloneRecord(dataloaderConfig ?? {});
-    const datasets = asRecordArray(next.datasets);
-    const dataset = cloneRecord(datasets[index] ?? {});
-    if (field === "text_columns" && typeof value === "string") {
-      dataset.text_columns = value
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean);
-    } else if (field === "data_files" && typeof value === "string") {
-      dataset.data_files = { train: value };
-      dataset.name = "text";
-    } else if (field === "source_mode" && value === "hf") {
-      delete dataset.data_files;
-      if (dataset.name === "text") {
-        dataset.name = "";
-      }
-    } else if (field === "source_mode" && value === "local") {
-      dataset.name = "text";
-      dataset.data_files = { train: "" };
-    } else {
-      dataset[field] = value;
+  useEffect(() => {
+    if (!dataloaderConfig || datasetUiHydratedRef.current) {
+      return;
     }
-    datasets[index] = dataset;
-    next.datasets = datasets;
-    setDataloaderConfig(next);
-  };
+    const hydrated = hydrateDatasetUiFromConfig(dataloaderConfig);
+    setDatasetSourceMode(hydrated.sourceMode);
+    setLocalTrainFiles(hydrated.localTrainFiles);
+    setHfToken(hydrated.hfToken);
+    setStreamingDatasets(hydrated.streamingDatasets);
+    datasetUiHydratedRef.current = true;
+  }, [dataloaderConfig]);
 
-  const handleRemoveDataset = (index: number) => {
-    const next = cloneRecord(dataloaderConfig ?? {});
-    next.datasets = asRecordArray(next.datasets).filter((_, currentIndex) => currentIndex !== index);
-    setDataloaderConfig(next);
-  };
+  useEffect(() => {
+    if (!datasetUiHydratedRef.current) {
+      return;
+    }
+    const nextDatasets = buildDatasetsFromUi(
+      datasetSourceMode,
+      localTrainFiles,
+      hfToken,
+      streamingDatasets
+    );
+    setDataloaderConfig((current) => {
+      const next = cloneRecord(current ?? {});
+      next.datasets = nextDatasets;
+      return next;
+    });
+  }, [datasetSourceMode, hfToken, localTrainFiles, streamingDatasets]);
+
+  useEffect(() => {
+    if (!datasetUiHydratedRef.current) {
+      return;
+    }
+
+    const currentIds = new Set(localTrainFiles.map((entry) => entry.id));
+    for (const entryId of Array.from(localTrainFileStatsPendingIdsRef.current)) {
+      if (!currentIds.has(entryId)) {
+        localTrainFileStatsPendingIdsRef.current.delete(entryId);
+      }
+    }
+    for (const entryId of Array.from(localTrainFileStatsFailedIdsRef.current)) {
+      if (!currentIds.has(entryId)) {
+        localTrainFileStatsFailedIdsRef.current.delete(entryId);
+      }
+    }
+
+    const entriesNeedingStats = localTrainFiles.filter((entry) => {
+      if (
+        typeof entry.sizeBytes === "number" &&
+        Number.isFinite(entry.sizeBytes) &&
+        entry.sizeBytes >= 0 &&
+        typeof entry.sizeChars === "number" &&
+        Number.isFinite(entry.sizeChars) &&
+        entry.sizeChars >= 0
+      ) {
+        return false;
+      }
+      if (entry.filePath.trim() === "") {
+        return false;
+      }
+      if (localTrainFileStatsPendingIdsRef.current.has(entry.id)) {
+        return false;
+      }
+      if (localTrainFileStatsFailedIdsRef.current.has(entry.id)) {
+        return false;
+      }
+      return true;
+    });
+
+    if (entriesNeedingStats.length === 0) {
+      return;
+    }
+
+    entriesNeedingStats.forEach((entry) => {
+      localTrainFileStatsPendingIdsRef.current.add(entry.id);
+    });
+
+    let cancelled = false;
+
+    void Promise.allSettled(
+      entriesNeedingStats.map(async (entry) => ({
+        entryId: entry.id,
+        stats: await fetchLocalTrainFileStats(entry.filePath),
+      }))
+    ).then((results) => {
+      const updatesById = new Map<string, { sizeBytes: number; sizeChars: number }>();
+
+      results.forEach((result, index) => {
+        const entry = entriesNeedingStats[index];
+        localTrainFileStatsPendingIdsRef.current.delete(entry.id);
+
+        if (result.status === "fulfilled") {
+          localTrainFileStatsFailedIdsRef.current.delete(entry.id);
+          updatesById.set(entry.id, {
+            sizeBytes: result.value.stats.size_bytes,
+            sizeChars: result.value.stats.size_chars,
+          });
+          return;
+        }
+
+        localTrainFileStatsFailedIdsRef.current.add(entry.id);
+      });
+
+      if (cancelled || updatesById.size === 0) {
+        return;
+      }
+
+      setLocalTrainFiles((previous) =>
+        normalizeLocalTrainFiles(
+          previous.map((entry) => {
+            const stats = updatesById.get(entry.id);
+            return stats ? { ...entry, ...stats } : entry;
+          })
+        )
+      );
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [localTrainFiles]);
+
+  const updateStreamingDataset = useCallback(
+    (datasetId: string, updates: Partial<Omit<StreamingDatasetFormState, "id">>) => {
+      setStreamingDatasets((previous) =>
+        previous.map((entry) => (entry.id === datasetId ? { ...entry, ...updates } : entry))
+      );
+    },
+    []
+  );
+
+  const updateStreamingWeight = useCallback((datasetId: string, rawWeight: string) => {
+    const sanitizedWeight = sanitizeWeightInput(rawWeight);
+    setStreamingDatasets((previous) =>
+      normalizeStreamingDatasetWeights(previous, datasetId, sanitizedWeight)
+    );
+  }, []);
+
+  const addStreamingDataset = useCallback(() => {
+    setStreamingDatasets((previous) =>
+      normalizeStreamingDatasetWeights([...previous, makeStreamingDatasetEntry()])
+    );
+  }, []);
+
+  const removeStreamingDataset = useCallback((datasetId: string) => {
+    setStreamingDatasets((previous) =>
+      normalizeStreamingDatasetWeights(
+        previous.filter((entry) => entry.id !== datasetId).length > 0
+          ? previous.filter((entry) => entry.id !== datasetId)
+          : [makeStreamingDatasetEntry()]
+      )
+    );
+  }, []);
+
+  const updateStreamingFilter = useCallback(
+    (
+      datasetId: string,
+      filterId: string,
+      updates: Partial<Omit<StreamingFilterFormState, "id">>
+    ) => {
+      setStreamingDatasets((previous) =>
+        previous.map((entry) => {
+          if (entry.id !== datasetId) {
+            return entry;
+          }
+          return {
+            ...entry,
+            filters: entry.filters.map((filter) =>
+              filter.id === filterId ? { ...filter, ...updates } : filter
+            ),
+          };
+        })
+      );
+    },
+    []
+  );
+
+  const addStreamingFilter = useCallback((datasetId: string) => {
+    setStreamingDatasets((previous) =>
+      previous.map((entry) =>
+        entry.id === datasetId
+          ? { ...entry, filters: [...entry.filters, makeStreamingFilterEntry()] }
+          : entry
+      )
+    );
+  }, []);
+
+  const removeStreamingFilter = useCallback((datasetId: string, filterId: string) => {
+    setStreamingDatasets((previous) =>
+      previous.map((entry) => {
+        if (entry.id !== datasetId) {
+          return entry;
+        }
+        return {
+          ...entry,
+          filters: entry.filters.filter((filter) => filter.id !== filterId),
+        };
+      })
+    );
+  }, []);
+
+  const removeLocalTrainFile = useCallback((localFileId: string) => {
+    setLocalTrainFiles((previous) => previous.filter((entry) => entry.id !== localFileId));
+  }, []);
+
+  const clearLocalTrainFiles = useCallback(() => {
+    setLocalTrainFiles([]);
+  }, []);
+
+  const uploadLocalTrainFiles = useCallback(
+    async (selectedFiles: File[]) => {
+      if (selectedFiles.length === 0) {
+        return;
+      }
+
+      notify(
+        "info",
+        "Uploading dataset files",
+        selectedFiles.length === 1
+          ? `Uploading ${selectedFiles[0].name}.`
+          : `Uploading ${selectedFiles.length} local train files.`
+      );
+      setIsUploadingTrainFile(true);
+
+      try {
+        const uploadResults = await Promise.allSettled(
+          selectedFiles.map((file) => uploadTrainFile(file))
+        );
+
+        const successfulUploads = uploadResults
+          .filter(
+            (
+              result
+            ): result is PromiseFulfilledResult<Awaited<ReturnType<typeof uploadTrainFile>>> =>
+              result.status === "fulfilled"
+          )
+          .map((result) => result.value);
+
+        if (successfulUploads.length > 0) {
+          setLocalTrainFiles((previous) =>
+            normalizeLocalTrainFiles([
+              ...previous,
+              ...successfulUploads.map((uploadedFile) =>
+                makeLocalTrainFileEntry({
+                  fileName: uploadedFile.file_name,
+                  filePath: uploadedFile.file_path,
+                  sizeBytes: uploadedFile.size_bytes,
+                  sizeChars: uploadedFile.size_chars,
+                })
+              ),
+            ])
+          );
+          notify(
+            "success",
+            "Dataset files added",
+            successfulUploads.length === 1
+              ? `Added ${stripGeneratedUploadPrefix(successfulUploads[0].file_name)}.`
+              : `Added ${successfulUploads.length} local train files.`
+          );
+        }
+
+        const failedUploads = uploadResults.filter(
+          (result): result is PromiseRejectedResult => result.status === "rejected"
+        );
+        if (failedUploads.length > 0) {
+          const firstFailure = failedUploads[0];
+          const firstFailureMessage =
+            firstFailure.reason instanceof Error ? firstFailure.reason.message : "Upload failed";
+          notify(
+            "error",
+            "Dataset upload failed",
+            `Failed to upload ${failedUploads.length} file(s). ${firstFailureMessage}`
+          );
+        }
+      } catch (error) {
+        notify(
+          "error",
+          "Dataset upload failed",
+          error instanceof Error ? error.message : "Failed to upload local train files."
+        );
+      } finally {
+        setIsUploadingTrainFile(false);
+      }
+    },
+    [notify]
+  );
+
+  const handleTrainFilesSelected = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = Array.from(event.target.files ?? []);
+      event.target.value = "";
+      await uploadLocalTrainFiles(selectedFiles);
+    },
+    [uploadLocalTrainFiles]
+  );
+
+  const handleLocalTrainFilesDragEnter = useCallback((event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!Array.from(event.dataTransfer.types).includes("Files")) {
+      return;
+    }
+    localFileDragDepthRef.current += 1;
+    setIsDraggingTrainFiles(true);
+  }, []);
+
+  const handleLocalTrainFilesDragOver = useCallback((event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+    setIsDraggingTrainFiles(true);
+  }, []);
+
+  const handleLocalTrainFilesDragLeave = useCallback((event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    localFileDragDepthRef.current = Math.max(0, localFileDragDepthRef.current - 1);
+    if (localFileDragDepthRef.current === 0) {
+      setIsDraggingTrainFiles(false);
+    }
+  }, []);
+
+  const handleLocalTrainFilesDrop = useCallback(
+    async (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      localFileDragDepthRef.current = 0;
+      setIsDraggingTrainFiles(false);
+      const droppedFiles = Array.from(event.dataTransfer.files ?? []);
+      await uploadLocalTrainFiles(droppedFiles);
+    },
+    [uploadLocalTrainFiles]
+  );
+
+  const handleLoadStreamingTemplate = useCallback(async () => {
+    notify("info", "Loading streaming template", "Refreshing dataset settings from the template.");
+    setIsLoadingDatasetTemplate(true);
+    try {
+      const templates = await fetchTrainingConfigTemplates();
+      const hydrated = hydrateDatasetUiFromConfig(
+        asRecord(templates.dataloader_config_template)
+      );
+      setDatasetSourceMode("streaming_hf");
+      setHfToken(hydrated.hfToken);
+      setStreamingDatasets(
+        normalizeStreamingDatasetWeights(hydrated.streamingDatasets)
+      );
+      notify("success", "Template loaded", "Loaded streaming dataset defaults.");
+    } catch (error) {
+      notify(
+        "error",
+        "Template unavailable",
+        error instanceof Error ? error.message : "Failed to load the streaming dataset template."
+      );
+    } finally {
+      setIsLoadingDatasetTemplate(false);
+    }
+  }, [notify]);
 
   const handleAddPrompt = () => {
     const next = cloneRecord(trainingConfig ?? {});
@@ -1501,77 +2366,326 @@ function TrainingPageContent() {
               <div className="trainingSettingsSectionHead">
                 <div>
                   <h3>Dataset Sources</h3>
-                  <p className="trainingSettingsSectionCopy">Mix local files and streaming Hugging Face datasets. Each dataset keeps its own split, columns, and weight.</p>
+                  <p className="trainingSettingsSectionCopy">
+                    Match the tokenizer trainer exactly: choose one source mode and configure the full dataset stack here.
+                  </p>
                 </div>
-                <button type="button" className="buttonGhost buttonSmall" onClick={handleAddDataset}>
-                  <FiPlus /> Add dataset
-                </button>
               </div>
-              <div className="trainingDatasetList">
-                {datasetEntries.map((dataset, index) => {
-                  const isLocal = dataset.data_files !== undefined;
-                  const dataFiles = asRecord(dataset.data_files);
-                  return (
-                    <div key={`dataset-${index}`} className="trainingDatasetCard">
-                      <div className="trainingSectionHeader">
-                        <div>
-                          <div className="trainingDatasetTitle">Dataset {index + 1}</div>
-                          <div className="trainingIssueMeta">{isLocal ? "Local file source" : "Streaming HF dataset"}</div>
-                        </div>
-                        <div className="trainingDatasetActions">
-                          <button type="button" className="buttonGhost buttonSmall" onClick={() => handleDatasetChange(index, "source_mode", isLocal ? "hf" : "local")}>
-                            Switch to {isLocal ? "HF" : "Local"}
-                          </button>
-                          <button type="button" className="buttonDanger buttonSmall" onClick={() => handleRemoveDataset(index)}>
-                            <FiTrash2 /> Remove
-                          </button>
-                        </div>
+              <div className="sourceModeRow trainingTokenizerDatasetSection">
+                <span>Dataset source</span>
+                <div className="modeSwitch">
+                  <button
+                    type="button"
+                    className={`modeSwitchButton ${
+                      datasetSourceMode === "local_file" ? "modeSwitchButton-active" : ""
+                    }`}
+                    onClick={() => setDatasetSourceMode("local_file")}
+                  >
+                    Local files
+                  </button>
+                  <button
+                    type="button"
+                    className={`modeSwitchButton ${
+                      datasetSourceMode === "streaming_hf" ? "modeSwitchButton-active" : ""
+                    }`}
+                    onClick={() => {
+                      setDatasetSourceMode("streaming_hf");
+                      setStreamingDatasets((previous) =>
+                        normalizeStreamingDatasetWeights(previous)
+                      );
+                    }}
+                  >
+                    Streaming HF datasets
+                  </button>
+                </div>
+              </div>
+
+              {datasetSourceMode === "local_file" ? (
+                <div className="datasetConfigurator trainingTokenizerDatasetSection">
+                  <div
+                    className={`localFileManager ${
+                      isDraggingTrainFiles ? "localFileManager-dragging" : ""
+                    }`}
+                    onDragEnter={handleLocalTrainFilesDragEnter}
+                    onDragOver={handleLocalTrainFilesDragOver}
+                    onDragLeave={handleLocalTrainFilesDragLeave}
+                    onDrop={handleLocalTrainFilesDrop}
+                  >
+                    <div className="localFileManagerHeader">
+                      <div>
+                        <strong>Local training files</strong>
+                        <p>Training and evaluation use this same file set.</p>
                       </div>
-                      <div className="fieldGrid compact">
-                        <label className="fieldLabel">
-                          <span>{isLocal ? "Builder name" : "Dataset name"}</span>
-                          <input value={asString(dataset.name)} onChange={(event) => handleDatasetChange(index, "name", event.target.value)} />
-                        </label>
-                        <label className="fieldLabel">
-                          <span>Split</span>
-                          <input value={asString(dataset.split, "train")} onChange={(event) => handleDatasetChange(index, "split", event.target.value)} />
-                        </label>
-                        <label className="fieldLabel">
-                          <span>Text columns</span>
-                          <input
-                            value={Array.isArray(dataset.text_columns) ? dataset.text_columns.map(String).join(", ") : "text"}
-                            onChange={(event) => handleDatasetChange(index, "text_columns", event.target.value)}
-                          />
-                        </label>
-                        <label className="fieldLabel">
-                          <span>Weight</span>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={asNumber(dataset.weight, 1)}
-                            onChange={(event) => handleDatasetChange(index, "weight", Number(event.target.value))}
-                          />
-                        </label>
-                        {isLocal ? (
-                          <label className="fieldLabel fullWidthField">
-                            <span>Local file path or glob</span>
+                      <div className="localFileHeaderActions">
+                        <div className="localFileHeaderButtons">
+                          <label
+                            className={`secondaryButton localFileUploadButton localFileHeaderButton ${
+                              isUploadingTrainFile ? "localFileUploadButton-disabled" : ""
+                            }`}
+                            aria-disabled={isUploadingTrainFile}
+                          >
+                            {isUploadingTrainFile ? "Uploading..." : "Add files"}
                             <input
-                              value={asString(dataFiles.train)}
-                              onChange={(event) => handleDatasetChange(index, "data_files", event.target.value)}
-                              placeholder="datasets/train.txt"
+                              type="file"
+                              multiple
+                              onChange={handleTrainFilesSelected}
+                              disabled={isUploadingTrainFile}
                             />
                           </label>
-                        ) : (
-                          <label className="fieldLabel">
-                            <span>Dataset config</span>
-                            <input value={asString(dataset.config)} onChange={(event) => handleDatasetChange(index, "config", event.target.value)} />
-                          </label>
-                        )}
+                          <button
+                            type="button"
+                            className="textButton localFileHeaderButton"
+                            onClick={clearLocalTrainFiles}
+                            disabled={localTrainFiles.length === 0}
+                          >
+                            Remove all
+                          </button>
+                        </div>
+                        <span className="localFileCount">
+                          {localTrainFiles.length} file{localTrainFiles.length === 1 ? "" : "s"}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {localTrainFiles.length === 0 ? (
+                      <p className="filterEmpty">
+                        No local files added yet. Add one or more files to train.
+                      </p>
+                    ) : (
+                      <ul className="localFileList">
+                        {localTrainFiles.map((entry) => {
+                          const fileCharLabel = formatCharCount(entry.sizeChars);
+                          return (
+                            <li key={entry.id} className="localFileItem">
+                              <strong className="localFileName" title={entry.fileName}>
+                                {entry.fileName}
+                              </strong>
+                              <div className="localFileActions">
+                                <span className="localFileStat">
+                                  {fileCharLabel ? `${fileCharLabel} chars` : "char count pending"}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="textButton localFileRemoveIconButton"
+                                  onClick={() => removeLocalTrainFile(entry.id)}
+                                  aria-label={`Remove ${entry.fileName}`}
+                                  title={`Remove ${entry.fileName}`}
+                                >
+                                  <FiX aria-hidden="true" />
+                                </button>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+
+                    <span className="fieldNote">Files are deduplicated by stored path.</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="datasetConfigurator trainingTokenizerDatasetSection">
+                  <label className="fieldLabel fullWidthField">
+                    <span>HF access token (optional)</span>
+                    <input
+                      type="password"
+                      value={hfToken}
+                      onChange={(event) => setHfToken(event.target.value)}
+                      autoComplete="off"
+                      placeholder="hf_..."
+                    />
+                    <span className="fieldNote">Required for gated/private datasets.</span>
+                  </label>
+
+                  <div className="actionRow">
+                    <button type="button" className="secondaryButton" onClick={addStreamingDataset}>
+                      Add dataset
+                    </button>
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      onClick={() => {
+                        void handleLoadStreamingTemplate();
+                      }}
+                      disabled={isLoadingDatasetTemplate}
+                    >
+                      {isLoadingDatasetTemplate ? "Loading template..." : "Load streaming template"}
+                    </button>
+                  </div>
+
+                  <div className="datasetList">
+                    {streamingDatasets.map((entry, index) => (
+                      <div key={entry.id} className="datasetCard">
+                        <div className="datasetCardHeader">
+                          <strong>Streaming dataset {index + 1}</strong>
+                          <button
+                            type="button"
+                            className="textButton"
+                            onClick={() => removeStreamingDataset(entry.id)}
+                            disabled={streamingDatasets.length <= 1}
+                          >
+                            Remove
+                          </button>
+                        </div>
+
+                        <div className="fieldGrid">
+                          <label className="fieldLabel">
+                            <span>HF dataset name</span>
+                            <input
+                              value={entry.name}
+                              onChange={(event) =>
+                                updateStreamingDataset(entry.id, { name: event.target.value })
+                              }
+                              placeholder="HuggingFaceFW/fineweb-edu"
+                            />
+                          </label>
+
+                          <label className="fieldLabel">
+                            <span>Split</span>
+                            <input
+                              value={entry.split}
+                              onChange={(event) =>
+                                updateStreamingDataset(entry.id, { split: event.target.value })
+                              }
+                              placeholder="train"
+                            />
+                          </label>
+
+                          <label className="fieldLabel">
+                            <span>Weight</span>
+                            <input
+                              inputMode="decimal"
+                              pattern="[0-9]*[.]?[0-9]*"
+                              min="0"
+                              max="1"
+                              step="0.000001"
+                              value={entry.weight}
+                              onChange={(event) =>
+                                updateStreamingWeight(entry.id, event.target.value)
+                              }
+                              placeholder="1.0"
+                            />
+                          </label>
+
+                          <label className="fieldLabel fullWidthField">
+                            <span>Text columns</span>
+                            <input
+                              value={entry.textColumns}
+                              onChange={(event) =>
+                                updateStreamingDataset(entry.id, {
+                                  textColumns: event.target.value,
+                                })
+                              }
+                              placeholder="text"
+                            />
+                          </label>
+                        </div>
+
+                        <details className="subPanel">
+                          <summary>Advanced source options</summary>
+                          <div className="fieldGrid">
+                            <label className="fieldLabel">
+                              <span>Config (optional)</span>
+                              <input
+                                value={entry.config}
+                                onChange={(event) =>
+                                  updateStreamingDataset(entry.id, {
+                                    config: event.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+
+                            <div className="fullWidthField filterBuilder">
+                              <div className="filterBuilderHeader">
+                                <span className="filterBuilderTitle">Filters (optional)</span>
+                                <button
+                                  type="button"
+                                  className="secondaryButton"
+                                  onClick={() => addStreamingFilter(entry.id)}
+                                >
+                                  Add filter
+                                </button>
+                              </div>
+
+                              {entry.filters.length === 0 ? (
+                                <p className="filterEmpty">No filters yet.</p>
+                              ) : (
+                                <div className="filterList">
+                                  {entry.filters.map((filter) => (
+                                    <div key={filter.id} className="filterRow">
+                                      <label className="fieldLabel">
+                                        <span>Column</span>
+                                        <input
+                                          value={filter.column}
+                                          onChange={(event) =>
+                                            updateStreamingFilter(entry.id, filter.id, {
+                                              column: event.target.value,
+                                            })
+                                          }
+                                          placeholder="language_score"
+                                        />
+                                      </label>
+
+                                      <label className="fieldLabel">
+                                        <span>Operator</span>
+                                        <select
+                                          value={filter.operator}
+                                          onChange={(event) =>
+                                            updateStreamingFilter(entry.id, filter.id, {
+                                              operator: event.target.value as FilterOperator,
+                                            })
+                                          }
+                                        >
+                                          {FILTER_OPERATORS.map((operator) => (
+                                            <option key={operator} value={operator}>
+                                              {operator}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </label>
+
+                                      <label className="fieldLabel">
+                                        <span>Value</span>
+                                        <input
+                                          value={filter.value}
+                                          onChange={(event) =>
+                                            updateStreamingFilter(entry.id, filter.id, {
+                                              value: event.target.value,
+                                            })
+                                          }
+                                          placeholder={
+                                            filter.operator === "in" ||
+                                            filter.operator === "not in"
+                                              ? '["en", "de"] or en,de'
+                                              : 'en, true, 0.95, {"k":1}'
+                                          }
+                                        />
+                                      </label>
+
+                                      <button
+                                        type="button"
+                                        className="textButton filterRemoveButton"
+                                        onClick={() => removeStreamingFilter(entry.id, filter.id)}
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <p className="fieldNote">
+                                Values are inferred automatically. For `in`/`not in`, use a JSON
+                                array or comma-separated values.
+                              </p>
+                            </div>
+                          </div>
+                        </details>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
 
             <section className="trainingSettingsSection">
@@ -1808,13 +2922,12 @@ function TrainingPageContent() {
                         setSelectedProjectId(project.id);
                         closePicker();
                       }}
-                    >
+                      >
                       <div className="trainingAssetPickerOptionHead">
                         <div>
                           <div className="trainingAssetName">
                             {project.name ?? project.id}
                           </div>
-                          <div className="trainingAssetPickerOptionMeta">{project.id}</div>
                         </div>
                         <span
                           className={`pillBadge ${
@@ -1844,13 +2957,12 @@ function TrainingPageContent() {
                         setSelectedTokenizerJobId(job.id);
                         closePicker();
                       }}
-                    >
+                      >
                       <div className="trainingAssetPickerOptionHead">
                         <div>
                           <div className="trainingAssetName">
                             {asString(job.tokenizer_config.name, job.id)}
                           </div>
-                          <div className="trainingAssetPickerOptionMeta">{job.id}</div>
                         </div>
                         <span
                           className={`pillBadge ${
