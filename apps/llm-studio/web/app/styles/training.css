@@ -2,9 +2,54 @@
   padding-bottom: 72px;
 }
 
+.studioRoot.trainingPage {
+  width: min(1280px, calc(100% - 32px));
+  margin: 18px auto 44px;
+}
+
 .trainingHero {
   display: grid;
   gap: 16px;
+}
+
+.trainingPage .panelHead,
+.trainingSectionHeader,
+.trainingSettingsSectionHead,
+.trainingSettingsPanelHead,
+.trainingPromptCardHead,
+.trainingAssetPickerHeader,
+.trainingAssetPickerOptionHead,
+.localFileManagerHeader,
+.datasetCardHeader,
+.filterBuilderHeader {
+  flex-wrap: wrap;
+}
+
+.trainingPage .panelHead > :first-child,
+.trainingSectionHeader > :first-child,
+.trainingSettingsSectionHead > :first-child,
+.trainingSettingsPanelHead > :first-child,
+.trainingPromptCardHead > :first-child,
+.trainingAssetPickerHeader > :first-child,
+.trainingAssetPickerOptionHead > :first-child,
+.localFileManagerHeader > :first-child,
+.datasetCardHeader > :first-child,
+.filterBuilderHeader > :first-child {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.trainingPage .panelHead > :not(:first-child),
+.trainingSectionHeader > :not(:first-child),
+.trainingSettingsSectionHead > :not(:first-child),
+.trainingSettingsPanelHead > :not(:first-child),
+.trainingPromptCardHead > :not(:first-child),
+.trainingAssetPickerHeader > :not(:first-child),
+.trainingAssetPickerOptionHead > :not(:first-child),
+.localFileManagerHeader > :not(:first-child),
+.datasetCardHeader > :not(:first-child),
+.filterBuilderHeader > :not(:first-child) {
+  flex: 0 0 auto;
 }
 
 .trainingHeroActions {
@@ -14,6 +59,22 @@
 .trainingHeroBody {
   display: grid;
   gap: 14px;
+}
+
+.trainingPage .fieldGrid,
+.trainingPage .fieldGrid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 260px));
+  justify-content: start;
+  align-items: start;
+  gap: 10px 14px;
+}
+
+.trainingPage .fieldGrid {
+  margin-top: 0;
+}
+
+.trainingPage .fieldGrid.compact {
+  margin-top: 0;
 }
 
 .trainingPairGrid {
@@ -46,6 +107,7 @@
   font-size: 0.96rem;
   font-weight: 760;
   letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -58,6 +120,7 @@
   font-size: 0.8rem;
   color: var(--text-muted);
   line-height: 1.42;
+  overflow-wrap: anywhere;
 }
 
 .trainingAssetActions {
@@ -205,6 +268,8 @@
   font-size: 0.88rem;
   font-weight: 760;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .trainingFixActions,
@@ -421,6 +486,25 @@
   border-top: 1px dashed var(--line-strong);
 }
 
+.trainingSettingsStudio,
+.trainingSettingsStudio .settingsPanel,
+.trainingSettingsStudio .settingsGrid,
+.trainingSettingsStudio .settingsGroup,
+.trainingSettingsStudio .fieldGrid,
+.trainingSettingsStudio .fieldLabel,
+.trainingSettingsStudio .datasetConfigurator,
+.trainingSettingsStudio .datasetList,
+.trainingSettingsStudio .datasetCard,
+.trainingSettingsStudio .subPanel,
+.trainingSettingsStudio .filterBuilder,
+.trainingSettingsStudio .filterList,
+.trainingSettingsStudio .filterRow,
+.trainingSettingsStudio .localFileManager,
+.trainingSettingsStudio .localFileList,
+.trainingSettingsStudio .localFileItem {
+  min-width: 0;
+}
+
 .trainingSettingsSectionHead,
 .trainingSettingsPanelHead {
   display: flex;
@@ -449,6 +533,23 @@
   font-size: 0.82rem;
   color: var(--text-muted);
   line-height: 1.45;
+}
+
+.trainingSettingsStudio .fullWidthField {
+  max-width: 560px;
+}
+
+.trainingSettingsStudio .inlineField {
+  max-width: 260px;
+}
+
+.trainingSettingsStudio .fieldGrid > .fieldLabel {
+  justify-self: start;
+  width: min(100%, 260px);
+}
+
+.trainingSettingsStudio .fieldGrid > .fieldLabel.fullWidthField {
+  width: min(100%, 560px);
 }
 
 .trainingSettingsStudio .trainingSettingsCompactGrid > .fieldLabel {
@@ -1125,6 +1226,17 @@
 }
 
 @media (max-width: 860px) {
+  .studioRoot.trainingPage {
+    width: min(100%, calc(100% - 12px));
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .trainingPage .fieldGrid,
+  .trainingPage .fieldGrid.compact {
+    grid-template-columns: 1fr;
+  }
+
   .trainingPairGrid,
   .trainingChartGrid {
     grid-template-columns: 1fr;

@@ -2367,7 +2367,7 @@ function TrainingPageContent() {
         </div>
       </section>
 
-      <section className="panelCard trainingSettingsStudio settingsStudio">
+      <section className="panelCard trainingSettingsStudio">
         <div className="panelHead">
           <div>
             <p className="panelEyebrow">Settings</p>
