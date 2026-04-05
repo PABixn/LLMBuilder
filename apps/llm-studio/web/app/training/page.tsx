@@ -89,6 +89,7 @@ interface ToastState {
 type AssetPickerKind = "project" | "tokenizer";
 type DatasetSourceMode = "local_file" | "streaming_hf";
 type FilterOperator = "==" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "not in";
+type WorkflowTarget = "model" | "tokenizer" | "training" | "dataset" | "preflight";
 
 interface StreamingFilterFormState {
   id: string;
@@ -125,6 +126,13 @@ const TRAINING_SELECTION_STORAGE_KEY = "llm-training-selection-v1";
 const ACTIVE_RUN_STORAGE_KEY = "llm-training-active-run-v1";
 const HIDDEN_RUNS_STORAGE_KEY = "llm-training-hidden-runs-v1";
 const POLL_INTERVAL_MS = 1800;
+const WORKFLOW_TARGET_HASH_MAP: Record<WorkflowTarget, string> = {
+  model: "#settings-model",
+  tokenizer: "#settings-tokenizer",
+  training: "#settings-training",
+  dataset: "#settings-dataset",
+  preflight: "#settings-preflight",
+};
 
 function stripGeneratedUploadPrefix(value: string): string {
   const trimmed = value.trim();
@@ -968,12 +976,22 @@ function TrainingPageContent() {
   const [isDraggingTrainFiles, setIsDraggingTrainFiles] = useState(false);
   const [isUploadingTrainFile, setIsUploadingTrainFile] = useState(false);
   const [isLoadingDatasetTemplate, setIsLoadingDatasetTemplate] = useState(false);
+  const [highlightedWorkflowTarget, setHighlightedWorkflowTarget] =
+    useState<WorkflowTarget | null>(null);
   const initializedRef = useRef(false);
   const pickerRequestIdRef = useRef(0);
   const datasetUiHydratedRef = useRef(false);
   const localFileDragDepthRef = useRef(0);
   const localTrainFileStatsPendingIdsRef = useRef(new Set<string>());
   const localTrainFileStatsFailedIdsRef = useRef(new Set<string>());
+  const workflowHighlightTimeoutRef = useRef<number | null>(null);
+  const trainingPlanPanelRef = useRef<HTMLDetailsElement | null>(null);
+  const datasetPanelRef = useRef<HTMLDetailsElement | null>(null);
+  const modelSelectionRef = useRef<HTMLDivElement | null>(null);
+  const tokenizerSelectionRef = useRef<HTMLDivElement | null>(null);
+  const trainingSettingsRef = useRef<HTMLDivElement | null>(null);
+  const datasetSettingsRef = useRef<HTMLDivElement | null>(null);
+  const preflightSectionRef = useRef<HTMLElement | null>(null);
 
   const deferredTrainingConfig = useDeferredValue(trainingConfig);
   const deferredDataloaderConfig = useDeferredValue(dataloaderConfig);
@@ -984,6 +1002,55 @@ function TrainingPageContent() {
     window.setTimeout(() => {
       setToasts((current) => current.filter((toast) => toast.id !== id));
     }, 3600);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (workflowHighlightTimeoutRef.current !== null) {
+        window.clearTimeout(workflowHighlightTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const openWorkflowTarget = useCallback((target: WorkflowTarget) => {
+    if (target === "training" && trainingPlanPanelRef.current) {
+      trainingPlanPanelRef.current.open = true;
+    }
+    if (target === "dataset" && datasetPanelRef.current) {
+      datasetPanelRef.current.open = true;
+    }
+
+    const targetRef =
+      target === "model"
+        ? modelSelectionRef
+        : target === "tokenizer"
+          ? tokenizerSelectionRef
+          : target === "training"
+            ? trainingSettingsRef
+            : target === "dataset"
+              ? datasetSettingsRef
+              : preflightSectionRef;
+
+    const hash = WORKFLOW_TARGET_HASH_MAP[target];
+    if (window.location.hash !== hash) {
+      window.history.replaceState(null, "", hash);
+    }
+
+    targetRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+      inline: "nearest",
+    });
+
+    setHighlightedWorkflowTarget(target);
+    if (workflowHighlightTimeoutRef.current !== null) {
+      window.clearTimeout(workflowHighlightTimeoutRef.current);
+    }
+    workflowHighlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightedWorkflowTarget((previous) =>
+        previous === target ? null : previous
+      );
+    }, 1800);
   }, []);
 
   const refreshRecentRuns = useCallback(async () => {
@@ -1065,6 +1132,29 @@ function TrainingPageContent() {
   useEffect(() => {
     writeStoredJson(HIDDEN_RUNS_STORAGE_KEY, hiddenRunIds);
   }, [hiddenRunIds]);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash === WORKFLOW_TARGET_HASH_MAP.model) {
+      openWorkflowTarget("model");
+      return;
+    }
+    if (hash === WORKFLOW_TARGET_HASH_MAP.tokenizer) {
+      openWorkflowTarget("tokenizer");
+      return;
+    }
+    if (hash === WORKFLOW_TARGET_HASH_MAP.training) {
+      openWorkflowTarget("training");
+      return;
+    }
+    if (hash === WORKFLOW_TARGET_HASH_MAP.dataset) {
+      openWorkflowTarget("dataset");
+      return;
+    }
+    if (hash === WORKFLOW_TARGET_HASH_MAP.preflight) {
+      openWorkflowTarget("preflight");
+    }
+  }, [openWorkflowTarget]);
 
   useEffect(() => {
     writeStoredJson(ACTIVE_RUN_STORAGE_KEY, activeRunId);
@@ -1823,34 +1913,97 @@ function TrainingPageContent() {
   const throughputValues = metricSeries(metrics, "tok_per_sec");
 
   const startReady = Boolean(preflight?.valid && selectedProjectId && selectedTokenizerJobId && !launching);
+  const trainingRuntimeReady = Boolean(trainingConfig && dataloaderConfig);
+  const hasTrainingInProgress =
+    activeRun?.status === "running" || activeRun?.status === "pending";
+  const trainingCompleted = activeRun?.status === "completed";
+  const sequenceLength = trainingConfig ? asNumber(trainingConfig.seq_len, 0) : 0;
+  const maxSteps = trainingConfig ? asNumber(trainingConfig.max_steps, 0) : 0;
+  const datasetSummary =
+    datasetSourceMode === "local_file"
+      ? `${localTrainFiles.length} local file${localTrainFiles.length === 1 ? "" : "s"}`
+      : `${streamingDatasets.length} streaming dataset${
+          streamingDatasets.length === 1 ? "" : "s"
+        }`;
   const workflowSteps = [
     {
-      title: "Choose saved model config",
-      ready: Boolean(selectedProject),
-      body: selectedProject ? selectedProject.name ?? selectedProject.id : "Pick a saved model config from the home workspace or query parameters.",
+      title: "Step 1 - Choose saved model config",
+      state: selectedProject ? "ready" : "waiting",
+      status: selectedProject ? "Ready" : "Waiting for configuration",
+      body: selectedProject
+        ? selectedProject.name ?? selectedProject.id
+        : "Pick a saved model config from the home workspace or query parameters.",
+      actionLabel: "Open model selection",
+      onAction: () => openWorkflowTarget("model"),
     },
     {
-      title: "Choose completed tokenizer artifact",
-      ready: Boolean(selectedTokenizer && selectedTokenizer.status === "completed"),
+      title: "Step 2 - Choose tokenizer artifact",
+      state:
+        selectedTokenizer && selectedTokenizer.status === "completed"
+          ? "ready"
+          : "waiting",
+      status:
+        selectedTokenizer && selectedTokenizer.status === "completed"
+          ? "Ready"
+          : "Waiting for configuration",
       body:
         selectedTokenizer && selectedTokenizer.status === "completed"
           ? asString(selectedTokenizer.tokenizer_config.name, selectedTokenizer.id)
           : "Select a completed tokenizer artifact to ensure vocab compatibility.",
+      actionLabel: "Open tokenizer selection",
+      onAction: () => openWorkflowTarget("tokenizer"),
     },
     {
-      title: "Configure dataset + run settings",
-      ready: Boolean(trainingConfig && dataloaderConfig),
-      body: "Tune sequence length, effective batch size, save cadence, prompts, and dataset sources.",
+      title: "Step 3 - Configure training run",
+      state: trainingRuntimeReady ? "ready" : "waiting",
+      status: trainingRuntimeReady ? "Ready" : "Waiting for configuration",
+      body: trainingRuntimeReady
+        ? `Sequence length ${formatInteger(sequenceLength)}, max steps ${formatInteger(
+            maxSteps
+          )}, ${datasetSummary} configured.`
+        : "Tune sequence length, batch size, save cadence, prompts, and dataset sources.",
+      actionLabel: "Open training settings",
+      onAction: () => openWorkflowTarget("training"),
     },
     {
-      title: "Validate compatibility + memory",
-      ready: Boolean(preflight?.valid),
-      body: preflightError ?? preflight?.errors[0]?.message ?? "Automatic preflight checks run after every settings change.",
+      title: "Step 4 - Validate configs",
+      state: preflight?.valid ? "ready" : preflightLoading ? "inProgress" : "waiting",
+      status: preflight?.valid
+        ? "Ready"
+        : preflightLoading
+          ? "In progress"
+          : "Waiting for configuration",
+      body: preflight?.valid
+        ? "Preflight passed for compatibility, runtime math, and memory checks."
+        : preflightLoading
+          ? "Validating the latest training and dataset configuration changes..."
+          : preflightError ??
+            preflight?.errors[0]?.message ??
+            "Complete steps 1-3 first. Preflight runs automatically.",
+      actionLabel: "Review preflight",
+      onAction: () => openWorkflowTarget("preflight"),
     },
     {
-      title: "Start training",
-      ready: startReady,
-      body: startReady ? "The run is clear to launch." : "The start action unlocks only after a passing preflight.",
+      title: "Step 5 - Start training",
+      state: trainingCompleted
+        ? "ready"
+        : hasTrainingInProgress
+          ? "inProgress"
+          : "waiting",
+      status: trainingCompleted
+        ? "Ready (trained)"
+        : hasTrainingInProgress
+          ? "In progress"
+          : "Not ready",
+      body: trainingCompleted
+        ? "Latest training run completed. Artifacts and telemetry are ready."
+        : hasTrainingInProgress
+          ? `Current run is ${activeRun?.status ?? "running"}.`
+          : startReady
+            ? "Preflight passed. Start training to complete this step."
+            : preflightLoading
+              ? "Waiting for automatic preflight to finish."
+              : "A passing preflight is required before launch.",
     },
   ];
 
@@ -1954,7 +2107,15 @@ function TrainingPageContent() {
 
         <div className="trainingHeroBody">
           <div className="trainingPairGrid">
-            <div className="trainingAssetCard">
+            <div
+              id="settings-model"
+              ref={modelSelectionRef}
+              className={`trainingAssetCard settingsCategoryAnchor ${
+                highlightedWorkflowTarget === "model"
+                  ? "settingsCategoryAnchor-highlight"
+                  : ""
+              }`}
+            >
               <span className="trainingAssetLabel">Model Config</span>
               <span className="trainingAssetName">
                 {selectedProject?.name ?? (selectedProjectId ? selectedProjectId : "No model selected")}
@@ -1978,7 +2139,15 @@ function TrainingPageContent() {
                 </button>
               </div>
             </div>
-            <div className="trainingAssetCard">
+            <div
+              id="settings-tokenizer"
+              ref={tokenizerSelectionRef}
+              className={`trainingAssetCard settingsCategoryAnchor ${
+                highlightedWorkflowTarget === "tokenizer"
+                  ? "settingsCategoryAnchor-highlight"
+                  : ""
+              }`}
+            >
               <span className="trainingAssetLabel">Tokenizer Artifact</span>
               <span className="trainingAssetName">
                 {selectedTokenizer
@@ -2015,27 +2184,58 @@ function TrainingPageContent() {
         </div>
       </section>
 
-      <section className="panelCard">
+      <section id="workflow" className="panelCard actionDeck">
         <div className="panelHead">
           <div>
-            <h2>Workflow</h2>
-            <p className="panelCopy">The page keeps the start path explicit: asset pair, runtime config, preflight, then launch.</p>
+            <p className="panelEyebrow">Top Workflow</p>
+            <h2>Steps to train the model</h2>
+            <p className="panelCopy">
+              Complete each step in order. A step turns green only when it is ready.
+            </p>
           </div>
         </div>
-        <div className="trainingWorkflowGrid">
+        <div className="workflowStepGrid" role="list" aria-label="Training launch steps">
           {workflowSteps.map((step, index) => (
             <article
               key={step.title}
-              className={`trainingWorkflowCard ${step.ready ? "tone-good" : "tone-warn"}`}
+              className={`workflowStepTile workflowStepTile-${
+                step.state === "ready"
+                  ? "ready"
+                  : step.state === "inProgress"
+                    ? "inProgress"
+                    : "waiting"
+              }`}
+              role="listitem"
             >
-              <div className="trainingWorkflowTop">
-                <span className="trainingWorkflowStep">Step {index + 1}</span>
-                <span className={`pillBadge ${step.ready ? "tone-good" : "tone-warn"}`}>
-                  {step.ready ? "Ready" : "Waiting"}
-                </span>
-              </div>
-              <div className="trainingWorkflowTitle">{step.title}</div>
-              <div className="trainingWorkflowMeta">{step.body}</div>
+              <p className="workflowStepTitle">{step.title}</p>
+              <strong>{step.status}</strong>
+              <p className="fieldNote">{step.body}</p>
+              {step.onAction && step.actionLabel ? (
+                <button
+                  type="button"
+                  className={`${
+                    index === 3
+                      ? "secondaryButton workflowStepAction workflowStepButtonCompact"
+                      : "workflowStepLink workflowStepAction"
+                  }`}
+                  onClick={step.onAction}
+                >
+                  {step.actionLabel}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="primaryButton workflowStepAction"
+                  onClick={handleStartTraining}
+                  disabled={!startReady}
+                >
+                  {hasTrainingInProgress
+                    ? "Training..."
+                    : launching
+                      ? "Starting..."
+                      : "Start Training"}
+                </button>
+              )}
             </article>
           ))}
         </div>
@@ -2043,7 +2243,15 @@ function TrainingPageContent() {
 
       <section className="trainingResultsGrid">
         <div className="trainingPanelStack">
-          <section className="panelCard">
+          <section
+            id="settings-preflight"
+            ref={preflightSectionRef}
+            className={`panelCard settingsCategoryAnchor ${
+              highlightedWorkflowTarget === "preflight"
+                ? "settingsCategoryAnchor-highlight"
+                : ""
+            }`}
+          >
               <div className="panelHead">
                 <div>
                   <h2>Preflight</h2>
@@ -2385,10 +2593,18 @@ function TrainingPageContent() {
 
         {trainingConfig && dataloaderConfig ? (
           <div className="trainingSettingsStack">
-            <details className="settingsPanel" open>
+            <details className="settingsPanel" open ref={trainingPlanPanelRef}>
               <summary>Training plan</summary>
               <div className="settingsGrid">
-                <div className="settingsGroup">
+                <div
+                  id="settings-training"
+                  ref={trainingSettingsRef}
+                  className={`settingsGroup settingsCategoryAnchor ${
+                    highlightedWorkflowTarget === "training"
+                      ? "settingsCategoryAnchor-highlight"
+                      : ""
+                  }`}
+                >
                   <div className="settingsGroupHeader">
                     <h3>Core launch knobs</h3>
                     <p className="settingsGroupHint">
@@ -2472,10 +2688,18 @@ function TrainingPageContent() {
               </div>
             </details>
 
-            <details className="settingsPanel" open>
+            <details className="settingsPanel" open ref={datasetPanelRef}>
               <summary>Core dataset settings</summary>
               <div className="settingsGrid">
-                <div className="settingsGroup">
+                <div
+                  id="settings-dataset"
+                  ref={datasetSettingsRef}
+                  className={`settingsGroup settingsCategoryAnchor ${
+                    highlightedWorkflowTarget === "dataset"
+                      ? "settingsCategoryAnchor-highlight"
+                      : ""
+                  }`}
+                >
                   <div className="settingsGroupHeader">
                     <h3>Dataset sources</h3>
                     <p className="settingsGroupHint">
