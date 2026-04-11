@@ -95,6 +95,9 @@ class ConfigurableGPT(nn.Module):
 
             yield token
 
+    def get_device(self):
+        return next(self.parameters()).device
+
     def setup_optimizer(self, lr=3e-4, weight_decay=0.01, betas=(0.8, 0.95), eps=1e-10):
         use_fused = next(self.parameters()).device.type == "cuda"
 

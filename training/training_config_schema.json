@@ -25,6 +25,11 @@
       "minimum": 1,
       "description": "Effective total batch size across all devices."
     },
+    "micro_batch_size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optional per-device micro-batch size. When omitted, training uses a conservative divisor of total_batch_size instead of the largest memory-estimated batch."
+    },
     "seq_len": {
       "type": "integer",
       "minimum": 1,

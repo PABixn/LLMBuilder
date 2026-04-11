@@ -292,6 +292,8 @@ class TrainingTokenDataset(IterableDataset):
             kwargs["columns"] = spec.columns
         if spec.filters is not None:
             kwargs["filters"] = [tuple(filt) for filt in spec.filters]
+        if spec.hf_token is not None:
+            kwargs["token"] = spec.hf_token
         if self.config.cache_dir is not None:
             kwargs["cache_dir"] = self.config.cache_dir
         dataset = load_dataset(*args, **kwargs)

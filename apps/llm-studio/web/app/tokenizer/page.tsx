@@ -2591,7 +2591,7 @@ function TokenizerPageContent() {
       : null;
 
   return (
-    <main className="studioRoot">
+    <main className="studioRoot tokenizerPage">
       <header className="studioNav" role="navigation" aria-label="Primary">
         <div className="studioNavBrand">
           <span className="studioNavDot" aria-hidden="true" />

@@ -1,4 +1,4 @@
-:root {
+.tokenizerPage{
   color-scheme: light;
   --bg: #f3f6fa;
   --bg-accent-1: #e6edf7;
@@ -33,7 +33,7 @@
   --toast-shadow: 0 16px 34px rgba(10, 30, 55, 0.18);
 }
 
-[data-theme="dark"] {
+[data-theme="dark"] .tokenizerPage{
   color-scheme: dark;
   --bg: #0f1621;
   --bg-accent-1: #151f2e;
@@ -66,12 +66,12 @@
   --toast-shadow: 0 16px 34px rgba(0, 0, 0, 0.5);
 }
 
-* {
+.tokenizerPage, .tokenizerPage *{
   box-sizing: border-box;
 }
 
-html,
-body {
+.tokenizerPage,
+.tokenizerPage{
   margin: 0;
   min-height: 100%;
   background:
@@ -82,25 +82,25 @@ body {
   font-family: "Sora", "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
 }
 
-body {
+.tokenizerPage{
   padding-bottom: 0;
 }
 
-.studioRoot {
-  width: min(1280px, calc(100% - 32px));
+.studioRoot.tokenizerPage{
+  width: min(1380px, calc(100% - 32px));
   margin: 18px auto 44px;
   display: grid;
   gap: 18px;
 }
 
-.panelCard {
+.tokenizerPage .panelCard{
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
 
-.studioNav {
+.tokenizerPage .studioNav{
   position: sticky;
   top: 18px;
   z-index: 40;
@@ -119,13 +119,13 @@ body {
   -webkit-backdrop-filter: blur(10px);
 }
 
-[data-theme="dark"] .studioNav {
+[data-theme="dark"] .tokenizerPage .studioNav{
   border-color: rgba(53, 83, 116, 0.8);
   background: rgba(17, 30, 46, 0.6);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
-.studioNavBrand {
+.tokenizerPage .studioNavBrand{
   min-width: 0;
   display: inline-flex;
   align-items: center;
@@ -137,7 +137,7 @@ body {
   white-space: nowrap;
 }
 
-.studioNavDot {
+.tokenizerPage .studioNavDot{
   width: 8px;
   height: 8px;
   border-radius: 999px;
@@ -145,7 +145,7 @@ body {
   box-shadow: 0 0 0 3px rgba(43, 94, 168, 0.22);
 }
 
-.studioNavLinks {
+.tokenizerPage .studioNavLinks{
   margin-left: 2px;
   display: inline-flex;
   align-items: center;
@@ -153,7 +153,7 @@ body {
   min-width: 0;
 }
 
-.studioNavLink {
+.tokenizerPage .studioNavLink{
   display: inline-flex;
   align-items: center;
   border: 1px solid transparent;
@@ -170,15 +170,15 @@ body {
     color 0.16s ease;
 }
 
-.studioNavLink:hover,
-.studioNavLink:focus-visible {
+.tokenizerPage .studioNavLink:hover,
+.tokenizerPage .studioNavLink:focus-visible{
   background: var(--surface-soft);
   border-color: var(--line-strong);
   color: var(--text);
   outline: none;
 }
 
-.themeToggle {
+.tokenizerPage .themeToggle{
   width: 32px;
   height: 32px;
   border-radius: 999px;
@@ -192,28 +192,28 @@ body {
   cursor: pointer;
 }
 
-.themeToggle:hover {
+.tokenizerPage .themeToggle:hover{
   color: var(--text);
   border-color: var(--brand);
 }
 
-.themeToggle svg {
+.tokenizerPage .themeToggle svg{
   width: 14px;
   height: 14px;
 }
 
-.panelCard {
+.tokenizerPage .panelCard{
   padding: 18px;
 }
 
-.panelHead {
+.tokenizerPage .panelHead{
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 14px;
 }
 
-.panelEyebrow {
+.tokenizerPage .panelEyebrow{
   margin: 0;
   font-size: 0.74rem;
   font-weight: 750;
@@ -222,19 +222,19 @@ body {
   color: var(--brand);
 }
 
-.panelHead h2 {
+.tokenizerPage .panelHead h2{
   margin: 8px 0 0;
   font-size: 1.32rem;
   letter-spacing: -0.02em;
 }
 
-.panelCopy {
+.tokenizerPage .panelCopy{
   margin: 8px 0 0;
   color: var(--text-muted);
   max-width: 70ch;
 }
 
-.actionDeck {
+.tokenizerPage .actionDeck{
   position: static;
   z-index: 18;
   border-color: var(--line-strong);
@@ -243,32 +243,32 @@ body {
     var(--surface);
 }
 
-[data-theme="dark"] .actionDeck {
+[data-theme="dark"] .tokenizerPage .actionDeck{
   border-color: var(--line-strong);
   background:
     linear-gradient(145deg, rgba(27, 45, 68, 0.7), rgba(17, 30, 46, 0.95)),
     var(--surface);
 }
 
-.actionDeckHead {
+.tokenizerPage .actionDeckHead{
   align-items: flex-end;
 }
 
-.actionButtonRow {
+.tokenizerPage .actionButtonRow{
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   justify-content: flex-end;
 }
 
-.actionInputGrid {
+.tokenizerPage .actionInputGrid{
   margin-top: 14px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
-.uploadTile {
+.tokenizerPage .uploadTile{
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--surface-soft);
@@ -278,19 +278,19 @@ body {
   font-size: 0.9rem;
 }
 
-.uploadTile-dragging {
+.tokenizerPage .uploadTile-dragging{
   border-color: var(--brand);
   background: var(--brand-soft);
 }
 
-.statusStrip {
+.tokenizerPage .statusStrip{
   margin-top: 12px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.statusCard {
+.tokenizerPage .statusCard{
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface-soft);
@@ -299,46 +299,46 @@ body {
   gap: 4px;
 }
 
-.statusCard span {
+.tokenizerPage .statusCard span{
   font-size: 0.78rem;
   color: var(--text-muted);
 }
 
-.statusCard strong {
+.tokenizerPage .statusCard strong{
   font-size: 0.96rem;
 }
 
-.statusCard-good {
+.tokenizerPage .statusCard-good{
   border-color: var(--ok-border);
   background: var(--ok-soft);
 }
 
-.statusCard-good strong {
+.tokenizerPage .statusCard-good strong{
   color: var(--ok);
 }
 
-.statusCard-bad {
+.tokenizerPage .statusCard-bad{
   border-color: var(--danger-border);
   background: var(--danger-soft);
 }
 
-.statusCard-bad strong {
+.tokenizerPage .statusCard-bad strong{
   color: var(--danger);
 }
 
-.statusCard-neutral {
+.tokenizerPage .statusCard-neutral{
   border-color: var(--line-strong);
   background: var(--neutral-soft);
 }
 
-.workflowStepGrid {
+.tokenizerPage .workflowStepGrid{
   margin-top: 14px;
   display: grid;
   grid-template-columns: repeat(5, minmax(170px, 1fr));
   gap: 12px;
 }
 
-.workflowStepTile {
+.tokenizerPage .workflowStepTile{
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -349,7 +349,7 @@ body {
   min-height: 184px;
 }
 
-.workflowStepTile strong {
+.tokenizerPage .workflowStepTile strong{
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -364,7 +364,7 @@ body {
   background: var(--surface-soft);
 }
 
-.workflowStepTile strong::before {
+.tokenizerPage .workflowStepTile strong::before{
   content: "";
   width: 7px;
   height: 7px;
@@ -372,7 +372,7 @@ body {
   background: currentColor;
 }
 
-.workflowStepTitle {
+.tokenizerPage .workflowStepTitle{
   margin: 0;
   font-size: 0.83rem;
   font-weight: 700;
@@ -380,25 +380,25 @@ body {
   letter-spacing: 0;
 }
 
-.workflowStepTile .fieldNote {
+.tokenizerPage .workflowStepTile .fieldNote{
   margin: 0;
   font-size: 0.78rem;
   line-height: 1.38;
 }
 
-.workflowStepAction {
+.tokenizerPage .workflowStepAction{
   margin-top: auto;
   align-self: flex-start;
 }
 
-.workflowStepButtonCompact {
+.tokenizerPage .workflowStepButtonCompact{
   padding: 6px 8px;
   font-size: 0.76rem;
   border-radius: 8px;
   width: fit-content;
 }
 
-.workflowStepLink {
+.tokenizerPage .workflowStepLink{
   margin-top: auto;
   display: inline-flex;
   align-items: center;
@@ -415,59 +415,59 @@ body {
   width: fit-content;
 }
 
-.workflowStepLink:hover,
-.workflowStepLink:focus-visible {
+.tokenizerPage .workflowStepLink:hover,
+.tokenizerPage .workflowStepLink:focus-visible{
   border-color: var(--brand);
   background: var(--surface-soft);
   outline: none;
 }
 
-.workflowStepTile-ready {
+.tokenizerPage .workflowStepTile-ready{
   border-color: var(--ok-border);
   border-left: 4px solid var(--ok);
 }
 
-.workflowStepTile-ready strong {
+.tokenizerPage .workflowStepTile-ready strong{
   color: var(--ok);
   border-color: var(--ok-border);
   background: var(--ok-soft);
 }
 
-.workflowStepTile-waiting {
+.tokenizerPage .workflowStepTile-waiting{
   border-color: var(--danger-border);
   border-left: 4px solid var(--danger);
 }
 
-.workflowStepTile-waiting strong {
+.tokenizerPage .workflowStepTile-waiting strong{
   color: var(--danger);
   border-color: var(--danger-border);
   background: var(--danger-soft);
 }
 
-.workflowStepTile-inProgress {
+.tokenizerPage .workflowStepTile-inProgress{
   border-color: var(--brand);
   border-left: 4px solid var(--brand);
 }
 
-.workflowStepTile-inProgress strong {
+.tokenizerPage .workflowStepTile-inProgress strong{
   color: var(--brand-strong);
   border-color: var(--brand);
   background: var(--brand-soft);
 }
 
-.workspaceGrid {
+.tokenizerPage .workspaceGrid{
   display: grid;
   grid-template-columns: 1.35fr 0.9fr;
   gap: 14px;
   align-items: start;
 }
 
-.activeJobCard {
+.tokenizerPage .activeJobCard{
   display: grid;
   gap: 10px;
 }
 
-.sectionHeader {
+.tokenizerPage .sectionHeader{
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -475,18 +475,18 @@ body {
   margin-bottom: 10px;
 }
 
-.sectionHeader h2,
-.sectionHeader h3 {
+.tokenizerPage .sectionHeader h2,
+.tokenizerPage .sectionHeader h3{
   margin: 0;
 }
 
-.metaList {
+.tokenizerPage .metaList{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.metaItem {
+.tokenizerPage .metaItem{
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface-soft);
@@ -495,25 +495,25 @@ body {
   gap: 2px;
 }
 
-.metaLabel {
+.tokenizerPage .metaLabel{
   font-size: 0.76rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.metaValue {
+.tokenizerPage .metaValue{
   font-size: 0.9rem;
   word-break: break-word;
 }
 
-.metaLine {
+.tokenizerPage .metaLine{
   margin: 6px 0;
   color: var(--text-muted);
   font-size: 0.9rem;
 }
 
-.progressTrack {
+.tokenizerPage .progressTrack{
   margin-top: 10px;
   width: 100%;
   height: 12px;
@@ -523,37 +523,37 @@ body {
   background: var(--surface-raised);
 }
 
-.progressFill {
+.tokenizerPage .progressFill{
   height: 100%;
   background: linear-gradient(90deg, var(--brand-strong), var(--brand));
 }
 
-.statsGrid {
+.tokenizerPage .statsGrid{
   margin-top: 12px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.statsGrid > div {
+.tokenizerPage .statsGrid > div{
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 9px;
   background: var(--surface-soft);
 }
 
-.statsGrid span {
+.tokenizerPage .statsGrid span{
   display: block;
   color: var(--text-muted);
   font-size: 0.78rem;
   margin-bottom: 3px;
 }
 
-.statsGrid strong {
+.tokenizerPage .statsGrid strong{
   font-size: 0.96rem;
 }
 
-.rareTokenCard {
+.tokenizerPage .rareTokenCard{
   margin-top: 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -563,17 +563,17 @@ body {
   gap: 8px;
 }
 
-.rareTokenCard h3 {
+.tokenizerPage .rareTokenCard h3{
   margin: 0;
   font-size: 0.9rem;
 }
 
-.rareTokenTable {
+.tokenizerPage .rareTokenTable{
   display: grid;
   gap: 6px;
 }
 
-.rareTokenRow {
+.tokenizerPage .rareTokenRow{
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
@@ -585,16 +585,16 @@ body {
   font-size: 0.82rem;
 }
 
-.rareTokenRow span {
+.tokenizerPage .rareTokenRow span{
   color: var(--text-muted);
 }
 
-.rareTokenRow strong {
+.tokenizerPage .rareTokenRow strong{
   color: var(--text);
   font-size: 0.86rem;
 }
 
-.tokenizerPreview {
+.tokenizerPage .tokenizerPreview{
   margin-top: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -604,25 +604,25 @@ body {
   gap: 10px;
 }
 
-.tokenizerPreviewHeader {
+.tokenizerPage .tokenizerPreviewHeader{
   margin: 0;
 }
 
-.previewInput {
+.tokenizerPage .previewInput{
   min-height: 94px;
   resize: vertical;
 }
 
-label {
+.tokenizerPage label{
   display: grid;
   gap: 6px;
   font-size: 0.9rem;
 }
 
-input,
-select,
-textarea,
-pre {
+.tokenizerPage input,
+.tokenizerPage select,
+.tokenizerPage textarea,
+.tokenizerPage pre{
   width: 100%;
   border: 1px solid var(--input-border);
   border-radius: 9px;
@@ -632,26 +632,26 @@ pre {
   padding: 9px 10px;
 }
 
-select {
+.tokenizerPage select{
   padding-right: 34px;
 }
 
-textarea,
-pre,
-.tokenizedText,
-.tokenChip code {
+.tokenizerPage textarea,
+.tokenizerPage pre,
+.tokenizerPage .tokenizedText,
+.tokenizerPage .tokenChip code{
   font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 0.82rem;
 }
 
-input:focus,
-select:focus,
-textarea:focus {
+.tokenizerPage input:focus,
+.tokenizerPage select:focus,
+.tokenizerPage textarea:focus{
   outline: 2px solid var(--input-focus);
   outline-offset: 1px;
 }
 
-.fieldGrid {
+.tokenizerPage .fieldGrid{
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 260px));
   gap: 10px 14px;
@@ -659,54 +659,54 @@ textarea:focus {
   justify-content: start;
 }
 
-.fullWidthField {
+.tokenizerPage .fullWidthField{
   grid-column: 1 / -1;
 }
 
-.fieldNote {
+.tokenizerPage .fieldNote{
   margin: -1px 0 1px;
   font-size: 0.8rem;
   color: var(--text-muted);
   word-break: break-word;
 }
 
-.inlineRow {
+.tokenizerPage .inlineRow{
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-.inlineField {
+.tokenizerPage .inlineField{
   min-width: 240px;
 }
 
-.checkLabel {
+.tokenizerPage .checkLabel{
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 
-.checkLabel input {
+.tokenizerPage .checkLabel input{
   width: auto;
   margin: 0;
 }
 
-.hint {
+.tokenizerPage .hint{
   margin: 0;
   font-size: 0.88rem;
 }
 
-.hint-ok {
+.tokenizerPage .hint-ok{
   color: var(--ok);
 }
 
-.hint-error {
+.tokenizerPage .hint-error{
   color: var(--danger);
 }
 
-button,
-.downloadLink {
+.tokenizerPage button,
+.tokenizerPage .downloadLink{
   border-radius: 10px;
   border: 1px solid transparent;
   padding: 9px 13px;
@@ -722,58 +722,58 @@ button,
     transform 0.16s ease;
 }
 
-button:disabled {
+.tokenizerPage button:disabled{
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-button:focus-visible,
-.downloadLink:focus-visible {
+.tokenizerPage button:focus-visible,
+.tokenizerPage .downloadLink:focus-visible{
   outline: 2px solid var(--input-focus);
   outline-offset: 2px;
 }
 
-.primaryButton {
+.tokenizerPage .primaryButton{
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
   color: #ffffff;
   font-weight: 700;
 }
 
-.primaryButton:hover:not(:disabled),
-.primaryButton:focus-visible {
+.tokenizerPage .primaryButton:hover:not(:disabled),
+.tokenizerPage .primaryButton:focus-visible{
   background: linear-gradient(135deg, var(--brand-strong), var(--brand));
   box-shadow: 0 8px 18px rgba(20, 35, 53, 0.18);
   transform: translateY(-1px);
 }
 
-.secondaryButton {
+.tokenizerPage .secondaryButton{
   border-color: var(--line-strong);
   background: var(--input-bg);
   color: var(--text);
   font-weight: 650;
 }
 
-.secondaryButton:hover:not(:disabled),
-.secondaryButton:focus-visible {
+.tokenizerPage .secondaryButton:hover:not(:disabled),
+.tokenizerPage .secondaryButton:focus-visible{
   border-color: var(--brand);
   background: var(--surface-raised);
   color: var(--text);
 }
 
-.textButton {
+.tokenizerPage .textButton{
   border-color: var(--line-strong);
   background: transparent;
   color: var(--text-muted);
 }
 
-.textButton:hover:not(:disabled),
-.textButton:focus-visible {
+.tokenizerPage .textButton:hover:not(:disabled),
+.tokenizerPage .textButton:focus-visible{
   border-color: var(--line-strong);
   background: var(--surface-raised);
   color: var(--text);
 }
 
-.downloadLink {
+.tokenizerPage .downloadLink{
   display: inline-flex;
   margin-top: 10px;
   background: var(--brand-soft);
@@ -782,14 +782,14 @@ button:focus-visible,
   font-weight: 700;
 }
 
-.downloadLink:hover {
+.tokenizerPage .downloadLink:hover{
   background: var(--input-bg);
   border-color: var(--brand-strong);
   color: var(--brand-strong);
   transform: translateY(-1px);
 }
 
-.tokenizedText {
+.tokenizerPage .tokenizedText{
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
   padding: 10px;
@@ -799,11 +799,11 @@ button:focus-visible,
   line-height: 1.45;
 }
 
-.plainSegment {
+.tokenizerPage .plainSegment{
   color: var(--text);
 }
 
-.tokenMark {
+.tokenizerPage .tokenMark{
   border: 1px solid;
   border-radius: 6px;
   padding: 0 1px;
@@ -812,7 +812,7 @@ button:focus-visible,
   cursor: help;
 }
 
-.tokenChipList {
+.tokenizerPage .tokenChipList{
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -820,7 +820,7 @@ button:focus-visible,
   overflow: auto;
 }
 
-.tokenChip {
+.tokenizerPage .tokenChip{
   border: 1px solid;
   border-radius: 999px;
   padding: 4px 8px;
@@ -828,21 +828,21 @@ button:focus-visible,
   max-width: 100%;
 }
 
-.tokenChip code {
+.tokenizerPage .tokenChip code{
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.recentJobsCard {
+.tokenizerPage .recentJobsCard{
   min-height: 100%;
 }
 
-.jobsList {
+.tokenizerPage .jobsList{
   display: grid;
   gap: 8px;
 }
 
-.jobRow {
+.tokenizerPage .jobRow{
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 4px;
@@ -858,7 +858,7 @@ button:focus-visible,
     transform 0.16s ease;
 }
 
-.jobRowSelect {
+.tokenizerPage .jobRowSelect{
   width: 100%;
   border: 0;
   background: transparent;
@@ -872,37 +872,37 @@ button:focus-visible,
   cursor: pointer;
 }
 
-.jobRow p {
+.tokenizerPage .jobRow p{
   margin: 3px 0 0;
   color: var(--text-muted);
   font-size: 0.8rem;
 }
 
-.jobRowMeta {
+.tokenizerPage .jobRowMeta{
   display: grid;
   justify-items: end;
   gap: 4px;
 }
 
-.jobRow-active {
+.tokenizerPage .jobRow-active{
   border-color: var(--brand);
   background: var(--brand-soft);
 }
 
-.jobRow-active:hover,
-.jobRow-active:focus-within {
+.tokenizerPage .jobRow-active:hover,
+.tokenizerPage .jobRow-active:focus-within{
   background: var(--brand-soft);
 }
 
-.jobRow:hover,
-.jobRow:focus-within {
+.tokenizerPage .jobRow:hover,
+.tokenizerPage .jobRow:focus-within{
   border-color: var(--brand);
   background: var(--surface-soft);
   box-shadow: 0 6px 14px rgba(20, 35, 53, 0.1);
   transform: translateY(-1px);
 }
 
-.jobRowRemove {
+.tokenizerPage .jobRowRemove{
   padding: 0;
   width: 26px;
   height: 26px;
@@ -920,21 +920,21 @@ button:focus-visible,
   cursor: pointer;
 }
 
-.jobRowRemove svg {
+.tokenizerPage .jobRowRemove svg{
   width: 14px;
   height: 14px;
   display: block;
 }
 
-.jobRowRemove:hover,
-.jobRowRemove:focus-visible {
+.tokenizerPage .jobRowRemove:hover,
+.tokenizerPage .jobRowRemove:focus-visible{
   border-color: var(--danger);
   color: var(--danger);
   background: var(--danger-soft);
   outline: none;
 }
 
-.jobBadge {
+.tokenizerPage .jobBadge{
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -947,67 +947,67 @@ button:focus-visible,
   border: 1px solid;
 }
 
-.jobBadge-pending {
+.tokenizerPage .jobBadge-pending{
   color: var(--text-muted);
   background: var(--surface-raised);
   border-color: var(--line-strong);
 }
 
-.jobBadge-running {
+.tokenizerPage .jobBadge-running{
   color: var(--brand-strong);
   background: var(--brand-soft);
   border-color: var(--brand);
 }
 
-.jobBadge-setup {
+.tokenizerPage .jobBadge-setup{
   color: #6b5b3a;
   background: #fff4d9;
   border-color: #f0dca8;
 }
 
-.jobBadge-training {
+.tokenizerPage .jobBadge-training{
   color: #154f8b;
   background: #dcecff;
   border-color: #9cc7f4;
 }
 
-.jobBadge-saving {
+.tokenizerPage .jobBadge-saving{
   color: #6a1b61;
   background: #fde3f4;
   border-color: #f1b3df;
 }
 
-.jobBadge-evaluating {
+.tokenizerPage .jobBadge-evaluating{
   color: #145f51;
   background: #def8f1;
   border-color: #9ce1d3;
 }
 
-.jobBadge-completed {
+.tokenizerPage .jobBadge-completed{
   color: var(--ok);
   background: var(--ok-soft);
   border-color: var(--ok-border);
 }
 
-.jobBadge-failed {
+.tokenizerPage .jobBadge-failed{
   color: var(--danger);
   background: var(--danger-soft);
   border-color: var(--danger-border);
 }
 
-.settingsStudio {
+.tokenizerPage .settingsStudio{
   display: grid;
   gap: 10px;
 }
 
-.settingsPanel {
+.tokenizerPage .settingsPanel{
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface-soft);
   overflow: hidden;
 }
 
-.settingsPanel > summary {
+.tokenizerPage .settingsPanel > summary{
   cursor: pointer;
   list-style: none;
   font-weight: 700;
@@ -1017,11 +1017,11 @@ button:focus-visible,
   align-items: center;
 }
 
-.settingsPanel > summary::-webkit-details-marker {
+.tokenizerPage .settingsPanel > summary::-webkit-details-marker{
   display: none;
 }
 
-.settingsPanel > summary::after {
+.tokenizerPage .settingsPanel > summary::after{
   content: "▾";
   font-size: 0.76rem;
   color: var(--text-muted);
@@ -1029,31 +1029,31 @@ button:focus-visible,
   transition: transform 0.16s ease;
 }
 
-.settingsPanel[open] > summary {
+.tokenizerPage .settingsPanel[open] > summary{
   border-bottom: 1px solid var(--line);
 }
 
-.settingsPanel[open] > summary::after {
+.tokenizerPage .settingsPanel[open] > summary::after{
   transform: rotate(180deg);
 }
 
-.settingsGrid {
+.tokenizerPage .settingsGrid{
   padding: 12px;
   display: grid;
   gap: 10px;
 }
 
-.settingsGroup {
+.tokenizerPage .settingsGroup{
   display: grid;
   gap: 10px;
 }
 
-.settingsGroup + .settingsGroup {
+.tokenizerPage .settingsGroup + .settingsGroup{
   padding-top: 10px;
   border-top: 1px dashed var(--line-strong);
 }
 
-.settingsCategoryAnchor {
+.tokenizerPage .settingsCategoryAnchor{
   scroll-margin-top: 86px;
   border-radius: 10px;
   transition:
@@ -1062,7 +1062,7 @@ button:focus-visible,
     background-color 0.2s ease;
 }
 
-.settingsCategoryAnchor-highlight {
+.tokenizerPage .settingsCategoryAnchor-highlight{
   margin: -8px;
   padding: 8px;
   border: 1px solid var(--brand);
@@ -1071,51 +1071,51 @@ button:focus-visible,
   box-shadow: 0 0 0 4px var(--input-focus);
 }
 
-.settingsGroupHeader {
+.tokenizerPage .settingsGroupHeader{
   display: grid;
   gap: 4px;
 }
 
-.settingsGroupHeader h3 {
+.tokenizerPage .settingsGroupHeader h3{
   margin: 0;
   font-size: 0.92rem;
 }
 
-.settingsGroupHint {
+.tokenizerPage .settingsGroupHint{
   margin: 0;
   font-size: 0.82rem;
   color: var(--text-muted);
 }
 
-.settingsStudio .fullWidthField {
+.tokenizerPage .settingsStudio .fullWidthField{
   max-width: 560px;
 }
 
-.settingsStudio .inlineField {
+.tokenizerPage .settingsStudio .inlineField{
   max-width: 260px;
 }
 
-.settingsStudio .fieldGrid > label {
+.tokenizerPage .settingsStudio .fieldGrid > label{
   justify-self: start;
   width: min(100%, 260px);
 }
 
-.settingsStudio .fieldGrid > label.fullWidthField {
+.tokenizerPage .settingsStudio .fieldGrid > label.fullWidthField{
   width: min(100%, 560px);
 }
 
-.sourceModeRow {
+.tokenizerPage .sourceModeRow{
   display: grid;
   gap: 8px;
   margin-bottom: 10px;
 }
 
-.sourceModeRow > span {
+.tokenizerPage .sourceModeRow > span{
   font-size: 0.9rem;
   font-weight: 650;
 }
 
-.modeSwitch {
+.tokenizerPage .modeSwitch{
   display: inline-flex;
   gap: 6px;
   padding: 4px;
@@ -1125,7 +1125,7 @@ button:focus-visible,
   width: fit-content;
 }
 
-.modeSwitchButton {
+.tokenizerPage .modeSwitchButton{
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
@@ -1137,25 +1137,25 @@ button:focus-visible,
     color 0.16s ease;
 }
 
-.modeSwitchButton-active {
+.tokenizerPage .modeSwitchButton-active{
   background: var(--input-bg);
   border-color: var(--line-strong);
   color: var(--text);
 }
 
-.modeSwitchButton:hover:not(:disabled),
-.modeSwitchButton:focus-visible {
+.tokenizerPage .modeSwitchButton:hover:not(:disabled),
+.tokenizerPage .modeSwitchButton:focus-visible{
   background: var(--surface-soft);
   border-color: var(--line-strong);
   color: var(--text);
 }
 
-.datasetConfigurator {
+.tokenizerPage .datasetConfigurator{
   display: grid;
   gap: 10px;
 }
 
-.localFileManager {
+.tokenizerPage .localFileManager{
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   background: var(--input-bg);
@@ -1165,12 +1165,12 @@ button:focus-visible,
   gap: 7px;
 }
 
-.localFileManager-dragging {
+.tokenizerPage .localFileManager-dragging{
   border-color: var(--brand);
   box-shadow: 0 0 0 2px var(--brand-soft);
 }
 
-.localFileManagerHeader {
+.tokenizerPage .localFileManagerHeader{
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -1178,7 +1178,7 @@ button:focus-visible,
   flex-wrap: wrap;
 }
 
-.localFileHeaderActions {
+.tokenizerPage .localFileHeaderActions{
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -1187,23 +1187,23 @@ button:focus-visible,
   gap: 4px;
 }
 
-.localFileHeaderButtons {
+.tokenizerPage .localFileHeaderButtons{
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
-.localFileManagerHeader strong {
+.tokenizerPage .localFileManagerHeader strong{
   font-size: 0.86rem;
 }
 
-.localFileManagerHeader p {
+.tokenizerPage .localFileManagerHeader p{
   margin: 2px 0 0;
   font-size: 0.75rem;
   color: var(--text-muted);
 }
 
-.localFileCount {
+.tokenizerPage .localFileCount{
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -1215,7 +1215,7 @@ button:focus-visible,
   padding: 3px 7px;
 }
 
-.localFileUploadButton {
+.tokenizerPage .localFileUploadButton{
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -1224,7 +1224,7 @@ button:focus-visible,
   cursor: pointer;
 }
 
-.localFileUploadButton input {
+.tokenizerPage .localFileUploadButton input{
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1238,28 +1238,28 @@ button:focus-visible,
   pointer-events: none;
 }
 
-.localFileUploadButton input:disabled {
+.tokenizerPage .localFileUploadButton input:disabled{
   cursor: not-allowed;
 }
 
-.localFileUploadButton-disabled {
+.tokenizerPage .localFileUploadButton-disabled{
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.localFileUploadButton-disabled input {
+.tokenizerPage .localFileUploadButton-disabled input{
   pointer-events: none;
   cursor: not-allowed;
 }
 
-.localFileHeaderButton {
+.tokenizerPage .localFileHeaderButton{
   min-height: 24px;
   padding: 2px 7px;
   font-size: 0.68rem;
   border-radius: 7px;
 }
 
-.localFileList {
+.tokenizerPage .localFileList{
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1269,7 +1269,7 @@ button:focus-visible,
   align-items: flex-start;
 }
 
-.localFileItem {
+.tokenizerPage .localFileItem{
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--surface-soft);
@@ -1282,7 +1282,7 @@ button:focus-visible,
   gap: 6px;
 }
 
-.localFileName {
+.tokenizerPage .localFileName{
   min-width: 0;
   font-size: 0.74rem;
   font-weight: 650;
@@ -1291,20 +1291,20 @@ button:focus-visible,
   text-overflow: ellipsis;
 }
 
-.localFileActions {
+.tokenizerPage .localFileActions{
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
-.localFileActions .textButton {
+.tokenizerPage .localFileActions .textButton{
   padding: 2px 6px;
   min-height: 24px;
   font-size: 0.68rem;
   border-radius: 7px;
 }
 
-.localFileRemoveIconButton {
+.tokenizerPage .localFileRemoveIconButton{
   width: auto;
   min-width: 26px;
   height: auto;
@@ -1320,18 +1320,18 @@ button:focus-visible,
   align-self: stretch;
 }
 
-.localFileRemoveIconButton:hover:not(:disabled),
-.localFileRemoveIconButton:focus-visible {
+.tokenizerPage .localFileRemoveIconButton:hover:not(:disabled),
+.tokenizerPage .localFileRemoveIconButton:focus-visible{
   border-left-color: var(--line-strong);
   background: var(--surface-raised);
 }
 
-.localFileRemoveIconButton svg {
+.tokenizerPage .localFileRemoveIconButton svg{
   width: 14px;
   height: 14px;
 }
 
-.localFileStat {
+.tokenizerPage .localFileStat{
   color: var(--text-muted);
   font-size: 0.66rem;
   border: 1px solid var(--line-strong);
@@ -1341,19 +1341,19 @@ button:focus-visible,
   white-space: nowrap;
 }
 
-.actionRow {
+.tokenizerPage .actionRow{
   margin-top: 2px;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.datasetList {
+.tokenizerPage .datasetList{
   display: grid;
   gap: 10px;
 }
 
-.datasetCard {
+.tokenizerPage .datasetCard{
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   padding: 10px;
@@ -1362,21 +1362,21 @@ button:focus-visible,
   gap: 8px;
 }
 
-.datasetCardHeader {
+.tokenizerPage .datasetCardHeader{
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
 }
 
-.subPanel {
+.tokenizerPage .subPanel{
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
   background: var(--surface-raised);
   overflow: hidden;
 }
 
-.subPanel > summary {
+.tokenizerPage .subPanel > summary{
   cursor: pointer;
   list-style: none;
   display: flex;
@@ -1387,11 +1387,11 @@ button:focus-visible,
   padding: 10px;
 }
 
-.subPanel > summary::-webkit-details-marker {
+.tokenizerPage .subPanel > summary::-webkit-details-marker{
   display: none;
 }
 
-.subPanel > summary::after {
+.tokenizerPage .subPanel > summary::after{
   content: "▾";
   font-size: 0.72rem;
   line-height: 1;
@@ -1399,17 +1399,17 @@ button:focus-visible,
   transition: transform 0.16s ease;
 }
 
-.subPanel[open] > summary::after {
+.tokenizerPage .subPanel[open] > summary::after{
   transform: rotate(180deg);
 }
 
-.subPanel > .fieldGrid,
-.subPanel > .filterBuilder,
-.subPanel > div {
+.tokenizerPage .subPanel > .fieldGrid,
+.tokenizerPage .subPanel > .filterBuilder,
+.tokenizerPage .subPanel > div{
   padding: 0 10px 10px;
 }
 
-.filterBuilder {
+.tokenizerPage .filterBuilder{
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
   padding: 9px;
@@ -1418,31 +1418,31 @@ button:focus-visible,
   gap: 8px;
 }
 
-.filterBuilderHeader {
+.tokenizerPage .filterBuilderHeader{
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
 }
 
-.filterBuilderTitle {
+.tokenizerPage .filterBuilderTitle{
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-muted);
 }
 
-.filterEmpty {
+.tokenizerPage .filterEmpty{
   margin: 0;
   font-size: 0.82rem;
   color: var(--text-muted);
 }
 
-.filterList {
+.tokenizerPage .filterList{
   display: grid;
   gap: 8px;
 }
 
-.filterRow {
+.tokenizerPage .filterRow{
   border: 1px solid var(--line);
   border-radius: 9px;
   padding: 8px;
@@ -1453,11 +1453,11 @@ button:focus-visible,
   align-items: end;
 }
 
-.filterRemoveButton {
+.tokenizerPage .filterRemoveButton{
   align-self: end;
 }
 
-.datasetRemoveButton {
+.tokenizerPage .datasetRemoveButton{
   min-height: 32px;
   min-width: 32px;
   padding: 0;
@@ -1468,37 +1468,37 @@ button:focus-visible,
   color: var(--text-muted);
 }
 
-.textButton.datasetRemoveButton:hover:not(:disabled),
-.textButton.datasetRemoveButton:focus-visible {
+.tokenizerPage .textButton.datasetRemoveButton:hover:not(:disabled),
+.tokenizerPage .textButton.datasetRemoveButton:focus-visible{
   border-color: var(--danger);
   background: var(--danger-soft);
   color: var(--danger);
   outline: none;
 }
 
-.datasetRemoveButton svg {
+.tokenizerPage .datasetRemoveButton svg{
   width: 14px;
   height: 14px;
   display: block;
 }
 
-.jsonGrid {
+.tokenizerPage .jsonGrid{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   align-items: stretch;
 }
 
-.jsonGrid > label {
+.tokenizerPage .jsonGrid > label{
   height: 100%;
   grid-template-rows: auto minmax(0, 1fr);
 }
 
-.jsonGrid > label > pre {
+.tokenizerPage .jsonGrid > label > pre{
   height: 100%;
 }
 
-pre {
+.tokenizerPage pre{
   margin: 0;
   min-height: 140px;
   max-height: 320px;
@@ -1508,7 +1508,7 @@ pre {
   border-color: var(--pre-border);
 }
 
-.toastViewport {
+.tokenizerPage .toastViewport{
   position: fixed;
   right: 18px;
   top: 18px;
@@ -1519,7 +1519,7 @@ pre {
   pointer-events: none;
 }
 
-.toast {
+.tokenizerPage .toast{
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--toast-bg);
@@ -1530,7 +1530,7 @@ pre {
   pointer-events: auto;
 }
 
-.toastContent {
+.tokenizerPage .toastContent{
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -1538,7 +1538,7 @@ pre {
   padding: 11px 12px 12px;
 }
 
-.toastContent p {
+.tokenizerPage .toastContent p{
   margin: 0;
   flex: 1;
   min-width: 0;
@@ -1547,19 +1547,19 @@ pre {
   color: var(--text);
 }
 
-.toast-info {
+.tokenizerPage .toast-info{
   border-color: var(--line-strong);
 }
 
-.toast-success {
+.tokenizerPage .toast-success{
   border-color: var(--ok-border);
 }
 
-.toast-error {
+.tokenizerPage .toast-error{
   border-color: var(--danger-border);
 }
 
-.toastClose {
+.tokenizerPage .toastClose{
   border: 0;
   background: transparent;
   color: var(--text-muted);
@@ -1571,7 +1571,7 @@ pre {
   flex: 0 0 auto;
 }
 
-.toastProgress {
+.tokenizerPage .toastProgress{
   position: absolute;
   left: 0;
   right: 0;
@@ -1584,11 +1584,11 @@ pre {
   animation-fill-mode: forwards;
 }
 
-.toast-success .toastProgress {
+.tokenizerPage .toast-success .toastProgress{
   background: var(--ok);
 }
 
-.toast-error .toastProgress {
+.tokenizerPage .toast-error .toastProgress{
   background: var(--danger);
 }
 
@@ -1602,41 +1602,41 @@ pre {
 }
 
 @media (max-width: 1140px) {
-  .actionInputGrid {
+  .tokenizerPage .actionInputGrid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .workflowStepGrid {
+  .tokenizerPage .workflowStepGrid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .statusStrip {
+  .tokenizerPage .statusStrip{
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .workspaceGrid,
-  .jsonGrid {
+  .tokenizerPage .workspaceGrid,
+.tokenizerPage .jsonGrid{
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 760px) {
-  .studioRoot {
-    width: min(1280px, calc(100% - 20px));
+  .studioRoot.tokenizerPage{
+    width: min(1380px, calc(100% - 20px));
     margin-top: 18px;
   }
 
-  .panelCard {
+  .tokenizerPage .panelCard{
     padding: 14px;
   }
 
-  .studioNav {
+  .tokenizerPage .studioNav{
     width: fit-content;
     max-width: 100%;
     padding: 5px 7px 5px 8px;
   }
 
-  .studioNavLinks {
+  .tokenizerPage .studioNavLinks{
     margin-left: 0;
     max-width: min(62vw, 300px);
     overflow-x: auto;
@@ -1644,110 +1644,110 @@ pre {
     -ms-overflow-style: none;
   }
 
-  .studioNavLinks::-webkit-scrollbar {
+  .tokenizerPage .studioNavLinks::-webkit-scrollbar{
     display: none;
   }
 
-  .panelHead,
-  .actionDeckHead {
+  .tokenizerPage .panelHead,
+.tokenizerPage .actionDeckHead{
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .themeToggle {
+  .tokenizerPage .themeToggle{
     width: 30px;
     height: 30px;
   }
 
-  .actionDeck {
+  .tokenizerPage .actionDeck{
     position: static;
   }
 
-  .actionButtonRow {
+  .tokenizerPage .actionButtonRow{
     width: 100%;
   }
 
-  button:not(.themeToggle),
-  .downloadLink {
+  .tokenizerPage button:not(.themeToggle),
+.tokenizerPage .downloadLink{
     width: 100%;
     justify-content: center;
   }
 
-  .actionInputGrid,
-  .fieldGrid,
-  .metaList,
-  .filterRow,
-  .statusStrip,
-  .workflowStepGrid {
+  .tokenizerPage .actionInputGrid,
+.tokenizerPage .fieldGrid,
+.tokenizerPage .metaList,
+.tokenizerPage .filterRow,
+.tokenizerPage .statusStrip,
+.tokenizerPage .workflowStepGrid{
     grid-template-columns: 1fr;
   }
 
-  .modeSwitch {
+  .tokenizerPage .modeSwitch{
     width: 100%;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .modeSwitchButton,
-  .datasetCardHeader .textButton {
+  .tokenizerPage .modeSwitchButton,
+.tokenizerPage .datasetCardHeader .textButton{
     width: 100%;
   }
 
-  .datasetCardHeader .datasetRemoveButton {
+  .tokenizerPage .datasetCardHeader .datasetRemoveButton{
     width: auto;
   }
 
-  .actionRow {
+  .tokenizerPage .actionRow{
     flex-direction: column;
   }
 
-  .localFileUploadButton {
+  .tokenizerPage .localFileUploadButton{
     width: 100%;
   }
 
-  .localFileHeaderActions {
+  .tokenizerPage .localFileHeaderActions{
     width: 100%;
     margin-left: 0;
     justify-content: flex-start;
   }
 
-  .localFileHeaderButtons {
+  .tokenizerPage .localFileHeaderButtons{
     width: 100%;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .localFileHeaderButtons .localFileUploadButton {
+  .tokenizerPage .localFileHeaderButtons .localFileUploadButton{
     width: 100%;
   }
 
-  .localFileHeaderButtons .localFileHeaderButton {
+  .tokenizerPage .localFileHeaderButtons .localFileHeaderButton{
     width: 100%;
     justify-content: center;
   }
 
-  .localFileList {
+  .tokenizerPage .localFileList{
     display: grid;
     gap: 4px;
   }
 
-  .localFileItem {
+  .tokenizerPage .localFileItem{
     width: 100%;
     grid-template-columns: 1fr;
     align-items: start;
     gap: 4px;
   }
 
-  .localFileActions {
+  .tokenizerPage .localFileActions{
     width: 100%;
     justify-content: space-between;
   }
 
-  .localFileActions .textButton {
+  .tokenizerPage .localFileActions .textButton{
     width: auto;
   }
 
-  .localFileRemoveIconButton {
+  .tokenizerPage .localFileRemoveIconButton{
     width: 24px;
     min-width: 24px;
     height: 24px;
@@ -1758,18 +1758,18 @@ pre {
     align-self: center;
   }
 
-  .inlineField {
+  .tokenizerPage .inlineField{
     min-width: 0;
     width: 100%;
   }
 
-  .toastViewport {
+  .tokenizerPage .toastViewport{
     right: 10px;
     top: 10px;
     width: min(300px, calc(100vw - 20px));
   }
 
-  .toastClose {
+  .tokenizerPage .toastClose{
     width: auto;
   }
 }

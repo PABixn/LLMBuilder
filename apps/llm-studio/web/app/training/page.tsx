@@ -124,7 +124,6 @@ const TRAINING_CONFIG_STORAGE_KEY = "llm-training-config-v1";
 const DATALOADER_CONFIG_STORAGE_KEY = "llm-training-dataloader-v1";
 const TRAINING_SELECTION_STORAGE_KEY = "llm-training-selection-v1";
 const ACTIVE_RUN_STORAGE_KEY = "llm-training-active-run-v1";
-const HIDDEN_RUNS_STORAGE_KEY = "llm-training-hidden-runs-v1";
 const POLL_INTERVAL_MS = 1800;
 const WORKFLOW_TARGET_HASH_MAP: Record<WorkflowTarget, string> = {
   model: "#settings-model",
@@ -152,6 +151,13 @@ function fileNameFromPath(value: string): string {
   const normalized = value.replaceAll("\\", "/");
   const parts = normalized.split("/");
   return parts[parts.length - 1] ?? "";
+}
+
+function compactWorkflowMessage(value: string): string {
+  return value.replace(/(?:[A-Za-z]:)?[\\/][^\s]+/g, (path) => {
+    const fileName = fileNameFromPath(path);
+    return fileName || path;
+  });
 }
 
 function makeStreamingFilterEntry(
@@ -732,6 +738,14 @@ function asString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+function formatStatusLabel(value: string): string {
+  const normalized = value.replaceAll("_", " ").trim();
+  if (normalized === "") {
+    return "";
+  }
+  return `${normalized.slice(0, 1).toUpperCase()}${normalized.slice(1)}`;
+}
+
 function asNumber(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
@@ -753,6 +767,37 @@ function updateAtPath(
   return next;
 }
 
+function deleteAtPath(
+  source: Record<string, unknown>,
+  path: string[]
+): Record<string, unknown> {
+  const next = cloneRecord(source);
+  let cursor: Record<string, unknown> = next;
+  for (const segment of path.slice(0, -1)) {
+    const existing = cursor[segment];
+    if (!isRecord(existing)) {
+      return next;
+    }
+    const child = cloneRecord(existing);
+    cursor[segment] = child;
+    cursor = child;
+  }
+  delete cursor[path[path.length - 1]];
+  return next;
+}
+
+function replaceRunInOrder(runs: TrainingJob[], job: TrainingJob): TrainingJob[] {
+  let replaced = false;
+  const next = runs.map((item) => {
+    if (item.id !== job.id) {
+      return item;
+    }
+    replaced = true;
+    return job;
+  });
+  return replaced ? next : [...next, job];
+}
+
 function metricSeries(metrics: TrainingMetricPoint[], key: keyof TrainingMetricPoint): number[] {
   return metrics
     .map((item) => item[key])
@@ -771,6 +816,83 @@ function formatInteger(value: number | null | undefined): string {
     return "n/a";
   }
   return value.toLocaleString();
+}
+
+function humanizeConfigToken(value: string): string {
+  return value
+    .replaceAll("_", " ")
+    .replace(/\bbpe\b/i, "BPE")
+    .replace(/\bwordpiece\b/i, "WordPiece")
+    .replace(/\bunigram\b/i, "Unigram");
+}
+
+function firstAttentionConfig(modelConfig: Record<string, unknown>): Record<string, unknown> {
+  const blocks = Array.isArray(modelConfig.blocks) ? modelConfig.blocks : [];
+  for (const block of blocks) {
+    const components = asRecordArray(asRecord(block).components);
+    for (const component of components) {
+      const attention = asRecord(component.attention);
+      if (Object.keys(attention).length > 0) {
+        return attention;
+      }
+    }
+  }
+  return {};
+}
+
+function formatModelConfigMeta(value: unknown): string {
+  const modelConfig = asRecord(value);
+  const blocks = Array.isArray(modelConfig.blocks) ? modelConfig.blocks : [];
+  const attention = firstAttentionConfig(modelConfig);
+  const parts: string[] = [];
+  if (blocks.length > 0) {
+    parts.push(`${formatInteger(blocks.length)} layers`);
+  }
+  const headCount = asNumber(attention.n_head, 0);
+  if (headCount > 0) {
+    parts.push(`${formatInteger(headCount)} attention heads`);
+  }
+  const embeddingSize = asNumber(modelConfig.n_embd, 0);
+  if (embeddingSize > 0) {
+    parts.push(`${formatInteger(embeddingSize)} embedding width`);
+  }
+  const contextLength = asNumber(modelConfig.context_length, 0);
+  if (contextLength > 0) {
+    parts.push(`${formatInteger(contextLength)} context length`);
+  }
+  const vocabSize = asNumber(modelConfig.vocab_size, 0);
+  if (vocabSize > 0) {
+    parts.push(`${formatInteger(vocabSize)} vocabulary size`);
+  }
+  return parts.length > 0 ? parts.join(" • ") : "Model dimensions unavailable";
+}
+
+function formatTokenizerMeta(job: TokenizerTrainingJob): string {
+  const config = job.tokenizer_config;
+  const stats = job.stats;
+  const parts: string[] = [];
+  const vocabSize = stats?.vocab_size ?? asNumber(config.vocab_size, 0);
+  if (vocabSize > 0) {
+    parts.push(`${formatInteger(vocabSize)} vocabulary size`);
+  }
+  const tokenizerType = asString(config.tokenizer_type);
+  const preTokenizer = asString(config.pre_tokenizer);
+  if (tokenizerType || preTokenizer) {
+    parts.push(
+      [tokenizerType, preTokenizer]
+        .filter(Boolean)
+        .map(humanizeConfigToken)
+        .join(" / ")
+    );
+  }
+  if (typeof stats?.chars_per_token === "number" && Number.isFinite(stats.chars_per_token)) {
+    parts.push(`${stats.chars_per_token.toFixed(2)} characters per token`);
+  }
+  const specialTokenCount = Array.isArray(config.special_tokens) ? config.special_tokens.length : 0;
+  if (specialTokenCount > 0) {
+    parts.push(`${formatInteger(specialTokenCount)} special tokens`);
+  }
+  return parts.length > 0 ? parts.join(" • ") : "Tokenizer details unavailable";
 }
 
 function formatDuration(seconds: number | null | undefined): string {
@@ -935,6 +1057,71 @@ function ConfigNumberInput({
   );
 }
 
+function OptionalConfigNumberInput({
+  value,
+  onCommit,
+  mode = "integer",
+  step,
+  min,
+  max,
+  placeholder,
+}: {
+  value: number | null;
+  onCommit: (value: number | null) => void;
+  mode?: "integer" | "decimal";
+  step?: number | string;
+  min?: number | string;
+  max?: number | string;
+  placeholder?: string;
+}) {
+  const [draft, setDraft] = useState(() =>
+    value === null ? "" : formatNumberInputValue(value)
+  );
+  const [focused, setFocused] = useState(false);
+  const formattedValue = value === null ? "" : formatNumberInputValue(value);
+
+  useEffect(() => {
+    if (!focused) {
+      setDraft(formattedValue);
+    }
+  }, [focused, formattedValue]);
+
+  const sanitize =
+    mode === "decimal" ? sanitizePositiveDecimalInput : sanitizePositiveIntegerInput;
+
+  return (
+    <input
+      type="text"
+      inputMode={mode === "decimal" ? "decimal" : "numeric"}
+      pattern={mode === "decimal" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
+      step={step}
+      min={min}
+      max={max}
+      placeholder={placeholder}
+      value={draft}
+      onFocus={() => setFocused(true)}
+      onChange={(event) => {
+        setDraft(sanitize(event.target.value));
+      }}
+      onBlur={() => {
+        setFocused(false);
+        if (draft.trim() === "") {
+          onCommit(null);
+          setDraft("");
+          return;
+        }
+        const parsed = parseConfigNumberInput(draft, mode);
+        if (parsed === null) {
+          setDraft(formattedValue);
+          return;
+        }
+        onCommit(parsed);
+        setDraft(formatNumberInputValue(parsed));
+      }}
+    />
+  );
+}
+
 function TrainingPageContent() {
   const searchParams = useSearchParams();
   const [theme, setTheme] = useThemeMode();
@@ -951,7 +1138,6 @@ function TrainingPageContent() {
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeRun, setActiveRun] = useState<TrainingJob | null>(null);
   const [recentRuns, setRecentRuns] = useState<TrainingJob[]>([]);
-  const [hiddenRunIds, setHiddenRunIds] = useState<string[]>([]);
   const [metrics, setMetrics] = useState<TrainingMetricPoint[]>([]);
   const [samples, setSamples] = useState<TrainingSampleEntry[]>([]);
   const [logs, setLogs] = useState<{ stdout: string[]; stderr: string[] }>({
@@ -1059,16 +1245,16 @@ function TrainingPageContent() {
       startTransition(() => {
         setRecentRuns(jobs);
         if (!activeRunId) {
-          const nextVisible = jobs.find((job) => !hiddenRunIds.includes(job.id)) ?? jobs[0] ?? null;
-          if (nextVisible) {
-            setActiveRunId(nextVisible.id);
+          const nextRun = jobs[0] ?? null;
+          if (nextRun) {
+            setActiveRunId(nextRun.id);
           }
         }
       });
     } catch (error) {
       notify("error", "Recent runs unavailable", error instanceof Error ? error.message : "Failed to load training jobs.");
     }
-  }, [activeRunId, hiddenRunIds, notify]);
+  }, [activeRunId, notify]);
 
   useEffect(() => {
     if (initializedRef.current) {
@@ -1092,9 +1278,7 @@ function TrainingPageContent() {
       }
     );
     const storedActiveRun = readStoredJson<string | null>(ACTIVE_RUN_STORAGE_KEY, null);
-    const storedHiddenRuns = readStoredJson<string[]>(HIDDEN_RUNS_STORAGE_KEY, []);
 
-    setHiddenRunIds(storedHiddenRuns);
     setActiveRunId(searchParams.get("run") ?? storedActiveRun);
     setSelectedProjectId(searchParams.get("project") ?? storedSelection.projectId);
     setSelectedTokenizerJobId(searchParams.get("tokenizerJob") ?? storedSelection.tokenizerJobId);
@@ -1106,9 +1290,9 @@ function TrainingPageContent() {
           setDataloaderConfig(storedDataloader ?? templates.dataloader_config_template);
           setRecentRuns(jobs);
           if (!searchParams.get("run") && !storedActiveRun) {
-            const nextVisible = jobs.find((job) => !storedHiddenRuns.includes(job.id)) ?? jobs[0] ?? null;
-            if (nextVisible) {
-              setActiveRunId(nextVisible.id);
+            const nextRun = jobs[0] ?? null;
+            if (nextRun) {
+              setActiveRunId(nextRun.id);
             }
           }
         });
@@ -1128,10 +1312,6 @@ function TrainingPageContent() {
       tokenizerJobId: selectedTokenizerJobId,
     });
   }, [selectedProjectId, selectedTokenizerJobId]);
-
-  useEffect(() => {
-    writeStoredJson(HIDDEN_RUNS_STORAGE_KEY, hiddenRunIds);
-  }, [hiddenRunIds]);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -1287,10 +1467,7 @@ function TrainingPageContent() {
             stderr: fetchedLogs.stderr_lines,
           });
           setCheckpoints(fetchedCheckpoints);
-          setRecentRuns((current) => {
-            const next = [job, ...current.filter((item) => item.id !== job.id)];
-            return next.slice(0, 12);
-          });
+          setRecentRuns((current) => replaceRunInOrder(current, job).slice(0, 12));
         });
       } catch (error) {
         if (!cancelled) {
@@ -1326,11 +1503,6 @@ function TrainingPageContent() {
     const sampler = asRecord(trainingConfig?.sampler);
     return asRecordArray(sampler.prompts);
   }, [trainingConfig]);
-
-  const visibleRecentRuns = useMemo(
-    () => recentRuns.filter((job) => !hiddenRunIds.includes(job.id)),
-    [hiddenRunIds, recentRuns]
-  );
 
   const normalizedPickerQuery = pickerQuery.trim().toLowerCase();
 
@@ -1762,6 +1934,14 @@ function TrainingPageContent() {
     setTrainingConfig((current) => updateAtPath(current ?? {}, path, value));
   };
 
+  const handleOptionalTrainingField = (path: string[], value: unknown | null) => {
+    setTrainingConfig((current) =>
+      value === null
+        ? deleteAtPath(current ?? {}, path)
+        : updateAtPath(current ?? {}, path, value)
+    );
+  };
+
   const handleDataloaderField = (path: string[], value: unknown) => {
     setDataloaderConfig((current) => updateAtPath(current ?? {}, path, value));
   };
@@ -1884,7 +2064,7 @@ function TrainingPageContent() {
       const job = await stopTrainingJob(activeRunId);
       startTransition(() => {
         setActiveRun(job);
-        setRecentRuns((current) => [job, ...current.filter((item) => item.id !== job.id)]);
+        setRecentRuns((current) => replaceRunInOrder(current, job));
       });
       notify("success", "Training stopped", `Run ${job.name} was cancelled.`);
     } catch (error) {
@@ -1927,7 +2107,7 @@ function TrainingPageContent() {
         }`;
   const workflowSteps = [
     {
-      title: "Step 1 - Choose saved model config",
+      title: "Step 1 - Choose saved model",
       state: selectedProject ? "ready" : "waiting",
       status: selectedProject ? "Ready" : "Waiting for configuration",
       body: selectedProject
@@ -1949,7 +2129,7 @@ function TrainingPageContent() {
       body:
         selectedTokenizer && selectedTokenizer.status === "completed"
           ? asString(selectedTokenizer.tokenizer_config.name, selectedTokenizer.id)
-          : "Select a completed tokenizer artifact to ensure vocab compatibility.",
+          : "Select a completed tokenizer artifact to ensure vocabulary compatibility.",
       actionLabel: "Open tokenizer selection",
       onAction: () => openWorkflowTarget("tokenizer"),
     },
@@ -1958,7 +2138,7 @@ function TrainingPageContent() {
       state: trainingRuntimeReady ? "ready" : "waiting",
       status: trainingRuntimeReady ? "Ready" : "Waiting for configuration",
       body: trainingRuntimeReady
-        ? `Sequence length ${formatInteger(sequenceLength)}, max steps ${formatInteger(
+        ? `Sequence length ${formatInteger(sequenceLength)}, maximum training steps ${formatInteger(
             maxSteps
           )}, ${datasetSummary} configured.`
         : "Tune sequence length, batch size, save cadence, prompts, and dataset sources.",
@@ -1966,7 +2146,7 @@ function TrainingPageContent() {
       onAction: () => openWorkflowTarget("training"),
     },
     {
-      title: "Step 4 - Validate configs",
+      title: "Step 4 - Validate configurations",
       state: preflight?.valid ? "ready" : preflightLoading ? "inProgress" : "waiting",
       status: preflight?.valid
         ? "Ready"
@@ -1977,9 +2157,11 @@ function TrainingPageContent() {
         ? "Preflight passed for compatibility, runtime math, and memory checks."
         : preflightLoading
           ? "Validating the latest training and dataset configuration changes..."
-          : preflightError ??
-            preflight?.errors[0]?.message ??
-            "Complete steps 1-3 first. Preflight runs automatically.",
+          : compactWorkflowMessage(
+              preflightError ??
+                preflight?.errors[0]?.message ??
+                "Complete steps 1-3 first. Preflight runs automatically."
+            ),
       actionLabel: "Review preflight",
       onAction: () => openWorkflowTarget("preflight"),
     },
@@ -2122,9 +2304,14 @@ function TrainingPageContent() {
               </span>
               <span className="trainingAssetMeta">
                 {selectedProject
-                  ? `${formatDate(selectedProject.created_at)} • vocab ${selectedProject.model_config.vocab_size}`
+                  ? formatModelConfigMeta(selectedProject.model_config)
                   : "Choose a saved model config from Home or pass ?project=..."}
               </span>
+              {selectedProject ? (
+                <span className="trainingAssetMeta">
+                  {selectedProject.artifact_file || "Saved model config artifact"}
+                </span>
+              ) : null}
               <div className="trainingAssetActions">
                 <button
                   type="button"
@@ -2156,9 +2343,16 @@ function TrainingPageContent() {
               </span>
               <span className="trainingAssetMeta">
                 {selectedTokenizer
-                  ? `${formatDate(selectedTokenizer.created_at)} • ${selectedTokenizer.status.toUpperCase()}`
+                  ? formatTokenizerMeta(selectedTokenizer)
                   : "Choose a completed tokenizer artifact from Home or pass ?tokenizerJob=..."}
               </span>
+              {selectedTokenizer ? (
+                <span className="trainingAssetMeta">
+                  {selectedTokenizer.artifact_file ??
+                    selectedTokenizer.artifact_path ??
+                    "Tokenizer artifact path unavailable"}
+                </span>
+              ) : null}
               <div className="trainingAssetActions">
                 <button
                   type="button"
@@ -2177,7 +2371,7 @@ function TrainingPageContent() {
 
           <div className="fieldGrid compact">
             <label className="fieldLabel fullWidthField">
-              <span>Run Name</span>
+              <span>Run name</span>
               <input value={runName} onChange={(event) => setRunName(event.target.value)} placeholder="optional training run name" />
             </label>
           </div>
@@ -2208,7 +2402,7 @@ function TrainingPageContent() {
               role="listitem"
             >
               <p className="workflowStepTitle">{step.title}</p>
-              <strong>{step.status}</strong>
+              <strong>{formatStatusLabel(step.status)}</strong>
               <p className="fieldNote">{step.body}</p>
               {step.onAction && step.actionLabel ? (
                 <button
@@ -2275,9 +2469,9 @@ function TrainingPageContent() {
                       <FiArchive />
                     </div>
                     <div>
-                      <div className="statusCardTitle">Tokenizer Vocab</div>
+                      <div className="statusCardTitle">Tokenizer vocabulary</div>
                       <div className="statusCardValue">{formatInteger(preflight.compatibility.tokenizer_vocab_size)}</div>
-                      <div className="statusCardDetail">Model expects {formatInteger(preflight.compatibility.model_vocab_size)}</div>
+                      <div className="statusCardDetail">Model vocabulary size: {formatInteger(preflight.compatibility.model_vocab_size)}</div>
                     </div>
                   </div>
                   <div className="statusCard">
@@ -2285,9 +2479,9 @@ function TrainingPageContent() {
                       <FiLayers />
                     </div>
                     <div>
-                      <div className="statusCardTitle">Sequence Length</div>
+                      <div className="statusCardTitle">Sequence length</div>
                       <div className="statusCardValue">{formatInteger(preflight.compatibility.seq_len)}</div>
-                      <div className="statusCardDetail">Context max {formatInteger(preflight.compatibility.model_context_length)}</div>
+                      <div className="statusCardDetail">Model context limit: {formatInteger(preflight.compatibility.model_context_length)}</div>
                     </div>
                   </div>
                   <div className="statusCard">
@@ -2295,12 +2489,12 @@ function TrainingPageContent() {
                       <FiBarChart2 />
                     </div>
                     <div>
-                      <div className="statusCardTitle">Micro Batch</div>
+                      <div className="statusCardTitle">Micro batch size</div>
                       <div className="statusCardValue">
                         {formatInteger(preflight.derived_runtime?.micro_batch_size ?? null)}
                       </div>
                       <div className="statusCardDetail">
-                        Grad accum {formatInteger(preflight.derived_runtime?.grad_accum_steps ?? null)}
+                        Gradient accumulation steps: {formatInteger(preflight.derived_runtime?.grad_accum_steps ?? null)}
                       </div>
                     </div>
                   </div>
@@ -2312,7 +2506,7 @@ function TrainingPageContent() {
                       <div className="statusCardTitle">Device</div>
                       <div className="statusCardValue">{preflight.derived_runtime?.device_type ?? "n/a"}</div>
                       <div className="statusCardDetail">
-                        Memory-estimated max batch {formatInteger((preflight.memory_estimate?.max_batch_size as number | undefined) ?? null)}
+                        Memory-estimated max batch size: {formatInteger((preflight.memory_estimate?.max_batch_size as number | undefined) ?? null)}
                       </div>
                     </div>
                   </div>
@@ -2375,7 +2569,7 @@ function TrainingPageContent() {
                   <p className="panelCopy">The monitor updates every {Math.round(POLL_INTERVAL_MS / 1000)} seconds with summary, metrics, samples, checkpoints, and logs.</p>
                 </div>
                 {activeRun ? (
-                  <span className={`pillBadge ${statusTone(activeRun.status)}`}>{activeRun.status.toUpperCase()}</span>
+                  <span className={`pillBadge ${statusTone(activeRun.status)}`}>{formatStatusLabel(activeRun.status)}</span>
                 ) : null}
               </div>
 
@@ -2390,10 +2584,10 @@ function TrainingPageContent() {
                       <span style={{ width: `${Math.max(0, Math.min(activeRun.progress, 1)) * 100}%` }} />
                     </div>
                     <div className="trainingInlineMeta">
-                      <span>Run ID {activeRun.id.slice(0, 8)}</span>
+                      <span>Run identifier: {activeRun.id.slice(0, 8)}</span>
                       <span>Created {formatDate(activeRun.created_at)}</span>
                       <span>Started {activeRun.started_at ? formatDate(activeRun.started_at) : "waiting"}</span>
-                      <span>ETA {formatDuration((activeRun as unknown as { eta_seconds?: number | null }).eta_seconds ?? null)}</span>
+                      <span>Estimated time remaining: {formatDuration((activeRun as unknown as { eta_seconds?: number | null }).eta_seconds ?? null)}</span>
                     </div>
                   </div>
 
@@ -2401,11 +2595,11 @@ function TrainingPageContent() {
                     <div className="statusCard">
                       <div className="statusCardIcon"><FiActivity /></div>
                       <div>
-                        <div className="statusCardTitle">Step</div>
+                        <div className="statusCardTitle">Training step</div>
                         <div className="statusCardValue">
                           {formatInteger(activeRun.last_step)} / {formatInteger(activeRun.max_steps)}
                         </div>
-                        <div className="statusCardDetail">Progress {Math.round(activeRun.progress * 100)}%</div>
+                        <div className="statusCardDetail">Training progress: {Math.round(activeRun.progress * 100)}%</div>
                       </div>
                     </div>
                     <div className="statusCard">
@@ -2413,7 +2607,7 @@ function TrainingPageContent() {
                       <div>
                         <div className="statusCardTitle">Loss</div>
                         <div className="statusCardValue">{formatMetric(activeRun.latest_loss, 4)}</div>
-                        <div className="statusCardDetail">Grad norm {formatMetric(activeRun.latest_grad_norm, 3)}</div>
+                        <div className="statusCardDetail">Gradient norm: {formatMetric(activeRun.latest_grad_norm, 3)}</div>
                       </div>
                     </div>
                     <div className="statusCard">
@@ -2421,13 +2615,13 @@ function TrainingPageContent() {
                       <div>
                         <div className="statusCardTitle">Learning Rate</div>
                         <div className="statusCardValue">{formatMetric(activeRun.latest_lr, 6)}</div>
-                        <div className="statusCardDetail">Tokens/sec {formatInteger(activeRun.latest_tokens_per_sec)}</div>
+                        <div className="statusCardDetail">Tokens per second: {formatInteger(activeRun.latest_tokens_per_sec)}</div>
                       </div>
                     </div>
                     <div className="statusCard">
                       <div className="statusCardIcon"><FiArchive /></div>
                       <div>
-                        <div className="statusCardTitle">Artifacts</div>
+                        <div className="statusCardTitle">Saved artifacts</div>
                         <div className="statusCardValue">
                           {formatInteger(activeRun.checkpoint_count)} checkpoints
                         </div>
@@ -2441,7 +2635,7 @@ function TrainingPageContent() {
                   <div className="trainingChartGrid">
                     <Sparkline title="Loss" values={lossValues} latestValue={formatMetric(activeRun.latest_loss, 4)} stroke="var(--brand)" />
                     <Sparkline title="Learning Rate" values={lrValues} latestValue={formatMetric(activeRun.latest_lr, 6)} stroke="var(--ok)" />
-                    <Sparkline title="Grad Norm" values={normValues} latestValue={formatMetric(activeRun.latest_grad_norm, 3)} stroke="var(--warn)" />
+                    <Sparkline title="Gradient Norm" values={normValues} latestValue={formatMetric(activeRun.latest_grad_norm, 3)} stroke="var(--warn)" />
                     <Sparkline title="Throughput" values={throughputValues} latestValue={formatInteger(activeRun.latest_tokens_per_sec)} stroke="var(--danger)" />
                   </div>
 
@@ -2494,7 +2688,7 @@ function TrainingPageContent() {
                   </details>
 
                   <details className="sectionDisclosure">
-                    <summary className="sectionDisclosureSummary">Resolved runtime and configs</summary>
+                    <summary className="sectionDisclosureSummary">Resolved runtime and configurations</summary>
                     <div className="trainingJsonGrid">
                       <pre className="trainingCodeBlock">{prettyJson(activeRun.resolved_runtime)}</pre>
                       <pre className="trainingCodeBlock">{prettyJson(activeRun.memory_estimate)}</pre>
@@ -2519,55 +2713,40 @@ function TrainingPageContent() {
                 </button>
               </div>
               <div className="trainingRecentList">
-                {visibleRecentRuns.length ? (
-                  visibleRecentRuns.map((job) => (
+                {recentRuns.length ? (
+                  recentRuns.map((job) => (
                     <div key={job.id} className={`trainingRecentCard ${activeRunId === job.id ? "is-active" : ""}`}>
-                      <div className="trainingSectionHeader">
+                      <button
+                        type="button"
+                        className="trainingRecentSelect"
+                        onClick={() => setActiveRunId(job.id)}
+                      >
                         <div>
-                          <div className="trainingRecentTitle">{job.name}</div>
-                          <div className="trainingRecentMeta">
-                            {job.project_name} • {job.tokenizer_name}
-                          </div>
+                          <strong className="trainingRecentTitle">{job.name}</strong>
+                          <p>{job.project_name} / {job.tokenizer_name}</p>
                         </div>
-                        <span className={`pillBadge ${statusTone(job.status)}`}>{job.status}</span>
-                      </div>
-                      <div className="trainingRecentMeta">
-                        {formatDate(job.created_at)} • Step {formatInteger(job.last_step)} / {formatInteger(job.max_steps)}
-                      </div>
-                      <div className="trainingRecentActions">
-                        <button type="button" className="buttonGhost buttonSmall" onClick={() => setActiveRunId(job.id)}>
-                          Open
-                        </button>
+                        <div className="trainingRecentRowMeta">
+                          <span className={`pillBadge ${statusTone(job.status)}`}>{formatStatusLabel(job.status)}</span>
+                          <p>{formatDate(job.created_at)}</p>
+                        </div>
+                      </button>
+                      <div className="trainingRecentIconActions">
                         <button
                           type="button"
-                          className="buttonGhost buttonSmall"
-                          onClick={() => setHiddenRunIds((current) => [...current, job.id])}
-                        >
-                          Hide
-                        </button>
-                        <button
-                          type="button"
-                          className="buttonDanger buttonSmall"
+                          className="trainingRecentIconButton trainingRecentIconButton-danger"
                           onClick={() => void handleDeleteRun(job.id)}
                           disabled={job.status === "running" || job.status === "pending"}
+                          aria-label={`Delete ${job.name}`}
+                          title="Delete run"
                         >
-                          Delete
+                          <FiTrash2 aria-hidden="true" />
                         </button>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="trainingEmpty">
-                    No visible training runs yet.
-                    {hiddenRunIds.length ? (
-                      <button
-                        type="button"
-                        className="buttonGhost buttonSmall trainingEmptyAction"
-                        onClick={() => setHiddenRunIds([])}
-                      >
-                        Restore hidden runs
-                      </button>
-                    ) : null}
+                    No training runs yet.
                   </div>
                 )}
               </div>
@@ -2621,7 +2800,7 @@ function TrainingPageContent() {
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>Max steps</span>
+                      <span>Maximum training steps</span>
                       <ConfigNumberInput
                         value={asNumber(trainingConfig.max_steps, 0)}
                         onCommit={(value) => handleTrainingField(["max_steps"], value)}
@@ -2632,6 +2811,20 @@ function TrainingPageContent() {
                       <ConfigNumberInput
                         value={asNumber(trainingConfig.total_batch_size, 0)}
                         onCommit={(value) => handleTrainingField(["total_batch_size"], value)}
+                      />
+                    </label>
+                    <label className="fieldLabel">
+                      <span>Micro batch size <small>optional</small></span>
+                      <OptionalConfigNumberInput
+                        value={
+                          typeof trainingConfig.micro_batch_size === "number"
+                            ? trainingConfig.micro_batch_size
+                            : null
+                        }
+                        onCommit={(value) =>
+                          handleOptionalTrainingField(["micro_batch_size"], value)
+                        }
+                        placeholder="Auto"
                       />
                     </label>
                     <label className="fieldLabel">
@@ -2658,14 +2851,14 @@ function TrainingPageContent() {
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>Save every</span>
+                      <span>Save checkpoint every</span>
                       <ConfigNumberInput
                         value={asNumber(trainingConfig.save_every, 0)}
                         onCommit={(value) => handleTrainingField(["save_every"], value)}
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>Sample every</span>
+                      <span>Generate samples every</span>
                       <ConfigNumberInput
                         value={asNumber(trainingConfig.sample_every, 0)}
                         onCommit={(value) => handleTrainingField(["sample_every"], value)}
@@ -2732,7 +2925,7 @@ function TrainingPageContent() {
                           );
                         }}
                       >
-                        Streaming HF datasets
+                        Streaming Hugging Face datasets
                       </button>
                     </div>
                   </div>
@@ -2801,8 +2994,8 @@ function TrainingPageContent() {
                                   <div className="localFileActions">
                                     <span className="localFileStat">
                                       {fileCharLabel
-                                        ? `${fileCharLabel} chars`
-                                        : "char count pending"}
+                                        ? `${fileCharLabel} characters`
+                                        : "Character count pending"}
                                     </span>
                                     <button
                                       type="button"
@@ -2826,7 +3019,7 @@ function TrainingPageContent() {
                   ) : (
                     <div className="datasetConfigurator trainingTokenizerDatasetSection">
                       <label className="fieldLabel fullWidthField">
-                        <span>HF access token (optional)</span>
+                        <span>Hugging Face access token <small>optional</small></span>
                         <input
                           type="password"
                           value={hfToken}
@@ -2878,7 +3071,7 @@ function TrainingPageContent() {
 
                             <div className="fieldGrid">
                               <label className="fieldLabel">
-                                <span>HF dataset name</span>
+                                <span>Hugging Face dataset name</span>
                                 <input
                                   value={entry.name}
                                   onChange={(event) =>
@@ -2937,7 +3130,7 @@ function TrainingPageContent() {
                               <summary>Advanced source options</summary>
                               <div className="fieldGrid">
                                 <label className="fieldLabel">
-                                  <span>Config (optional)</span>
+                                  <span>Dataset config <small>optional</small></span>
                                   <input
                                     value={entry.config}
                                     onChange={(event) =>
@@ -3080,7 +3273,7 @@ function TrainingPageContent() {
                           <div className="trainingPromptTitleGroup">
                             <div className="trainingPromptTitle">Prompt {index + 1}</div>
                             <p className="trainingPromptMeta">
-                              {Math.max(0, asString(prompt.prompt).trim().length)} chars
+                              {Math.max(0, asString(prompt.prompt).trim().length)} characters
                             </p>
                           </div>
                           <button
@@ -3108,7 +3301,7 @@ function TrainingPageContent() {
 
                         <div className="trainingPromptFields">
                           <label className="fieldLabel">
-                            <span>Max tokens</span>
+                            <span>Maximum generated tokens</span>
                             <ConfigNumberInput
                               value={asNumber(prompt.max_tokens, 64)}
                               onCommit={(value) =>
@@ -3136,7 +3329,7 @@ function TrainingPageContent() {
                             />
                           </label>
                           <label className="fieldLabel">
-                            <span>Top-k</span>
+                            <span>Top-k sampling</span>
                             <ConfigNumberInput
                               value={asNumber(prompt.top_k, 40)}
                               onCommit={(value) => handlePromptChange(index, "top_k", value)}
@@ -3163,7 +3356,7 @@ function TrainingPageContent() {
                   </div>
                   <div className="fieldGrid trainingSettingsCompactGrid">
                     <label className="fieldLabel">
-                      <span>BOS token</span>
+                      <span>Beginning-of-sequence token</span>
                       <input
                         value={asString(dataloaderConfig.bos_token)}
                         onChange={(event) =>
@@ -3172,7 +3365,7 @@ function TrainingPageContent() {
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>EOS token</span>
+                      <span>End-of-sequence token</span>
                       <input
                         value={asString(dataloaderConfig.eos_token)}
                         onChange={(event) =>
@@ -3181,7 +3374,7 @@ function TrainingPageContent() {
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>PAD token</span>
+                      <span>Padding token</span>
                       <input
                         value={asString(dataloaderConfig.pad_token)}
                         onChange={(event) =>
@@ -3190,7 +3383,7 @@ function TrainingPageContent() {
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>Token dtype</span>
+                      <span>Token data type</span>
                       <select
                         value={asString(dataloaderConfig.token_dtype, "int64")}
                         onChange={(event) =>
@@ -3216,7 +3409,7 @@ function TrainingPageContent() {
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>Cache dir</span>
+                      <span>Cache directory</span>
                       <input
                         value={asString(dataloaderConfig.cache_dir)}
                         onChange={(event) =>
@@ -3246,7 +3439,7 @@ function TrainingPageContent() {
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>Optimizer eps</span>
+                      <span>Optimizer epsilon</span>
                       <ConfigNumberInput
                         mode="decimal"
                         step="0.00000001"
@@ -3255,7 +3448,7 @@ function TrainingPageContent() {
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>Node split</span>
+                      <span>Distributed node split</span>
                       <select
                         value={String(Boolean(dataloaderConfig.node_split))}
                         onChange={(event) =>
@@ -3270,14 +3463,14 @@ function TrainingPageContent() {
                       </select>
                     </label>
                     <label className="fieldLabel">
-                      <span>Node rank</span>
+                      <span>Distributed node rank</span>
                       <ConfigNumberInput
                         value={asNumber(dataloaderConfig.node_rank, 0)}
                         onCommit={(value) => handleDataloaderField(["node_rank"], value)}
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>Node world size</span>
+                      <span>Distributed node world size</span>
                       <ConfigNumberInput
                         value={asNumber(dataloaderConfig.node_world_size, 1)}
                         onCommit={(value) => handleDataloaderField(["node_world_size"], value)}
@@ -3289,7 +3482,7 @@ function TrainingPageContent() {
             </details>
 
             <details className="settingsPanel">
-              <summary>Generated config JSON</summary>
+              <summary>Generated configuration JSON</summary>
               <div className="settingsGrid">
                 <div className="trainingJsonGrid">
                   <pre className="trainingCodeBlock">{prettyJson(trainingConfig)}</pre>
@@ -3346,8 +3539,8 @@ function TrainingPageContent() {
                   onChange={(event) => setPickerQuery(event.target.value)}
                   placeholder={
                     pickerKind === "project"
-                      ? "Search model configs by name, id, or file"
-                      : "Search tokenizers by name, id, or artifact"
+                      ? "Search model configurations by name, identifier, or file"
+                      : "Search tokenizers by name, identifier, or artifact"
                   }
                 />
               </label>
@@ -3371,7 +3564,7 @@ function TrainingPageContent() {
 
               {!pickerLoading && !pickerError && pickerKind === "project" && visiblePickerProjects.length === 0 ? (
                 <div className="trainingAssetPickerEmpty">
-                  <h3>No saved model configs found.</h3>
+                  <h3>No saved model configurations found.</h3>
                   <p className="panelCopy">
                     Create or save a model config from the Home workspace, then reopen the picker.
                   </p>
@@ -3457,7 +3650,7 @@ function TrainingPageContent() {
                       </div>
                       <div className="trainingAssetPickerOptionMeta">
                         {formatDate(job.created_at)}
-                        {job.stats?.vocab_size ? ` • vocab ${formatInteger(job.stats.vocab_size)}` : ""}
+                        {job.stats?.vocab_size ? ` • vocabulary size ${formatInteger(job.stats.vocab_size)}` : ""}
                       </div>
                       <div className="trainingAssetPickerOptionMeta">
                         {job.artifact_file ?? job.artifact_path ?? "Tokenizer artifact path unavailable"}

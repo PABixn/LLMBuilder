@@ -125,6 +125,47 @@ def _training_payload(local_dataset_path: Path) -> dict[str, object]:
     }
 
 
+def test_training_batch_runtime_plan_uses_largest_valid_auto_micro_batch() -> None:
+    from training.training_config import derive_batch_runtime_plan
+
+    auto_plan = derive_batch_runtime_plan(
+        total_batch_size=8192,
+        seq_len=128,
+        max_memory_batch_size=64,
+    )
+    assert auto_plan.micro_batch_size == 64
+    assert auto_plan.grad_accum_steps == 1
+    assert auto_plan.tokens_per_micro_step == 8192
+
+    explicit_plan = derive_batch_runtime_plan(
+        total_batch_size=8192,
+        seq_len=128,
+        max_memory_batch_size=64,
+        requested_micro_batch_size=8,
+    )
+    assert explicit_plan.micro_batch_size == 8
+    assert explicit_plan.grad_accum_steps == 8
+
+
+def test_training_dataloader_config_accepts_hf_token() -> None:
+    from training.dataloader_config import TrainingDataloaderConfig
+
+    config = TrainingDataloaderConfig.model_validate(
+        {
+            "datasets": [
+                {
+                    "name": "private-dataset",
+                    "split": "train",
+                    "streaming": True,
+                    "hf_token": "hf_test_token",
+                    "text_columns": ["text"],
+                }
+            ]
+        }
+    )
+    assert config.datasets[0].hf_token == "hf_test_token"
+
+
 def test_health_and_static_fallback(monkeypatch, tmp_path: Path) -> None:
     web_dist = tmp_path / "web-dist"
     web_dist.mkdir(parents=True, exist_ok=True)

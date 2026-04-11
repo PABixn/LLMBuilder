@@ -23,7 +23,7 @@ from training.dataloader_config import load_training_dataloader_config
 from training.logger import Logger
 from training.lr_scheduler import build_lr_scheduler
 from training.memory_estimator import MemoryEstimator
-from training.training_config import load_training_config
+from training.training_config import derive_batch_runtime_plan, load_training_config
 from training.utils import get_init
 
 
@@ -292,27 +292,20 @@ def run_training_job(
     )
     memory_estimate = memory_estimator.estimate(
         seq_len=training_config.seq_len,
-        batch_size=1,
+        batch_size=None,
     )
 
-    max_batch_size_from_total = training_config.total_batch_size // training_config.seq_len
-    max_allowed_batch_size = min(memory_estimate.max_batch_size, max_batch_size_from_total)
-    batch_size = max_allowed_batch_size if max_allowed_batch_size % 2 == 0 else max_allowed_batch_size - 1
-    if batch_size <= 0:
-        raise ValueError(
-            "Could not derive a positive even micro-batch size from memory estimate and total_batch_size/seq_len."
-        )
-
-    tokens_per_pass = batch_size * training_config.seq_len
-    world_tokens_per_pass = tokens_per_pass * ddp_world_size
-    if training_config.total_batch_size % world_tokens_per_pass != 0:
-        raise ValueError(
-            "total_batch_size must be divisible by micro_batch_size * seq_len * world_size."
-        )
-
-    grad_accum_steps = training_config.total_batch_size // world_tokens_per_pass
-    if grad_accum_steps <= 0:
-        raise ValueError("Derived grad_accum_steps must be positive.")
+    batch_plan = derive_batch_runtime_plan(
+        total_batch_size=training_config.total_batch_size,
+        seq_len=training_config.seq_len,
+        max_memory_batch_size=memory_estimate.max_batch_size,
+        world_size=ddp_world_size,
+        requested_micro_batch_size=training_config.micro_batch_size,
+    )
+    configured_memory_estimate = memory_estimator.estimate(
+        seq_len=training_config.seq_len,
+        batch_size=batch_plan.micro_batch_size,
+    )
 
     runtime_summary = {
         "device": str(device),
@@ -320,13 +313,13 @@ def run_training_job(
         "ddp": ddp,
         "ddp_rank": ddp_rank,
         "ddp_world_size": ddp_world_size,
-        "micro_batch_size": batch_size,
-        "tokens_per_micro_step": tokens_per_pass,
-        "tokens_per_world_step": world_tokens_per_pass,
-        "grad_accum_steps": grad_accum_steps,
-        "max_batch_size_from_total": max_batch_size_from_total,
-        "max_batch_size_from_memory": memory_estimate.max_batch_size,
-        "max_allowed_batch_size": max_allowed_batch_size,
+        "micro_batch_size": batch_plan.micro_batch_size,
+        "tokens_per_micro_step": batch_plan.tokens_per_micro_step,
+        "tokens_per_world_step": batch_plan.tokens_per_world_step,
+        "grad_accum_steps": batch_plan.grad_accum_steps,
+        "max_batch_size_from_total": batch_plan.max_batch_size_from_total,
+        "max_batch_size_from_memory": batch_plan.max_batch_size_from_memory,
+        "max_allowed_batch_size": batch_plan.max_allowed_batch_size,
     }
     resolved_writer.record_runtime(runtime_summary)
 
@@ -341,7 +334,7 @@ def run_training_job(
         on_sample=resolved_writer.record_sample,
         on_memory_estimate=resolved_writer.record_memory_estimate,
     )
-    logger.memory_estimate(memory_estimate)
+    logger.memory_estimate(configured_memory_estimate)
 
     checkpoint_manager = CheckpointManager(paths.checkpoints_dir)
 
@@ -355,7 +348,7 @@ def run_training_job(
     train_loader = TrainingDataLoader(
         config=dataloader_config,
         tokenizer=tokenizer,
-        batch_size=batch_size,
+        batch_size=batch_plan.micro_batch_size,
         seq_len=training_config.seq_len,
     )
 
@@ -383,18 +376,18 @@ def run_training_job(
         step_started = time.time()
         loss_accum = 0.0
 
-        for micro_step in range(grad_accum_steps):
+        for micro_step in range(batch_plan.grad_accum_steps):
             raise_if_cancelled()
             x, y = train_loader.next_batch()
             x = x.to(device=device, non_blocking=is_cuda)
             y = y.to(device=device, non_blocking=is_cuda)
 
-            synchronize_ctx = model.no_sync() if ddp and micro_step < grad_accum_steps - 1 else nullcontext()
+            synchronize_ctx = model.no_sync() if ddp and micro_step < batch_plan.grad_accum_steps - 1 else nullcontext()
             with synchronize_ctx:
                 with autocast_ctx:
                     loss = model(x, y)
 
-            loss = loss / grad_accum_steps
+            loss = loss / batch_plan.grad_accum_steps
             loss_accum += float(loss.detach().item())
             loss.backward()
 
@@ -427,7 +420,7 @@ def run_training_job(
                     optimizer_data=optimizer.state_dict(),
                     meta_data={
                         "step": completed_steps,
-                        "batch_size": batch_size,
+                        "batch_size": batch_plan.micro_batch_size,
                         "seq_len": training_config.seq_len,
                         "model_config": model_config.model_dump(mode="json"),
                         "runtime": runtime_summary,
@@ -486,7 +479,7 @@ def run_training_job(
         optimizer_data=optimizer.state_dict(),
         meta_data={
             "step": training_config.max_steps,
-            "batch_size": batch_size,
+            "batch_size": batch_plan.micro_batch_size,
             "seq_len": training_config.seq_len,
             "model_config": model_config.model_dump(mode="json"),
             "runtime": runtime_summary,
@@ -497,7 +490,7 @@ def run_training_job(
     return {
         "status": "completed",
         "runtime": runtime_summary,
-        "memory_estimate": memory_estimate.to_dict(),
+        "memory_estimate": configured_memory_estimate.to_dict(),
     }
 
 

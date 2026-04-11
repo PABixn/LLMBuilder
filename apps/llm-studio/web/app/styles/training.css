@@ -3,7 +3,7 @@
 }
 
 .studioRoot.trainingPage {
-  width: min(1280px, calc(100% - 32px));
+  width: min(1380px, calc(100% - 32px));
   margin: 18px auto 44px;
 }
 
@@ -146,6 +146,11 @@
   flex-direction: column;
   gap: 9px;
   min-height: 184px;
+  min-width: 0;
+}
+
+.trainingPage .workflowStepTile > * {
+  min-width: 0;
 }
 
 .trainingPage .workflowStepTile strong {
@@ -183,6 +188,8 @@
   margin: 0;
   font-size: 0.78rem;
   line-height: 1.38;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .trainingPage .workflowStepAction {
@@ -261,6 +268,19 @@
   align-items: start;
 }
 
+.trainingPage .panelCard > .trainingProgress,
+.trainingPage .panelCard > .statusGrid,
+.trainingPage .panelCard > .trainingChartGrid,
+.trainingPage .panelCard > .trainingIssueList,
+.trainingPage .panelCard > .sectionDisclosure,
+.trainingPage .panelCard > .trainingEmpty {
+  margin-top: 14px;
+}
+
+.trainingPage .sectionDisclosure[open] > :not(summary) {
+  margin-top: 10px;
+}
+
 .trainingPanelStack {
   display: grid;
   gap: 18px;
@@ -323,6 +343,7 @@
   padding: 14px;
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .trainingIssueCard.tone-error {
@@ -336,19 +357,127 @@
 }
 
 .trainingRecentCard {
-  transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  border-radius: 10px;
+  padding: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+  background: var(--input-bg);
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
 }
 
 .trainingRecentCard:hover {
   transform: translateY(-1px);
-  border-color: var(--line-strong);
-  box-shadow: 0 12px 24px rgba(9, 25, 49, 0.08);
+  border-color: var(--brand);
+  background: var(--surface-soft);
+  box-shadow: 0 6px 14px rgba(20, 35, 53, 0.1);
 }
 
 .trainingRecentCard.is-active {
-  border-color: color-mix(in srgb, var(--brand) 36%, var(--line));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--brand-soft) 45%, var(--surface)), var(--surface-soft));
-  box-shadow: 0 12px 24px rgba(9, 25, 49, 0.1);
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.trainingRecentCard.is-active:hover,
+.trainingRecentCard.is-active:focus-within {
+  background: var(--brand-soft);
+}
+
+.trainingRecentSelect {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.trainingRecentSelect > * {
+  min-width: 0;
+}
+
+.trainingRecentSelect p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.trainingRecentSelect:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.trainingRecentRowMeta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  min-width: 104px;
+}
+
+.trainingRecentRowMeta p {
+  text-align: right;
+}
+
+.trainingRecentIconActions {
+  margin-right: 8px;
+  align-self: center;
+  display: grid;
+  gap: 6px;
+}
+
+.trainingRecentIconButton {
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.trainingRecentIconButton svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.trainingRecentIconButton:hover:not(:disabled),
+.trainingRecentIconButton:focus-visible:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--surface-soft);
+  outline: none;
+}
+
+.trainingRecentIconButton-danger:hover:not(:disabled),
+.trainingRecentIconButton-danger:focus-visible:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.trainingRecentIconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .trainingIssueTitle,
@@ -360,6 +489,17 @@
   font-size: 0.88rem;
   font-weight: 760;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.trainingIssueCard,
+.trainingIssueMeta,
+.trainingFixCard,
+.trainingToast,
+.trainingToastBody,
+.trainingAssetPickerOptionMeta {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -635,6 +775,13 @@
   max-width: 260px;
 }
 
+.trainingSettingsStudio .fieldLabel small {
+  margin-left: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
 .trainingSettingsStudio .fieldGrid > .fieldLabel {
   justify-self: start;
   width: min(100%, 260px);
@@ -857,6 +1004,9 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  height: 320px;
+  overflow: auto;
+  align-items: stretch;
 }
 
 .trainingSectionHeader {

@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, List, Literal, Union
 
@@ -127,6 +128,7 @@ class SamplerConfig(StrictModel):
 class TrainingConfig(StrictModel):
     max_steps: Annotated[int, Field(gt=0)]
     total_batch_size: Annotated[int, Field(gt=0)]
+    micro_batch_size: Annotated[int, Field(gt=0)] | None = None
     seq_len: Annotated[int, Field(gt=0)]
     sample_every: Annotated[int, Field(gt=0)]
     sampler: SamplerConfig
@@ -142,6 +144,81 @@ class TrainingConfig(StrictModel):
                 "sum of lr_scheduler steps must equal max_steps"
             )
         return self
+
+
+@dataclass(frozen=True)
+class BatchRuntimePlan:
+    micro_batch_size: int
+    tokens_per_micro_step: int
+    tokens_per_world_step: int
+    grad_accum_steps: int
+    max_batch_size_from_total: int
+    max_batch_size_from_memory: int
+    max_allowed_batch_size: int
+
+
+def derive_batch_runtime_plan(
+    *,
+    total_batch_size: int,
+    seq_len: int,
+    max_memory_batch_size: int,
+    world_size: int = 1,
+    requested_micro_batch_size: int | None = None,
+) -> BatchRuntimePlan:
+    if total_batch_size <= 0:
+        raise ValueError("total_batch_size must be > 0")
+    if seq_len <= 0:
+        raise ValueError("seq_len must be > 0")
+    if world_size <= 0:
+        raise ValueError("world_size must be > 0")
+    if max_memory_batch_size <= 0:
+        raise ValueError("memory estimate did not produce a positive micro-batch size")
+
+    world_token_size = seq_len * world_size
+    if total_batch_size % world_token_size != 0:
+        raise ValueError("total_batch_size must be divisible by seq_len * world_size.")
+
+    max_batch_size_from_total = total_batch_size // world_token_size
+    max_allowed_batch_size = min(max_memory_batch_size, max_batch_size_from_total)
+    if max_allowed_batch_size <= 0:
+        raise ValueError(
+            "Could not derive a positive micro-batch size from memory estimate and total_batch_size/seq_len."
+        )
+
+    if requested_micro_batch_size is not None:
+        if requested_micro_batch_size <= 0:
+            raise ValueError("micro_batch_size must be > 0")
+        if requested_micro_batch_size > max_memory_batch_size:
+            raise ValueError("micro_batch_size exceeds the memory-estimated maximum.")
+        if requested_micro_batch_size > max_batch_size_from_total:
+            raise ValueError("micro_batch_size exceeds total_batch_size / (seq_len * world_size).")
+        if max_batch_size_from_total % requested_micro_batch_size != 0:
+            raise ValueError(
+                "total_batch_size must be divisible by micro_batch_size * seq_len * world_size."
+            )
+        micro_batch_size = requested_micro_batch_size
+    else:
+        micro_batch_size = max(
+            candidate
+            for candidate in range(1, max_allowed_batch_size + 1)
+            if max_batch_size_from_total % candidate == 0
+        )
+
+    tokens_per_micro_step = micro_batch_size * seq_len
+    tokens_per_world_step = tokens_per_micro_step * world_size
+    grad_accum_steps = total_batch_size // tokens_per_world_step
+    if grad_accum_steps <= 0:
+        raise ValueError("Derived grad_accum_steps must be positive.")
+
+    return BatchRuntimePlan(
+        micro_batch_size=micro_batch_size,
+        tokens_per_micro_step=tokens_per_micro_step,
+        tokens_per_world_step=tokens_per_world_step,
+        grad_accum_steps=grad_accum_steps,
+        max_batch_size_from_total=max_batch_size_from_total,
+        max_batch_size_from_memory=max_memory_batch_size,
+        max_allowed_batch_size=max_allowed_batch_size,
+    )
 
 
 def load_training_config(config_path: str | Path) -> TrainingConfig:

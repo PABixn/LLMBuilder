@@ -51,7 +51,7 @@ from model.loader import LLMConfig
 from model.model import ConfigurableGPT
 from training.dataloader_config import TrainingDataloaderConfig
 from training.memory_estimator import MemoryEstimator
-from training.training_config import TrainingConfig
+from training.training_config import TrainingConfig, derive_batch_runtime_plan
 
 _JOB_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{6,64}$")
 _PROJECT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{6,64}$")
@@ -581,50 +581,48 @@ class TrainingRunManager:
                     eps=parsed_training_config.optimizer.eps,
                 )
                 device = default_training_device()
-                estimate = MemoryEstimator(model=model, optimizer=optimizer, device=device).estimate(
+                memory_estimator = MemoryEstimator(model=model, optimizer=optimizer, device=device)
+                estimate = memory_estimator.estimate(
                     seq_len=parsed_training_config.seq_len,
-                    batch_size=1,
+                    batch_size=None,
                 )
-                memory_estimate = estimate.to_dict()
-
-                max_batch_size_from_total = parsed_training_config.total_batch_size // parsed_training_config.seq_len
-                max_allowed_batch_size = min(estimate.max_batch_size, max_batch_size_from_total)
-                micro_batch_size = max_allowed_batch_size if max_allowed_batch_size % 2 == 0 else max_allowed_batch_size - 1
-                if micro_batch_size <= 0:
+                try:
+                    batch_plan = derive_batch_runtime_plan(
+                        total_batch_size=parsed_training_config.total_batch_size,
+                        seq_len=parsed_training_config.seq_len,
+                        max_memory_batch_size=estimate.max_batch_size,
+                        world_size=1,
+                        requested_micro_batch_size=parsed_training_config.micro_batch_size,
+                    )
+                except ValueError as exc:
                     errors.append(
                         issue(
                             "invalid_micro_batch_size",
-                            "Could not derive a positive even micro-batch size from the current settings and memory estimate.",
+                            str(exc),
                             "$.training_config.total_batch_size",
                         )
                     )
+                    memory_estimate = estimate.to_dict()
                 else:
-                    tokens_per_micro_step = micro_batch_size * parsed_training_config.seq_len
-                    ddp_world_size = 1
-                    tokens_per_world_step = tokens_per_micro_step * ddp_world_size
-                    if parsed_training_config.total_batch_size % tokens_per_world_step != 0:
-                        errors.append(
-                            issue(
-                                "invalid_grad_accumulation",
-                                "total_batch_size must be divisible by micro_batch_size * seq_len * world_size.",
-                                "$.training_config.total_batch_size",
-                            )
-                        )
-                    else:
-                        derived_runtime = DerivedRuntimeSummary(
-                            device=str(device),
-                            device_type=device.type,
-                            micro_batch_size=micro_batch_size,
-                            tokens_per_micro_step=tokens_per_micro_step,
-                            tokens_per_world_step=tokens_per_world_step,
-                            grad_accum_steps=parsed_training_config.total_batch_size // tokens_per_world_step,
-                            max_batch_size_from_total=max_batch_size_from_total,
-                            max_batch_size_from_memory=estimate.max_batch_size,
-                            max_allowed_batch_size=max_allowed_batch_size,
-                            ddp=False,
-                            ddp_rank=0,
-                            ddp_world_size=1,
-                        )
+                    configured_estimate = memory_estimator.estimate(
+                        seq_len=parsed_training_config.seq_len,
+                        batch_size=batch_plan.micro_batch_size,
+                    )
+                    memory_estimate = configured_estimate.to_dict()
+                    derived_runtime = DerivedRuntimeSummary(
+                        device=str(device),
+                        device_type=device.type,
+                        micro_batch_size=batch_plan.micro_batch_size,
+                        tokens_per_micro_step=batch_plan.tokens_per_micro_step,
+                        tokens_per_world_step=batch_plan.tokens_per_world_step,
+                        grad_accum_steps=batch_plan.grad_accum_steps,
+                        max_batch_size_from_total=batch_plan.max_batch_size_from_total,
+                        max_batch_size_from_memory=batch_plan.max_batch_size_from_memory,
+                        max_allowed_batch_size=batch_plan.max_allowed_batch_size,
+                        ddp=False,
+                        ddp_rank=0,
+                        ddp_world_size=1,
+                    )
 
         return ResolvedPreflightContext(
             valid=not errors,
