@@ -555,7 +555,7 @@ def delete_training_job(job_id: str) -> Response:
 
 
 @training_api.get("/jobs/{job_id}/metrics", response_model=TrainingMetricsResponse)
-def get_training_metrics(job_id: str, limit: int = 200) -> TrainingMetricsResponse:
+def get_training_metrics(job_id: str, limit: int | None = None) -> TrainingMetricsResponse:
     manager = app.state.training_jobs
     try:
         return manager.get_metrics(job_id, limit=limit)
@@ -573,7 +573,7 @@ def get_training_samples(job_id: str, limit: int = 50) -> TrainingSamplesRespons
 
 
 @training_api.get("/jobs/{job_id}/logs", response_model=TrainingLogsResponse)
-def get_training_logs(job_id: str, lines: int = 200) -> TrainingLogsResponse:
+def get_training_logs(job_id: str, lines: int | None = None) -> TrainingLogsResponse:
     manager = app.state.training_jobs
     try:
         return manager.get_logs(job_id, lines=lines)

@@ -346,6 +346,158 @@
   min-width: 0;
 }
 
+.trainingSampleList {
+  max-height: min(520px, 64vh);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.trainingSampleStepDisclosure {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.trainingSampleStepSummary,
+.trainingSampleTextSummary {
+  cursor: pointer;
+  list-style: none;
+  display: grid;
+  min-width: 0;
+}
+
+.trainingSampleStepSummary::-webkit-details-marker,
+.trainingSampleTextSummary::-webkit-details-marker {
+  display: none;
+}
+
+.trainingSampleStepSummary {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.trainingSampleStepSummary > span:first-child,
+.trainingSampleTextSummary > span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.trainingSampleStepSummary::before,
+.trainingSampleTextSummary::before {
+  content: "▸";
+  color: var(--text-muted);
+  line-height: 1;
+  transition: transform 0.12s ease;
+}
+
+.trainingSampleStepSummary::before {
+  grid-row: 1;
+  grid-column: 1;
+  align-self: center;
+}
+
+.trainingSampleStepSummary > span:first-child {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.trainingSampleStepDisclosure[open] > .trainingSampleStepSummary {
+  border-bottom: 1px solid var(--line);
+}
+
+.trainingSampleStepDisclosure[open] > .trainingSampleStepSummary::before,
+.trainingSampleTextDisclosure[open] > .trainingSampleTextSummary::before {
+  transform: rotate(90deg);
+}
+
+.trainingSampleStepSummary:hover,
+.trainingSampleStepSummary:focus-visible,
+.trainingSampleTextSummary:hover,
+.trainingSampleTextSummary:focus-visible {
+  color: var(--brand-strong);
+  outline: none;
+}
+
+.trainingSampleStepBody {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  max-height: 380px;
+  overflow: auto;
+}
+
+.trainingSampleTextDisclosure {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.trainingSampleTextSummary {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+}
+
+.trainingSampleTextSummary > span:first-child {
+  grid-column: 2;
+  font-size: 0.82rem;
+  font-weight: 740;
+}
+
+.trainingSampleTextSummary > .trainingSampleMeta {
+  grid-column: 3;
+  white-space: nowrap;
+}
+
+.trainingSampleTextDisclosure[open] > .trainingSampleTextSummary {
+  border-bottom: 1px solid var(--line);
+}
+
+.trainingSamplePromptBlock {
+  display: grid;
+  gap: 5px;
+  padding: 10px 10px 0;
+}
+
+.trainingSamplePromptBlock > span {
+  font-size: 0.7rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.trainingSamplePromptBlock > pre {
+  margin: 0;
+  max-height: 120px;
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 9px;
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.trainingSampleCodeBlock {
+  max-height: 240px;
+  border-radius: 0;
+  border-width: 0;
+  border-top: 1px solid var(--pre-line);
+}
+
+.trainingSamplePromptBlock + .trainingSampleCodeBlock {
+  margin-top: 10px;
+}
+
 .trainingIssueCard.tone-error {
   border-color: color-mix(in srgb, var(--danger) 28%, transparent);
   background: linear-gradient(180deg, var(--danger-soft), var(--surface-soft));
@@ -625,27 +777,33 @@
 .trainingChartGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .trainingChartCard {
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid var(--line);
   background: linear-gradient(180deg, var(--surface), var(--surface-raised));
-  padding: 12px;
+  padding: 14px;
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  min-height: 304px;
 }
 
 .trainingChartHead {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: start;
   gap: 12px;
 }
 
+.trainingChartHead > div {
+  display: grid;
+  gap: 3px;
+}
+
 .trainingChartHead strong {
-  font-size: 0.84rem;
+  font-size: 0.88rem;
   font-weight: 760;
 }
 
@@ -654,10 +812,189 @@
   color: var(--text-muted);
 }
 
-.trainingChartSvg {
+.trainingChartLatest {
+  text-align: right;
+  min-width: 86px;
+}
+
+.trainingChartLatest strong {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.86rem;
+}
+
+.trainingChartStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.trainingChartStats span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  padding: 6px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingChartFrame {
   width: 100%;
-  height: 112px;
+  height: 210px;
   display: block;
+  min-width: 0;
+}
+
+.trainingChartFrame .recharts-wrapper,
+.trainingChartFrame .recharts-surface {
+  overflow: visible;
+}
+
+.trainingChartTooltip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+}
+
+.trainingChartTooltip span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.trainingChartTooltip strong {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.trainingChartRange {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  display: grid;
+  gap: 8px;
+  padding: 8px 10px 10px;
+  touch-action: none;
+  user-select: none;
+}
+
+.trainingChartRangeMeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trainingChartRangeMeta span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.trainingChartRangeMeta strong {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  font-weight: 740;
+}
+
+.trainingChartBrush {
+  position: relative;
+  height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: crosshair;
+  overflow: hidden;
+}
+
+.trainingChartBrush svg {
+  position: absolute;
+  inset: 7px 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 14px);
+  pointer-events: none;
+}
+
+.trainingChartBrush svg path {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 2.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.trainingChartBrushShade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+  pointer-events: none;
+}
+
+.trainingChartBrushShade.left {
+  left: 0;
+}
+
+.trainingChartBrushShade.right {
+  right: 0;
+}
+
+.trainingChartBrushSelection {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 66%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand-soft) 68%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--surface) 55%, transparent);
+  cursor: grab;
+}
+
+.trainingChartRange.isDragging .trainingChartBrushSelection {
+  cursor: grabbing;
+}
+
+.trainingChartBrushHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 70%, var(--line));
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+  cursor: ew-resize;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.trainingChartBrushHandle::after {
+  content: "";
+  position: absolute;
+  inset: 11px 4px;
+  border-left: 1px solid var(--text-muted);
+  border-right: 1px solid var(--text-muted);
+  opacity: 0.72;
+}
+
+.trainingChartBrushHandle:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.trainingChartBrushHandle:hover,
+.trainingChartRange.isDragging .trainingChartBrushHandle {
+  border-color: var(--brand);
+}
+
+.trainingChartRange.isDragging .trainingChartBrush {
+  cursor: grabbing;
 }
 
 .trainingSettingsStudio {
@@ -1523,6 +1860,27 @@
     grid-template-columns: 1fr;
   }
 
+  .trainingChartCard {
+    min-height: 300px;
+  }
+
+  .trainingChartHead,
+  .trainingChartStats {
+    grid-template-columns: 1fr;
+  }
+
+  .trainingChartHead {
+    display: grid;
+  }
+
+  .trainingChartLatest {
+    text-align: left;
+  }
+
+  .trainingChartFrame {
+    height: 190px;
+  }
+
   .trainingHeroActions,
   .trainingHeroActions > .buttonGhost,
   .trainingHeroActions > .buttonPrimary,
@@ -1607,6 +1965,20 @@
 
   .trainingPromptFields {
     grid-template-columns: 1fr;
+  }
+
+  .trainingSampleList {
+    max-height: 460px;
+  }
+
+  .trainingSampleStepSummary,
+  .trainingSampleTextSummary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .trainingSampleTextSummary > .trainingSampleMeta {
+    grid-column: 2;
+    white-space: normal;
   }
 
   .localFileItem,

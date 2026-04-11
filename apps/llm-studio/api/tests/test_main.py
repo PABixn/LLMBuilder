@@ -457,10 +457,20 @@ def test_training_job_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
                 encoding="utf-8",
             )
             (output_dir / "stats.jsonl").write_text(
-                json.dumps({"step": 1, "loss": 2.0, "norm": 0.8, "dt": 0.1, "tok_per_sec": 256, "lr": 0.001})
-                + "\n"
-                + json.dumps({"step": 3, "loss": 1.23, "norm": 0.45, "dt": 0.08, "tok_per_sec": 512, "lr": 0.001})
-                + "\n",
+                "".join(
+                    json.dumps(
+                        {
+                            "step": index,
+                            "loss": round(2.0 - index * 0.005, 3),
+                            "norm": round(0.8 - index * 0.001, 3),
+                            "dt": 0.1,
+                            "tok_per_sec": 256 + index,
+                            "lr": 0.001,
+                        }
+                    )
+                    + "\n"
+                    for index in range(1, 206)
+                ),
                 encoding="utf-8",
             )
             (output_dir / "samples.jsonl").write_text(
@@ -475,7 +485,10 @@ def test_training_job_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
                 + "\n",
                 encoding="utf-8",
             )
-            (output_dir / "stdout.log").write_text("training started\ntraining running\n", encoding="utf-8")
+            (output_dir / "stdout.log").write_text(
+                "".join(f"training line {index}\n" for index in range(1, 206)),
+                encoding="utf-8",
+            )
             (output_dir / "stderr.log").write_text("", encoding="utf-8")
             checkpoint_dir = output_dir / "checkpoints" / "3"
             checkpoint_dir.mkdir(parents=True, exist_ok=True)
@@ -500,7 +513,7 @@ def test_training_job_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
         assert created["name"] == "run-one"
         assert created["project_id"] == project_id
         assert created["tokenizer_job_id"] == "completed-tokenizer"
-        assert created["latest_loss"] == 1.23
+        assert created["latest_loss"] == 0.975
         assert created["checkpoint_count"] == 1
 
         listing = client.get("/api/v1/training/jobs")
@@ -510,11 +523,17 @@ def test_training_job_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
 
         detail = client.get(f"/api/v1/training/jobs/{job_id}")
         assert detail.status_code == 200
-        assert detail.json()["last_step"] == 3
+        assert detail.json()["last_step"] == 205
 
         metrics = client.get(f"/api/v1/training/jobs/{job_id}/metrics")
         assert metrics.status_code == 200
-        assert len(metrics.json()["metrics"]) == 2
+        assert len(metrics.json()["metrics"]) == 205
+        assert metrics.json()["metrics"][0]["step"] == 1
+        assert metrics.json()["metrics"][-1]["step"] == 205
+
+        tailed_metrics = client.get(f"/api/v1/training/jobs/{job_id}/metrics", params={"limit": 2})
+        assert tailed_metrics.status_code == 200
+        assert [item["step"] for item in tailed_metrics.json()["metrics"]] == [204, 205]
 
         samples = client.get(f"/api/v1/training/jobs/{job_id}/samples")
         assert samples.status_code == 200
@@ -522,7 +541,13 @@ def test_training_job_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
 
         logs = client.get(f"/api/v1/training/jobs/{job_id}/logs")
         assert logs.status_code == 200
-        assert "training running" in logs.json()["stdout_lines"][-1]
+        assert len(logs.json()["stdout_lines"]) == 205
+        assert logs.json()["stdout_lines"][0] == "training line 1"
+        assert logs.json()["stdout_lines"][-1] == "training line 205"
+
+        tailed_logs = client.get(f"/api/v1/training/jobs/{job_id}/logs", params={"lines": 2})
+        assert tailed_logs.status_code == 200
+        assert tailed_logs.json()["stdout_lines"] == ["training line 204", "training line 205"]
 
         checkpoints = client.get(f"/api/v1/training/jobs/{job_id}/checkpoints")
         assert checkpoints.status_code == 200

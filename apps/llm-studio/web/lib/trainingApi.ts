@@ -317,10 +317,13 @@ export async function fetchTrainingJob(jobId: string): Promise<TrainingJob> {
   return request<TrainingJob>(`/jobs/${jobId}`);
 }
 
-export async function fetchTrainingMetrics(jobId: string, limit = 200): Promise<TrainingMetricPoint[]> {
-  const params = new URLSearchParams({ limit: String(limit) });
+export async function fetchTrainingMetrics(jobId: string, limit?: number): Promise<TrainingMetricPoint[]> {
+  const params = new URLSearchParams();
+  if (typeof limit === "number") {
+    params.set("limit", String(limit));
+  }
   const response = await request<{ job_id: string; metrics: TrainingMetricPoint[] }>(
-    `/jobs/${jobId}/metrics?${params.toString()}`
+    `/jobs/${jobId}/metrics${params.size ? `?${params.toString()}` : ""}`
   );
   return response.metrics;
 }
@@ -333,9 +336,13 @@ export async function fetchTrainingSamples(jobId: string, limit = 50): Promise<T
   return response.samples;
 }
 
-export async function fetchTrainingLogs(jobId: string, lines = 200): Promise<TrainingLogsResponse> {
-  const params = new URLSearchParams({ lines: String(lines) });
-  return request<TrainingLogsResponse>(`/jobs/${jobId}/logs?${params.toString()}`);
+export async function fetchTrainingLogs(jobId: string, lines?: number): Promise<TrainingLogsResponse> {
+  const params = new URLSearchParams();
+  if (typeof lines === "number") {
+    params.set("lines", String(lines));
+  }
+  const query = params.toString();
+  return request<TrainingLogsResponse>(`/jobs/${jobId}/logs${query ? `?${query}` : ""}`);
 }
 
 export async function fetchTrainingCheckpoints(jobId: string): Promise<TrainingCheckpointEntry[]> {

@@ -7,6 +7,8 @@ import {
   startTransition,
   type ChangeEvent,
   type DragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -35,6 +37,15 @@ import {
   FiX,
   FiXCircle,
 } from "react-icons/fi";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import {
   fetchProject,
@@ -90,6 +101,7 @@ type AssetPickerKind = "project" | "tokenizer";
 type DatasetSourceMode = "local_file" | "streaming_hf";
 type FilterOperator = "==" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "not in";
 type WorkflowTarget = "model" | "tokenizer" | "training" | "dataset" | "preflight";
+type MetricChartKey = "loss" | "lr" | "norm" | "tok_per_sec";
 
 interface StreamingFilterFormState {
   id: string;
@@ -798,10 +810,101 @@ function replaceRunInOrder(runs: TrainingJob[], job: TrainingJob): TrainingJob[]
   return replaced ? next : [...next, job];
 }
 
-function metricSeries(metrics: TrainingMetricPoint[], key: keyof TrainingMetricPoint): number[] {
+function metricChartData(
+  metrics: TrainingMetricPoint[],
+  metricKey: MetricChartKey
+) {
   return metrics
-    .map((item) => item[key])
-    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    .map((item) => {
+      const value = item[metricKey];
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return null;
+      }
+      return {
+        step: item.step,
+        value,
+        plotValue: value,
+      };
+    })
+    .filter((item): item is { step: number; value: number; plotValue: number } => item !== null);
+}
+
+function metricChartStats(data: Array<{ value: number }>) {
+  if (!data.length) {
+    return null;
+  }
+
+  let min = data[0].value;
+  let max = data[0].value;
+  let total = 0;
+  data.forEach((item) => {
+    min = Math.min(min, item.value);
+    max = Math.max(max, item.value);
+    total += item.value;
+  });
+
+  return {
+    latest: data[data.length - 1].value,
+    min,
+    max,
+    average: total / data.length,
+  };
+}
+
+function metricAxisDomain(data: Array<{ plotValue: number }>): [number | string | ((value: number) => number), number | string | ((value: number) => number)] {
+  if (!data.length) {
+    return [0, 1];
+  }
+
+  const values = data.map((item) => item.plotValue);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const spread = max - min;
+  const padding = spread === 0 ? Math.max(Math.abs(max) * 0.08, 1) : spread * 0.08;
+
+  return [min - padding, max + padding];
+}
+
+function formatMetricValue(value: number | null | undefined, digits: number): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "n/a";
+  }
+  if (Math.abs(value) > 0 && Math.abs(value) < 0.0001) {
+    return value.toExponential(2);
+  }
+  if (Math.abs(value) >= 1000) {
+    return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  }
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: digits,
+  });
+}
+
+function formatMetricAxis(value: number, digits: number): string {
+  return formatMetricValue(value, digits);
+}
+
+function clampMetricRange(
+  range: { startIndex: number; endIndex: number } | null,
+  pointCount: number
+): { startIndex: number; endIndex: number } | null {
+  if (pointCount <= 0) {
+    return null;
+  }
+  const lastIndex = pointCount - 1;
+  if (!range) {
+    return { startIndex: 0, endIndex: lastIndex };
+  }
+  const startIndex = Math.max(0, Math.min(range.startIndex, lastIndex));
+  const endIndex = Math.max(startIndex, Math.min(range.endIndex, lastIndex));
+  return { startIndex, endIndex };
+}
+
+function chartBrushHandlePosition(percent: number): string {
+  const handleHalfWidth = 5;
+  const edgeOffset = (1 - 2 * (percent / 100)) * handleHalfWidth;
+  return `calc(${percent}% + ${edgeOffset.toFixed(2)}px)`;
 }
 
 function formatMetric(value: number | null | undefined, digits = 3): string {
@@ -943,55 +1046,338 @@ function defaultRunName(project: ProjectDetail | null, tokenizer: TokenizerTrain
   return `${projectName} x ${tokenizerName}`;
 }
 
-function buildPointList(values: number[]): string {
-  if (values.length === 0) {
-    return "";
+function MetricChartTooltip({
+  active,
+  payload,
+  label,
+  title,
+  digits,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload?: { value?: number } }>;
+  label?: number | string;
+  title: string;
+  digits: number;
+}) {
+  const value = payload?.[0]?.payload?.value;
+
+  if (!active || typeof value !== "number") {
+    return null;
   }
-  const width = 280;
-  const height = 112;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  return values
-    .map((value, index) => {
-      const x = values.length === 1 ? width / 2 : (index / (values.length - 1)) * width;
-      const normalized = (value - min) / range;
-      const y = height - normalized * (height - 12) - 6;
-      return `${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(" ");
+
+  return (
+    <div className="trainingChartTooltip">
+      <span>Step {label}</span>
+      <strong>{title}: {formatMetricValue(value, digits)}</strong>
+    </div>
+  );
 }
 
-function Sparkline({
+function MetricRangeSelector({
+  data,
+  range,
+  onChange,
+}: {
+  data: Array<{ step: number; plotValue: number }>;
+  range: { startIndex: number; endIndex: number };
+  onChange: (range: { startIndex: number; endIndex: number }) => void;
+}) {
+  const brushRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{
+    mode: "start" | "end" | "window";
+    index: number;
+    startIndex: number;
+    endIndex: number;
+  } | null>(null);
+  const [dragMode, setDragMode] = useState<"start" | "end" | "window" | null>(null);
+  const lastIndex = data.length - 1;
+  const startStep = data[range.startIndex]?.step ?? 0;
+  const endStep = data[range.endIndex]?.step ?? 0;
+  const selectedLeft = lastIndex > 0 ? (range.startIndex / lastIndex) * 100 : 0;
+  const selectedRight = lastIndex > 0 ? (range.endIndex / lastIndex) * 100 : 100;
+  const selectedWidth = Math.max(0, selectedRight - selectedLeft);
+  const overviewPath = useMemo(() => {
+    if (!data.length) {
+      return "";
+    }
+    const width = 1000;
+    const height = 72;
+    const padding = 7;
+    const values = data.map((item) => item.plotValue);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const rangeSize = max - min || 1;
+    return data
+      .map((item, index) => {
+        const x = data.length === 1 ? width / 2 : (index / (data.length - 1)) * width;
+        const normalized = (item.plotValue - min) / rangeSize;
+        const y = height - padding - normalized * (height - padding * 2);
+        return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+      })
+      .join(" ");
+  }, [data]);
+
+  const indexFromEvent = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const bounds = brushRef.current?.getBoundingClientRect();
+      if (!bounds || lastIndex <= 0) {
+        return 0;
+      }
+      const ratio = Math.max(0, Math.min((event.clientX - bounds.left) / bounds.width, 1));
+      return Math.round(ratio * lastIndex);
+    },
+    [lastIndex]
+  );
+
+  const commitRange = useCallback(
+    (startIndex: number, endIndex: number) => {
+      const start = Math.max(0, Math.min(startIndex, lastIndex));
+      const end = Math.max(start, Math.min(endIndex, lastIndex));
+      onChange({ startIndex: start, endIndex: end });
+    },
+    [lastIndex, onChange]
+  );
+
+  const beginDrag = (
+    mode: "start" | "end" | "window",
+    event: ReactPointerEvent<HTMLButtonElement | HTMLDivElement>
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    brushRef.current?.setPointerCapture(event.pointerId);
+    const index = indexFromEvent(event as ReactPointerEvent<HTMLDivElement>);
+    dragRef.current = {
+      mode,
+      index,
+      startIndex: range.startIndex,
+      endIndex: range.endIndex,
+    };
+    setDragMode(mode);
+  };
+
+  const handleTrackPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const index = indexFromEvent(event);
+    const startDistance = Math.abs(index - range.startIndex);
+    const endDistance = Math.abs(index - range.endIndex);
+    if (index >= range.startIndex && index <= range.endIndex) {
+      beginDrag("window", event);
+      return;
+    }
+    commitRange(
+      startDistance <= endDistance ? index : range.startIndex,
+      startDistance <= endDistance ? range.endIndex : index
+    );
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag) {
+      return;
+    }
+    const index = indexFromEvent(event);
+    if (drag.mode === "start") {
+      commitRange(index, drag.endIndex);
+      return;
+    }
+    if (drag.mode === "end") {
+      commitRange(drag.startIndex, index);
+      return;
+    }
+
+    const windowSize = drag.endIndex - drag.startIndex;
+    const delta = index - drag.index;
+    const nextStart = Math.max(0, Math.min(drag.startIndex + delta, lastIndex - windowSize));
+    commitRange(nextStart, nextStart + windowSize);
+  };
+
+  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRef.current) {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    }
+    dragRef.current = null;
+    setDragMode(null);
+  };
+
+  const handleHandleKeyDown = (
+    mode: "start" | "end",
+    event: ReactKeyboardEvent<HTMLButtonElement>
+  ) => {
+    const direction = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+    if (direction === 0) {
+      return;
+    }
+    event.preventDefault();
+    const delta = direction * (event.shiftKey ? 10 : 1);
+    if (mode === "start") {
+      commitRange(range.startIndex + delta, range.endIndex);
+      return;
+    }
+    commitRange(range.startIndex, range.endIndex + delta);
+  };
+
+  return (
+    <div
+      ref={brushRef}
+      className={`trainingChartRange ${dragMode ? "isDragging" : ""}`}
+      aria-label={`Visible steps ${startStep} to ${endStep}`}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
+      <div className="trainingChartRangeMeta">
+        <span>Visible steps</span>
+        <strong>
+          {startStep} - {endStep}
+        </strong>
+      </div>
+      <div className="trainingChartBrush" onPointerDown={handleTrackPointerDown}>
+        <svg viewBox="0 0 1000 72" preserveAspectRatio="none" aria-hidden>
+          <path d={overviewPath} />
+        </svg>
+        <div className="trainingChartBrushShade left" style={{ width: `${selectedLeft}%` }} />
+        <div
+          className="trainingChartBrushSelection"
+          style={{ left: `${selectedLeft}%`, width: `${selectedWidth}%` }}
+          onPointerDown={(event) => beginDrag("window", event)}
+        />
+        <button
+          type="button"
+          className="trainingChartBrushHandle"
+          style={{ left: chartBrushHandlePosition(selectedLeft) }}
+          aria-label={`Start visible range at step ${startStep}`}
+          onPointerDown={(event) => beginDrag("start", event)}
+          onKeyDown={(event) => handleHandleKeyDown("start", event)}
+        />
+        <button
+          type="button"
+          className="trainingChartBrushHandle"
+          style={{ left: chartBrushHandlePosition(selectedRight) }}
+          aria-label={`End visible range at step ${endStep}`}
+          onPointerDown={(event) => beginDrag("end", event)}
+          onKeyDown={(event) => handleHandleKeyDown("end", event)}
+        />
+        <div className="trainingChartBrushShade right" style={{ left: `${selectedRight}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function MetricChart({
   title,
-  values,
+  metricKey,
+  metrics,
   latestValue,
   stroke,
+  digits,
 }: {
   title: string;
-  values: number[];
+  metricKey: MetricChartKey;
+  metrics: TrainingMetricPoint[];
   latestValue: string;
   stroke: string;
+  digits: number;
 }) {
-  const points = buildPointList(values);
+  const data = useMemo(
+    () => metricChartData(metrics, metricKey),
+    [metricKey, metrics]
+  );
+  const previousPointCountRef = useRef(0);
+  const [range, setRange] = useState<{ startIndex: number; endIndex: number } | null>(null);
+
+  useEffect(() => {
+    setRange((current) => {
+      if (!data.length) {
+        previousPointCountRef.current = 0;
+        return null;
+      }
+
+      const previousLastIndex = Math.max(previousPointCountRef.current - 1, 0);
+      const nextLastIndex = data.length - 1;
+      previousPointCountRef.current = data.length;
+
+      if (!current) {
+        return { startIndex: 0, endIndex: nextLastIndex };
+      }
+
+      const wasPinnedToEnd = current.endIndex >= previousLastIndex;
+      const endIndex = wasPinnedToEnd ? nextLastIndex : Math.min(current.endIndex, nextLastIndex);
+      const startIndex = Math.min(current.startIndex, endIndex);
+      return { startIndex, endIndex };
+    });
+  }, [data.length]);
+
+  const visibleRange = clampMetricRange(range, data.length);
+  const visibleData = useMemo(
+    () => (visibleRange ? data.slice(visibleRange.startIndex, visibleRange.endIndex + 1) : []),
+    [data, visibleRange]
+  );
+  const stats = useMemo(() => metricChartStats(visibleData), [visibleData]);
+  const yDomain = useMemo(() => metricAxisDomain(visibleData), [visibleData]);
+  const handleRangeChange = useCallback((nextRange: { startIndex: number; endIndex: number }) => {
+    setRange(nextRange);
+  }, []);
 
   return (
     <div className="trainingChartCard">
       <div className="trainingChartHead">
-        <strong>{title}</strong>
-        <span>{latestValue}</span>
+        <div>
+          <strong>{title}</strong>
+          <span>{data.length ? `${formatInteger(data.length)} points` : "Waiting for data"}</span>
+        </div>
+        <div className="trainingChartLatest">
+          <span>Current</span>
+          <strong>{latestValue}</strong>
+        </div>
       </div>
-      {points ? (
-        <svg className="trainingChartSvg" viewBox="0 0 280 112" preserveAspectRatio="none">
-          <polyline
-            fill="none"
-            stroke={stroke}
-            strokeWidth="3"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            points={points}
-          />
-        </svg>
+      {data.length ? (
+        <>
+          <div className="trainingChartStats" aria-label={`${title} summary`}>
+            <span>Min {formatMetricValue(stats?.min, digits)}</span>
+            <span>Max {formatMetricValue(stats?.max, digits)}</span>
+            <span>Avg {formatMetricValue(stats?.average, digits)}</span>
+          </div>
+          <div className="trainingChartFrame">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={visibleData} margin={{ top: 12, right: 12, bottom: 0, left: 4 }}>
+                <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="step"
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={24}
+                  tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+                  tickFormatter={(value) => `s${value}`}
+                />
+                <YAxis
+                  width={58}
+                  domain={yDomain}
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+                  tickFormatter={(value) => formatMetricAxis(Number(value), digits)}
+                />
+                <Tooltip
+                  cursor={{ stroke: "var(--text-muted)", strokeDasharray: "4 4" }}
+                  content={<MetricChartTooltip title={title} digits={digits} />}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="plotValue"
+                  stroke={stroke}
+                  strokeWidth={2.4}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2, stroke }}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          {data.length > 8 && visibleRange ? (
+            <MetricRangeSelector data={data} range={visibleRange} onChange={handleRangeChange} />
+          ) : null}
+        </>
       ) : (
         <div className="trainingEmpty">Metrics will appear after the first logged steps.</div>
       )}
@@ -2087,11 +2473,6 @@ function TrainingPageContent() {
     }
   };
 
-  const lossValues = metricSeries(metrics, "loss");
-  const lrValues = metricSeries(metrics, "lr");
-  const normValues = metricSeries(metrics, "norm");
-  const throughputValues = metricSeries(metrics, "tok_per_sec");
-
   const startReady = Boolean(preflight?.valid && selectedProjectId && selectedTokenizerJobId && !launching);
   const trainingRuntimeReady = Boolean(trainingConfig && dataloaderConfig);
   const hasTrainingInProgress =
@@ -2633,27 +3014,93 @@ function TrainingPageContent() {
                   </div>
 
                   <div className="trainingChartGrid">
-                    <Sparkline title="Loss" values={lossValues} latestValue={formatMetric(activeRun.latest_loss, 4)} stroke="var(--brand)" />
-                    <Sparkline title="Learning Rate" values={lrValues} latestValue={formatMetric(activeRun.latest_lr, 6)} stroke="var(--ok)" />
-                    <Sparkline title="Gradient Norm" values={normValues} latestValue={formatMetric(activeRun.latest_grad_norm, 3)} stroke="var(--warn)" />
-                    <Sparkline title="Throughput" values={throughputValues} latestValue={formatInteger(activeRun.latest_tokens_per_sec)} stroke="var(--danger)" />
+                    <MetricChart
+                      title="Loss"
+                      metricKey="loss"
+                      metrics={metrics}
+                      latestValue={formatMetric(activeRun.latest_loss, 4)}
+                      stroke="var(--brand)"
+                      digits={4}
+                    />
+                    <MetricChart
+                      title="Learning Rate"
+                      metricKey="lr"
+                      metrics={metrics}
+                      latestValue={formatMetric(activeRun.latest_lr, 6)}
+                      stroke="var(--ok)"
+                      digits={6}
+                    />
+                    <MetricChart
+                      title="Gradient Norm"
+                      metricKey="norm"
+                      metrics={metrics}
+                      latestValue={formatMetric(activeRun.latest_grad_norm, 3)}
+                      stroke="var(--warn)"
+                      digits={3}
+                    />
+                    <MetricChart
+                      title="Throughput"
+                      metricKey="tok_per_sec"
+                      metrics={metrics}
+                      latestValue={formatInteger(activeRun.latest_tokens_per_sec)}
+                      stroke="var(--danger)"
+                      digits={1}
+                    />
                   </div>
 
                   <details className="sectionDisclosure" open>
                     <summary className="sectionDisclosureSummary">Samples</summary>
                     <div className="trainingSampleList">
                       {samples.length ? (
-                        samples.slice().reverse().map((entry) => (
-                          <div key={`sample-${entry.step}`} className="trainingSampleCard">
-                            <div className="trainingSampleTitle">Step {entry.step}</div>
-                            {entry.samples.map((sample) => (
-                              <div key={`${entry.step}-${sample.index}`} className="trainingCodeBlock">
-                                {sample.prompt ? `Prompt ${sample.index + 1}: ${sample.prompt}\n\n` : ""}
-                                {sample.text}
+                        samples.slice().reverse().map((entry, entryIndex) => {
+                          const sampleCount = entry.samples.length;
+                          const totalChars = entry.samples.reduce(
+                            (sum, sample) => sum + sample.text.length + (sample.prompt?.length ?? 0),
+                            0
+                          );
+
+                          return (
+                            <details
+                              key={`sample-${entry.step}`}
+                              className="trainingSampleCard trainingSampleStepDisclosure"
+                              open={entryIndex === 0}
+                            >
+                              <summary className="trainingSampleStepSummary">
+                                <span>
+                                  <span className="trainingSampleTitle">Step {entry.step}</span>
+                                  <span className="trainingSampleMeta">
+                                    {sampleCount} prompt{sampleCount === 1 ? "" : "s"} generated
+                                    {" - "}
+                                    {formatInteger(totalChars)} characters
+                                  </span>
+                                </span>
+                              </summary>
+
+                              <div className="trainingSampleStepBody">
+                                {entry.samples.map((sample) => (
+                                  <details
+                                    key={`${entry.step}-${sample.index}`}
+                                    className="trainingSampleTextDisclosure"
+                                  >
+                                    <summary className="trainingSampleTextSummary">
+                                      <span>Prompt {sample.index + 1}</span>
+                                      <span className="trainingSampleMeta">
+                                        {formatInteger(sample.text.length)} generated characters
+                                      </span>
+                                    </summary>
+                                    {sample.prompt ? (
+                                      <div className="trainingSamplePromptBlock">
+                                        <span>Prompt</span>
+                                        <pre>{sample.prompt}</pre>
+                                      </div>
+                                    ) : null}
+                                    <pre className="trainingCodeBlock trainingSampleCodeBlock">{sample.text}</pre>
+                                  </details>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        ))
+                            </details>
+                          );
+                        })
                       ) : (
                         <div className="trainingEmpty">No samples have been recorded yet.</div>
                       )}

@@ -278,9 +278,11 @@ class TrainingRunManager:
             raise KeyError(job_id)
         return self._to_response(updated)
 
-    def get_metrics(self, job_id: str, *, limit: int = 200) -> TrainingMetricsResponse:
+    def get_metrics(self, job_id: str, *, limit: int | None = None) -> TrainingMetricsResponse:
         job = self.get_job(job_id)
-        payloads = read_jsonl(Path(job.stats_path))[-max(limit, 1) :]
+        payloads = read_jsonl(Path(job.stats_path))
+        if limit is not None and limit > 0:
+            payloads = payloads[-limit:]
         metrics = [TrainingMetricPoint.model_validate(item) for item in payloads]
         return TrainingMetricsResponse(job_id=job_id, metrics=metrics)
 
@@ -302,7 +304,7 @@ class TrainingRunManager:
             )
         return TrainingSamplesResponse(job_id=job_id, samples=samples)
 
-    def get_logs(self, job_id: str, *, lines: int = 200) -> TrainingLogsResponse:
+    def get_logs(self, job_id: str, *, lines: int | None = None) -> TrainingLogsResponse:
         job = self.get_job(job_id)
         return TrainingLogsResponse(
             job_id=job_id,
@@ -899,10 +901,12 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return items
 
 
-def tail_lines(path: Path, lines: int) -> list[str]:
+def tail_lines(path: Path, lines: int | None) -> list[str]:
     if not path.exists():
         return []
     text = path.read_text(encoding="utf-8", errors="replace")
+    if lines is None or lines <= 0:
+        return text.splitlines()
     return text.splitlines()[-max(lines, 1) :]
 
 
