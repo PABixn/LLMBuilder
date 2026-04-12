@@ -2335,13 +2335,21 @@ function TrainingPageContent() {
   const applyFix = (fix: TrainingFixSuggestion) => {
     if (fix.path.startsWith("training_config.")) {
       const path = fix.path.replace("training_config.", "").split(".");
-      setTrainingConfig((current) => updateAtPath(current ?? {}, path, cloneRecord(fix.value)));
+      setTrainingConfig((current) =>
+        fix.value === null
+          ? deleteAtPath(current ?? {}, path)
+          : updateAtPath(current ?? {}, path, cloneRecord(fix.value))
+      );
       notify("success", fix.label, fix.description);
       return;
     }
     if (fix.path.startsWith("dataloader_config.")) {
       const path = fix.path.replace("dataloader_config.", "").split(".");
-      setDataloaderConfig((current) => updateAtPath(current ?? {}, path, cloneRecord(fix.value)));
+      setDataloaderConfig((current) =>
+        fix.value === null
+          ? deleteAtPath(current ?? {}, path)
+          : updateAtPath(current ?? {}, path, cloneRecord(fix.value))
+      );
       notify("success", fix.label, fix.description);
     }
   };

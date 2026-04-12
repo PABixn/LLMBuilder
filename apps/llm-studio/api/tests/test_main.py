@@ -353,6 +353,46 @@ def test_training_endpoints_validate_and_preflight(monkeypatch, tmp_path: Path) 
         assert preflight_body["compatibility"]["model_vocab_size"] == 3
         assert preflight_body["derived_runtime"]["micro_batch_size"] > 0
         assert preflight_body["memory_estimate"]["max_batch_size"] > 0
+        assert {issue["code"] for issue in preflight_body["warnings"]} == {"save_every_sparse"}
+        fix_codes = {fix["code"] for fix in preflight_body["recommended_fixes"]}
+        save_fix = next(
+            fix for fix in preflight_body["recommended_fixes"] if fix["code"] == "set_save_every_to_periodic_cadence"
+        )
+        assert save_fix["value"] == 30
+        assert "load_starter_optimizer_defaults" not in fix_codes
+        assert "load_starter_scheduler_template" not in fix_codes
+
+        sparse_save_payload = copy.deepcopy(payload)
+        sparse_save_payload["training_config"]["save_every"] = 61
+        sparse_save_preflight = client.post(
+            "/api/v1/training/validate/preflight",
+            json={
+                "project_id": project_id,
+                "tokenizer_job_id": "completed-tokenizer",
+                **sparse_save_payload,
+            },
+        )
+        assert sparse_save_preflight.status_code == 200
+        sparse_save_body = sparse_save_preflight.json()
+        assert "save_every_sparse" in {issue["code"] for issue in sparse_save_body["warnings"]}
+
+        scheduler_payload = copy.deepcopy(payload)
+        scheduler_payload["training_config"]["max_steps"] = 301
+        scheduler_preflight = client.post(
+            "/api/v1/training/validate/preflight",
+            json={
+                "project_id": project_id,
+                "tokenizer_job_id": "completed-tokenizer",
+                **scheduler_payload,
+            },
+        )
+        assert scheduler_preflight.status_code == 200
+        scheduler_body = scheduler_preflight.json()
+        assert scheduler_body["valid"] is False
+        scheduler_fix = next(
+            fix for fix in scheduler_body["recommended_fixes"] if fix["code"] == "match_scheduler_steps_to_max_steps"
+        )
+        assert sum(item["steps"] for item in scheduler_fix["value"]["schedulers"]) == 301
 
 
 def test_training_job_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
