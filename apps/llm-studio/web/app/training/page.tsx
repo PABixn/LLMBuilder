@@ -102,6 +102,8 @@ type DatasetSourceMode = "local_file" | "streaming_hf";
 type FilterOperator = "==" | "!=" | ">" | ">=" | "<" | "<=" | "in" | "not in";
 type WorkflowTarget = "model" | "tokenizer" | "training" | "dataset" | "preflight";
 type MetricChartKey = "loss" | "lr" | "norm" | "tok_per_sec";
+type MetricValueNotation = "standard" | "exponential";
+type ConfigNumberMode = "integer" | "decimal" | "scientific";
 
 interface StreamingFilterFormState {
   id: string;
@@ -321,6 +323,43 @@ function sanitizePositiveDecimalInput(value: string): string {
     .replace(/\./g, "")}`;
 }
 
+function sanitizePositiveScientificInput(value: string): string {
+  const compact = value.replace(/,/g, "").replace(/\s/g, "").toLowerCase();
+  let output = "";
+  let hasDot = false;
+  let hasExponent = false;
+  let canAddExponentSign = false;
+
+  for (const char of compact) {
+    if (/[0-9]/.test(char)) {
+      output += char;
+      canAddExponentSign = false;
+      continue;
+    }
+
+    if (char === "." && !hasDot && !hasExponent) {
+      output += char;
+      hasDot = true;
+      canAddExponentSign = false;
+      continue;
+    }
+
+    if (char === "e" && !hasExponent && output !== "" && output !== ".") {
+      output += char;
+      hasExponent = true;
+      canAddExponentSign = true;
+      continue;
+    }
+
+    if ((char === "-" || char === "+") && canAddExponentSign) {
+      output += char;
+      canAddExponentSign = false;
+    }
+  }
+
+  return output;
+}
+
 function parseWeightInput(value: string): number | null {
   const trimmed = value.trim();
   if (trimmed === "") {
@@ -357,9 +396,30 @@ function sanitizePositiveIntegerInput(value: string): string {
   return value.replace(/[^0-9]/g, "");
 }
 
-function formatNumberInputValue(value: number): string {
+function formatExponentialValue(value: number, digits = 3): string {
   if (!Number.isFinite(value)) {
     return "";
+  }
+  const [mantissa = "", exponent = "0"] = value.toExponential(digits).split("e");
+  const trimmedMantissa = mantissa.replace(/\.?0+$/, "");
+  const exponentValue = Number(exponent);
+  const exponentSign = exponentValue >= 0 ? "+" : "";
+  return `${trimmedMantissa}e${exponentSign}${exponentValue}`;
+}
+
+function formatLearningRate(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "n/a";
+  }
+  return formatExponentialValue(value, 3);
+}
+
+function formatNumberInputValue(value: number, mode: ConfigNumberMode = "integer"): string {
+  if (!Number.isFinite(value)) {
+    return "";
+  }
+  if (mode === "scientific") {
+    return formatExponentialValue(value, 3);
   }
   const asText = String(value);
   if (!/[eE]/.test(asText)) {
@@ -373,10 +433,10 @@ function formatNumberInputValue(value: number): string {
 
 function parseConfigNumberInput(
   value: string,
-  mode: "integer" | "decimal"
+  mode: ConfigNumberMode
 ): number | null {
   const trimmed = value.trim();
-  if (trimmed === "" || trimmed === ".") {
+  if (trimmed === "" || trimmed === "." || /e[+-]?$/i.test(trimmed)) {
     return null;
   }
   const parsed = Number(trimmed);
@@ -865,9 +925,16 @@ function metricAxisDomain(data: Array<{ plotValue: number }>): [number | string 
   return [min - padding, max + padding];
 }
 
-function formatMetricValue(value: number | null | undefined, digits: number): string {
+function formatMetricValue(
+  value: number | null | undefined,
+  digits: number,
+  notation: MetricValueNotation = "standard"
+): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return "n/a";
+  }
+  if (notation === "exponential") {
+    return formatExponentialValue(value, digits);
   }
   if (Math.abs(value) > 0 && Math.abs(value) < 0.0001) {
     return value.toExponential(2);
@@ -881,8 +948,12 @@ function formatMetricValue(value: number | null | undefined, digits: number): st
   });
 }
 
-function formatMetricAxis(value: number, digits: number): string {
-  return formatMetricValue(value, digits);
+function formatMetricAxis(
+  value: number,
+  digits: number,
+  notation: MetricValueNotation = "standard"
+): string {
+  return formatMetricValue(value, digits, notation);
 }
 
 function clampMetricRange(
@@ -1052,12 +1123,14 @@ function MetricChartTooltip({
   label,
   title,
   digits,
+  notation = "standard",
 }: {
   active?: boolean;
   payload?: Array<{ payload?: { value?: number } }>;
   label?: number | string;
   title: string;
   digits: number;
+  notation?: MetricValueNotation;
 }) {
   const value = payload?.[0]?.payload?.value;
 
@@ -1068,7 +1141,7 @@ function MetricChartTooltip({
   return (
     <div className="trainingChartTooltip">
       <span>Step {label}</span>
-      <strong>{title}: {formatMetricValue(value, digits)}</strong>
+      <strong>{title}: {formatMetricValue(value, digits, notation)}</strong>
     </div>
   );
 }
@@ -1315,6 +1388,7 @@ function MetricChart({
   );
   const stats = useMemo(() => metricChartStats(visibleData), [visibleData]);
   const yDomain = useMemo(() => metricAxisDomain(visibleData), [visibleData]);
+  const valueNotation: MetricValueNotation = metricKey === "lr" ? "exponential" : "standard";
   const handleRangeChange = useCallback((nextRange: { startIndex: number; endIndex: number }) => {
     setRange(nextRange);
   }, []);
@@ -1334,9 +1408,9 @@ function MetricChart({
       {data.length ? (
         <>
           <div className="trainingChartStats" aria-label={`${title} summary`}>
-            <span>Min {formatMetricValue(stats?.min, digits)}</span>
-            <span>Max {formatMetricValue(stats?.max, digits)}</span>
-            <span>Avg {formatMetricValue(stats?.average, digits)}</span>
+            <span>Min {formatMetricValue(stats?.min, digits, valueNotation)}</span>
+            <span>Max {formatMetricValue(stats?.max, digits, valueNotation)}</span>
+            <span>Avg {formatMetricValue(stats?.average, digits, valueNotation)}</span>
           </div>
           <div className="trainingChartFrame">
             <ResponsiveContainer width="100%" height="100%">
@@ -1348,7 +1422,7 @@ function MetricChart({
                   axisLine={false}
                   minTickGap={24}
                   tick={{ fill: "var(--text-muted)", fontSize: 11 }}
-                  tickFormatter={(value) => `s${value}`}
+                  tickFormatter={(value) => String(value)}
                 />
                 <YAxis
                   width={58}
@@ -1356,11 +1430,11 @@ function MetricChart({
                   tickLine={false}
                   axisLine={false}
                   tick={{ fill: "var(--text-muted)", fontSize: 11 }}
-                  tickFormatter={(value) => formatMetricAxis(Number(value), digits)}
+                  tickFormatter={(value) => formatMetricAxis(Number(value), digits, valueNotation)}
                 />
                 <Tooltip
                   cursor={{ stroke: "var(--text-muted)", strokeDasharray: "4 4" }}
-                  content={<MetricChartTooltip title={title} digits={digits} />}
+                  content={<MetricChartTooltip title={title} digits={digits} notation={valueNotation} />}
                 />
                 <Line
                   type="monotone"
@@ -1396,15 +1470,15 @@ function ConfigNumberInput({
 }: {
   value: number;
   onCommit: (value: number) => void;
-  mode?: "integer" | "decimal";
+  mode?: ConfigNumberMode;
   step?: number | string;
   min?: number | string;
   max?: number | string;
   placeholder?: string;
 }) {
-  const [draft, setDraft] = useState(() => formatNumberInputValue(value));
+  const [draft, setDraft] = useState(() => formatNumberInputValue(value, mode));
   const [focused, setFocused] = useState(false);
-  const formattedValue = formatNumberInputValue(value);
+  const formattedValue = formatNumberInputValue(value, mode);
 
   useEffect(() => {
     if (!focused) {
@@ -1412,14 +1486,23 @@ function ConfigNumberInput({
     }
   }, [focused, formattedValue]);
 
-  const sanitize =
-    mode === "decimal" ? sanitizePositiveDecimalInput : sanitizePositiveIntegerInput;
+  const sanitize = mode === "scientific"
+    ? sanitizePositiveScientificInput
+    : mode === "decimal"
+      ? sanitizePositiveDecimalInput
+      : sanitizePositiveIntegerInput;
+  const inputMode = mode === "integer" ? "numeric" : "decimal";
+  const pattern = mode === "scientific"
+    ? "[0-9]*[.]?[0-9]*([eE][+-]?[0-9]+)?"
+    : mode === "decimal"
+      ? "[0-9]*[.]?[0-9]*"
+      : "[0-9]*";
 
   return (
     <input
       type="text"
-      inputMode={mode === "decimal" ? "decimal" : "numeric"}
-      pattern={mode === "decimal" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
+      inputMode={inputMode}
+      pattern={pattern}
       step={step}
       min={min}
       max={max}
@@ -1437,7 +1520,7 @@ function ConfigNumberInput({
           return;
         }
         onCommit(parsed);
-        setDraft(formatNumberInputValue(parsed));
+        setDraft(formatNumberInputValue(parsed, mode));
       }}
     />
   );
@@ -1454,17 +1537,17 @@ function OptionalConfigNumberInput({
 }: {
   value: number | null;
   onCommit: (value: number | null) => void;
-  mode?: "integer" | "decimal";
+  mode?: ConfigNumberMode;
   step?: number | string;
   min?: number | string;
   max?: number | string;
   placeholder?: string;
 }) {
   const [draft, setDraft] = useState(() =>
-    value === null ? "" : formatNumberInputValue(value)
+    value === null ? "" : formatNumberInputValue(value, mode)
   );
   const [focused, setFocused] = useState(false);
-  const formattedValue = value === null ? "" : formatNumberInputValue(value);
+  const formattedValue = value === null ? "" : formatNumberInputValue(value, mode);
 
   useEffect(() => {
     if (!focused) {
@@ -1472,14 +1555,23 @@ function OptionalConfigNumberInput({
     }
   }, [focused, formattedValue]);
 
-  const sanitize =
-    mode === "decimal" ? sanitizePositiveDecimalInput : sanitizePositiveIntegerInput;
+  const sanitize = mode === "scientific"
+    ? sanitizePositiveScientificInput
+    : mode === "decimal"
+      ? sanitizePositiveDecimalInput
+      : sanitizePositiveIntegerInput;
+  const inputMode = mode === "integer" ? "numeric" : "decimal";
+  const pattern = mode === "scientific"
+    ? "[0-9]*[.]?[0-9]*([eE][+-]?[0-9]+)?"
+    : mode === "decimal"
+      ? "[0-9]*[.]?[0-9]*"
+      : "[0-9]*";
 
   return (
     <input
       type="text"
-      inputMode={mode === "decimal" ? "decimal" : "numeric"}
-      pattern={mode === "decimal" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
+      inputMode={inputMode}
+      pattern={pattern}
       step={step}
       min={min}
       max={max}
@@ -1502,7 +1594,7 @@ function OptionalConfigNumberInput({
           return;
         }
         onCommit(parsed);
-        setDraft(formatNumberInputValue(parsed));
+        setDraft(formatNumberInputValue(parsed, mode));
       }}
     />
   );
@@ -1522,6 +1614,7 @@ function TrainingPageContent() {
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [preflightError, setPreflightError] = useState<string | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [isActiveRunOpen, setIsActiveRunOpen] = useState(true);
   const [activeRun, setActiveRun] = useState<TrainingJob | null>(null);
   const [recentRuns, setRecentRuns] = useState<TrainingJob[]>([]);
   const [metrics, setMetrics] = useState<TrainingMetricPoint[]>([]);
@@ -1548,6 +1641,8 @@ function TrainingPageContent() {
   const [isDraggingTrainFiles, setIsDraggingTrainFiles] = useState(false);
   const [isUploadingTrainFile, setIsUploadingTrainFile] = useState(false);
   const [isLoadingDatasetTemplate, setIsLoadingDatasetTemplate] = useState(false);
+  const [isResettingPrompts, setIsResettingPrompts] = useState(false);
+  const [recentRunsPanelHeight, setRecentRunsPanelHeight] = useState<number | null>(null);
   const [highlightedWorkflowTarget, setHighlightedWorkflowTarget] =
     useState<WorkflowTarget | null>(null);
   const initializedRef = useRef(false);
@@ -1564,6 +1659,7 @@ function TrainingPageContent() {
   const trainingSettingsRef = useRef<HTMLDivElement | null>(null);
   const datasetSettingsRef = useRef<HTMLDivElement | null>(null);
   const preflightSectionRef = useRef<HTMLElement | null>(null);
+  const recentRunsSectionRef = useRef<HTMLElement | null>(null);
 
   const deferredTrainingConfig = useDeferredValue(trainingConfig);
   const deferredDataloaderConfig = useDeferredValue(dataloaderConfig);
@@ -1879,6 +1975,22 @@ function TrainingPageContent() {
     }, 6000);
     return () => window.clearInterval(intervalId);
   }, [refreshRecentRuns]);
+
+  useEffect(() => {
+    const recentRunsPanel = recentRunsSectionRef.current;
+    if (!recentRunsPanel) {
+      return;
+    }
+
+    const updateHeight = () => {
+      setRecentRunsPanelHeight(Math.ceil(recentRunsPanel.getBoundingClientRect().height));
+    };
+
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(recentRunsPanel);
+    return () => observer.disconnect();
+  }, []);
 
   const datasetEntries = useMemo(
     () => asRecordArray(dataloaderConfig?.datasets),
@@ -2281,12 +2393,38 @@ function TrainingPageContent() {
     }
   }, [notify]);
 
+  const handleResetPrompts = useCallback(async () => {
+    setIsResettingPrompts(true);
+    try {
+      const templates = await fetchTrainingConfigTemplates();
+      const templateSampler = asRecord(asRecord(templates.training_config_template).sampler);
+      const templatePrompts = asRecordArray(templateSampler.prompts).map(cloneRecord);
+
+      setTrainingConfig((current) => {
+        const next = cloneRecord(current ?? templates.training_config_template);
+        const sampler = asRecord(next.sampler);
+        sampler.prompts = templatePrompts;
+        next.sampler = sampler;
+        return next;
+      });
+      notify("success", "Prompts reset", "Loaded the template sampling prompts.");
+    } catch (error) {
+      notify(
+        "error",
+        "Prompt template unavailable",
+        error instanceof Error ? error.message : "Failed to load the template sampling prompts."
+      );
+    } finally {
+      setIsResettingPrompts(false);
+    }
+  }, [notify]);
+
   const handleAddPrompt = () => {
     const next = cloneRecord(trainingConfig ?? {});
     const sampler = asRecord(next.sampler);
     const prompts = asRecordArray(sampler.prompts);
     prompts.push({
-      prompt: "New prompt",
+      prompt: "Hello",
       max_tokens: 64,
       temperature: 0.7,
       top_k: 40,
@@ -2439,6 +2577,7 @@ function TrainingPageContent() {
       });
       startTransition(() => {
         setActiveRunId(job.id);
+        setIsActiveRunOpen(true);
         setActiveRun(job);
         setRecentRuns((current) => [job, ...current.filter((item) => item.id !== job.id)]);
       });
@@ -2449,6 +2588,11 @@ function TrainingPageContent() {
       setLaunching(false);
     }
   };
+
+  const handleSelectRecentRun = useCallback((jobId: string) => {
+    setActiveRunId(jobId);
+    setIsActiveRunOpen(true);
+  }, []);
 
   const handleStopTraining = async () => {
     if (!activeRunId) {
@@ -2829,11 +2973,12 @@ function TrainingPageContent() {
           <section
             id="settings-preflight"
             ref={preflightSectionRef}
-            className={`panelCard settingsCategoryAnchor ${
+            className={`panelCard trainingPreflightPanel settingsCategoryAnchor ${
               highlightedWorkflowTarget === "preflight"
                 ? "settingsCategoryAnchor-highlight"
                 : ""
             }`}
+            style={recentRunsPanelHeight ? { height: `${recentRunsPanelHeight}px` } : undefined}
           >
               <div className="panelHead">
                 <div>
@@ -2951,15 +3096,27 @@ function TrainingPageContent() {
               ) : null}
             </section>
 
-          <section className="panelCard">
+          {isActiveRunOpen ? (
+            <section className="panelCard trainingActiveRunPanel">
               <div className="panelHead">
                 <div>
                   <h2>Active Run</h2>
                   <p className="panelCopy">The monitor updates every {Math.round(POLL_INTERVAL_MS / 1000)} seconds with summary, metrics, samples, checkpoints, and logs.</p>
                 </div>
-                {activeRun ? (
-                  <span className={`pillBadge ${statusTone(activeRun.status)}`}>{formatStatusLabel(activeRun.status)}</span>
-                ) : null}
+                <div className="trainingActiveRunHeaderActions">
+                  {activeRun ? (
+                    <span className={`pillBadge ${statusTone(activeRun.status)}`}>{formatStatusLabel(activeRun.status)}</span>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="trainingActiveRunCloseButton"
+                    onClick={() => setIsActiveRunOpen(false)}
+                    aria-label="Close active run"
+                    title="Close active run"
+                  >
+                    <FiX aria-hidden="true" />
+                  </button>
+                </div>
               </div>
 
               {activeRun ? (
@@ -3003,7 +3160,7 @@ function TrainingPageContent() {
                       <div className="statusCardIcon"><FiRefreshCw /></div>
                       <div>
                         <div className="statusCardTitle">Learning Rate</div>
-                        <div className="statusCardValue">{formatMetric(activeRun.latest_lr, 6)}</div>
+                        <div className="statusCardValue">{formatLearningRate(activeRun.latest_lr)}</div>
                         <div className="statusCardDetail">Tokens per second: {formatInteger(activeRun.latest_tokens_per_sec)}</div>
                       </div>
                     </div>
@@ -3034,9 +3191,9 @@ function TrainingPageContent() {
                       title="Learning Rate"
                       metricKey="lr"
                       metrics={metrics}
-                      latestValue={formatMetric(activeRun.latest_lr, 6)}
+                      latestValue={formatLearningRate(activeRun.latest_lr)}
                       stroke="var(--ok)"
-                      digits={6}
+                      digits={3}
                     />
                     <MetricChart
                       title="Gradient Norm"
@@ -3153,15 +3310,16 @@ function TrainingPageContent() {
               ) : (
                 <div className="trainingEmpty">No active run selected. Launch a new run or choose one from the recent runs column.</div>
               )}
-          </section>
+            </section>
+          ) : null}
         </div>
 
         <div className="trainingPanelStack">
-          <section className="panelCard">
+          <section className="panelCard trainingRecentRunsPanel" ref={recentRunsSectionRef}>
               <div className="panelHead">
                 <div>
                   <h2>Recent Runs</h2>
-                  <p className="panelCopy">Recent jobs stay navigable after refresh so you can jump between current and past runs quickly.</p>
+                  <p className="panelCopy trainingRecentPanelCopy">Recent jobs stay navigable after refresh so you can jump between current and past runs quickly.</p>
                 </div>
                 <button type="button" className="buttonGhost buttonSmall" onClick={() => void refreshRecentRuns()}>
                   Refresh
@@ -3174,7 +3332,7 @@ function TrainingPageContent() {
                       <button
                         type="button"
                         className="trainingRecentSelect"
-                        onClick={() => setActiveRunId(job.id)}
+                        onClick={() => handleSelectRecentRun(job.id)}
                       >
                         <div>
                           <strong className="trainingRecentTitle">{job.name}</strong>
@@ -3285,8 +3443,8 @@ function TrainingPageContent() {
                     <label className="fieldLabel">
                       <span>Learning rate</span>
                       <ConfigNumberInput
-                        mode="decimal"
-                        step="0.000001"
+                        mode="scientific"
+                        step="any"
                         value={asNumber(asRecord(trainingConfig.optimizer).lr, 0.0003)}
                         onCommit={(value) => handleTrainingField(["optimizer", "lr"], value)}
                       />
@@ -3701,13 +3859,21 @@ function TrainingPageContent() {
                     <div className="settingsGroupHeader">
                       <h3>Prompt presets</h3>
                       <p className="settingsGroupHint">
-                        These prompts power the live sample viewer during the run.
+                        Short prefixes for checking raw pretraining continuations during the run.
                       </p>
                     </div>
                     <div className="trainingPromptToolbar">
                       <span className="pillBadge tone-neutral">
                         {promptEntries.length} preset{promptEntries.length === 1 ? "" : "s"}
                       </span>
+                      <button
+                        type="button"
+                        className="buttonGhost buttonSmall"
+                        onClick={() => void handleResetPrompts()}
+                        disabled={isResettingPrompts}
+                      >
+                        <FiRefreshCw /> {isResettingPrompts ? "Resetting..." : "Reset prompts"}
+                      </button>
                       <button
                         type="button"
                         className="buttonGhost buttonSmall"
@@ -3718,8 +3884,7 @@ function TrainingPageContent() {
                     </div>
                   </div>
                   <p className="trainingPromptHintLine">
-                    Keep a small mix of short, medium, and edge-case prompts so the live samples
-                    reveal regressions quickly.
+                    Use autocomplete-style starts, not chat instructions or evaluation tasks.
                   </p>
                   <div className="trainingPromptGrid">
                     {promptEntries.map((prompt, index) => (
@@ -3750,13 +3915,13 @@ function TrainingPageContent() {
                             onChange={(event) =>
                               handlePromptChange(index, "prompt", event.target.value)
                             }
-                            placeholder="Write a short evaluation prompt..."
+                            placeholder="Hello"
                           />
                         </label>
 
                         <div className="trainingPromptFields">
                           <label className="fieldLabel">
-                            <span>Maximum generated tokens</span>
+                            <span>Max tokens</span>
                             <ConfigNumberInput
                               value={asNumber(prompt.max_tokens, 64)}
                               onCommit={(value) =>
@@ -3784,7 +3949,7 @@ function TrainingPageContent() {
                             />
                           </label>
                           <label className="fieldLabel">
-                            <span>Top-k sampling</span>
+                            <span>Top-k</span>
                             <ConfigNumberInput
                               value={asNumber(prompt.top_k, 40)}
                               onCommit={(value) => handlePromptChange(index, "top_k", value)}

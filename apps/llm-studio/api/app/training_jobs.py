@@ -590,7 +590,7 @@ class TrainingRunManager:
                     TrainingFixSuggestion(
                         code="set_optimizer_lr_to_starter_safe_value",
                         label="Use a safer learning rate",
-                        description="Set optimizer.lr to 0.0003, a conservative starter value for this trainer.",
+                        description="Set optimizer.lr to 3e-4, a conservative starter value for this trainer.",
                         path="training_config.optimizer.lr",
                         value=0.0003,
                     )

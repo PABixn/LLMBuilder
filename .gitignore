@@ -2,3 +2,4 @@ apps/llm-studio/api/app
 apps/llm-studio/web/.next
 apps/llm-studio/web/node_modules
 *.pyc
+/apps/llm-studio/api/artifacts

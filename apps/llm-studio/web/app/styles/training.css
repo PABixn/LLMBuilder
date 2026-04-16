@@ -281,6 +281,47 @@
   margin-top: 10px;
 }
 
+.trainingPreflightPanel {
+  overflow-y: auto;
+}
+
+.trainingActiveRunHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trainingActiveRunCloseButton {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.trainingActiveRunCloseButton:hover,
+.trainingActiveRunCloseButton:focus-visible {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  outline: none;
+}
+
+.trainingActiveRunCloseButton svg {
+  width: 16px;
+  height: 16px;
+}
+
 .trainingPanelStack {
   display: grid;
   gap: 18px;
@@ -520,6 +561,10 @@
     background-color 0.16s ease,
     box-shadow 0.16s ease,
     transform 0.16s ease;
+}
+
+.trainingRecentPanelCopy {
+  margin-bottom: 12px;
 }
 
 .trainingRecentCard:hover {
