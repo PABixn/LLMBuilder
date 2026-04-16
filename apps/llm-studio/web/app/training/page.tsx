@@ -87,6 +87,10 @@ import {
   type TrainingJob as TokenizerTrainingJob,
   uploadTrainFile,
 } from "../../lib/tokenizerLegacyApi";
+import {
+  LearningRateSchedulePlanner,
+  fitSchedulersToMaxSteps,
+} from "./components/LearningRateSchedulePlanner";
 
 type ToastLevel = "info" | "success" | "error";
 
@@ -2458,6 +2462,27 @@ function TrainingPageContent() {
     setTrainingConfig((current) => updateAtPath(current ?? {}, path, value));
   };
 
+  const handleMaxStepsChange = (value: number) => {
+    setTrainingConfig((current) => {
+      const next = updateAtPath(current ?? {}, ["max_steps"], value);
+      const lrScheduler = asRecord(next.lr_scheduler);
+      const schedulers = asRecordArray(lrScheduler.schedulers);
+      const baseLearningRate = asNumber(asRecord(next.optimizer).lr, 0.0003);
+      next.lr_scheduler = {
+        type: "sequential",
+        schedulers: fitSchedulersToMaxSteps(schedulers, value, baseLearningRate),
+      };
+      return next;
+    });
+  };
+
+  const handleLrSchedulersChange = (schedulers: Record<string, unknown>[]) => {
+    handleTrainingField(["lr_scheduler"], {
+      type: "sequential",
+      schedulers,
+    });
+  };
+
   const handleOptionalTrainingField = (path: string[], value: unknown | null) => {
     setTrainingConfig((current) =>
       value === null
@@ -3416,7 +3441,7 @@ function TrainingPageContent() {
                       <span>Maximum training steps</span>
                       <ConfigNumberInput
                         value={asNumber(trainingConfig.max_steps, 0)}
-                        onCommit={(value) => handleTrainingField(["max_steps"], value)}
+                        onCommit={handleMaxStepsChange}
                       />
                     </label>
                     <label className="fieldLabel">
@@ -3490,6 +3515,13 @@ function TrainingPageContent() {
                       />
                     </label>
                   </div>
+
+                  <LearningRateSchedulePlanner
+                    baseLearningRate={asNumber(asRecord(trainingConfig.optimizer).lr, 0.0003)}
+                    maxSteps={asNumber(trainingConfig.max_steps, 0)}
+                    schedulerConfig={asRecord(trainingConfig.lr_scheduler)}
+                    onSchedulersChange={handleLrSchedulersChange}
+                  />
                 </div>
               </div>
             </details>
