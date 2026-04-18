@@ -75,6 +75,7 @@ import {
   type TrainingFixSuggestion,
   type TrainingIssue,
   type TrainingJob,
+  type TrainingJobStatus,
   type TrainingMetricPoint,
   type TrainingPreflightResponse,
   type TrainingSampleEntry,
@@ -142,7 +143,13 @@ const TRAINING_CONFIG_STORAGE_KEY = "llm-training-config-v1";
 const DATALOADER_CONFIG_STORAGE_KEY = "llm-training-dataloader-v1";
 const TRAINING_SELECTION_STORAGE_KEY = "llm-training-selection-v1";
 const ACTIVE_RUN_STORAGE_KEY = "llm-training-active-run-v1";
-const POLL_INTERVAL_MS = 1800;
+const POLL_INTERVAL_MS = 1000;
+const RECENT_RUNS_POLL_INTERVAL_MS = 1000;
+const TERMINAL_TRAINING_STATUSES = new Set<TrainingJobStatus>([
+  "completed",
+  "failed",
+  "cancelled",
+]);
 const WORKFLOW_TARGET_HASH_MAP: Record<WorkflowTarget, string> = {
   model: "#settings-model",
   tokenizer: "#settings-tokenizer",
@@ -1121,6 +1128,10 @@ function defaultRunName(project: ProjectDetail | null, tokenizer: TokenizerTrain
   return `${projectName} x ${tokenizerName}`;
 }
 
+function shouldPollTrainingRun(job: TrainingJob): boolean {
+  return !TERMINAL_TRAINING_STATUSES.has(job.status);
+}
+
 function MetricChartTooltip({
   active,
   payload,
@@ -1651,6 +1662,7 @@ function TrainingPageContent() {
     useState<WorkflowTarget | null>(null);
   const initializedRef = useRef(false);
   const pickerRequestIdRef = useRef(0);
+  const recentRunsRequestPendingRef = useRef(false);
   const datasetUiHydratedRef = useRef(false);
   const localFileDragDepthRef = useRef(0);
   const localTrainFileStatsPendingIdsRef = useRef(new Set<string>());
@@ -1726,21 +1738,22 @@ function TrainingPageContent() {
   }, []);
 
   const refreshRecentRuns = useCallback(async () => {
+    if (recentRunsRequestPendingRef.current) {
+      return;
+    }
+    recentRunsRequestPendingRef.current = true;
     try {
       const jobs = await fetchTrainingJobs();
       startTransition(() => {
         setRecentRuns(jobs);
-        if (!activeRunId) {
-          const nextRun = jobs[0] ?? null;
-          if (nextRun) {
-            setActiveRunId(nextRun.id);
-          }
-        }
+        setActiveRunId((current) => current ?? jobs[0]?.id ?? null);
       });
     } catch (error) {
       notify("error", "Recent runs unavailable", error instanceof Error ? error.message : "Failed to load training jobs.");
+    } finally {
+      recentRunsRequestPendingRef.current = false;
     }
-  }, [activeRunId, notify]);
+  }, [notify]);
 
   useEffect(() => {
     if (initializedRef.current) {
@@ -1848,7 +1861,6 @@ function TrainingPageContent() {
       .then((project) => {
         startTransition(() => {
           setSelectedProject(project);
-          setRunName((current) => current || defaultRunName(project, selectedTokenizer));
         });
       })
       .catch((error) => {
@@ -1857,24 +1869,39 @@ function TrainingPageContent() {
         }
       });
     return () => controller.abort();
-  }, [notify, selectedProjectId, selectedTokenizer]);
+  }, [notify, selectedProjectId]);
 
   useEffect(() => {
     if (!selectedTokenizerJobId) {
       setSelectedTokenizer(null);
       return;
     }
+    let cancelled = false;
     void fetchTokenizerJob(selectedTokenizerJobId)
       .then((job) => {
+        if (cancelled) {
+          return;
+        }
         startTransition(() => {
           setSelectedTokenizer(job);
-          setRunName((current) => current || defaultRunName(selectedProject, job));
         });
       })
       .catch((error) => {
-        notify("error", "Tokenizer unavailable", error instanceof Error ? error.message : "Failed to load selected tokenizer.");
+        if (!cancelled) {
+          notify("error", "Tokenizer unavailable", error instanceof Error ? error.message : "Failed to load selected tokenizer.");
+        }
       });
-  }, [notify, selectedProject, selectedTokenizerJobId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [notify, selectedTokenizerJobId]);
+
+  useEffect(() => {
+    if (!selectedProject && !selectedTokenizer) {
+      return;
+    }
+    setRunName((current) => current || defaultRunName(selectedProject, selectedTokenizer));
+  }, [selectedProject, selectedTokenizer]);
 
   useEffect(() => {
     if (!selectedProjectId || !selectedTokenizerJobId || !deferredTrainingConfig || !deferredDataloaderConfig) {
@@ -1931,8 +1958,15 @@ function TrainingPageContent() {
     }
 
     let cancelled = false;
+    let pollInFlight = false;
+    let timeoutId: number | null = null;
 
     const poll = async () => {
+      if (cancelled || pollInFlight) {
+        return;
+      }
+      pollInFlight = true;
+      let shouldPollAgain = true;
       try {
         const [job, fetchedMetrics, fetchedSamples, fetchedLogs, fetchedCheckpoints] = await Promise.all([
           fetchTrainingJob(activeRunId),
@@ -1955,28 +1989,35 @@ function TrainingPageContent() {
           setCheckpoints(fetchedCheckpoints);
           setRecentRuns((current) => replaceRunInOrder(current, job).slice(0, 12));
         });
+        shouldPollAgain = shouldPollTrainingRun(job);
       } catch (error) {
         if (!cancelled) {
           notify("error", "Run polling interrupted", error instanceof Error ? error.message : "Failed to refresh the active run.");
+        }
+      } finally {
+        pollInFlight = false;
+        if (!cancelled && shouldPollAgain) {
+          timeoutId = window.setTimeout(() => {
+            void poll();
+          }, POLL_INTERVAL_MS);
         }
       }
     };
 
     void poll();
-    const intervalId = window.setInterval(() => {
-      void poll();
-    }, POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
-      window.clearInterval(intervalId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, [activeRunId, notify]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       void refreshRecentRuns();
-    }, 6000);
+    }, RECENT_RUNS_POLL_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
   }, [refreshRecentRuns]);
 
