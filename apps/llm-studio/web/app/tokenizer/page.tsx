@@ -2610,6 +2610,9 @@ function TokenizerPageContent() {
           <Link className="studioNavLink" href="/training">
             Training
           </Link>
+          <Link className="studioNavLink" href="/inference">
+            Inference
+          </Link>
         </nav>
         <button
           type="button"

@@ -29,6 +29,9 @@ export function StudioTopNav({ theme, setTheme }: StudioTopNavProps) {
         <Link className="studioNavLink" href="/training">
           Training
         </Link>
+        <Link className="studioNavLink" href="/inference">
+          Inference
+        </Link>
       </div>
       <button
         type="button"

@@ -16,7 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
+import torch
 import torch.nn as nn
+from tokenizers import Tokenizer
 
 from .config import (
     DATALOADER_CONFIG_TEMPLATE_PATH,
@@ -71,6 +73,8 @@ from .training_models import (
     TrainingConfigSchemasResponse,
     TrainingConfigTemplatesResponse,
     CreateTrainingJobRequest,
+    TrainingGenerateRequest,
+    TrainingGenerateResponse,
     TrainingJobsListResponse as LLMTrainingJobsListResponse,
     TrainingLogsResponse,
     TrainingMetricsResponse,
@@ -590,6 +594,86 @@ def get_training_checkpoints(job_id: str) -> TrainingCheckpointsResponse:
         raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
 
 
+@training_api.post("/jobs/{job_id}/generate", response_model=TrainingGenerateResponse)
+def generate_from_training_job(
+    job_id: str,
+    request: TrainingGenerateRequest,
+) -> TrainingGenerateResponse:
+    manager = app.state.training_jobs
+    tokenizer_manager = app.state.tokenizer_jobs
+
+    try:
+        job = manager.get_job(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+
+    if job.status != "completed":
+        raise HTTPException(status_code=409, detail="Only completed training jobs can be used for inference.")
+
+    try:
+        checkpoints = manager.get_checkpoints(job_id).checkpoints
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+
+    checkpoint = max(checkpoints, key=lambda item: item.step, default=None)
+    if checkpoint is None:
+        raise HTTPException(status_code=409, detail="Training job has no saved checkpoints.")
+
+    checkpoint_path = _checkpoint_model_path(checkpoint.directory, checkpoint.files)
+    if checkpoint_path is None:
+        raise HTTPException(status_code=409, detail="Latest checkpoint does not contain a model weights file.")
+    if not checkpoint_path.exists() or not checkpoint_path.is_file():
+        raise HTTPException(status_code=404, detail=f"Checkpoint weights missing: {checkpoint_path}")
+
+    try:
+        tokenizer_path = tokenizer_manager.get_artifact_path(job.tokenizer_job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown tokenizer job id: {job.tokenizer_job_id}") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    try:
+        tokenizer = Tokenizer.from_file(str(tokenizer_path))
+        prompt_token_ids = tokenizer.encode(request.prompt).ids
+        if not prompt_token_ids:
+            raise HTTPException(status_code=422, detail="Prompt did not produce any tokens.")
+        model = ConfigurableGPT(LLMConfig.model_validate(job.model_payload))
+        device = _default_inference_device()
+        model.to(device)
+        model.load_state_dict(_torch_load_state_dict(checkpoint_path, device))
+        model.eval()
+        generated_token_ids = list(
+            model.generate(
+                tokens=prompt_token_ids,
+                max_tokens=request.max_tokens,
+                temperature=request.temperature,
+                top_k=request.top_k,
+                seed=request.seed,
+                repetition_penalty=request.repetition_penalty,
+            )
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Inference failed: {type(exc).__name__}: {exc}") from exc
+
+    full_token_ids = prompt_token_ids + generated_token_ids
+    completion = tokenizer.decode(generated_token_ids, skip_special_tokens=False)
+    text = tokenizer.decode(full_token_ids, skip_special_tokens=False)
+    return TrainingGenerateResponse(
+        job_id=job_id,
+        checkpoint_step=checkpoint.step,
+        checkpoint_path=str(checkpoint_path),
+        tokenizer_job_id=job.tokenizer_job_id,
+        prompt=request.prompt,
+        completion=completion,
+        text=text,
+        prompt_token_count=len(prompt_token_ids),
+        generated_token_count=len(generated_token_ids),
+        generated_token_ids=generated_token_ids,
+    )
+
+
 @training_api.post("/jobs/{job_id}/stop", response_model=LLMTrainingJobResponse)
 def stop_training_job(job_id: str) -> LLMTrainingJobResponse:
     manager = app.state.training_jobs
@@ -611,6 +695,33 @@ def download_training_job_artifact(job_id: str) -> FileResponse:
 
 def _validation_issue(code: str, message: str, path: str) -> ValidationIssue:
     return ValidationIssue(code=code, message=message, path=path)
+
+
+def _checkpoint_model_path(directory: str, files: list[str]) -> Path | None:
+    checkpoint_dir = Path(directory)
+    for file_name in files:
+        path = Path(file_name)
+        if path.name.startswith("model-") and path.suffix == ".pt":
+            return path if path.is_absolute() else checkpoint_dir / path
+    return None
+
+
+def _torch_load_state_dict(path: Path, device: torch.device) -> dict[str, torch.Tensor]:
+    try:
+        loaded = torch.load(path, map_location=device, weights_only=True)
+    except TypeError:
+        loaded = torch.load(path, map_location=device)
+    if not isinstance(loaded, dict):
+        raise ValueError("Checkpoint weights payload must be a state dict.")
+    return loaded
+
+
+def _default_inference_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
 
 
 def _semantic_validate_model(config: LLMConfig) -> tuple[list[ValidationIssue], list[ValidationIssue]]:

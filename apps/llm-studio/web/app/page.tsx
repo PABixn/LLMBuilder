@@ -75,6 +75,9 @@ export default function WorkspaceHomePage() {
           <Link className="studioNavLink" href="/training">
             Training
           </Link>
+          <Link className="studioNavLink" href="/inference">
+            Inference
+          </Link>
         </div>
         <button
           className="themeToggle"
@@ -115,6 +118,9 @@ export default function WorkspaceHomePage() {
           </Link>
           <Link href="/training" className={styles.secondaryButton}>
             <FiActivity /> LLM Training
+          </Link>
+          <Link href="/inference" className={styles.secondaryButton}>
+            <FiPlay /> Inference
           </Link>
         </div>
       </header>

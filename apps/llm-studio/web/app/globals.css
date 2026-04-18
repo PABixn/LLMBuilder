@@ -5,4 +5,5 @@
 @import "./styles/forms.css";
 @import "./styles/builder.css";
 @import "./styles/training.css";
+@import "./styles/inference.css";
 @import "./styles/responsive.css";

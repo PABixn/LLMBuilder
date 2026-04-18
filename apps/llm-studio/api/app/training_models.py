@@ -183,6 +183,28 @@ class TrainingLogsResponse(BaseModel):
     stderr_lines: list[str] = Field(default_factory=list)
 
 
+class TrainingGenerateRequest(StrictModel):
+    prompt: str = Field(min_length=1, max_length=50_000)
+    max_tokens: int = Field(default=64, ge=1, le=1024)
+    temperature: float = Field(default=0.8, ge=0.0, le=5.0)
+    top_k: int | None = Field(default=50, ge=1, le=50_000)
+    seed: int = Field(default=42, ge=0)
+    repetition_penalty: float = Field(default=1.0, gt=0.0, le=5.0)
+
+
+class TrainingGenerateResponse(BaseModel):
+    job_id: str
+    checkpoint_step: int
+    checkpoint_path: str
+    tokenizer_job_id: str
+    prompt: str
+    completion: str
+    text: str
+    prompt_token_count: int
+    generated_token_count: int
+    generated_token_ids: list[int]
+
+
 class TrainingJobResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

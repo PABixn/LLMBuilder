@@ -149,6 +149,28 @@ export interface TrainingJob {
   output_size_bytes: number;
 }
 
+export interface GenerateTrainingCompletionRequest {
+  prompt: string;
+  max_tokens: number;
+  temperature: number;
+  top_k: number | null;
+  seed: number;
+  repetition_penalty: number;
+}
+
+export interface GenerateTrainingCompletionResponse {
+  job_id: string;
+  checkpoint_step: number;
+  checkpoint_path: string;
+  tokenizer_job_id: string;
+  prompt: string;
+  completion: string;
+  text: string;
+  prompt_token_count: number;
+  generated_token_count: number;
+  generated_token_ids: number[];
+}
+
 export interface TrainingConfigTemplates {
   training_config_template: Record<string, unknown>;
   dataloader_config_template: Record<string, unknown>;
@@ -350,6 +372,16 @@ export async function fetchTrainingCheckpoints(jobId: string): Promise<TrainingC
     `/jobs/${jobId}/checkpoints`
   );
   return response.checkpoints;
+}
+
+export async function generateTrainingCompletion(
+  jobId: string,
+  payload: GenerateTrainingCompletionRequest
+): Promise<GenerateTrainingCompletionResponse> {
+  return request<GenerateTrainingCompletionResponse>(`/jobs/${jobId}/generate`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function stopTrainingJob(jobId: string): Promise<TrainingJob> {

@@ -1,0 +1,82 @@
+.studioRoot.inferencePage {
+  width: min(1280px, calc(100% - 32px));
+  margin: 18px auto 48px;
+}
+
+.inferencePage .panelCard,
+.inferencePage .statusCard,
+.inferencePage .buttonPrimary,
+.inferencePage .buttonGhost {
+  border-radius: 8px;
+}
+
+.inferenceHero {
+  display: grid;
+  gap: 16px;
+}
+
+.inferenceStatusGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.inferenceLayout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.inferenceArtifactPanel,
+.inferenceComposer,
+.inferenceOutputPanel {
+  display: grid;
+  gap: 14px;
+}
+
+.inferenceArtifactMeta {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.inferenceComposer textarea {
+  min-height: 180px;
+}
+
+.inferenceOutput {
+  min-height: 220px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 16px;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.inferencePromptText {
+  color: var(--text-muted);
+}
+
+.inferenceCompletionText {
+  color: var(--text);
+  font-weight: 680;
+}
+
+@media (max-width: 940px) {
+  .inferenceStatusGrid,
+  .inferenceLayout {
+    grid-template-columns: 1fr;
+  }
+}

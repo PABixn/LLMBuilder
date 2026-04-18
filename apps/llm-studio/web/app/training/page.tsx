@@ -185,6 +185,24 @@ function compactWorkflowMessage(value: string): string {
   });
 }
 
+function samplePromptSummary(prompt: string | null | undefined, index: number): string {
+  const normalized = prompt?.replace(/\s+/g, " ").trim();
+  return normalized && normalized.length > 0 ? normalized : `Prompt ${index + 1}`;
+}
+
+function splitGeneratedSampleText(
+  text: string,
+  prompt: string | null | undefined
+): { prefix: string | null; continuation: string } {
+  if (!prompt || !text.startsWith(prompt)) {
+    return { prefix: null, continuation: text };
+  }
+  return {
+    prefix: prompt,
+    continuation: text.slice(prompt.length),
+  };
+}
+
 function makeStreamingFilterEntry(
   value?: Partial<StreamingFilterFormState>
 ): StreamingFilterFormState {
@@ -1657,7 +1675,6 @@ function TrainingPageContent() {
   const [isUploadingTrainFile, setIsUploadingTrainFile] = useState(false);
   const [isLoadingDatasetTemplate, setIsLoadingDatasetTemplate] = useState(false);
   const [isResettingPrompts, setIsResettingPrompts] = useState(false);
-  const [recentRunsPanelHeight, setRecentRunsPanelHeight] = useState<number | null>(null);
   const [highlightedWorkflowTarget, setHighlightedWorkflowTarget] =
     useState<WorkflowTarget | null>(null);
   const initializedRef = useRef(false);
@@ -1675,7 +1692,6 @@ function TrainingPageContent() {
   const trainingSettingsRef = useRef<HTMLDivElement | null>(null);
   const datasetSettingsRef = useRef<HTMLDivElement | null>(null);
   const preflightSectionRef = useRef<HTMLElement | null>(null);
-  const recentRunsSectionRef = useRef<HTMLElement | null>(null);
 
   const deferredTrainingConfig = useDeferredValue(trainingConfig);
   const deferredDataloaderConfig = useDeferredValue(dataloaderConfig);
@@ -2020,22 +2036,6 @@ function TrainingPageContent() {
     }, RECENT_RUNS_POLL_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
   }, [refreshRecentRuns]);
-
-  useEffect(() => {
-    const recentRunsPanel = recentRunsSectionRef.current;
-    if (!recentRunsPanel) {
-      return;
-    }
-
-    const updateHeight = () => {
-      setRecentRunsPanelHeight(Math.ceil(recentRunsPanel.getBoundingClientRect().height));
-    };
-
-    updateHeight();
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(recentRunsPanel);
-    return () => observer.disconnect();
-  }, []);
 
   const datasetEntries = useMemo(
     () => asRecordArray(dataloaderConfig?.datasets),
@@ -2808,6 +2808,9 @@ function TrainingPageContent() {
           <Link className="studioNavLink" href="/training" aria-current="page">
             Training
           </Link>
+          <Link className="studioNavLink" href="/inference">
+            Inference
+          </Link>
         </div>
         <button
           type="button"
@@ -3044,7 +3047,6 @@ function TrainingPageContent() {
                 ? "settingsCategoryAnchor-highlight"
                 : ""
             }`}
-            style={recentRunsPanelHeight ? { height: `${recentRunsPanelHeight}px` } : undefined}
           >
               <div className="panelHead">
                 <div>
@@ -3283,7 +3285,7 @@ function TrainingPageContent() {
                     <summary className="sectionDisclosureSummary">Samples</summary>
                     <div className="trainingSampleList">
                       {samples.length ? (
-                        samples.slice().reverse().map((entry, entryIndex) => {
+                        samples.slice().reverse().map((entry) => {
                           const sampleCount = entry.samples.length;
                           const totalChars = entry.samples.reduce(
                             (sum, sample) => sum + sample.text.length + (sample.prompt?.length ?? 0),
@@ -3294,7 +3296,6 @@ function TrainingPageContent() {
                             <details
                               key={`sample-${entry.step}`}
                               className="trainingSampleCard trainingSampleStepDisclosure"
-                              open={entryIndex === 0}
                             >
                               <summary className="trainingSampleStepSummary">
                                 <span>
@@ -3308,26 +3309,41 @@ function TrainingPageContent() {
                               </summary>
 
                               <div className="trainingSampleStepBody">
-                                {entry.samples.map((sample) => (
-                                  <details
-                                    key={`${entry.step}-${sample.index}`}
-                                    className="trainingSampleTextDisclosure"
-                                  >
-                                    <summary className="trainingSampleTextSummary">
-                                      <span>Prompt {sample.index + 1}</span>
-                                      <span className="trainingSampleMeta">
-                                        {formatInteger(sample.text.length)} generated characters
-                                      </span>
-                                    </summary>
-                                    {sample.prompt ? (
-                                      <div className="trainingSamplePromptBlock">
-                                        <span>Prompt</span>
-                                        <pre>{sample.prompt}</pre>
+                                {entry.samples.map((sample) => {
+                                  const promptSummary = samplePromptSummary(sample.prompt, sample.index);
+                                  const splitSample = splitGeneratedSampleText(sample.text, sample.prompt);
+                                  const continuationLength = splitSample.continuation.length;
+
+                                  return (
+                                    <details
+                                      key={`${entry.step}-${sample.index}`}
+                                      className="trainingSampleTextDisclosure"
+                                    >
+                                      <summary className="trainingSampleTextSummary">
+                                        <span className="trainingSamplePromptSummary">{promptSummary}</span>
+                                        <span className="trainingSampleMeta">
+                                          {formatInteger(continuationLength)} continuation characters
+                                        </span>
+                                      </summary>
+                                      <div className="trainingSampleGeneratedBlock">
+                                        <div className="trainingSampleGeneratedHead">
+                                          <span>Generated sample</span>
+                                          <span>{formatInteger(sample.text.length)} total characters</span>
+                                        </div>
+                                        <pre className="trainingSampleGeneratedText">
+                                          {splitSample.prefix ? (
+                                            <>
+                                              <span className="trainingSampleGeneratedPrompt">{splitSample.prefix}</span>
+                                              <span className="trainingSampleGeneratedContinuation">{splitSample.continuation}</span>
+                                            </>
+                                          ) : (
+                                            <span className="trainingSampleGeneratedContinuation">{splitSample.continuation}</span>
+                                          )}
+                                        </pre>
                                       </div>
-                                    ) : null}
-                                    <pre className="trainingCodeBlock trainingSampleCodeBlock">{sample.text}</pre>
-                                  </details>
-                                ))}
+                                    </details>
+                                  );
+                                })}
                               </div>
                             </details>
                           );
@@ -3381,7 +3397,7 @@ function TrainingPageContent() {
         </div>
 
         <div className="trainingPanelStack">
-          <section className="panelCard trainingRecentRunsPanel" ref={recentRunsSectionRef}>
+          <section className="panelCard trainingRecentRunsPanel">
               <div className="panelHead">
                 <div>
                   <h2>Recent Runs</h2>
