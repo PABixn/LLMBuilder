@@ -151,6 +151,7 @@ export interface TrainingJob {
 
 export interface GenerateTrainingCompletionRequest {
   prompt: string;
+  checkpoint_step?: number | null;
   max_tokens: number;
   temperature: number;
   top_k: number | null;

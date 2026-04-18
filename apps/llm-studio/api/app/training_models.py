@@ -185,6 +185,7 @@ class TrainingLogsResponse(BaseModel):
 
 class TrainingGenerateRequest(StrictModel):
     prompt: str = Field(min_length=1, max_length=50_000)
+    checkpoint_step: int | None = Field(default=None, ge=0)
     max_tokens: int = Field(default=64, ge=1, le=1024)
     temperature: float = Field(default=0.8, ge=0.0, le=5.0)
     top_k: int | None = Field(default=50, ge=1, le=50_000)

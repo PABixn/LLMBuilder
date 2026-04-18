@@ -166,69 +166,6 @@
   gap: 32px;
 }
 
-.launchpadCard {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--brand-soft) 78%, var(--surface)) 0%, var(--surface) 52%, color-mix(in srgb, var(--ok-soft) 48%, var(--surface)) 100%);
-  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--line));
-  border-radius: 24px;
-  padding: 24px;
-  display: grid;
-  gap: 18px;
-  box-shadow: var(--shadow);
-}
-
-.launchpadHeader {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-
-.launchpadActions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.launchpadGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.launchpadSlot {
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.64);
-  padding: 16px;
-  display: grid;
-  gap: 6px;
-  min-height: 112px;
-}
-
-[data-theme="dark"] .launchpadSlot {
-  background: rgba(16, 28, 44, 0.72);
-}
-
-.launchpadSlot strong {
-  font-size: 1rem;
-  letter-spacing: -0.02em;
-}
-
-.launchpadSlot span:last-child {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  line-height: 1.4;
-}
-
-.launchpadLabel {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 760;
-  color: var(--text-muted);
-}
-
 .sectionHeader {
   display: flex;
   flex-direction: column;
@@ -590,12 +527,6 @@
   color: var(--danger) !important;
   background: var(--danger-soft) !important;
   border-color: var(--danger-soft) !important;
-}
-
-@media (max-width: 900px) {
-  .launchpadGrid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 780px) {

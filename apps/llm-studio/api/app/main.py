@@ -615,13 +615,24 @@ def generate_from_training_job(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
 
-    checkpoint = max(checkpoints, key=lambda item: item.step, default=None)
+    if request.checkpoint_step is None:
+        checkpoint = max(checkpoints, key=lambda item: item.step, default=None)
+    else:
+        checkpoint = next(
+            (item for item in checkpoints if item.step == request.checkpoint_step),
+            None,
+        )
     if checkpoint is None:
-        raise HTTPException(status_code=409, detail="Training job has no saved checkpoints.")
+        if request.checkpoint_step is None:
+            raise HTTPException(status_code=409, detail="Training job has no saved checkpoints.")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Training job does not have a checkpoint at step {request.checkpoint_step}.",
+        )
 
     checkpoint_path = _checkpoint_model_path(checkpoint.directory, checkpoint.files)
     if checkpoint_path is None:
-        raise HTTPException(status_code=409, detail="Latest checkpoint does not contain a model weights file.")
+        raise HTTPException(status_code=409, detail=f"Checkpoint step {checkpoint.step} does not contain a model weights file.")
     if not checkpoint_path.exists() or not checkpoint_path.is_file():
         raise HTTPException(status_code=404, detail=f"Checkpoint weights missing: {checkpoint_path}")
 

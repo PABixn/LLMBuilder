@@ -1,31 +1,32 @@
 .studioRoot.inferencePage {
-  width: min(1280px, calc(100% - 32px));
-  margin: 18px auto 48px;
+  width: min(1380px, calc(100% - 32px));
+  margin: 18px auto 44px;
 }
 
-.inferencePage .panelCard,
-.inferencePage .statusCard,
-.inferencePage .buttonPrimary,
-.inferencePage .buttonGhost {
-  border-radius: 8px;
+.inferencePage .panelHead,
+.inferencePage .trainingAssetPickerHeader,
+.inferencePage .trainingAssetPickerOptionHead {
+  flex-wrap: wrap;
 }
 
-.inferenceHero {
-  display: grid;
-  gap: 16px;
+.inferencePage .panelHead > :first-child,
+.inferencePage .trainingAssetPickerHeader > :first-child,
+.inferencePage .trainingAssetPickerOptionHead > :first-child {
+  flex: 1 1 220px;
+  min-width: 0;
 }
 
-.inferenceStatusGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+.inferencePage .panelHead > :not(:first-child),
+.inferencePage .trainingAssetPickerHeader > :not(:first-child),
+.inferencePage .trainingAssetPickerOptionHead > :not(:first-child) {
+  flex: 0 0 auto;
 }
 
 .inferenceLayout {
   display: grid;
-  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+  grid-template-columns: minmax(360px, 0.9fr) minmax(0, 1.1fr);
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .inferenceArtifactPanel,
@@ -35,28 +36,44 @@
   gap: 14px;
 }
 
-.inferenceArtifactMeta {
+.inferenceArtifactPanel,
+.inferenceComposer {
+  align-content: start;
+}
+
+.inferenceArtifactPanel .actionCluster {
+  align-self: flex-start;
+}
+
+.inferenceAssetStack {
   display: grid;
-  gap: 6px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  padding: 12px;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
+  gap: 12px;
+}
+
+.inferenceModelCard,
+.inferenceCheckpointCard {
+  min-height: 172px;
+  grid-template-rows: auto auto auto auto 1fr auto;
+  align-content: start;
+  gap: 8px;
+}
+
+.inferenceModelCard .trainingAssetActions,
+.inferenceCheckpointCard .trainingAssetActions {
+  margin-top: auto;
 }
 
 .inferenceComposer textarea {
-  min-height: 180px;
+  min-height: 216px;
 }
 
 .inferenceOutput {
-  min-height: 220px;
+  min-height: 240px;
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-soft) 60%, transparent), transparent 44%),
+    var(--surface);
   padding: 16px;
   font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 0.9rem;
@@ -74,8 +91,27 @@
   font-weight: 680;
 }
 
+.inferencePage .fieldGrid,
+.inferencePage .fieldGrid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  align-items: start;
+  gap: 10px 14px;
+  margin-top: 0;
+}
+
+.inferencePage .trainingAssetPickerDialog {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  box-shadow: var(--shadow);
+}
+
+.inferencePage .trainingAssetPickerResults {
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 @media (max-width: 940px) {
-  .inferenceStatusGrid,
   .inferenceLayout {
     grid-template-columns: 1fr;
   }
