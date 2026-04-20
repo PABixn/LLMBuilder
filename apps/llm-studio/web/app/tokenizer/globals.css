@@ -253,6 +253,23 @@
   align-items: flex-end;
 }
 
+.tokenizerPage .actionDeckHead .panelEyebrow{
+  display: none;
+}
+
+.tokenizerPage .actionDeckHead h2{
+  margin: 0;
+  font-size: clamp(1.22rem, 2vw, 1.62rem);
+  font-weight: 780;
+  line-height: 1.12;
+}
+
+.tokenizerPage .actionDeckHead .panelCopy{
+  max-width: 62ch;
+  line-height: 1.34;
+  font-size: 0.86rem;
+}
+
 .tokenizerPage .actionButtonRow{
   display: flex;
   flex-wrap: wrap;

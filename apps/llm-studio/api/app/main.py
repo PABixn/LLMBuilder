@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import codecs
 from collections import Counter, defaultdict
+import json
 import re
 import shutil
 import sys
@@ -13,7 +14,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import ValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 import torch
@@ -594,11 +595,10 @@ def get_training_checkpoints(job_id: str) -> TrainingCheckpointsResponse:
         raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
 
 
-@training_api.post("/jobs/{job_id}/generate", response_model=TrainingGenerateResponse)
-def generate_from_training_job(
+def _prepare_training_generation(
     job_id: str,
     request: TrainingGenerateRequest,
-) -> TrainingGenerateResponse:
+):
     manager = app.state.training_jobs
     tokenizer_manager = app.state.tokenizer_jobs
 
@@ -653,6 +653,24 @@ def generate_from_training_job(
         model.to(device)
         model.load_state_dict(_torch_load_state_dict(checkpoint_path, device))
         model.eval()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Inference failed: {type(exc).__name__}: {exc}") from exc
+
+    return job, checkpoint, checkpoint_path, tokenizer, prompt_token_ids, model
+
+
+@training_api.post("/jobs/{job_id}/generate", response_model=TrainingGenerateResponse)
+def generate_from_training_job(
+    job_id: str,
+    request: TrainingGenerateRequest,
+) -> TrainingGenerateResponse:
+    job, checkpoint, checkpoint_path, tokenizer, prompt_token_ids, model = _prepare_training_generation(
+        job_id,
+        request,
+    )
+    try:
         generated_token_ids = list(
             model.generate(
                 tokens=prompt_token_ids,
@@ -663,8 +681,6 @@ def generate_from_training_job(
                 repetition_penalty=request.repetition_penalty,
             )
         )
-    except HTTPException:
-        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Inference failed: {type(exc).__name__}: {exc}") from exc
 
@@ -682,6 +698,75 @@ def generate_from_training_job(
         prompt_token_count=len(prompt_token_ids),
         generated_token_count=len(generated_token_ids),
         generated_token_ids=generated_token_ids,
+    )
+
+
+@training_api.post("/jobs/{job_id}/generate/stream")
+def stream_generate_from_training_job(
+    job_id: str,
+    request: TrainingGenerateRequest,
+) -> StreamingResponse:
+    job, checkpoint, checkpoint_path, tokenizer, prompt_token_ids, model = _prepare_training_generation(
+        job_id,
+        request,
+    )
+
+    def encode_event(payload: dict[str, object]) -> str:
+        return json.dumps(payload, ensure_ascii=False) + "\n"
+
+    def stream_events():
+        generated_token_ids: list[int] = []
+        try:
+            yield encode_event(
+                {
+                    "type": "start",
+                    "job_id": job_id,
+                    "checkpoint_step": checkpoint.step,
+                    "checkpoint_path": str(checkpoint_path),
+                    "tokenizer_job_id": job.tokenizer_job_id,
+                    "prompt": request.prompt,
+                    "prompt_token_count": len(prompt_token_ids),
+                }
+            )
+            for token_id in model.generate(
+                tokens=prompt_token_ids,
+                max_tokens=request.max_tokens,
+                temperature=request.temperature,
+                top_k=request.top_k,
+                seed=request.seed,
+                repetition_penalty=request.repetition_penalty,
+            ):
+                generated_token_ids.append(token_id)
+                yield encode_event(
+                    {
+                        "type": "token",
+                        "index": len(generated_token_ids),
+                        "token_id": token_id,
+                        "token_text": tokenizer.decode([token_id], skip_special_tokens=False),
+                    }
+                )
+            full_token_ids = prompt_token_ids + generated_token_ids
+            yield encode_event(
+                {
+                    "type": "done",
+                    "completion": tokenizer.decode(generated_token_ids, skip_special_tokens=False),
+                    "text": tokenizer.decode(full_token_ids, skip_special_tokens=False),
+                    "generated_token_count": len(generated_token_ids),
+                    "generated_token_ids": generated_token_ids,
+                }
+            )
+        except Exception as exc:
+            yield encode_event(
+                {
+                    "type": "error",
+                    "detail": f"Inference failed: {type(exc).__name__}: {exc}",
+                }
+            )
+
+    return StreamingResponse(
+        stream_events(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache"},
     )
 
 

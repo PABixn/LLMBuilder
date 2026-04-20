@@ -3038,6 +3038,237 @@ function TrainingPageContent() {
       </section>
 
       <section className="trainingResultsGrid">
+      {isActiveRunOpen ? (
+        <section className="panelCard trainingActiveRunPanel">
+          <div className="panelHead">
+            <div>
+              <h2>Active Run</h2>
+              <p className="panelCopy">The monitor updates every {Math.round(POLL_INTERVAL_MS / 1000)} seconds with summary, metrics, samples, checkpoints, and logs.</p>
+            </div>
+            <div className="trainingActiveRunHeaderActions">
+              {activeRun ? (
+                <span className={`pillBadge ${statusTone(activeRun.status)}`}>{formatStatusLabel(activeRun.status)}</span>
+              ) : null}
+              <button
+                type="button"
+                className="trainingActiveRunCloseButton"
+                onClick={() => setIsActiveRunOpen(false)}
+                aria-label="Close active run"
+                title="Close active run"
+              >
+                <FiX aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          {activeRun ? (
+            <>
+              <div className="trainingProgress">
+                <div className="trainingSectionHeader">
+                  <h3>{activeRun.name}</h3>
+                  <span className="pillBadge tone-neutral">{activeRun.stage}</span>
+                </div>
+                <div className="trainingProgressBar">
+                  <span style={{ width: `${Math.max(0, Math.min(activeRun.progress, 1)) * 100}%` }} />
+                </div>
+                <div className="trainingInlineMeta">
+                  <span>Run identifier: {activeRun.id.slice(0, 8)}</span>
+                  <span>Created {formatDate(activeRun.created_at)}</span>
+                  <span>Started {activeRun.started_at ? formatDate(activeRun.started_at) : "waiting"}</span>
+                  <span>Estimated time remaining: {formatDuration((activeRun as unknown as { eta_seconds?: number | null }).eta_seconds ?? null)}</span>
+                </div>
+              </div>
+
+              <div className="statusGrid">
+                <div className="statusCard">
+                  <div className="statusCardIcon"><FiActivity /></div>
+                  <div>
+                    <div className="statusCardTitle">Training step</div>
+                    <div className="statusCardValue">
+                      {formatInteger(activeRun.last_step)} / {formatInteger(activeRun.max_steps)}
+                    </div>
+                    <div className="statusCardDetail">Training progress: {Math.round(activeRun.progress * 100)}%</div>
+                  </div>
+                </div>
+                <div className="statusCard">
+                  <div className="statusCardIcon"><FiCheckCircle /></div>
+                  <div>
+                    <div className="statusCardTitle">Loss</div>
+                    <div className="statusCardValue">{formatMetric(activeRun.latest_loss, 4)}</div>
+                    <div className="statusCardDetail">Gradient norm: {formatMetric(activeRun.latest_grad_norm, 3)}</div>
+                  </div>
+                </div>
+                <div className="statusCard">
+                  <div className="statusCardIcon"><FiRefreshCw /></div>
+                  <div>
+                    <div className="statusCardTitle">Learning Rate</div>
+                    <div className="statusCardValue">{formatLearningRate(activeRun.latest_lr)}</div>
+                    <div className="statusCardDetail">Tokens per second: {formatInteger(activeRun.latest_tokens_per_sec)}</div>
+                  </div>
+                </div>
+                <div className="statusCard">
+                  <div className="statusCardIcon"><FiArchive /></div>
+                  <div>
+                    <div className="statusCardTitle">Saved artifacts</div>
+                    <div className="statusCardValue">
+                      {formatInteger(activeRun.checkpoint_count)} checkpoints
+                    </div>
+                    <div className="statusCardDetail">
+                      {formatInteger(activeRun.sample_count)} sample groups • {formatBytes(activeRun.output_size_bytes)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="trainingChartGrid">
+                <MetricChart
+                  title="Loss"
+                  metricKey="loss"
+                  metrics={metrics}
+                  latestValue={formatMetric(activeRun.latest_loss, 4)}
+                  stroke="var(--brand)"
+                  digits={4}
+                />
+                <MetricChart
+                  title="Learning Rate"
+                  metricKey="lr"
+                  metrics={metrics}
+                  latestValue={formatLearningRate(activeRun.latest_lr)}
+                  stroke="var(--ok)"
+                  digits={3}
+                />
+                <MetricChart
+                  title="Gradient Norm"
+                  metricKey="norm"
+                  metrics={metrics}
+                  latestValue={formatMetric(activeRun.latest_grad_norm, 3)}
+                  stroke="var(--warn)"
+                  digits={3}
+                />
+                <MetricChart
+                  title="Throughput"
+                  metricKey="tok_per_sec"
+                  metrics={metrics}
+                  latestValue={formatInteger(activeRun.latest_tokens_per_sec)}
+                  stroke="var(--danger)"
+                  digits={1}
+                />
+              </div>
+
+              <details className="sectionDisclosure" open>
+                <summary className="sectionDisclosureSummary">Samples</summary>
+                <div className="trainingSampleList">
+                  {samples.length ? (
+                    samples.slice().reverse().map((entry) => {
+                      const sampleCount = entry.samples.length;
+                      const totalChars = entry.samples.reduce(
+                        (sum, sample) => sum + sample.text.length + (sample.prompt?.length ?? 0),
+                        0
+                      );
+
+                      return (
+                        <details
+                          key={`sample-${entry.step}`}
+                          className="trainingSampleCard trainingSampleStepDisclosure"
+                        >
+                          <summary className="trainingSampleStepSummary">
+                            <span>
+                              <span className="trainingSampleTitle">Step {entry.step}</span>
+                              <span className="trainingSampleMeta">
+                                {sampleCount} prompt{sampleCount === 1 ? "" : "s"} generated
+                                {" - "}
+                                {formatInteger(totalChars)} characters
+                              </span>
+                            </span>
+                          </summary>
+
+                          <div className="trainingSampleStepBody">
+                            {entry.samples.map((sample) => {
+                              const promptSummary = samplePromptSummary(sample.prompt, sample.index);
+                              const splitSample = splitGeneratedSampleText(sample.text, sample.prompt);
+                              const continuationLength = splitSample.continuation.length;
+
+                              return (
+                                <details
+                                  key={`${entry.step}-${sample.index}`}
+                                  className="trainingSampleTextDisclosure"
+                                >
+                                  <summary className="trainingSampleTextSummary">
+                                    <span className="trainingSamplePromptSummary">{promptSummary}</span>
+                                    <span className="trainingSampleMeta">
+                                      {formatInteger(continuationLength)} continuation characters
+                                    </span>
+                                  </summary>
+                                  <div className="trainingSampleGeneratedBlock">
+                                    <div className="trainingSampleGeneratedHead">
+                                      <span>Generated sample</span>
+                                      <span>{formatInteger(sample.text.length)} total characters</span>
+                                    </div>
+                                    <pre className="trainingSampleGeneratedText">
+                                      {splitSample.prefix ? (
+                                        <>
+                                          <span className="trainingSampleGeneratedPrompt">{splitSample.prefix}</span>
+                                          <span className="trainingSampleGeneratedContinuation">{splitSample.continuation}</span>
+                                        </>
+                                      ) : (
+                                        <span className="trainingSampleGeneratedContinuation">{splitSample.continuation}</span>
+                                      )}
+                                    </pre>
+                                  </div>
+                                </details>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      );
+                    })
+                  ) : (
+                    <div className="trainingEmpty">No samples have been recorded yet.</div>
+                  )}
+                </div>
+              </details>
+
+              <details className="sectionDisclosure" open>
+                <summary className="sectionDisclosureSummary">Checkpoints</summary>
+                <div className="trainingCheckpointList">
+                  {checkpoints.length ? (
+                    checkpoints.map((checkpoint) => (
+                      <div key={checkpoint.directory} className="trainingCheckpointCard">
+                        <div className="trainingCheckpointTitle">Step {checkpoint.step}</div>
+                        <div className="trainingCheckpointMeta">
+                          {checkpoint.created_at ? formatDate(checkpoint.created_at) : "Created time unavailable"} • {formatBytes(checkpoint.size_bytes)}
+                        </div>
+                        <div className="trainingCheckpointMeta">{checkpoint.files.join(", ")}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="trainingEmpty">No checkpoints are available yet.</div>
+                  )}
+                </div>
+              </details>
+
+              <details className="sectionDisclosure" open>
+                <summary className="sectionDisclosureSummary">Logs</summary>
+                <div className="trainingDualLog">
+                  <div className="trainingLogBox">{logs.stdout.join("\n") || "stdout is quiet so far."}</div>
+                  <div className="trainingLogBox">{logs.stderr.join("\n") || "stderr is clear."}</div>
+                </div>
+              </details>
+
+              <details className="sectionDisclosure">
+                <summary className="sectionDisclosureSummary">Resolved runtime and configurations</summary>
+                <div className="trainingJsonGrid">
+                  <pre className="trainingCodeBlock">{prettyJson(activeRun.resolved_runtime)}</pre>
+                  <pre className="trainingCodeBlock">{prettyJson(activeRun.memory_estimate)}</pre>
+                </div>
+              </details>
+            </>
+          ) : (
+            <div className="trainingEmpty">No active run selected. Launch a new run or choose one from the recent runs column.</div>
+          )}
+        </section>
+      ) : null}
+
         <div className="trainingPanelStack">
           <section
             id="settings-preflight"
@@ -3163,237 +3394,6 @@ function TrainingPageContent() {
                 </details>
               ) : null}
             </section>
-
-          {isActiveRunOpen ? (
-            <section className="panelCard trainingActiveRunPanel">
-              <div className="panelHead">
-                <div>
-                  <h2>Active Run</h2>
-                  <p className="panelCopy">The monitor updates every {Math.round(POLL_INTERVAL_MS / 1000)} seconds with summary, metrics, samples, checkpoints, and logs.</p>
-                </div>
-                <div className="trainingActiveRunHeaderActions">
-                  {activeRun ? (
-                    <span className={`pillBadge ${statusTone(activeRun.status)}`}>{formatStatusLabel(activeRun.status)}</span>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="trainingActiveRunCloseButton"
-                    onClick={() => setIsActiveRunOpen(false)}
-                    aria-label="Close active run"
-                    title="Close active run"
-                  >
-                    <FiX aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-
-              {activeRun ? (
-                <>
-                  <div className="trainingProgress">
-                    <div className="trainingSectionHeader">
-                      <h3>{activeRun.name}</h3>
-                      <span className="pillBadge tone-neutral">{activeRun.stage}</span>
-                    </div>
-                    <div className="trainingProgressBar">
-                      <span style={{ width: `${Math.max(0, Math.min(activeRun.progress, 1)) * 100}%` }} />
-                    </div>
-                    <div className="trainingInlineMeta">
-                      <span>Run identifier: {activeRun.id.slice(0, 8)}</span>
-                      <span>Created {formatDate(activeRun.created_at)}</span>
-                      <span>Started {activeRun.started_at ? formatDate(activeRun.started_at) : "waiting"}</span>
-                      <span>Estimated time remaining: {formatDuration((activeRun as unknown as { eta_seconds?: number | null }).eta_seconds ?? null)}</span>
-                    </div>
-                  </div>
-
-                  <div className="statusGrid">
-                    <div className="statusCard">
-                      <div className="statusCardIcon"><FiActivity /></div>
-                      <div>
-                        <div className="statusCardTitle">Training step</div>
-                        <div className="statusCardValue">
-                          {formatInteger(activeRun.last_step)} / {formatInteger(activeRun.max_steps)}
-                        </div>
-                        <div className="statusCardDetail">Training progress: {Math.round(activeRun.progress * 100)}%</div>
-                      </div>
-                    </div>
-                    <div className="statusCard">
-                      <div className="statusCardIcon"><FiCheckCircle /></div>
-                      <div>
-                        <div className="statusCardTitle">Loss</div>
-                        <div className="statusCardValue">{formatMetric(activeRun.latest_loss, 4)}</div>
-                        <div className="statusCardDetail">Gradient norm: {formatMetric(activeRun.latest_grad_norm, 3)}</div>
-                      </div>
-                    </div>
-                    <div className="statusCard">
-                      <div className="statusCardIcon"><FiRefreshCw /></div>
-                      <div>
-                        <div className="statusCardTitle">Learning Rate</div>
-                        <div className="statusCardValue">{formatLearningRate(activeRun.latest_lr)}</div>
-                        <div className="statusCardDetail">Tokens per second: {formatInteger(activeRun.latest_tokens_per_sec)}</div>
-                      </div>
-                    </div>
-                    <div className="statusCard">
-                      <div className="statusCardIcon"><FiArchive /></div>
-                      <div>
-                        <div className="statusCardTitle">Saved artifacts</div>
-                        <div className="statusCardValue">
-                          {formatInteger(activeRun.checkpoint_count)} checkpoints
-                        </div>
-                        <div className="statusCardDetail">
-                          {formatInteger(activeRun.sample_count)} sample groups • {formatBytes(activeRun.output_size_bytes)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="trainingChartGrid">
-                    <MetricChart
-                      title="Loss"
-                      metricKey="loss"
-                      metrics={metrics}
-                      latestValue={formatMetric(activeRun.latest_loss, 4)}
-                      stroke="var(--brand)"
-                      digits={4}
-                    />
-                    <MetricChart
-                      title="Learning Rate"
-                      metricKey="lr"
-                      metrics={metrics}
-                      latestValue={formatLearningRate(activeRun.latest_lr)}
-                      stroke="var(--ok)"
-                      digits={3}
-                    />
-                    <MetricChart
-                      title="Gradient Norm"
-                      metricKey="norm"
-                      metrics={metrics}
-                      latestValue={formatMetric(activeRun.latest_grad_norm, 3)}
-                      stroke="var(--warn)"
-                      digits={3}
-                    />
-                    <MetricChart
-                      title="Throughput"
-                      metricKey="tok_per_sec"
-                      metrics={metrics}
-                      latestValue={formatInteger(activeRun.latest_tokens_per_sec)}
-                      stroke="var(--danger)"
-                      digits={1}
-                    />
-                  </div>
-
-                  <details className="sectionDisclosure" open>
-                    <summary className="sectionDisclosureSummary">Samples</summary>
-                    <div className="trainingSampleList">
-                      {samples.length ? (
-                        samples.slice().reverse().map((entry) => {
-                          const sampleCount = entry.samples.length;
-                          const totalChars = entry.samples.reduce(
-                            (sum, sample) => sum + sample.text.length + (sample.prompt?.length ?? 0),
-                            0
-                          );
-
-                          return (
-                            <details
-                              key={`sample-${entry.step}`}
-                              className="trainingSampleCard trainingSampleStepDisclosure"
-                            >
-                              <summary className="trainingSampleStepSummary">
-                                <span>
-                                  <span className="trainingSampleTitle">Step {entry.step}</span>
-                                  <span className="trainingSampleMeta">
-                                    {sampleCount} prompt{sampleCount === 1 ? "" : "s"} generated
-                                    {" - "}
-                                    {formatInteger(totalChars)} characters
-                                  </span>
-                                </span>
-                              </summary>
-
-                              <div className="trainingSampleStepBody">
-                                {entry.samples.map((sample) => {
-                                  const promptSummary = samplePromptSummary(sample.prompt, sample.index);
-                                  const splitSample = splitGeneratedSampleText(sample.text, sample.prompt);
-                                  const continuationLength = splitSample.continuation.length;
-
-                                  return (
-                                    <details
-                                      key={`${entry.step}-${sample.index}`}
-                                      className="trainingSampleTextDisclosure"
-                                    >
-                                      <summary className="trainingSampleTextSummary">
-                                        <span className="trainingSamplePromptSummary">{promptSummary}</span>
-                                        <span className="trainingSampleMeta">
-                                          {formatInteger(continuationLength)} continuation characters
-                                        </span>
-                                      </summary>
-                                      <div className="trainingSampleGeneratedBlock">
-                                        <div className="trainingSampleGeneratedHead">
-                                          <span>Generated sample</span>
-                                          <span>{formatInteger(sample.text.length)} total characters</span>
-                                        </div>
-                                        <pre className="trainingSampleGeneratedText">
-                                          {splitSample.prefix ? (
-                                            <>
-                                              <span className="trainingSampleGeneratedPrompt">{splitSample.prefix}</span>
-                                              <span className="trainingSampleGeneratedContinuation">{splitSample.continuation}</span>
-                                            </>
-                                          ) : (
-                                            <span className="trainingSampleGeneratedContinuation">{splitSample.continuation}</span>
-                                          )}
-                                        </pre>
-                                      </div>
-                                    </details>
-                                  );
-                                })}
-                              </div>
-                            </details>
-                          );
-                        })
-                      ) : (
-                        <div className="trainingEmpty">No samples have been recorded yet.</div>
-                      )}
-                    </div>
-                  </details>
-
-                  <details className="sectionDisclosure" open>
-                    <summary className="sectionDisclosureSummary">Checkpoints</summary>
-                    <div className="trainingCheckpointList">
-                      {checkpoints.length ? (
-                        checkpoints.map((checkpoint) => (
-                          <div key={checkpoint.directory} className="trainingCheckpointCard">
-                            <div className="trainingCheckpointTitle">Step {checkpoint.step}</div>
-                            <div className="trainingCheckpointMeta">
-                              {checkpoint.created_at ? formatDate(checkpoint.created_at) : "Created time unavailable"} • {formatBytes(checkpoint.size_bytes)}
-                            </div>
-                            <div className="trainingCheckpointMeta">{checkpoint.files.join(", ")}</div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="trainingEmpty">No checkpoints are available yet.</div>
-                      )}
-                    </div>
-                  </details>
-
-                  <details className="sectionDisclosure" open>
-                    <summary className="sectionDisclosureSummary">Logs</summary>
-                    <div className="trainingDualLog">
-                      <div className="trainingLogBox">{logs.stdout.join("\n") || "stdout is quiet so far."}</div>
-                      <div className="trainingLogBox">{logs.stderr.join("\n") || "stderr is clear."}</div>
-                    </div>
-                  </details>
-
-                  <details className="sectionDisclosure">
-                    <summary className="sectionDisclosureSummary">Resolved runtime and configurations</summary>
-                    <div className="trainingJsonGrid">
-                      <pre className="trainingCodeBlock">{prettyJson(activeRun.resolved_runtime)}</pre>
-                      <pre className="trainingCodeBlock">{prettyJson(activeRun.memory_estimate)}</pre>
-                    </div>
-                  </details>
-                </>
-              ) : (
-                <div className="trainingEmpty">No active run selected. Launch a new run or choose one from the recent runs column.</div>
-              )}
-            </section>
-          ) : null}
         </div>
 
         <div className="trainingPanelStack">

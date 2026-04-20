@@ -18,7 +18,7 @@ import { formatBytes } from "../../lib/workspaceAssets";
 import {
   fetchTrainingCheckpoints,
   fetchTrainingJobs,
-  generateTrainingCompletion,
+  streamTrainingCompletion,
   type GenerateTrainingCompletionResponse,
   type TrainingCheckpointEntry,
   type TrainingJob,
@@ -28,6 +28,8 @@ const DEFAULT_PROMPT = "Once upon a time";
 const PICKER_SEARCH_PLACEHOLDER = "Search training runs by name, identifier, tokenizer, or artifact";
 const CHECKPOINT_SEARCH_PLACEHOLDER = "Search checkpoints by step, file, date, or size";
 const LATEST_CHECKPOINT_VALUE = "latest";
+
+type ConfigNumberMode = "integer" | "decimal";
 
 function formatInteger(value: number | null | undefined): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -117,6 +119,106 @@ function matchesCheckpointQuery(
     String(checkpoint.size_bytes),
     ...checkpoint.files,
   ].some((value) => value.toLowerCase().includes(normalizedQuery));
+}
+
+function sanitizePositiveIntegerInput(value: string): string {
+  return value.replace(/[^0-9]/g, "");
+}
+
+function sanitizePositiveDecimalInput(value: string): string {
+  const digitsAndDot = value.replace(/[^0-9.]/g, "");
+  const firstDotIndex = digitsAndDot.indexOf(".");
+  if (firstDotIndex === -1) {
+    return digitsAndDot;
+  }
+  return `${digitsAndDot.slice(0, firstDotIndex + 1)}${digitsAndDot
+    .slice(firstDotIndex + 1)
+    .replace(/\./g, "")}`;
+}
+
+function formatNumberInputValue(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "";
+  }
+  const asText = String(value);
+  if (!/[eE]/.test(asText)) {
+    return asText;
+  }
+  return value.toLocaleString("en-US", {
+    useGrouping: false,
+    maximumFractionDigits: 20,
+  });
+}
+
+function parseConfigNumberInput(value: string, mode: ConfigNumberMode): number | null {
+  const trimmed = value.trim();
+  if (trimmed === "" || trimmed === ".") {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  if (mode === "integer" && !Number.isInteger(parsed)) {
+    return null;
+  }
+  return parsed;
+}
+
+function ConfigNumberInput({
+  value,
+  onCommit,
+  mode = "integer",
+  step,
+  min,
+  max,
+}: {
+  value: number;
+  onCommit: (value: number) => void;
+  mode?: ConfigNumberMode;
+  step?: number | string;
+  min?: number | string;
+  max?: number | string;
+}) {
+  const [draft, setDraft] = useState(() => formatNumberInputValue(value));
+  const [focused, setFocused] = useState(false);
+  const formattedValue = formatNumberInputValue(value);
+
+  useEffect(() => {
+    if (!focused) {
+      setDraft(formattedValue);
+    }
+  }, [focused, formattedValue]);
+
+  const sanitize = mode === "decimal" ? sanitizePositiveDecimalInput : sanitizePositiveIntegerInput;
+  const inputMode = mode === "integer" ? "numeric" : "decimal";
+  const pattern = mode === "decimal" ? "[0-9]*[.]?[0-9]*" : "[0-9]*";
+
+  return (
+    <input
+      type="text"
+      inputMode={inputMode}
+      pattern={pattern}
+      step={step}
+      min={min}
+      max={max}
+      value={draft}
+      onFocus={() => setFocused(true)}
+      onChange={(event) => {
+        setDraft(sanitize(event.target.value));
+      }}
+      onBlur={() => {
+        setFocused(false);
+        const parsed = parseConfigNumberInput(draft, mode);
+        if (parsed === null) {
+          setDraft(formattedValue);
+          return;
+        }
+        onCommit(parsed);
+        setDraft(formatNumberInputValue(parsed));
+      }}
+    />
+  );
 }
 
 export default function InferencePage() {
@@ -289,24 +391,72 @@ export default function InferencePage() {
     setError(null);
     setResult(null);
     setGenerating(true);
-    void generateTrainingCompletion(selectedJob.id, {
-      prompt,
+    const generationPrompt = prompt;
+    const payload = {
+      prompt: generationPrompt,
       checkpoint_step: generationCheckpointStep,
       max_tokens: maxTokens,
       temperature,
       top_k: topK,
       seed,
       repetition_penalty: repetitionPenalty,
-    })
-      .then((response) => {
-        setResult(response);
-      })
-      .catch((caught) => {
+    };
+
+    void (async () => {
+      let currentResult: GenerateTrainingCompletionResponse | null = null;
+      let completion = "";
+      let generatedTokenIds: number[] = [];
+
+      try {
+        await streamTrainingCompletion(selectedJob.id, payload, (event) => {
+          if (event.type === "start") {
+            currentResult = {
+              job_id: event.job_id,
+              checkpoint_step: event.checkpoint_step,
+              checkpoint_path: event.checkpoint_path,
+              tokenizer_job_id: event.tokenizer_job_id,
+              prompt: event.prompt,
+              completion: "",
+              text: event.prompt,
+              prompt_token_count: event.prompt_token_count,
+              generated_token_count: 0,
+              generated_token_ids: [],
+            };
+            setResult(currentResult);
+            return;
+          }
+
+          if (event.type === "token" && currentResult) {
+            completion += event.token_text;
+            generatedTokenIds = [...generatedTokenIds, event.token_id];
+            currentResult = {
+              ...currentResult,
+              completion,
+              text: `${currentResult.prompt}${completion}`,
+              generated_token_count: generatedTokenIds.length,
+              generated_token_ids: generatedTokenIds,
+            };
+            setResult(currentResult);
+            return;
+          }
+
+          if (event.type === "done" && currentResult) {
+            currentResult = {
+              ...currentResult,
+              completion: event.completion,
+              text: event.text,
+              generated_token_count: event.generated_token_count,
+              generated_token_ids: event.generated_token_ids,
+            };
+            setResult(currentResult);
+          }
+        });
+      } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Generation failed.");
-      })
-      .finally(() => {
+      } finally {
         setGenerating(false);
-      });
+      }
+    })();
   }
 
   return (
@@ -487,53 +637,50 @@ export default function InferencePage() {
           <div className="fieldGrid compact">
             <label className="fieldLabel">
               <span>Max tokens</span>
-              <input
-                type="number"
+              <ConfigNumberInput
                 min={1}
                 max={1024}
                 value={maxTokens}
-                onChange={(event) => setMaxTokens(Number(event.target.value))}
+                onCommit={setMaxTokens}
               />
             </label>
             <label className="fieldLabel">
               <span>Temperature</span>
-              <input
-                type="number"
+              <ConfigNumberInput
+                mode="decimal"
                 min={0}
                 max={5}
                 step={0.1}
                 value={temperature}
-                onChange={(event) => setTemperature(Number(event.target.value))}
+                onCommit={setTemperature}
               />
             </label>
             <label className="fieldLabel">
               <span>Top K</span>
-              <input
-                type="number"
+              <ConfigNumberInput
                 min={1}
                 max={50000}
                 value={topK}
-                onChange={(event) => setTopK(Number(event.target.value))}
+                onCommit={setTopK}
               />
             </label>
             <label className="fieldLabel">
               <span>Seed</span>
-              <input
-                type="number"
+              <ConfigNumberInput
                 min={0}
                 value={seed}
-                onChange={(event) => setSeed(Number(event.target.value))}
+                onCommit={setSeed}
               />
             </label>
             <label className="fieldLabel">
               <span>Repetition penalty</span>
-              <input
-                type="number"
+              <ConfigNumberInput
+                mode="decimal"
                 min={0.1}
                 max={5}
                 step={0.1}
                 value={repetitionPenalty}
-                onChange={(event) => setRepetitionPenalty(Number(event.target.value))}
+                onCommit={setRepetitionPenalty}
               />
             </label>
           </div>
