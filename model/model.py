@@ -10,6 +10,11 @@ from torch.optim import AdamW
 from model.loader import *
 from model.kvcache import KVCache
 
+
+TOKEN_EMBED_INIT_STD = 0.02
+LM_HEAD_INIT_STD = 0.02
+
+
 class ConfigurableGPT(nn.Module):
     def __init__(self, config: LLMConfig):
         super().__init__()
@@ -58,11 +63,21 @@ class ConfigurableGPT(nn.Module):
 
     @torch.inference_mode()
     @torch.no_grad()
-    def generate(self, tokens, max_tokens, temperature=1.0, top_k=50, seed=42, repetition_penalty=1.0):
+    def generate(
+        self,
+        tokens,
+        max_tokens,
+        temperature=1.0,
+        top_k=50,
+        seed=42,
+        repetition_penalty=1.0,
+        stop_token_ids=None,
+    ):
         assert isinstance(tokens, list)
 
         device = self.get_device()
         rng = None
+        stop_ids = {int(token_id) for token_id in stop_token_ids} if stop_token_ids is not None else None
 
         if temperature > 0:
             rng = torch.Generator(device=device)
@@ -93,6 +108,9 @@ class ConfigurableGPT(nn.Module):
             ids = torch.cat((ids, next_ids), dim=1)
             token = next_ids.item()
 
+            if stop_ids is not None and token in stop_ids:
+                break
+
             yield token
 
     def get_device(self):
@@ -104,7 +122,11 @@ class ConfigurableGPT(nn.Module):
         return AdamW(self.parameters(), lr=lr, weight_decay=weight_decay, betas=betas, eps=eps, fused=use_fused)
 
     def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
+        if module is self.lm_head:
+            # Keep the classifier small at step 0 so the initial token distribution
+            # stays close to uniform, especially when weights are tied to embeddings.
+            torch.nn.init.normal_(module.weight, mean=0.0, std=LM_HEAD_INIT_STD)
+        elif isinstance(module, nn.Linear):
             fan_out = module.weight.size(0)
             fan_in = module.weight.size(1)
             std = 1.0 / math.sqrt(fan_in) * min(1.0, math.sqrt(fan_out / fan_in))
@@ -113,7 +135,7 @@ class ConfigurableGPT(nn.Module):
             if module.bias is not None:
                 torch.nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Embedding):
-            torch.nn.init.normal_(module.weight, mean=0.0, std=1.0)
+            torch.nn.init.normal_(module.weight, mean=0.0, std=TOKEN_EMBED_INIT_STD)
         elif isinstance(module, LearnableRMSNorm):
             torch.nn.init.ones_(module.weight)
 
@@ -144,14 +166,23 @@ class ConfigurableBlock(nn.Module):
                 raise ValueError(f"Unknown Block layer type: {type(lay)}")
 
     def forward(self, x, kv_cache: KVCache):
+        branch = x
+        branch_dirty = False
         for layer in self.layer:
             if isinstance(layer, CausalSelfAttention):
-                x = x + layer(x, kv_cache)
+                # Top-level norms/activations are intended to shape the branch that
+                # feeds the next residual sublayer, not to overwrite the residual stream.
+                x = x + layer(branch, kv_cache)
+                branch = x
+                branch_dirty = False
             elif isinstance(layer, ConfigurableMLP):
-                x = x + layer(x)
+                x = x + layer(branch)
+                branch = x
+                branch_dirty = False
             else:
-                x = layer(x)
-        return x
+                branch = layer(branch)
+                branch_dirty = True
+        return branch if branch_dirty else x
 
 class CausalSelfAttention(nn.Module):
     def __init__(self, attn_idx: int, dim: int, config: Attention):

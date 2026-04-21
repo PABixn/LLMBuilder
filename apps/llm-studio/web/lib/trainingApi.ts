@@ -111,6 +111,8 @@ export interface TrainingLogsResponse {
   stderr_lines: string[];
 }
 
+export type TrainingDataPreview = Record<string, unknown>;
+
 export interface TrainingJob {
   id: string;
   name: string;
@@ -217,6 +219,16 @@ const RUNTIME_TOKEN =
     ? process.env.NEXT_PUBLIC_RUNTIME_TOKEN.trim()
     : null;
 
+export class TrainingApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "TrainingApiError";
+    this.status = status;
+  }
+}
+
 function resolveApiBaseUrl(): string {
   const base = apiBaseUrl();
   const trimmed = base === "/" ? "" : base.endsWith("/") ? base.slice(0, -1) : base;
@@ -276,7 +288,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorDetail(response));
+    throw new TrainingApiError(await readErrorDetail(response), response.status);
   }
 
   if (response.status === 204) {
@@ -394,6 +406,10 @@ export async function fetchTrainingLogs(jobId: string, lines?: number): Promise<
   }
   const query = params.toString();
   return request<TrainingLogsResponse>(`/jobs/${jobId}/logs${query ? `?${query}` : ""}`);
+}
+
+export async function fetchTrainingDataPreview(jobId: string): Promise<TrainingDataPreview> {
+  return request<TrainingDataPreview>(`/jobs/${jobId}/data-preview`);
 }
 
 export async function fetchTrainingCheckpoints(jobId: string): Promise<TrainingCheckpointEntry[]> {

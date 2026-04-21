@@ -15,6 +15,7 @@ from typing import Any
 from uuid import uuid4
 
 import torch
+from pydantic import ValidationError
 from tokenizers import Tokenizer
 
 from .config import get_settings, training_exports_dir, training_jobs_dir
@@ -312,6 +313,14 @@ class TrainingRunManager:
             stderr_lines=tail_lines(Path(job.stderr_path), lines),
         )
 
+    def get_data_preview(self, job_id: str) -> dict[str, Any]:
+        job = self.get_job(job_id)
+        preview_path = Path(job.artifact_dir) / "training_data_preview.json"
+        payload = load_optional_json(preview_path)
+        if payload is None:
+            raise FileNotFoundError(preview_path)
+        return payload
+
     def get_checkpoints(self, job_id: str) -> TrainingCheckpointsResponse:
         job = self.get_job(job_id)
         checkpoints_root = Path(job.artifact_dir) / "checkpoints"
@@ -465,6 +474,10 @@ class TrainingRunManager:
         try:
             parsed_training_config = TrainingConfig.model_validate(request.training_config)
             normalized_training_config = parsed_training_config.model_dump(mode="json")
+        except ValidationError as exc:
+            parsed_training_config = None
+            normalized_training_config = request.training_config
+            errors.extend(validation_issues("training_config_invalid", "$.training_config", exc))
         except Exception as exc:
             parsed_training_config = None
             normalized_training_config = request.training_config
@@ -473,6 +486,10 @@ class TrainingRunManager:
         try:
             parsed_dataloader_config = TrainingDataloaderConfig.model_validate(request.dataloader_config)
             normalized_dataloader_config = parsed_dataloader_config.model_dump(mode="json")
+        except ValidationError as exc:
+            parsed_dataloader_config = None
+            normalized_dataloader_config = request.dataloader_config
+            errors.extend(validation_issues("dataloader_config_invalid", "$.dataloader_config", exc))
         except Exception as exc:
             parsed_dataloader_config = None
             normalized_dataloader_config = request.dataloader_config
@@ -503,7 +520,7 @@ class TrainingRunManager:
                     issue(
                         "vocab_size_mismatch",
                         f"Model vocab_size ({model_config['vocab_size']}) must match tokenizer vocab_size ({tokenizer_vocab_size}).",
-                        "$.project_id",
+                        "$.model_config.vocab_size",
                     )
                 )
 
@@ -813,6 +830,45 @@ class TrainingRunManager:
 
 def issue(code: str, message: str, path: str, *, severity: str = "error") -> TrainingIssue:
     return TrainingIssue(code=code, message=message, path=path, severity=severity)
+
+
+def validation_issues(code: str, base_path: str, exc: ValidationError) -> list[TrainingIssue]:
+    items = exc.errors(include_url=False, include_input=False, include_context=False)
+    if not items:
+        return [issue(code, "Validation failed.", base_path)]
+    return [
+        issue(
+            code,
+            humanize_validation_message(str(item.get("msg") or "Validation failed.")),
+            json_path(base_path, item.get("loc")),
+        )
+        for item in items
+    ]
+
+
+def humanize_validation_message(message: str) -> str:
+    cleaned = message.strip()
+    if cleaned.startswith("Value error, "):
+        cleaned = cleaned.removeprefix("Value error, ").strip()
+    if cleaned == "sum of lr_scheduler steps must equal max_steps":
+        return (
+            "LR scheduler steps must add up to max_steps. "
+            "Use the suggested fix below or edit training_config.lr_scheduler."
+        )
+    return cleaned[:1].upper() + cleaned[1:] if cleaned else "Validation failed."
+
+
+def json_path(base_path: str, loc: object) -> str:
+    if not isinstance(loc, (list, tuple)) or not loc:
+        return base_path
+
+    path = base_path
+    for part in loc:
+        if isinstance(part, int):
+            path += f"[{part}]"
+        elif isinstance(part, str) and part:
+            path += f".{part}"
+    return path
 
 
 def load_config_dict(payload: dict[str, Any]) -> LLMConfig:

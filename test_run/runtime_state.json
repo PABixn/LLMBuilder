@@ -1,0 +1,110 @@
+{
+  "job_id": "29a40dd13fe0492196051fa4e91aab97",
+  "status": "completed",
+  "state": "completed",
+  "stage": "Completed",
+  "progress": 1.0,
+  "created_at": "2026-04-21T13:44:20.845339+00:00",
+  "updated_at": "2026-04-21T13:53:29.750697+00:00",
+  "started_at": "2026-04-21T13:44:20.848318+00:00",
+  "finished_at": "2026-04-21T13:53:29.750686+00:00",
+  "last_step": 100,
+  "max_steps": 100,
+  "latest_loss": 5.354142665863037,
+  "latest_grad_norm": 0.24626018106937408,
+  "latest_lr": 9.055674364030381e-05,
+  "latest_tokens_per_sec": 5843.64820374691,
+  "checkpoint_count": 1,
+  "sample_count": 10,
+  "elapsed_seconds": 542.090232958988,
+  "eta_seconds": 0.0,
+  "resolved_runtime": {
+    "device": "mps",
+    "device_type": "mps",
+    "ddp": false,
+    "ddp_rank": 0,
+    "ddp_world_size": 1,
+    "micro_batch_size": 16,
+    "tokens_per_micro_step": 16384,
+    "tokens_per_world_step": 16384,
+    "grad_accum_steps": 2,
+    "max_batch_size_from_total": 32,
+    "max_batch_size_from_memory": 25,
+    "max_allowed_batch_size": 25
+  },
+  "memory_estimate": {
+    "device": "mps",
+    "seq_len": 1024,
+    "attention_backend": "math",
+    "safety_margin": 0.9,
+    "usable_free_bytes": 17147156889,
+    "model_resident_bytes": 10520576,
+    "max_step_tokens": 25600,
+    "max_batch_size": 25,
+    "estimated_peak_additional_bytes": 16688236544,
+    "estimated_peak_total_bytes": 16698757120,
+    "configured_step_tokens": 16384,
+    "configured_peak_additional_bytes": 10837071872,
+    "configured_peak_total_bytes": 10847592448,
+    "configured_fits": true,
+    "snapshot": {
+      "device": "mps",
+      "free_bytes": 19052396544,
+      "total_bytes": 19069665280,
+      "allocated_bytes": 10523648,
+      "reserved_bytes": 17268736
+    },
+    "breakdown": {
+      "model_parameter_bytes": 10520576,
+      "model_buffer_bytes": 0,
+      "gradient_bytes": 10520576,
+      "optimizer_state_bytes": 21041152,
+      "ddp_bucket_bytes": 0,
+      "rope_cache_bytes": 786432,
+      "fixed_workspace_bytes": 268435456,
+      "fixed_misc_bytes": 134217728,
+      "input_target_bytes_per_token": 16,
+      "activation_bytes_per_token": 142848,
+      "attention_bytes_per_token": 393216,
+      "logits_bytes_per_token": 16000,
+      "dynamic_misc_bytes_per_token": 82812,
+      "fixed_bytes": 435001344,
+      "dynamic_bytes_per_token": 634892
+    }
+  },
+  "error": null,
+  "last_sample": {
+    "step": 100,
+    "samples": [
+      {
+        "index": 0,
+        "prompt": "First Citizen:",
+        "text": " First Citizen:\n\n\nFor,\n\nAnd you,\n\n\n\n\nAnd,\n\n\nThe\n\n\nO.\n\n\nWhich.\n\n\n\n\nWhich:\nBut,\n\n\nBes to"
+      },
+      {
+        "index": 1,
+        "prompt": "The",
+        "text": " The\n\n\nFor,\nIn:\n\n\nOf. in.\n\n\nCvenbeates.\n\n\nWhich would's it,.\nWhich not the do, fgedes to"
+      },
+      {
+        "index": 2,
+        "prompt": "I",
+        "text": " I\n\n\nFor,\nIn:\n\n\nOf, in.\n\n\nCvenbeates.\n\n\nWhich would's it,.\nWhich not the do, fgedes to"
+      },
+      {
+        "index": 3,
+        "prompt": "All:",
+        "text": " All:\n\n\nFor,\nIn I'll not\nOf will in.\n\n\nCvenbe!\n\nAnd\n\nWhich would's it,.\nWhich not the do, fgedes to with; and\n\nAnd I you me.\n\n\nWhich is the"
+      }
+    ]
+  },
+  "last_checkpoint": {
+    "step": 100,
+    "directory": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/29a40dd13fe0492196051fa4e91aab97/checkpoints/100",
+    "files": [
+      "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/29a40dd13fe0492196051fa4e91aab97/checkpoints/100/model-100.pt",
+      "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/29a40dd13fe0492196051fa4e91aab97/checkpoints/100/meta-100.json",
+      "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/29a40dd13fe0492196051fa4e91aab97/checkpoints/100/optimizer-100.pt"
+    ]
+  }
+}

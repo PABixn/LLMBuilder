@@ -1,0 +1,906 @@
+Detected device type: mps
+Memory step-size estimate
+  device: mps
+  attention backend: math
+  free memory now: 17.74 GiB / 17.76 GiB
+  usable free memory (margin 90%): 15.97 GiB
+  model resident memory (params + buffers): 10.03 MiB
+  fixed additional memory: 414.85 MiB
+  dynamic memory per token: 0.61 MiB
+  max micro-step tokens (batch_size * seq_len): 25,600
+  max batch_size at seq_len=1024: 25
+  estimated peak total training memory at max step: 15.55 GiB
+  configured step (16,384 tokens) fits estimate
+  configured peak additional memory: 10.09 GiB
+  configured peak total training memory: 10.10 GiB
+Training data preview saved: /Users/pabi/Library/Application Support/LLMStudio/training/jobs/29a40dd13fe0492196051fa4e91aab97/training_data_preview.json
+Training data preview summary | seq_len=1024 | eos_token_id=0 | datasets=1
+Training data preview dataset | dataset_index=0 | name=text | split=train | resolved_files=1 | first_record_tokens=390523 | first_record_eos=1
+Training data preview dataset head | ' First Citizen:\nBefore we proceed any further, hear me speak.\n\nAll:\nSpeak, speak.\n\nFirst Citizen:\nYou are all resolved rather to die than to fam'
+Training data preview window | window_index=0 | input_tokens=1024 | input_eos=0
+Training data preview window head | ' First Citizen:\nBefore we proceed any further, hear me speak.\n\nAll:\nSpeak, speak.\n\nFirst Citizen:\nYou are all resolved rather to die than to fam'
+Training data preview window | window_index=1 | input_tokens=1024 | input_eos=0
+Training data preview window head | 'iment. For the dearth,\nThe gods, not the patricians, make it, and\nYour knees to them, not arms, must help. Alack,\nYou are transp'
+step: 0 | loss: 7.5799 | norm: 1.56 | dt: 3822.05 | tok/sec 8573.40 | lr: 2.0000e-04
+step: 1 | loss: 7.4620 | norm: 1.35 | dt: 2990.90 | tok/sec 10955.91 | lr: 4.2500e-04
+step: 2 | loss: 7.3622 | norm: 1.39 | dt: 2982.99 | tok/sec 10984.95 | lr: 6.5000e-04
+step: 3 | loss: 7.2926 | norm: 1.23 | dt: 2968.23 | tok/sec 11039.56 | lr: 8.7500e-04
+step: 4 | loss: 7.1875 | norm: 1.25 | dt: 2814.49 | tok/sec 11642.59 | lr: 1.1000e-03
+step: 5 | loss: 7.0664 | norm: 1.33 | dt: 2821.42 | tok/sec 11614.03 | lr: 1.3250e-03
+step: 6 | loss: 6.9700 | norm: 1.27 | dt: 2825.26 | tok/sec 11598.24 | lr: 1.5500e-03
+step: 7 | loss: 6.8297 | norm: 1.27 | dt: 2982.64 | tok/sec 10986.25 | lr: 1.7750e-03
+step: 8 | loss: 6.6875 | norm: 1.21 | dt: 2971.12 | tok/sec 11028.83 | lr: 2.0000e-03
+step: 9 | loss: 6.5326 | norm: 1.26 | dt: 2996.83 | tok/sec 10934.23 | lr: 1.9994e-03
+Sample 0:  First Citizen: you
+.
+,
+c the you:
+..p.
+
+ fn to
+
+e youing.
+
+
+ I
+
+c but but to to: f: he f
+
+ to
+
+ but
+
+Sample 1:  The youd. to now
+c the'd:
+b.p.b
+ f the toenb with youd. by
+
+ IThat
+ itest but to to notn: he f withThatdd
+ but
+
+Sample 2:  I youd.
+,
+c the'd:
+b.p.b
+ f the toen
+e youd. by
+
+ IThat
+ itest but to to notn: he f withThatdd
+ but
+
+Sample 3:  All: youd.
+,
+c the'd:
+b.p.b
+ f the toen
+e youd. by
+
+ IThat
+ itest but to to notn: he f withThatdd
+ but:
+ and
+s but be you:
+- be
+er
+ I
+
+step: 10 | loss: 6.4172 | norm: 1.19 | dt: 2933.67 | tok/sec 11169.62 | lr: 1.9978e-03
+step: 11 | loss: 6.3055 | norm: 1.19 | dt: 2728.40 | tok/sec 12009.98 | lr: 1.9950e-03
+step: 12 | loss: 6.2336 | norm: 1.09 | dt: 3847.09 | tok/sec 8517.60 | lr: 1.9911e-03
+step: 13 | loss: 6.1833 | norm: 0.95 | dt: 3041.97 | tok/sec 10771.96 | lr: 1.9861e-03
+step: 14 | loss: 6.1398 | norm: 0.84 | dt: 3101.45 | tok/sec 10565.37 | lr: 1.9800e-03
+step: 15 | loss: 6.2129 | norm: 0.59 | dt: 2854.37 | tok/sec 11479.95 | lr: 1.9728e-03
+step: 16 | loss: 6.1403 | norm: 0.49 | dt: 2840.15 | tok/sec 11537.42 | lr: 1.9646e-03
+step: 17 | loss: 6.0308 | norm: 0.47 | dt: 2839.63 | tok/sec 11539.53 | lr: 1.9553e-03
+step: 18 | loss: 6.0668 | norm: 0.36 | dt: 2875.71 | tok/sec 11394.74 | lr: 1.9449e-03
+step: 19 | loss: 6.0170 | norm: 0.31 | dt: 2853.85 | tok/sec 11482.05 | lr: 1.9334e-03
+Sample 0:  First Citizen:
+
+
+
+
+
+
+ the
+
+
+ my
+
+
+
+
+
+ the;
+
+
+!'s.
+
+
+
+
+'s
+
+
+
+ to
+;:
+
+
+
+ to
+
+
+
+
+Sample 1:  The
+
+'s,,
+
+ the?:
+ my. in.
+
+
+ the; my
+ with in's.
+
+
+
+.'s it of. to to:;:
+'d;
+ to!
+ to
+
+Sample 2:  I,
+.
+,
+, the?:
+ my. in.
+
+
+ the; my
+ with in's.
+
+
+
+
+'s it,. to to:;:
+'d;
+ to
+
+ to
+
+Sample 3:  All:
+
+
+
+
+
+
+ the
+
+
+ my
+ in.
+
+
+ the;
+
+ with in's.
+
+
+
+
+'s it
+
+
+ to
+;:
+'d
+
+ to
+
+
+:
+ and
+s
+A: thy
+
+
+ for in
+
+
+
+step: 20 | loss: 6.0160 | norm: 0.32 | dt: 3025.88 | tok/sec 10829.24 | lr: 1.9209e-03
+step: 21 | loss: 5.9207 | norm: 0.38 | dt: 2939.68 | tok/sec 11146.79 | lr: 1.9074e-03
+step: 22 | loss: 5.9142 | norm: 0.33 | dt: 3017.60 | tok/sec 10858.96 | lr: 1.8929e-03
+step: 23 | loss: 5.8710 | norm: 0.43 | dt: 2793.46 | tok/sec 11730.25 | lr: 1.8774e-03
+step: 24 | loss: 5.8929 | norm: 0.49 | dt: 3514.42 | tok/sec 9323.88 | lr: 1.8610e-03
+step: 25 | loss: 5.8549 | norm: 0.49 | dt: 3574.92 | tok/sec 9166.08 | lr: 1.8436e-03
+step: 26 | loss: 5.8243 | norm: 0.60 | dt: 3904.19 | tok/sec 8393.04 | lr: 1.8252e-03
+step: 27 | loss: 5.9640 | norm: 1.77 | dt: 3940.14 | tok/sec 8316.46 | lr: 1.8059e-03
+step: 28 | loss: 5.8905 | norm: 0.40 | dt: 4281.07 | tok/sec 7654.15 | lr: 1.7858e-03
+step: 29 | loss: 5.7823 | norm: 0.35 | dt: 4287.05 | tok/sec 7643.49 | lr: 1.7648e-03
+Sample 0:  First Citizen:
+
+
+
+
+
+
+ the
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+But,
+
+
+
+
+
+
+
+
+Sample 1:  The,,.,,,, the?:ed.. in.,
+ that the; my! with in:.,
+
+:.'s it of.: to:;:,'d;ly:!s to
+
+Sample 2:  I,,.,,,, the?:ed.. in.,
+, the; my the with in:.,
+
+:.'s it,.: to:;:,'d;lyd,s:
+
+Sample 3:  All:
+
+
+
+
+
+
+ the
+
+
+
+
+ in.
+
+
+C; my the
+
+So.
+
+
+
+
+
+
+
+
+
+
+
+
+But,
+
+
+
+
+
+
+
+
+ and
+
+
+A::
+
+
+
+Which! the
+
+step: 30 | loss: 5.8341 | norm: 0.39 | dt: 4369.82 | tok/sec 7498.71 | lr: 1.7429e-03
+step: 31 | loss: 5.8054 | norm: 0.23 | dt: 6510.17 | tok/sec 5033.35 | lr: 1.7203e-03
+step: 32 | loss: 5.8371 | norm: 0.39 | dt: 7468.23 | tok/sec 4387.65 | lr: 1.6968e-03
+step: 33 | loss: 5.7363 | norm: 0.68 | dt: 6464.18 | tok/sec 5069.17 | lr: 1.6726e-03
+step: 34 | loss: 5.7033 | norm: 0.62 | dt: 7013.29 | tok/sec 4672.27 | lr: 1.6477e-03
+step: 35 | loss: 5.6717 | norm: 0.50 | dt: 5573.40 | tok/sec 5879.36 | lr: 1.6220e-03
+step: 36 | loss: 5.7068 | norm: 0.37 | dt: 6447.71 | tok/sec 5082.11 | lr: 1.5957e-03
+step: 37 | loss: 5.6890 | norm: 0.29 | dt: 6520.19 | tok/sec 5025.62 | lr: 1.5688e-03
+step: 38 | loss: 5.6613 | norm: 0.26 | dt: 5856.74 | tok/sec 5594.92 | lr: 1.5412e-03
+step: 39 | loss: 5.8326 | norm: 0.28 | dt: 6321.71 | tok/sec 5183.41 | lr: 1.5131e-03
+Sample 0:  First Citizen:
+
+
+For,
+
+P?
+
+P. in.
+
+
+
+Thats!
+
+O.
+
+
+Which.
+
+
+
+That to:
+But,
+
+That:
+
+That
+
+Sample 1:  The youly.,,y, themmed.. in.,
+ that thees my! with in's.,
+ me:.'s it of. to to:;:'d'd;ly to!s to
+
+Sample 2:  I youly.,,,, themmed.. in.,
+ that thees my! with in's.,
+ me:.'s it,. to to:;:,'d;ly to!s to
+
+Sample 3:  All:
+
+
+
+
+
+
+ the?:
+
+
+ in.,
+
+
+
+
+
+
+
+
+.,
+
+
+
+, it,.: to:;:,'d;lyd!s to:; and
+s, of you:
+,, for in! the
+
+step: 40 | loss: 5.7689 | norm: 0.24 | dt: 4840.32 | tok/sec 6769.80 | lr: 1.4844e-03
+step: 41 | loss: 5.6614 | norm: 0.26 | dt: 5091.43 | tok/sec 6435.91 | lr: 1.4552e-03
+step: 42 | loss: 5.7111 | norm: 0.24 | dt: 5654.51 | tok/sec 5795.02 | lr: 1.4255e-03
+step: 43 | loss: 5.6848 | norm: 0.19 | dt: 5321.59 | tok/sec 6157.56 | lr: 1.3953e-03
+step: 44 | loss: 5.7315 | norm: 0.20 | dt: 5683.47 | tok/sec 5765.49 | lr: 1.3648e-03
+step: 45 | loss: 5.6424 | norm: 0.27 | dt: 5237.08 | tok/sec 6256.92 | lr: 1.3339e-03
+step: 46 | loss: 5.6031 | norm: 0.29 | dt: 4785.48 | tok/sec 6847.38 | lr: 1.3027e-03
+step: 47 | loss: 5.5849 | norm: 0.22 | dt: 6064.88 | tok/sec 5402.91 | lr: 1.2711e-03
+step: 48 | loss: 5.6287 | norm: 0.33 | dt: 7925.94 | tok/sec 4134.27 | lr: 1.2393e-03
+step: 49 | loss: 5.5985 | norm: 0.16 | dt: 5614.09 | tok/sec 5836.74 | lr: 1.2073e-03
+Sample 0:  First Citizen:
+
+
+For,
+
+And?
+
+P. in.
+
+
+And;
+
+I in's.
+
+
+I.
+'ll,
+
+MWhat;
+As,
+That:
+
+That
+
+Sample 1:  The,,.,,,, the?:ed.. in.,
+ that'ses my! with in's.,
+ me:.'s it of. to to:;: and'dsly to!s to
+
+Sample 2:  I,ly's,,,, the?:ed.. in.,
+ that'sesen! with in's.,
+
+:.'s it of. to to:;: and'dsly to!s to
+
+Sample 3:  All:
+I.,,
+In the as:
+P. in.
+
+
+Ces my
+I in's.
+
+
+Which.
+'ll,
+ am to:
+But,
+
+That:
+
+That:
+ and
+
+And of you:
+
+As for in!
+
+
+step: 50 | loss: 5.5664 | norm: 0.28 | dt: 7646.02 | tok/sec 4285.63 | lr: 1.1750e-03
+step: 51 | loss: 5.7206 | norm: 0.26 | dt: 5882.93 | tok/sec 5570.02 | lr: 1.1427e-03
+step: 52 | loss: 5.6685 | norm: 0.34 | dt: 5919.83 | tok/sec 5535.29 | lr: 1.1102e-03
+step: 53 | loss: 5.5546 | norm: 0.34 | dt: 6275.63 | tok/sec 5221.47 | lr: 1.0776e-03
+step: 54 | loss: 5.6010 | norm: 0.43 | dt: 6889.08 | tok/sec 4756.51 | lr: 1.0450e-03
+step: 55 | loss: 5.5599 | norm: 0.26 | dt: 6387.19 | tok/sec 5130.27 | lr: 1.0124e-03
+step: 56 | loss: 5.6021 | norm: 0.38 | dt: 4883.48 | tok/sec 6709.97 | lr: 9.7983e-04
+step: 57 | loss: 5.4986 | norm: 0.31 | dt: 5081.64 | tok/sec 6448.31 | lr: 9.4734e-04
+step: 58 | loss: 5.4476 | norm: 0.44 | dt: 5181.51 | tok/sec 6324.02 | lr: 9.1496e-04
+step: 59 | loss: 5.4294 | norm: 0.29 | dt: 5447.57 | tok/sec 6015.16 | lr: 8.8274e-04
+Sample 0:  First Citizen:
+
+
+For,
+
+And?
+
+
+
+
+
+And,
+
+
+The
+
+
+O.
+
+
+
+That's not of.
+M
+
+But'd,
+That:
+
+That
+
+Sample 1:  The
+
+
+For,
+In: if:
+Pmp.
+
+ falesenbe-es.
+
+
+ I
+
+'ll of. for to not; do'd'dslydesit
+
+Sample 2:  Ierly's's,
+ that the asmedbmpmbrealalesenbe-es.
+
+
+Dl's it of. forr: the do he'dslydesit
+
+Sample 3:  All:
+
+
+For,
+In: if:
+Pmp.
+
+
+Cesenbe!
+
+And
+
+Which.
+'ll,
+
+Which:
+But, fglydes to:
+ and
+
+And of you me not, be for in's the
+
+step: 60 | loss: 5.4642 | norm: 0.41 | dt: 5672.47 | tok/sec 5776.67 | lr: 8.5070e-04
+step: 61 | loss: 5.4262 | norm: 0.25 | dt: 6246.04 | tok/sec 5246.20 | lr: 8.1889e-04
+step: 62 | loss: 5.3818 | norm: 0.34 | dt: 5843.65 | tok/sec 5607.45 | lr: 7.8734e-04
+step: 63 | loss: 5.5397 | norm: 0.34 | dt: 5345.68 | tok/sec 6129.81 | lr: 7.5610e-04
+step: 64 | loss: 5.4892 | norm: 0.31 | dt: 6088.49 | tok/sec 5381.96 | lr: 7.2519e-04
+step: 65 | loss: 5.3890 | norm: 0.36 | dt: 5603.27 | tok/sec 5848.01 | lr: 6.9465e-04
+step: 66 | loss: 5.4136 | norm: 0.31 | dt: 6111.57 | tok/sec 5361.64 | lr: 6.6453e-04
+step: 67 | loss: 5.3956 | norm: 0.26 | dt: 4842.35 | tok/sec 6766.96 | lr: 6.3484e-04
+step: 68 | loss: 5.4524 | norm: 0.22 | dt: 4826.32 | tok/sec 6789.44 | lr: 6.0564e-04
+step: 69 | loss: 5.3612 | norm: 0.27 | dt: 6555.37 | tok/sec 4998.65 | lr: 5.7694e-04
+Sample 0:  First Citizen:
+
+
+For,
+
+And I
+
+Of. in.
+
+
+
+
+The
+
+In's.
+
+
+
+That's not,
+
+M
+
+But,
+
+That:
+
+That
+
+Sample 1:  The
+
+
+For,
+In the as noted.
+
+
+Withrealales my
+What in so.
+
+
+Which.
+
+
+
+That to not the do he fgedes to
+
+Sample 2:  I
+
+
+For,
+In, if,
+Of. in.
+
+
+Cess!
+In's.
+
+
+Which.
+
+
+
+
+M
+
+But, fgedes to
+
+Sample 3:  All:
+
+
+For,
+In, as not
+Of. in.
+
+
+Ces my
+Who in so.
+
+
+Which.
+
+
+
+That to not the do, fgedes to:
+M
+
+And I you me not, be for in the I
+
+step: 70 | loss: 5.2983 | norm: 0.31 | dt: 6498.78 | tok/sec 5042.18 | lr: 5.4880e-04
+step: 71 | loss: 5.2926 | norm: 0.29 | dt: 5478.21 | tok/sec 5981.51 | lr: 5.2123e-04
+step: 72 | loss: 5.3300 | norm: 0.24 | dt: 6870.11 | tok/sec 4769.65 | lr: 4.9427e-04
+step: 73 | loss: 5.3025 | norm: 0.21 | dt: 6054.90 | tok/sec 5411.82 | lr: 4.6795e-04
+step: 74 | loss: 5.2632 | norm: 0.29 | dt: 4976.77 | tok/sec 6584.19 | lr: 4.4231e-04
+step: 75 | loss: 5.4313 | norm: 0.29 | dt: 6966.30 | tok/sec 4703.79 | lr: 4.1737e-04
+step: 76 | loss: 5.3842 | norm: 0.28 | dt: 5291.82 | tok/sec 6192.20 | lr: 3.9316e-04
+step: 77 | loss: 5.2891 | norm: 0.29 | dt: 5654.81 | tok/sec 5794.72 | lr: 3.6971e-04
+step: 78 | loss: 5.3184 | norm: 0.32 | dt: 5638.49 | tok/sec 5811.49 | lr: 3.4705e-04
+step: 79 | loss: 5.3114 | norm: 0.20 | dt: 6231.94 | tok/sec 5258.07 | lr: 3.2520e-04
+Sample 0:  First Citizen:
+
+
+For,
+
+And you,
+
+
+
+
+And,
+
+
+The
+
+
+O.
+
+
+Which.
+
+
+
+
+Which:
+But,
+
+That:
+
+That
+
+Sample 1:  The
+
+
+For,
+In the'll is
+Of. in.
+
+
+Cvenbeates.
+
+
+Which would's it her.
+Which not the do he fgedes to
+
+Sample 2:  I
+
+
+For,
+In, as not
+Of. in.
+
+
+Cvenbeates.
+
+
+Which would's it her.
+Which not the do, fgedes to
+
+Sample 3:  All:
+
+
+For,
+In the'll not
+Of, in.
+
+
+Cven!
+In's.
+
+
+Which.
+
+
+
+
+Which not the do, fgedes to with your man
+
+And be you me.
+
+
+Which is the
+
+step: 80 | loss: 5.3868 | norm: 0.27 | dt: 5433.72 | tok/sec 6030.49 | lr: 3.0420e-04
+step: 81 | loss: 5.2937 | norm: 0.30 | dt: 5976.65 | tok/sec 5482.67 | lr: 2.8405e-04
+step: 82 | loss: 5.2326 | norm: 0.29 | dt: 5252.64 | tok/sec 6238.39 | lr: 2.6479e-04
+step: 83 | loss: 5.2301 | norm: 0.26 | dt: 5294.29 | tok/sec 6189.31 | lr: 2.4645e-04
+step: 84 | loss: 5.2779 | norm: 0.29 | dt: 6290.57 | tok/sec 5209.07 | lr: 2.2903e-04
+step: 85 | loss: 5.2466 | norm: 0.24 | dt: 5624.34 | tok/sec 5826.11 | lr: 2.1256e-04
+step: 86 | loss: 5.2074 | norm: 0.27 | dt: 5596.92 | tok/sec 5854.65 | lr: 1.9707e-04
+step: 87 | loss: 5.3771 | norm: 0.27 | dt: 4928.55 | tok/sec 6648.61 | lr: 1.8256e-04
+step: 88 | loss: 5.3328 | norm: 0.21 | dt: 5518.98 | tok/sec 5937.33 | lr: 1.6906e-04
+step: 89 | loss: 5.2462 | norm: 0.31 | dt: 6090.65 | tok/sec 5380.05 | lr: 1.5658e-04
+Sample 0:  First Citizen:
+
+
+For,
+
+Pmmed.
+
+
+And
+
+Clens with in a fruper.
+
+
+
+
+MAnar'd, I ties to
+
+Sample 1:  The
+
+
+For,
+In:
+
+
+Of. in.
+
+
+Cvenbeates.
+
+
+Which would's it her.
+Which not the do he fgedes to
+
+Sample 2:  I
+
+
+For,
+In:
+
+
+Of, in.
+
+
+Cvenbeates.
+
+
+Which would's it her.
+Which not the do, fgedes to
+
+Sample 3:  All:
+
+
+For,
+In I'll not
+Of will in.
+
+
+Cvenbe in so.
+
+
+Which would's it her.
+Which not the do, fgedes to with your man
+
+And be you thy not, be for in the g
+
+step: 90 | loss: 5.2768 | norm: 0.24 | dt: 5212.91 | tok/sec 6285.93 | lr: 1.4514e-04
+step: 91 | loss: 5.2764 | norm: 0.20 | dt: 5726.83 | tok/sec 5721.84 | lr: 1.3475e-04
+step: 92 | loss: 5.3582 | norm: 0.26 | dt: 5805.16 | tok/sec 5644.63 | lr: 1.2541e-04
+step: 93 | loss: 5.2657 | norm: 0.28 | dt: 5299.91 | tok/sec 6182.75 | lr: 1.1715e-04
+step: 94 | loss: 5.2007 | norm: 0.26 | dt: 7452.77 | tok/sec 4396.75 | lr: 1.0997e-04
+step: 95 | loss: 5.1998 | norm: 0.25 | dt: 5986.14 | tok/sec 5473.98 | lr: 1.0389e-04
+step: 96 | loss: 5.2511 | norm: 0.24 | dt: 8421.98 | tok/sec 3890.77 | lr: 9.8895e-05
+step: 97 | loss: 5.2221 | norm: 0.20 | dt: 6215.19 | tok/sec 5272.24 | lr: 9.5007e-05
+step: 98 | loss: 5.1830 | norm: 0.24 | dt: 6284.25 | tok/sec 5214.30 | lr: 9.2226e-05
+step: 99 | loss: 5.3541 | norm: 0.25 | dt: 5607.46 | tok/sec 5843.65 | lr: 9.0557e-05
+Sample 0:  First Citizen:
+
+
+For,
+
+And you,
+
+
+
+
+And,
+
+
+The
+
+
+O.
+
+
+Which.
+
+
+
+
+Which:
+But,
+
+
+Bes to
+
+Sample 1:  The
+
+
+For,
+In:
+
+
+Of. in.
+
+
+Cvenbeates.
+
+
+Which would's it,.
+Which not the do, fgedes to
+
+Sample 2:  I
+
+
+For,
+In:
+
+
+Of, in.
+
+
+Cvenbeates.
+
+
+Which would's it,.
+Which not the do, fgedes to
+
+Sample 3:  All:
+
+
+For,
+In I'll not
+Of will in.
+
+
+Cvenbe!
+
+And
+
+Which would's it,.
+Which not the do, fgedes to with; and
+
+And I you me.
+
+
+Which is the
+

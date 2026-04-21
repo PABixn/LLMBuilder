@@ -63,6 +63,8 @@ import {
   deleteTrainingJob,
   fetchTrainingCheckpoints,
   fetchTrainingConfigTemplates,
+  fetchTrainingDataPreview,
+  TrainingApiError,
   fetchTrainingJob,
   fetchTrainingJobs,
   fetchTrainingLogs,
@@ -72,6 +74,7 @@ import {
   trainingArtifactDownloadUrl,
   validateTrainingPreflight,
   type TrainingCheckpointEntry,
+  type TrainingDataPreview,
   type TrainingFixSuggestion,
   type TrainingIssue,
   type TrainingJob,
@@ -1132,6 +1135,52 @@ function issueTone(issue: TrainingIssue): "error" | "warning" {
   return issue.severity === "warning" ? "warning" : "error";
 }
 
+const ISSUE_LOCATION_LABELS: Record<string, string> = {
+  "$.model_config.vocab_size": "Model vocabulary size",
+  "$.training_config": "Training settings",
+  "$.training_config.lr_scheduler": "Learning rate schedule",
+  "$.training_config.max_steps": "Max training steps",
+  "$.training_config.micro_batch_size": "Micro batch size",
+  "$.training_config.optimizer.lr": "Learning rate",
+  "$.training_config.save_every": "Checkpoint cadence",
+  "$.training_config.sample_every": "Sample cadence",
+  "$.training_config.seq_len": "Sequence length",
+  "$.training_config.total_batch_size": "Total batch size",
+  "$.dataloader_config": "Dataset settings",
+};
+
+function formatIssueLocation(path: string): string {
+  const direct = ISSUE_LOCATION_LABELS[path];
+  if (direct) {
+    return direct;
+  }
+
+  const datasetMatch = path.match(/^\$\.dataloader_config\.datasets\[(\d+)]\.data_files$/);
+  if (datasetMatch) {
+    return `Dataset ${Number(datasetMatch[1]) + 1} data files`;
+  }
+
+  if (path.startsWith("$.training_config.")) {
+    return humanizeConfigPath(path.replace("$.training_config.", ""));
+  }
+  if (path.startsWith("$.dataloader_config.")) {
+    return humanizeConfigPath(path.replace("$.dataloader_config.", ""));
+  }
+  if (path.startsWith("$.model_config.")) {
+    return humanizeConfigPath(path.replace("$.model_config.", ""));
+  }
+  return path;
+}
+
+function humanizeConfigPath(path: string): string {
+  return path
+    .replace(/\[(\d+)]/g, " $1")
+    .split(".")
+    .filter(Boolean)
+    .map((part) => humanizeConfigToken(part))
+    .join(" ");
+}
+
 function prettyJson(value: unknown): string {
   try {
     return JSON.stringify(value, null, 2);
@@ -1144,6 +1193,10 @@ function defaultRunName(project: ProjectDetail | null, tokenizer: TokenizerTrain
   const projectName = project?.name ?? "model";
   const tokenizerName = asString(tokenizer?.tokenizer_config?.name, "tokenizer");
   return `${projectName} x ${tokenizerName}`;
+}
+
+function canStopTrainingRun(job: TrainingJob | null | undefined): job is TrainingJob {
+  return job != null && (job.status === "pending" || job.status === "running");
 }
 
 function shouldPollTrainingRun(job: TrainingJob): boolean {
@@ -1656,8 +1709,10 @@ function TrainingPageContent() {
     stdout: [],
     stderr: [],
   });
+  const [dataPreview, setDataPreview] = useState<TrainingDataPreview | null>(null);
   const [checkpoints, setCheckpoints] = useState<TrainingCheckpointEntry[]>([]);
   const [launching, setLaunching] = useState(false);
+  const [stoppingRunId, setStoppingRunId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastState[]>([]);
   const [pickerKind, setPickerKind] = useState<AssetPickerKind | null>(null);
   const [pickerQuery, setPickerQuery] = useState("");
@@ -1969,6 +2024,7 @@ function TrainingPageContent() {
       setMetrics([]);
       setSamples([]);
       setLogs({ stdout: [], stderr: [] });
+      setDataPreview(null);
       setCheckpoints([]);
       return;
     }
@@ -1984,11 +2040,17 @@ function TrainingPageContent() {
       pollInFlight = true;
       let shouldPollAgain = true;
       try {
-        const [job, fetchedMetrics, fetchedSamples, fetchedLogs, fetchedCheckpoints] = await Promise.all([
+        const [job, fetchedMetrics, fetchedSamples, fetchedLogs, fetchedDataPreview, fetchedCheckpoints] = await Promise.all([
           fetchTrainingJob(activeRunId),
           fetchTrainingMetrics(activeRunId),
           fetchTrainingSamples(activeRunId),
           fetchTrainingLogs(activeRunId),
+          fetchTrainingDataPreview(activeRunId).catch((error) => {
+            if (error instanceof TrainingApiError && error.status === 404) {
+              return null;
+            }
+            throw error;
+          }),
           fetchTrainingCheckpoints(activeRunId),
         ]);
         if (cancelled) {
@@ -2002,12 +2064,28 @@ function TrainingPageContent() {
             stdout: fetchedLogs.stdout_lines,
             stderr: fetchedLogs.stderr_lines,
           });
+          setDataPreview(fetchedDataPreview);
           setCheckpoints(fetchedCheckpoints);
           setRecentRuns((current) => replaceRunInOrder(current, job).slice(0, 12));
         });
         shouldPollAgain = shouldPollTrainingRun(job);
       } catch (error) {
         if (!cancelled) {
+          if (error instanceof TrainingApiError && error.status === 404) {
+            startTransition(() => {
+              setActiveRunId(null);
+              setIsActiveRunOpen(false);
+              setActiveRun(null);
+              setMetrics([]);
+              setSamples([]);
+              setLogs({ stdout: [], stderr: [] });
+              setDataPreview(null);
+              setCheckpoints([]);
+              setRecentRuns((current) => current.filter((item) => item.id !== activeRunId));
+            });
+            shouldPollAgain = false;
+            return;
+          }
           notify("error", "Run polling interrupted", error instanceof Error ? error.message : "Failed to refresh the active run.");
         }
       } finally {
@@ -2660,19 +2738,24 @@ function TrainingPageContent() {
     setIsActiveRunOpen(true);
   }, []);
 
-  const handleStopTraining = async () => {
-    if (!activeRunId) {
+  const handleStopTraining = async (jobId: string | null = activeRunId) => {
+    if (!jobId) {
       return;
     }
+    setStoppingRunId(jobId);
     try {
-      const job = await stopTrainingJob(activeRunId);
+      const job = await stopTrainingJob(jobId);
       startTransition(() => {
-        setActiveRun(job);
+        if (activeRunId === job.id) {
+          setActiveRun(job);
+        }
         setRecentRuns((current) => replaceRunInOrder(current, job));
       });
       notify("success", "Training stopped", `Run ${job.name} was cancelled.`);
     } catch (error) {
       notify("error", "Stop failed", error instanceof Error ? error.message : "Failed to stop the active run.");
+    } finally {
+      setStoppingRunId((current) => (current === jobId ? null : current));
     }
   };
 
@@ -2695,6 +2778,8 @@ function TrainingPageContent() {
   const trainingRuntimeReady = Boolean(trainingConfig && dataloaderConfig);
   const hasTrainingInProgress =
     activeRun?.status === "running" || activeRun?.status === "pending";
+  const activeRunCanBeStopped = canStopTrainingRun(activeRun);
+  const stoppingActiveRun = activeRunCanBeStopped && stoppingRunId === activeRun.id;
   const trainingCompleted = activeRun?.status === "completed";
   const sequenceLength = trainingConfig ? asNumber(trainingConfig.seq_len, 0) : 0;
   const maxSteps = trainingConfig ? asNumber(trainingConfig.max_steps, 0) : 0;
@@ -2844,10 +2929,10 @@ function TrainingPageContent() {
             <button
               type="button"
               className="buttonDanger"
-              onClick={handleStopTraining}
-              disabled={!activeRunId || activeRun?.status !== "running"}
+              onClick={() => void handleStopTraining()}
+              disabled={!activeRunCanBeStopped || stoppingActiveRun}
             >
-              <FiXCircle /> Stop Training
+              <FiXCircle /> {stoppingActiveRun ? "Stopping..." : "Stop Training"}
             </button>
             <Link className="buttonGhost" href="/">
               <FiLayers /> Open Workspace Assets
@@ -2972,7 +3057,7 @@ function TrainingPageContent() {
           </div>
 
           <div className="fieldGrid compact">
-            <label className="fieldLabel fullWidthField">
+            <label className="fieldLabel trainingRunNameField">
               <span>Run name</span>
               <input value={runName} onChange={(event) => setRunName(event.target.value)} placeholder="optional training run name" />
             </label>
@@ -3048,6 +3133,17 @@ function TrainingPageContent() {
             <div className="trainingActiveRunHeaderActions">
               {activeRun ? (
                 <span className={`pillBadge ${statusTone(activeRun.status)}`}>{formatStatusLabel(activeRun.status)}</span>
+              ) : null}
+              {activeRunCanBeStopped ? (
+                <button
+                  type="button"
+                  className="buttonDanger buttonSmall"
+                  onClick={() => void handleStopTraining(activeRun.id)}
+                  disabled={stoppingActiveRun}
+                >
+                  <FiXCircle aria-hidden="true" />
+                  {stoppingActiveRun ? "Stopping..." : "Stop run"}
+                </button>
               ) : null}
               <button
                 type="button"
@@ -3248,6 +3344,19 @@ function TrainingPageContent() {
               </details>
 
               <details className="sectionDisclosure" open>
+                <summary className="sectionDisclosureSummary">Training Data Preview</summary>
+                {dataPreview ? (
+                  <div className="trainingJsonGrid">
+                    <pre className="trainingCodeBlock">{prettyJson(dataPreview)}</pre>
+                  </div>
+                ) : (
+                  <div className="trainingEmpty">
+                    The trainer has not published a data preview for this run yet.
+                  </div>
+                )}
+              </details>
+
+              <details className="sectionDisclosure" open>
                 <summary className="sectionDisclosureSummary">Logs</summary>
                 <div className="trainingDualLog">
                   <div className="trainingLogBox">{logs.stdout.join("\n") || "stdout is quiet so far."}</div>
@@ -3355,7 +3464,7 @@ function TrainingPageContent() {
                   {preflight.errors.map((item) => (
                     <div key={`${item.code}-${item.path}`} className={`trainingIssueCard tone-${issueTone(item)}`}>
                       <div className="trainingIssueTitle">{item.message}</div>
-                      <div className="trainingIssueMeta">{item.path}</div>
+                      <div className="trainingIssueMeta" title={item.path}>{formatIssueLocation(item.path)}</div>
                     </div>
                   ))}
                 </div>
@@ -3368,7 +3477,7 @@ function TrainingPageContent() {
                     {preflight.warnings.map((item) => (
                       <div key={`${item.code}-${item.path}`} className="trainingIssueCard tone-warning">
                         <div className="trainingIssueTitle">{item.message}</div>
-                        <div className="trainingIssueMeta">{item.path}</div>
+                        <div className="trainingIssueMeta" title={item.path}>{formatIssueLocation(item.path)}</div>
                       </div>
                     ))}
                   </div>
@@ -3426,6 +3535,18 @@ function TrainingPageContent() {
                         </div>
                       </button>
                       <div className="trainingRecentIconActions">
+                        {canStopTrainingRun(job) ? (
+                          <button
+                            type="button"
+                            className="trainingRecentIconButton trainingRecentIconButton-danger"
+                            onClick={() => void handleStopTraining(job.id)}
+                            disabled={stoppingRunId === job.id}
+                            aria-label={`Stop ${job.name}`}
+                            title={stoppingRunId === job.id ? "Stopping run" : "Stop run"}
+                          >
+                            <FiXCircle aria-hidden="true" />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="trainingRecentIconButton trainingRecentIconButton-danger"

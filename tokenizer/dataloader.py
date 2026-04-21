@@ -1,23 +1,14 @@
 from __future__ import annotations
 
-import multiprocessing
 import random
 import re
+import multiprocessing
+from pathlib import Path
 from typing import Iterable, Iterator, List, Optional, Sequence, Tuple
 
 from torch.utils.data import DataLoader, IterableDataset, get_worker_info
 
-try:
-    from datasets import load_dataset
-except ImportError as exc:
-    raise ImportError(
-        "Failed to import HuggingFace 'datasets.load_dataset'. Install API dependencies in the "
-        "interpreter used to run `make api` (for example: "
-        "`./.venv/bin/pip install -r apps/llm-studio/api/requirements.txt`). If `datasets` "
-        "is resolving to a local `datasets/` folder, that interpreter is missing the "
-        "HuggingFace `datasets` package."
-    ) from exc
-
+from local_text_data import is_local_text_dataset, resolve_local_data_files
 from tokenizer.dataloader_config import (
     DataloaderConfig,
     DatasetSpec,
@@ -324,29 +315,24 @@ class StreamingTextDataset(IterableDataset):
         return _shuffle_iterable(dataset, shuffle_config.buffer_size, seed)
 
     def _load_dataset(self, dataset_index: int, spec: DatasetSpec, worker_info) -> Iterable:
-        args = [spec.name]
-        if spec.config:
-            args.append(spec.config)
-        kwargs = {
-            "split": spec.split,
-            "streaming": True,
-        }
-        if spec.data_files is not None:
-            kwargs["data_files"] = spec.data_files
-        if spec.columns is not None:
-            kwargs["columns"] = spec.columns
-        if spec.filters is not None:
-            kwargs["filters"] = [tuple(filt) for filt in spec.filters]
-        if spec.hf_token is not None:
-            kwargs["token"] = spec.hf_token
-        dataset = load_dataset(*args, **kwargs)
-        features = getattr(dataset, "features", None)
-        if features is not None:
-            for column in spec.text_columns:
-                if column not in features:
-                    raise ValueError(
-                        f"Dataset '{spec.name}' does not contain text column '{column}'"
-                    )
+        if is_local_text_dataset(spec.name, spec.data_files, split=spec.split):
+            # Preserve full-file context for local text corpora instead of training on one line at a time.
+            paths = resolve_local_data_files(spec.data_files, split=spec.split)
+            if not paths:
+                raise FileNotFoundError(
+                    f"Local text dataset '{spec.name}' did not resolve any files for split '{spec.split}'."
+                )
+            dataset = _LocalTextDocumentDataset(paths)
+        else:
+            dataset = _load_hf_dataset(spec)
+            features = getattr(dataset, "features", None)
+            if features is not None:
+                for column in spec.text_columns:
+                    if column not in features:
+                        raise ValueError(
+                            f"Dataset '{spec.name}' does not contain text column '{column}'"
+                        )
+
         shuffle_config = self._resolve_shuffle_config(spec)
         if shuffle_config is not None:
             dataset = self._shuffle_dataset(dataset, shuffle_config, dataset_index)
@@ -416,6 +402,52 @@ class StreamingTextDataset(IterableDataset):
                 if not iterators:
                     return
                 sampler = SmoothWeightedRoundRobin(weights, mixing.seed)
+
+
+class _LocalTextDocumentDataset:
+    column_names = ["text"]
+    features = {"text": "string"}
+
+    def __init__(self, paths: Sequence[Path]) -> None:
+        self._paths = list(paths)
+
+    def __iter__(self) -> Iterator[dict[str, str]]:
+        for path in self._paths:
+            yield {"text": path.read_text(encoding="utf-8")}
+
+
+def _load_hf_dataset(spec: DatasetSpec):
+    load_dataset = _import_hf_load_dataset()
+    args = [spec.name]
+    if spec.config:
+        args.append(spec.config)
+    kwargs = {
+        "split": spec.split,
+        "streaming": True,
+    }
+    if spec.data_files is not None:
+        kwargs["data_files"] = spec.data_files
+    if spec.columns is not None:
+        kwargs["columns"] = spec.columns
+    if spec.filters is not None:
+        kwargs["filters"] = [tuple(filt) for filt in spec.filters]
+    if spec.hf_token is not None:
+        kwargs["token"] = spec.hf_token
+    return load_dataset(*args, **kwargs)
+
+
+def _import_hf_load_dataset():
+    try:
+        from datasets import load_dataset
+    except ImportError as exc:
+        raise ImportError(
+            "Failed to import HuggingFace 'datasets.load_dataset'. Install API dependencies in the "
+            "interpreter used to run `make api` (for example: "
+            "`./.venv/bin/pip install -r apps/llm-studio/api/requirements.txt`). If `datasets` "
+            "is resolving to a local `datasets/` folder, that interpreter is missing the "
+            "HuggingFace `datasets` package."
+        ) from exc
+    return load_dataset
 
 
 def _strided_iterable(dataset: Iterable, worker_id: int, num_workers: int) -> Iterable:

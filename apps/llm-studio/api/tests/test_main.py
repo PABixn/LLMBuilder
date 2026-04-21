@@ -376,6 +376,26 @@ def test_training_endpoints_validate_and_preflight(monkeypatch, tmp_path: Path) 
         sparse_save_body = sparse_save_preflight.json()
         assert "save_every_sparse" in {issue["code"] for issue in sparse_save_body["warnings"]}
 
+        mismatch_project = client.post(
+            "/api/v1/projects",
+            json={"name": "mismatched-vocab-model", "model_config": _small_model_config(vocab_size=4)},
+        )
+        assert mismatch_project.status_code == 201
+        mismatch_preflight = client.post(
+            "/api/v1/training/validate/preflight",
+            json={
+                "project_id": mismatch_project.json()["id"],
+                "tokenizer_job_id": "completed-tokenizer",
+                **payload,
+            },
+        )
+        assert mismatch_preflight.status_code == 200
+        mismatch_body = mismatch_preflight.json()
+        vocab_error = next(
+            issue for issue in mismatch_body["errors"] if issue["code"] == "vocab_size_mismatch"
+        )
+        assert vocab_error["path"] == "$.model_config.vocab_size"
+
         scheduler_payload = copy.deepcopy(payload)
         scheduler_payload["training_config"]["max_steps"] = 301
         scheduler_preflight = client.post(
@@ -389,6 +409,14 @@ def test_training_endpoints_validate_and_preflight(monkeypatch, tmp_path: Path) 
         assert scheduler_preflight.status_code == 200
         scheduler_body = scheduler_preflight.json()
         assert scheduler_body["valid"] is False
+        scheduler_error = next(
+            issue for issue in scheduler_body["errors"] if issue["code"] == "training_config_invalid"
+        )
+        assert scheduler_error["message"] == (
+            "LR scheduler steps must add up to max_steps. "
+            "Use the suggested fix below or edit training_config.lr_scheduler."
+        )
+        assert scheduler_error["path"] == "$.training_config"
         scheduler_fix = next(
             fix for fix in scheduler_body["recommended_fixes"] if fix["code"] == "match_scheduler_steps_to_max_steps"
         )

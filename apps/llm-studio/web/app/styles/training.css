@@ -77,6 +77,10 @@
   margin-top: 0;
 }
 
+.trainingRunNameField {
+  width: min(100%, 220px);
+}
+
 .trainingPairGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2288,6 +2292,10 @@
   .trainingPage .fieldGrid,
   .trainingPage .fieldGrid.compact {
     grid-template-columns: 1fr;
+  }
+
+  .trainingRunNameField {
+    width: 100%;
   }
 
   .trainingPairGrid,
