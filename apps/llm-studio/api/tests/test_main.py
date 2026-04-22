@@ -490,6 +490,8 @@ def test_training_job_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
                         "started_at": datetime.now(timezone.utc).isoformat(),
                         "last_step": 3,
                         "max_steps": 6,
+                        "elapsed_seconds": 20.5,
+                        "eta_seconds": 19.5,
                         "latest_loss": 1.23,
                         "latest_grad_norm": 0.45,
                         "latest_lr": 0.001,
@@ -583,15 +585,21 @@ def test_training_job_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
         assert created["tokenizer_job_id"] == "completed-tokenizer"
         assert created["latest_loss"] == 0.975
         assert created["checkpoint_count"] == 1
+        assert created["elapsed_seconds"] == 20.5
+        assert created["eta_seconds"] == 19.5
 
         listing = client.get("/api/v1/training/jobs")
         assert listing.status_code == 200
         listing_jobs = listing.json()["jobs"]
-        assert any(job["id"] == job_id for job in listing_jobs)
+        listed = next(job for job in listing_jobs if job["id"] == job_id)
+        assert listed["elapsed_seconds"] == 20.5
+        assert listed["eta_seconds"] == 19.5
 
         detail = client.get(f"/api/v1/training/jobs/{job_id}")
         assert detail.status_code == 200
         assert detail.json()["last_step"] == 205
+        assert detail.json()["elapsed_seconds"] == 20.5
+        assert detail.json()["eta_seconds"] == 19.5
 
         metrics = client.get(f"/api/v1/training/jobs/{job_id}/metrics")
         assert metrics.status_code == 200

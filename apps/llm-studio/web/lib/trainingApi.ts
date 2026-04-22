@@ -140,6 +140,8 @@ export interface TrainingJob {
   stderr_path: string;
   last_step: number;
   max_steps: number;
+  elapsed_seconds?: number | null;
+  eta_seconds?: number | null;
   latest_loss: number | null;
   latest_grad_norm: number | null;
   latest_lr: number | null;

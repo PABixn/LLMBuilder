@@ -235,6 +235,8 @@ class TrainingJobResponse(BaseModel):
     stderr_path: str
     last_step: int = 0
     max_steps: int = 0
+    elapsed_seconds: float | None = None
+    eta_seconds: float | None = None
     latest_loss: float | None = None
     latest_grad_norm: float | None = None
     latest_lr: float | None = None

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import glob
 import json
+import math
 import os
 import re
 import shutil
@@ -789,6 +790,7 @@ class TrainingRunManager:
             return
 
     def _to_response(self, job: StoredTrainingJob) -> TrainingJobResponse:
+        runtime_state = load_optional_json(Path(job.artifact_dir) / "runtime_state.json")
         return TrainingJobResponse(
             id=job.id,
             name=job.name,
@@ -816,6 +818,8 @@ class TrainingRunManager:
             stderr_path=job.stderr_path,
             last_step=job.last_step,
             max_steps=job.max_steps,
+            elapsed_seconds=optional_float_from_payload(runtime_state, "elapsed_seconds"),
+            eta_seconds=optional_float_from_payload(runtime_state, "eta_seconds"),
             latest_loss=job.latest_loss,
             latest_grad_norm=job.latest_grad_norm,
             latest_lr=job.latest_lr,
@@ -830,6 +834,21 @@ class TrainingRunManager:
 
 def issue(code: str, message: str, path: str, *, severity: str = "error") -> TrainingIssue:
     return TrainingIssue(code=code, message=message, path=path, severity=severity)
+
+
+def optional_float_from_payload(payload: dict[str, Any] | None, key: str) -> float | None:
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get(key)
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(parsed) or parsed < 0:
+        return None
+    return parsed
 
 
 def validation_issues(code: str, base_path: str, exc: ValidationError) -> list[TrainingIssue]:

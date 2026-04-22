@@ -138,6 +138,15 @@ interface LocalTrainFileFormState {
   sizeChars: number | null;
 }
 
+interface TrainingStepProgressSnapshot {
+  completedSteps: number;
+  maxSteps: number;
+  fraction: number;
+  percentLabel: string;
+  elapsedSeconds: number | null;
+  etaSeconds: number | null;
+}
+
 const FILTER_OPERATORS: FilterOperator[] = ["==", "!=", ">", ">=", "<", "<=", "in", "not in"];
 const WEIGHT_SUM_EPSILON = 1e-9;
 const WEIGHT_SCALE = 1_000_000;
@@ -357,39 +366,41 @@ function sanitizePositiveDecimalInput(value: string): string {
 
 function sanitizePositiveScientificInput(value: string): string {
   const compact = value.replace(/,/g, "").replace(/\s/g, "").toLowerCase();
-  let output = "";
+  const exponentIndex = compact.indexOf("e");
+  const mantissaRaw = exponentIndex === -1 ? compact : compact.slice(0, exponentIndex);
+  const exponentRaw = exponentIndex === -1 ? "" : compact.slice(exponentIndex + 1);
+
+  let mantissa = "";
   let hasDot = false;
-  let hasExponent = false;
-  let canAddExponentSign = false;
-
-  for (const char of compact) {
+  for (const char of mantissaRaw) {
     if (/[0-9]/.test(char)) {
-      output += char;
-      canAddExponentSign = false;
+      mantissa += char;
       continue;
     }
-
-    if (char === "." && !hasDot && !hasExponent) {
-      output += char;
+    if (char === "." && !hasDot) {
+      mantissa += char;
       hasDot = true;
-      canAddExponentSign = false;
-      continue;
-    }
-
-    if (char === "e" && !hasExponent && output !== "" && output !== ".") {
-      output += char;
-      hasExponent = true;
-      canAddExponentSign = true;
-      continue;
-    }
-
-    if ((char === "-" || char === "+") && canAddExponentSign) {
-      output += char;
-      canAddExponentSign = false;
     }
   }
 
-  return output;
+  if (exponentIndex === -1) {
+    return mantissa;
+  }
+
+  let exponent = "";
+  let hasSign = false;
+  for (const char of exponentRaw) {
+    if (/[0-9]/.test(char)) {
+      exponent += char;
+      continue;
+    }
+    if ((char === "-" || char === "+") && !hasSign && exponent === "") {
+      exponent += char;
+      hasSign = true;
+    }
+  }
+
+  return `${mantissa}e${exponent}`;
 }
 
 function parseWeightInput(value: string): number | null {
@@ -1118,6 +1129,78 @@ function formatDuration(seconds: number | null | undefined): string {
   return `${secs}s`;
 }
 
+function normalizeRuntimeSeconds(value: number | null | undefined): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return null;
+  }
+  return value;
+}
+
+function formatProgressPercent(fraction: number): string {
+  const percentage = clamp(fraction * 100, 0, 100);
+  if (percentage <= 0 || percentage >= 100) {
+    return `${Math.round(percentage)}%`;
+  }
+  if (percentage < 10) {
+    return `${percentage.toFixed(1)}%`;
+  }
+  return `${Math.round(percentage)}%`;
+}
+
+function deriveTrainingStepProgress(run: TrainingJob | null): TrainingStepProgressSnapshot {
+  const maxSteps = Math.max(0, run?.max_steps ?? 0);
+  const completedSteps = maxSteps > 0
+    ? clamp(Math.max(0, run?.last_step ?? 0), 0, maxSteps)
+    : Math.max(0, run?.last_step ?? 0);
+  const fraction = maxSteps > 0
+    ? clamp(completedSteps / maxSteps, 0, 1)
+    : run?.status === "completed"
+      ? 1
+      : 0;
+  const elapsedSeconds = normalizeRuntimeSeconds(run?.elapsed_seconds);
+  const remainingSteps = maxSteps > 0 ? Math.max(maxSteps - completedSteps, 0) : 0;
+  const etaFromElapsed = elapsedSeconds !== null && completedSteps > 0 && remainingSteps > 0
+    ? (elapsedSeconds / completedSteps) * remainingSteps
+    : remainingSteps === 0 && maxSteps > 0
+      ? 0
+      : null;
+
+  return {
+    completedSteps,
+    maxSteps,
+    fraction,
+    percentLabel: formatProgressPercent(fraction),
+    elapsedSeconds,
+    etaSeconds: normalizeRuntimeSeconds(run?.eta_seconds) ?? etaFromElapsed,
+  };
+}
+
+function formatTrainingEta(snapshot: TrainingStepProgressSnapshot, status: TrainingJobStatus | null): string {
+  if (status === "completed") {
+    return "0s";
+  }
+  if (status === "failed" || status === "cancelled" || snapshot.maxSteps <= 0) {
+    return "n/a";
+  }
+  if (snapshot.completedSteps <= 0) {
+    return "Waiting for first logged step";
+  }
+  if (snapshot.etaSeconds === null) {
+    return "Calculating...";
+  }
+  return formatDuration(snapshot.etaSeconds);
+}
+
+function formatTrainingElapsed(snapshot: TrainingStepProgressSnapshot, status: TrainingJobStatus | null): string {
+  if (snapshot.elapsedSeconds !== null) {
+    return formatDuration(snapshot.elapsedSeconds);
+  }
+  if (status === "running" || status === "pending") {
+    return "Waiting for first logged step";
+  }
+  return "n/a";
+}
+
 function statusTone(status: string): string {
   if (status === "completed") {
     return "tone-good";
@@ -1696,6 +1779,7 @@ function TrainingPageContent() {
   const [selectedProject, setSelectedProject] = useState<ProjectDetail | null>(null);
   const [selectedTokenizer, setSelectedTokenizer] = useState<TokenizerTrainingJob | null>(null);
   const [runName, setRunName] = useState("");
+  const [runNameDirty, setRunNameDirty] = useState(false);
   const [preflight, setPreflight] = useState<TrainingPreflightResponse | null>(null);
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [preflightError, setPreflightError] = useState<string | null>(null);
@@ -1742,6 +1826,7 @@ function TrainingPageContent() {
   const workflowHighlightTimeoutRef = useRef<number | null>(null);
   const trainingPlanPanelRef = useRef<HTMLDetailsElement | null>(null);
   const datasetPanelRef = useRef<HTMLDetailsElement | null>(null);
+  const autoRunNameRef = useRef("");
   const modelSelectionRef = useRef<HTMLDivElement | null>(null);
   const tokenizerSelectionRef = useRef<HTMLDivElement | null>(null);
   const trainingSettingsRef = useRef<HTMLDivElement | null>(null);
@@ -1971,8 +2056,13 @@ function TrainingPageContent() {
     if (!selectedProject && !selectedTokenizer) {
       return;
     }
-    setRunName((current) => current || defaultRunName(selectedProject, selectedTokenizer));
-  }, [selectedProject, selectedTokenizer]);
+    const nextAutoName = defaultRunName(selectedProject, selectedTokenizer);
+    setRunName((current) => {
+      const shouldReplace = !runNameDirty || current === autoRunNameRef.current;
+      autoRunNameRef.current = nextAutoName;
+      return shouldReplace ? nextAutoName : current;
+    });
+  }, [runNameDirty, selectedProject, selectedTokenizer]);
 
   useEffect(() => {
     if (!selectedProjectId || !selectedTokenizerJobId || !deferredTrainingConfig || !deferredDataloaderConfig) {
@@ -2780,6 +2870,7 @@ function TrainingPageContent() {
     activeRun?.status === "running" || activeRun?.status === "pending";
   const activeRunCanBeStopped = canStopTrainingRun(activeRun);
   const stoppingActiveRun = activeRunCanBeStopped && stoppingRunId === activeRun.id;
+  const activeRunStepProgress = useMemo(() => deriveTrainingStepProgress(activeRun), [activeRun]);
   const trainingCompleted = activeRun?.status === "completed";
   const sequenceLength = trainingConfig ? asNumber(trainingConfig.seq_len, 0) : 0;
   const maxSteps = trainingConfig ? asNumber(trainingConfig.max_steps, 0) : 0;
@@ -3059,7 +3150,14 @@ function TrainingPageContent() {
           <div className="fieldGrid compact">
             <label className="fieldLabel trainingRunNameField">
               <span>Run name</span>
-              <input value={runName} onChange={(event) => setRunName(event.target.value)} placeholder="optional training run name" />
+              <input
+                value={runName}
+                onChange={(event) => {
+                  setRunNameDirty(true);
+                  setRunName(event.target.value);
+                }}
+                placeholder="optional training run name"
+              />
             </label>
           </div>
         </div>
@@ -3162,16 +3260,16 @@ function TrainingPageContent() {
               <div className="trainingProgress">
                 <div className="trainingSectionHeader">
                   <h3>{activeRun.name}</h3>
-                  <span className="pillBadge tone-neutral">{activeRun.stage}</span>
                 </div>
                 <div className="trainingProgressBar">
-                  <span style={{ width: `${Math.max(0, Math.min(activeRun.progress, 1)) * 100}%` }} />
+                  <span style={{ width: `${activeRunStepProgress.fraction * 100}%` }} />
                 </div>
                 <div className="trainingInlineMeta">
                   <span>Run identifier: {activeRun.id.slice(0, 8)}</span>
                   <span>Created {formatDate(activeRun.created_at)}</span>
                   <span>Started {activeRun.started_at ? formatDate(activeRun.started_at) : "waiting"}</span>
-                  <span>Estimated time remaining: {formatDuration((activeRun as unknown as { eta_seconds?: number | null }).eta_seconds ?? null)}</span>
+                  <span>Elapsed training time: {formatTrainingElapsed(activeRunStepProgress, activeRun.status)}</span>
+                  <span>Estimated time remaining: {formatTrainingEta(activeRunStepProgress, activeRun.status)}</span>
                 </div>
               </div>
 
@@ -3181,9 +3279,9 @@ function TrainingPageContent() {
                   <div>
                     <div className="statusCardTitle">Training step</div>
                     <div className="statusCardValue">
-                      {formatInteger(activeRun.last_step)} / {formatInteger(activeRun.max_steps)}
+                      {formatInteger(activeRunStepProgress.completedSteps)} / {formatInteger(activeRunStepProgress.maxSteps)}
                     </div>
-                    <div className="statusCardDetail">Training progress: {Math.round(activeRun.progress * 100)}%</div>
+                    <div className="statusCardDetail">Training progress: {activeRunStepProgress.percentLabel} of steps</div>
                   </div>
                 </div>
                 <div className="statusCard">
@@ -3251,7 +3349,7 @@ function TrainingPageContent() {
                 />
               </div>
 
-              <details className="sectionDisclosure" open>
+              <details className="sectionDisclosure">
                 <summary className="sectionDisclosureSummary">Samples</summary>
                 <div className="trainingSampleList">
                   {samples.length ? (
@@ -3324,7 +3422,7 @@ function TrainingPageContent() {
                 </div>
               </details>
 
-              <details className="sectionDisclosure" open>
+              <details className="sectionDisclosure">
                 <summary className="sectionDisclosureSummary">Checkpoints</summary>
                 <div className="trainingCheckpointList">
                   {checkpoints.length ? (
@@ -3343,7 +3441,7 @@ function TrainingPageContent() {
                 </div>
               </details>
 
-              <details className="sectionDisclosure" open>
+              <details className="sectionDisclosure">
                 <summary className="sectionDisclosureSummary">Training Data Preview</summary>
                 {dataPreview ? (
                   <div className="trainingJsonGrid">
@@ -3356,7 +3454,7 @@ function TrainingPageContent() {
                 )}
               </details>
 
-              <details className="sectionDisclosure" open>
+              <details className="sectionDisclosure">
                 <summary className="sectionDisclosureSummary">Logs</summary>
                 <div className="trainingDualLog">
                   <div className="trainingLogBox">{logs.stdout.join("\n") || "stdout is quiet so far."}</div>
