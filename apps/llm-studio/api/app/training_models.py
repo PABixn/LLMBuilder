@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -101,6 +101,62 @@ class DerivedRuntimeSummary(BaseModel):
     ddp_world_size: int = 1
 
 
+class TrainingBatchLrRecommendationOption(BaseModel):
+    key: str
+    label: str
+    description: str
+    tone: Literal["recommended", "neutral"] = "neutral"
+    total_batch_size: int
+    micro_batch_size: int
+    grad_accum_steps: int
+    learning_rate: float
+    estimated_tokens_per_run: int
+    clear_manual_micro_batch: bool = True
+
+
+class TrainingBatchLrRecommendationFactor(BaseModel):
+    code: str
+    label: str
+    detail: str
+    tone: Literal["good", "neutral", "warning"] = "neutral"
+
+
+class TrainingBatchLrRecommendationSignals(BaseModel):
+    device: str
+    device_type: str
+    total_parameters: int
+    parameter_memory_bytes_bf16: int
+    estimated_kv_cache_bytes_for_context_fp16: int
+    block_count: int
+    attention_component_count: int
+    max_mlp_multiplier: float
+    dataset_count: int
+    local_dataset_count: int
+    streaming_dataset_count: int
+    local_file_count: int
+    local_total_size_bytes: int | None = None
+    dominant_dataset_weight: float
+    dataset_scale: str
+    schedule_peak_factor: float
+    warmup_fraction: float
+    max_memory_micro_batch_size: int
+    recommended_batch_target: int
+
+
+class TrainingBatchLrRecommendation(BaseModel):
+    headline: str
+    summary: str
+    confidence: Literal["high", "medium", "low"] = "medium"
+    current_total_batch_size: int
+    current_learning_rate: float
+    current_micro_batch_size: int | None = None
+    current_grad_accum_steps: int | None = None
+    recommended_option_key: str
+    options: list[TrainingBatchLrRecommendationOption] = Field(default_factory=list)
+    factors: list[TrainingBatchLrRecommendationFactor] = Field(default_factory=list)
+    signals: TrainingBatchLrRecommendationSignals
+
+
 class TrainingPreflightRequest(StrictModel):
     project_id: str
     tokenizer_job_id: str
@@ -120,6 +176,7 @@ class TrainingPreflightResponse(BaseModel):
     compatibility: TrainingCompatibilitySummary | None = None
     derived_runtime: DerivedRuntimeSummary | None = None
     memory_estimate: dict[str, Any] | None = None
+    batch_and_lr_recommendation: TrainingBatchLrRecommendation | None = None
 
 
 class CreateTrainingJobRequest(TrainingPreflightRequest):

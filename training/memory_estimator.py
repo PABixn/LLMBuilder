@@ -159,6 +159,7 @@ class MemoryEstimator:
         *,
         optimizer: Optimizer | None = None,
         device: torch.device | str | None = None,
+        token_dtype: torch.dtype | str = torch.long,
         attention_backend: Literal["auto", "flash", "math"] = "auto",
         safety_margin: float = 0.9,
         logits_backward_factor: float = 2.0,
@@ -170,6 +171,7 @@ class MemoryEstimator:
         self.model = model
         self.optimizer = optimizer
         self.device = device
+        self.token_dtype = token_dtype
         self.attention_backend = attention_backend
         self.safety_margin = safety_margin
         self.logits_backward_factor = logits_backward_factor
@@ -185,6 +187,7 @@ class MemoryEstimator:
             seq_len=seq_len,
             batch_size=batch_size,
             device=self.device,
+            token_dtype=self.token_dtype,
             attention_backend=self.attention_backend,
             safety_margin=self.safety_margin,
             logits_backward_factor=self.logits_backward_factor,
@@ -239,6 +242,7 @@ def estimate_max_step_tokens(
     seq_len: int,
     batch_size: int | None = None,
     device: torch.device | str | None = None,
+    token_dtype: torch.dtype | str = torch.long,
     attention_backend: Literal["auto", "flash", "math"] = "auto",
     safety_margin: float = 0.9,
     logits_backward_factor: float = 2.0,
@@ -273,6 +277,7 @@ def estimate_max_step_tokens(
         )
 
     resolved_device = _resolve_device(model, device)
+    resolved_token_dtype = _resolve_token_dtype(token_dtype)
     snapshot = get_device_memory_snapshot(resolved_device)
     resolved_backend = _resolve_attention_backend(resolved_device, attention_backend)
 
@@ -310,7 +315,7 @@ def estimate_max_step_tokens(
     activation_bytes_per_token = int(math.ceil(saved_activation_elements_per_token * activation_dtype_bytes))
     attention_bytes_per_token = int(math.ceil(attention_elements_per_token * activation_dtype_bytes))
 
-    input_target_bytes_per_token = 2 * _dtype_bytes(torch.long)
+    input_target_bytes_per_token = 2 * _dtype_bytes(resolved_token_dtype)
 
     vocab_size = int(model.config.vocab_size)
     logits_bytes_per_token = int(math.ceil(vocab_size * _dtype_bytes(torch.float32) * logits_backward_factor))
@@ -624,6 +629,21 @@ def _estimate_rope_cache_bytes(model: ConfigurableGPT, seq_len: int) -> int:
 
 def _dtype_bytes(dtype: torch.dtype) -> int:
     return torch.empty((), dtype=dtype).element_size()
+
+
+def _resolve_token_dtype(dtype: torch.dtype | str) -> torch.dtype:
+    if isinstance(dtype, torch.dtype):
+        return dtype
+    if isinstance(dtype, str):
+        mapping = {
+            "int64": torch.int64,
+            "int32": torch.int32,
+            "int16": torch.int16,
+            "uint8": torch.uint8,
+        }
+        if dtype in mapping:
+            return mapping[dtype]
+    raise ValueError(f"Unsupported token dtype: {dtype!r}")
 
 
 def _cpu_memory_info() -> tuple[int, int]:

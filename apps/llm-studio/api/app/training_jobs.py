@@ -23,6 +23,7 @@ from .config import get_settings, training_exports_dir, training_jobs_dir
 from .schemas import load_json, write_json
 from .tokenizer_storage import StudioStore as TokenizerStudioStore
 from .training_models import (
+    TrainingBatchLrRecommendation,
     CreateTrainingJobRequest,
     DerivedRuntimeSummary,
     TrainingAssetRef,
@@ -43,6 +44,7 @@ from .training_models import (
     TrainingSampleText,
     TrainingSamplesResponse,
 )
+from .training_recommendations import build_batch_and_lr_recommendation
 from .training_storage import StoredTrainingJob, TrainingStudioStore
 
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
@@ -74,6 +76,7 @@ class ResolvedPreflightContext:
     compatibility: TrainingCompatibilitySummary | None
     derived_runtime: DerivedRuntimeSummary | None
     memory_estimate: dict[str, Any] | None
+    batch_and_lr_recommendation: TrainingBatchLrRecommendation | None
 
 
 class TrainingRunManager:
@@ -107,6 +110,7 @@ class TrainingRunManager:
             compatibility=context.compatibility,
             derived_runtime=context.derived_runtime,
             memory_estimate=context.memory_estimate,
+            batch_and_lr_recommendation=context.batch_and_lr_recommendation,
         )
 
     def create_job(self, request: CreateTrainingJobRequest) -> TrainingJobResponse:
@@ -499,6 +503,7 @@ class TrainingRunManager:
         compatibility = None
         derived_runtime = None
         memory_estimate = None
+        batch_and_lr_recommendation = None
 
         add_scheduler_step_fix(fixes, request.training_config)
 
@@ -614,7 +619,7 @@ class TrainingRunManager:
                     )
                 )
 
-            if not errors:
+            if parsed_training_config.seq_len <= int(model_config["context_length"]):
                 model = ConfigurableGPT(load_config_dict(model_config))
                 optimizer = model.setup_optimizer(
                     lr=parsed_training_config.optimizer.lr,
@@ -623,11 +628,18 @@ class TrainingRunManager:
                     eps=parsed_training_config.optimizer.eps,
                 )
                 device = default_training_device()
-                memory_estimator = MemoryEstimator(model=model, optimizer=optimizer, device=device)
+                memory_estimator = MemoryEstimator(
+                    model=model,
+                    optimizer=optimizer,
+                    device=device,
+                    token_dtype=parsed_dataloader_config.token_dtype,
+                )
                 estimate = memory_estimator.estimate(
                     seq_len=parsed_training_config.seq_len,
                     batch_size=None,
                 )
+                recommendation_estimate = estimate
+                batch_plan = None
                 try:
                     batch_plan = derive_batch_runtime_plan(
                         total_batch_size=parsed_training_config.total_batch_size,
@@ -652,6 +664,7 @@ class TrainingRunManager:
                         seq_len=parsed_training_config.seq_len,
                         batch_size=batch_plan.micro_batch_size,
                     )
+                    recommendation_estimate = configured_estimate
                     memory_estimate = configured_estimate.to_dict()
                     derived_runtime = DerivedRuntimeSummary(
                         device=str(device),
@@ -667,6 +680,16 @@ class TrainingRunManager:
                         ddp_rank=0,
                         ddp_world_size=1,
                     )
+                tokenizer_job = self._tokenizer_store.get_job(request.tokenizer_job_id)
+                batch_and_lr_recommendation = build_batch_and_lr_recommendation(
+                    model_config=load_config_dict(model_config),
+                    model=model,
+                    training_config=parsed_training_config,
+                    dataloader_config=parsed_dataloader_config,
+                    tokenizer_stats=tokenizer_job.stats if tokenizer_job is not None else None,
+                    memory_estimate=recommendation_estimate,
+                    current_batch_plan=batch_plan,
+                )
 
         return ResolvedPreflightContext(
             valid=not errors,
@@ -681,6 +704,7 @@ class TrainingRunManager:
             compatibility=compatibility,
             derived_runtime=derived_runtime,
             memory_estimate=memory_estimate,
+            batch_and_lr_recommendation=batch_and_lr_recommendation,
         )
 
     def _load_project_asset(self, project_id: str) -> tuple[TrainingAssetRef, dict[str, Any]]:

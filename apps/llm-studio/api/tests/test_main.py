@@ -147,6 +147,104 @@ def test_training_batch_runtime_plan_uses_largest_valid_auto_micro_batch() -> No
     assert explicit_plan.grad_accum_steps == 8
 
 
+def test_batch_and_lr_recommendation_uses_gpt2_scale_anchor_when_unconstrained() -> None:
+    from app.training_recommendations import _model_target_total_batch_size
+
+    target = _model_target_total_batch_size(
+        total_parameters=124_000_000,
+        seq_len=1024,
+        max_memory_micro_batch_size=64,
+        max_grad_accum=64,
+        dataset_cap_tokens=None,
+    )
+
+    assert target == 524288
+
+
+def test_batch_and_lr_recommendation_keeps_small_models_substantial_when_unconstrained() -> None:
+    from app.training_recommendations import _model_target_total_batch_size
+
+    target = _model_target_total_batch_size(
+        total_parameters=11_000_000,
+        seq_len=256,
+        max_memory_micro_batch_size=64,
+        max_grad_accum=64,
+        dataset_cap_tokens=None,
+    )
+
+    assert target == 262144
+
+
+def test_batch_and_lr_recommendation_prefers_power_of_two_token_batches() -> None:
+    from app.training_recommendations import _model_target_total_batch_size
+
+    target = _model_target_total_batch_size(
+        total_parameters=123_000_000,
+        seq_len=1024,
+        max_memory_micro_batch_size=7,
+        max_grad_accum=64,
+        dataset_cap_tokens=None,
+    )
+
+    assert target == 262144
+    assert target & (target - 1) == 0
+
+
+def test_batch_and_lr_recommendation_preserves_canonical_learning_rates() -> None:
+    from app.training_recommendations import (
+        _DatasetSummary,
+        _ModelSummary,
+        _ScheduleSummary,
+        _recommend_learning_rate,
+        _round_learning_rate_to_canonical_mantissa,
+    )
+
+    assert _round_learning_rate_to_canonical_mantissa(3.1e-4, lower=6e-5, upper=9e-4) == 3e-4
+    assert _round_learning_rate_to_canonical_mantissa(1.7e-4, lower=6e-5, upper=9e-4) == 2e-4
+
+    model_summary = _ModelSummary(
+        total_parameters=124_000_000,
+        parameter_memory_bytes_bf16=248_000_000,
+        estimated_kv_cache_bytes_for_context_fp16=0,
+        block_count=12,
+        attention_component_count=12,
+        max_mlp_multiplier=4.0,
+        activation_types=("gelu",),
+        norm_types=("layernorm",),
+        uses_gqa=False,
+        weight_tying=True,
+    )
+    dataset_summary = _DatasetSummary(
+        dataset_count=1,
+        local_dataset_count=0,
+        streaming_dataset_count=1,
+        local_file_count=0,
+        local_total_size_bytes=None,
+        dominant_dataset_weight=1.0,
+        dataset_scale="streaming",
+        approx_local_tokens=None,
+        step_budget_cap_tokens=None,
+        tokenizer_bytes_per_token_assumption=4.0,
+    )
+    schedule_summary = _ScheduleSummary(
+        peak_factor=1.0,
+        warmup_fraction=0.1,
+        label="Warmup + cosine decay",
+    )
+
+    assert (
+        _recommend_learning_rate(
+            total_batch_size=262_144,
+            seq_len=1_024,
+            model_summary=model_summary,
+            dataset_summary=dataset_summary,
+            schedule_summary=schedule_summary,
+            variant_multiplier=1.0,
+        )
+        == 3e-4
+    )
+
+
 def test_training_dataloader_config_accepts_hf_token() -> None:
     from training.dataloader_config import TrainingDataloaderConfig
 
@@ -353,6 +451,18 @@ def test_training_endpoints_validate_and_preflight(monkeypatch, tmp_path: Path) 
         assert preflight_body["compatibility"]["model_vocab_size"] == 3
         assert preflight_body["derived_runtime"]["micro_batch_size"] > 0
         assert preflight_body["memory_estimate"]["max_batch_size"] > 0
+        recommendation = preflight_body["batch_and_lr_recommendation"]
+        assert recommendation is not None
+        assert recommendation["recommended_option_key"] == "balanced"
+        recommended_option = next(
+            option for option in recommendation["options"] if option["key"] == recommendation["recommended_option_key"]
+        )
+        assert recommended_option["total_batch_size"] % payload["training_config"]["seq_len"] == 0
+        assert recommended_option["micro_batch_size"] > 0
+        assert recommended_option["grad_accum_steps"] > 0
+        assert recommended_option["learning_rate"] > 0
+        assert recommendation["signals"]["max_memory_micro_batch_size"] > 0
+        assert recommendation["signals"]["local_file_count"] == 1
         assert {issue["code"] for issue in preflight_body["warnings"]} == {"save_every_sparse"}
         fix_codes = {fix["code"] for fix in preflight_body["recommended_fixes"]}
         save_fix = next(
@@ -375,6 +485,22 @@ def test_training_endpoints_validate_and_preflight(monkeypatch, tmp_path: Path) 
         assert sparse_save_preflight.status_code == 200
         sparse_save_body = sparse_save_preflight.json()
         assert "save_every_sparse" in {issue["code"] for issue in sparse_save_body["warnings"]}
+
+        invalid_batch_payload = copy.deepcopy(payload)
+        invalid_batch_payload["training_config"]["total_batch_size"] = 30
+        invalid_batch_preflight = client.post(
+            "/api/v1/training/validate/preflight",
+            json={
+                "project_id": project_id,
+                "tokenizer_job_id": "completed-tokenizer",
+                **invalid_batch_payload,
+            },
+        )
+        assert invalid_batch_preflight.status_code == 200
+        invalid_batch_body = invalid_batch_preflight.json()
+        assert invalid_batch_body["valid"] is False
+        assert "invalid_micro_batch_size" in {issue["code"] for issue in invalid_batch_body["errors"]}
+        assert invalid_batch_body["batch_and_lr_recommendation"] is not None
 
         mismatch_project = client.post(
             "/api/v1/projects",

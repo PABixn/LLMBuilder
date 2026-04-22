@@ -63,6 +63,62 @@ export interface DerivedRuntimeSummary {
   ddp_world_size: number;
 }
 
+export interface TrainingBatchLrRecommendationOption {
+  key: string;
+  label: string;
+  description: string;
+  tone: "recommended" | "neutral";
+  total_batch_size: number;
+  micro_batch_size: number;
+  grad_accum_steps: number;
+  learning_rate: number;
+  estimated_tokens_per_run: number;
+  clear_manual_micro_batch: boolean;
+}
+
+export interface TrainingBatchLrRecommendationFactor {
+  code: string;
+  label: string;
+  detail: string;
+  tone: "good" | "neutral" | "warning";
+}
+
+export interface TrainingBatchLrRecommendationSignals {
+  device: string;
+  device_type: string;
+  total_parameters: number;
+  parameter_memory_bytes_bf16: number;
+  estimated_kv_cache_bytes_for_context_fp16: number;
+  block_count: number;
+  attention_component_count: number;
+  max_mlp_multiplier: number;
+  dataset_count: number;
+  local_dataset_count: number;
+  streaming_dataset_count: number;
+  local_file_count: number;
+  local_total_size_bytes: number | null;
+  dominant_dataset_weight: number;
+  dataset_scale: string;
+  schedule_peak_factor: number;
+  warmup_fraction: number;
+  max_memory_micro_batch_size: number;
+  recommended_batch_target: number;
+}
+
+export interface TrainingBatchLrRecommendation {
+  headline: string;
+  summary: string;
+  confidence: "high" | "medium" | "low";
+  current_total_batch_size: number;
+  current_learning_rate: number;
+  current_micro_batch_size: number | null;
+  current_grad_accum_steps: number | null;
+  recommended_option_key: string;
+  options: TrainingBatchLrRecommendationOption[];
+  factors: TrainingBatchLrRecommendationFactor[];
+  signals: TrainingBatchLrRecommendationSignals;
+}
+
 export interface TrainingPreflightResponse {
   valid: boolean;
   model_project: TrainingAssetRef;
@@ -75,6 +131,7 @@ export interface TrainingPreflightResponse {
   compatibility: TrainingCompatibilitySummary | null;
   derived_runtime: DerivedRuntimeSummary | null;
   memory_estimate: Record<string, unknown> | null;
+  batch_and_lr_recommendation: TrainingBatchLrRecommendation | null;
 }
 
 export interface TrainingMetricPoint {

@@ -296,6 +296,7 @@ def run_training_job(
         model=orig_model,
         optimizer=optimizer,
         device=device,
+        token_dtype=dataloader_config.token_dtype,
     )
     memory_estimate = memory_estimator.estimate(
         seq_len=training_config.seq_len,

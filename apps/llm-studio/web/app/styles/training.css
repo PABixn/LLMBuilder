@@ -1254,6 +1254,167 @@
   width: min(100%, 560px);
 }
 
+.trainingAdvisorCard {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.trainingAdvisorHead,
+.trainingAdvisorOptionHead,
+.trainingAdvisorActionRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.trainingAdvisorHead h3,
+.trainingAdvisorOption strong,
+.trainingAdvisorFactor strong {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 770;
+  letter-spacing: -0.01em;
+}
+
+.trainingAdvisorCopy,
+.trainingAdvisorOption p,
+.trainingAdvisorFactor p,
+.trainingAdvisorEmpty {
+  margin: 0;
+  font-size: 0.81rem;
+  line-height: 1.48;
+  color: var(--text-muted);
+}
+
+.trainingAdvisorMeta,
+.trainingAdvisorSignalRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trainingAdvisorOptionGrid,
+.trainingAdvisorSummaryGrid,
+.trainingAdvisorFactorList {
+  display: grid;
+  gap: 10px;
+}
+
+.trainingAdvisorOptionGrid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.trainingAdvisorOption {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+
+.trainingAdvisorOption:hover,
+.trainingAdvisorOption:focus-visible {
+  border-color: var(--line-strong);
+  box-shadow: 0 12px 24px rgba(9, 25, 49, 0.08);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.trainingAdvisorOption.is-active {
+  border-color: color-mix(in srgb, var(--brand) 36%, var(--line));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-soft) 38%, var(--surface)),
+    var(--surface)
+  );
+}
+
+.trainingAdvisorOptionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+}
+
+.trainingAdvisorSummaryGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.trainingAdvisorSummaryItem {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.trainingAdvisorSummaryItem span,
+.trainingAdvisorSummaryItem small {
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  line-height: 1.4;
+}
+
+.trainingAdvisorSummaryItem strong {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.9rem;
+}
+
+.trainingAdvisorActionRow {
+  justify-content: flex-start;
+}
+
+.trainingAdvisorFactorList {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.trainingAdvisorFactor {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.trainingAdvisorFactor.tone-good {
+  border-color: color-mix(in srgb, var(--ok) 36%, var(--line));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ok-soft) 28%, var(--surface)), var(--surface));
+}
+
+.trainingAdvisorFactor.tone-warning {
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--warn-soft) 34%, var(--surface)), var(--surface));
+}
+
+.trainingAdvisorFactor.tone-neutral {
+  border-color: var(--line);
+}
+
+.trainingAdvisorEmpty {
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 14px;
+}
+
 .lrPlanner {
   margin-top: 16px;
   border: 1px solid var(--line);
@@ -2268,7 +2429,8 @@
   .trainingResultsGrid,
   .trainingJsonGrid,
   .trainingDualLog,
-  .lrPlannerBodyGrid {
+  .lrPlannerBodyGrid,
+  .trainingAdvisorSummaryGrid {
     grid-template-columns: 1fr;
   }
 
@@ -2300,6 +2462,8 @@
 
   .trainingPairGrid,
   .trainingChartGrid,
+  .trainingAdvisorOptionGrid,
+  .trainingAdvisorFactorList,
   .lrPlannerSummaryGrid,
   .lrPlannerInsightGrid,
   .trainingPage .workflowStepGrid {

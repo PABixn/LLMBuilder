@@ -73,6 +73,7 @@ import {
   stopTrainingJob,
   trainingArtifactDownloadUrl,
   validateTrainingPreflight,
+  type TrainingBatchLrRecommendationOption,
   type TrainingCheckpointEntry,
   type TrainingDataPreview,
   type TrainingFixSuggestion,
@@ -1201,6 +1202,24 @@ function formatTrainingElapsed(snapshot: TrainingStepProgressSnapshot, status: T
   return "n/a";
 }
 
+function recommendationFactorToneClass(tone: "good" | "neutral" | "warning"): string {
+  if (tone === "good") {
+    return "tone-good";
+  }
+  if (tone === "warning") {
+    return "tone-warning";
+  }
+  return "tone-neutral";
+}
+
+function formatDatasetScaleLabel(value: string): string {
+  return value.replaceAll("_", " ");
+}
+
+function numbersRoughlyEqual(left: number, right: number, tolerance = 0.000001): boolean {
+  return Math.abs(left - right) <= tolerance;
+}
+
 function statusTone(status: string): string {
   if (status === "completed") {
     return "tone-good";
@@ -1228,7 +1247,7 @@ const ISSUE_LOCATION_LABELS: Record<string, string> = {
   "$.training_config.save_every": "Checkpoint cadence",
   "$.training_config.sample_every": "Sample cadence",
   "$.training_config.seq_len": "Sequence length",
-  "$.training_config.total_batch_size": "Total batch size",
+  "$.training_config.total_batch_size": "Total batch size (tokens)",
   "$.dataloader_config": "Dataset settings",
 };
 
@@ -1781,6 +1800,7 @@ function TrainingPageContent() {
   const [runName, setRunName] = useState("");
   const [runNameDirty, setRunNameDirty] = useState(false);
   const [preflight, setPreflight] = useState<TrainingPreflightResponse | null>(null);
+  const [selectedRecommendationOptionKey, setSelectedRecommendationOptionKey] = useState<string | null>(null);
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [preflightError, setPreflightError] = useState<string | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
@@ -2107,6 +2127,20 @@ function TrainingPageContent() {
       window.clearTimeout(timeoutId);
     };
   }, [deferredDataloaderConfig, deferredTrainingConfig, selectedProjectId, selectedTokenizerJobId]);
+
+  useEffect(() => {
+    const recommendation = preflight?.batch_and_lr_recommendation;
+    if (!recommendation || recommendation.options.length === 0) {
+      setSelectedRecommendationOptionKey(null);
+      return;
+    }
+    setSelectedRecommendationOptionKey((current) => {
+      if (current && recommendation.options.some((option) => option.key === current)) {
+        return current;
+      }
+      return recommendation.recommended_option_key;
+    });
+  }, [preflight]);
 
   useEffect(() => {
     if (!activeRunId) {
@@ -2726,6 +2760,33 @@ function TrainingPageContent() {
     }
   };
 
+  const applyRecommendationOption = (
+    option: TrainingBatchLrRecommendationOption,
+    scope: "both" | "batch" | "lr" = "both"
+  ) => {
+    if (scope !== "lr") {
+      handleTrainingField(["total_batch_size"], option.total_batch_size);
+      if (option.clear_manual_micro_batch) {
+        handleOptionalTrainingField(["micro_batch_size"], null);
+      }
+    }
+    if (scope !== "batch") {
+      handleTrainingField(["optimizer", "lr"], option.learning_rate);
+    }
+
+    const summary =
+      scope === "batch"
+        ? `Set total batch size to ${formatInteger(option.total_batch_size)} tokens.`
+        : scope === "lr"
+          ? `Set learning rate to ${formatLearningRate(option.learning_rate)}.`
+          : `Set total batch size to ${formatInteger(option.total_batch_size)} tokens and learning rate to ${formatLearningRate(option.learning_rate)}.`;
+    const microNote =
+      scope !== "lr" && option.clear_manual_micro_batch
+        ? " Cleared manual micro batch size so preflight can auto-select the best micro step."
+        : "";
+    notify("success", `${option.label} recommendation applied`, `${summary}${microNote}`);
+  };
+
   const closePicker = useCallback(() => {
     pickerRequestIdRef.current += 1;
     setPickerKind(null);
@@ -2871,6 +2932,20 @@ function TrainingPageContent() {
   const activeRunCanBeStopped = canStopTrainingRun(activeRun);
   const stoppingActiveRun = activeRunCanBeStopped && stoppingRunId === activeRun.id;
   const activeRunStepProgress = useMemo(() => deriveTrainingStepProgress(activeRun), [activeRun]);
+  const batchAndLrRecommendation = preflight?.batch_and_lr_recommendation ?? null;
+  const selectedRecommendationOption = useMemo(() => {
+    if (!batchAndLrRecommendation) {
+      return null;
+    }
+    return (
+      batchAndLrRecommendation.options.find((option) => option.key === selectedRecommendationOptionKey) ??
+      batchAndLrRecommendation.options.find(
+        (option) => option.key === batchAndLrRecommendation.recommended_option_key
+      ) ??
+      batchAndLrRecommendation.options[0] ??
+      null
+    );
+  }, [batchAndLrRecommendation, selectedRecommendationOptionKey]);
   const trainingCompleted = activeRun?.status === "completed";
   const sequenceLength = trainingConfig ? asNumber(trainingConfig.seq_len, 0) : 0;
   const maxSteps = trainingConfig ? asNumber(trainingConfig.max_steps, 0) : 0;
@@ -3721,7 +3796,7 @@ function TrainingPageContent() {
                       />
                     </label>
                     <label className="fieldLabel">
-                      <span>Total batch size</span>
+                      <span>Total batch size (tokens)</span>
                       <ConfigNumberInput
                         value={asNumber(trainingConfig.total_batch_size, 0)}
                         onCommit={(value) => handleTrainingField(["total_batch_size"], value)}
@@ -3791,6 +3866,170 @@ function TrainingPageContent() {
                       />
                     </label>
                   </div>
+
+                  <section className="trainingAdvisorCard">
+                    <div className="trainingAdvisorHead">
+                      <div>
+                        <p className="panelEyebrow">Batch And LR Advisor</p>
+                        <h3>Recommended optimizer step sizing</h3>
+                        <p className="trainingAdvisorCopy">
+                          {batchAndLrRecommendation
+                            ? batchAndLrRecommendation.summary
+                            : preflightLoading
+                              ? "Preflight is recalculating the recommendation from the current model, dataset, runtime, and scheduler settings."
+                              : "Select a model and tokenizer and let preflight run to see the recommended optimizer-step token batch and learning rate."}
+                        </p>
+                      </div>
+                      {batchAndLrRecommendation ? (
+                        <div className="trainingAdvisorMeta">
+                          <span className={`pillBadge ${batchAndLrRecommendation.confidence === "high" ? "tone-good" : batchAndLrRecommendation.confidence === "low" ? "tone-warn" : "tone-neutral"}`}>
+                            {batchAndLrRecommendation.confidence} confidence
+                          </span>
+                          <span className="pillBadge tone-neutral">
+                            {formatDatasetScaleLabel(batchAndLrRecommendation.signals.dataset_scale)}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {batchAndLrRecommendation && selectedRecommendationOption ? (
+                      <>
+                        <div className="trainingAdvisorOptionGrid" role="list" aria-label="Batch and LR recommendation options">
+                          {batchAndLrRecommendation.options.map((option) => {
+                            const isSelected = option.key === selectedRecommendationOption.key;
+                            return (
+                              <button
+                                key={option.key}
+                                type="button"
+                                className={`trainingAdvisorOption ${isSelected ? "is-active" : ""}`}
+                                onClick={() => setSelectedRecommendationOptionKey(option.key)}
+                                aria-pressed={isSelected}
+                              >
+                                <div className="trainingAdvisorOptionHead">
+                                  <strong>{option.label}</strong>
+                                  {option.tone === "recommended" ? (
+                                    <span className="pillBadge tone-good">Recommended</span>
+                                  ) : null}
+                                </div>
+                                <div className="trainingAdvisorOptionMeta">
+                                  <span>{formatInteger(option.total_batch_size)} tokens</span>
+                                  <span>{formatLearningRate(option.learning_rate)} LR</span>
+                                </div>
+                                <p>{option.description}</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="trainingAdvisorSummaryGrid">
+                          <div className="trainingAdvisorSummaryItem">
+                            <span>Full batch size (tokens)</span>
+                            <strong>{formatInteger(selectedRecommendationOption.total_batch_size)}</strong>
+                            <small>
+                              Current {formatInteger(asNumber(trainingConfig.total_batch_size, 0))} tokens
+                              {numbersRoughlyEqual(
+                                selectedRecommendationOption.total_batch_size,
+                                asNumber(trainingConfig.total_batch_size, 0)
+                              )
+                                ? " • already set"
+                                : ""}
+                            </small>
+                          </div>
+                          <div className="trainingAdvisorSummaryItem">
+                            <span>Base learning rate</span>
+                            <strong>{formatLearningRate(selectedRecommendationOption.learning_rate)}</strong>
+                            <small>
+                              Current {formatLearningRate(asNumber(asRecord(trainingConfig.optimizer).lr, 0.0003))}
+                              {numbersRoughlyEqual(
+                                selectedRecommendationOption.learning_rate,
+                                asNumber(asRecord(trainingConfig.optimizer).lr, 0.0003),
+                                1e-9
+                              )
+                                ? " • already set"
+                                : ""}
+                            </small>
+                          </div>
+                          <div className="trainingAdvisorSummaryItem">
+                            <span>Micro batch size</span>
+                            <strong>{formatInteger(selectedRecommendationOption.micro_batch_size)}</strong>
+                            <small>
+                              {selectedRecommendationOption.clear_manual_micro_batch
+                                ? "Manual micro batch will be cleared to let preflight auto-size it."
+                                : "Compatible with the current auto or manual micro-step."}
+                            </small>
+                          </div>
+                          <div className="trainingAdvisorSummaryItem">
+                            <span>Grad accumulation</span>
+                            <strong>{formatInteger(selectedRecommendationOption.grad_accum_steps)}</strong>
+                            <small>
+                              Estimated run token budget {formatInteger(selectedRecommendationOption.estimated_tokens_per_run)}
+                            </small>
+                          </div>
+                        </div>
+
+                        <div className="trainingAdvisorActionRow">
+                          <button
+                            type="button"
+                            className="buttonPrimary"
+                            onClick={() => applyRecommendationOption(selectedRecommendationOption)}
+                          >
+                            Apply Batch + LR
+                          </button>
+                          <button
+                            type="button"
+                            className="buttonGhost buttonSmall"
+                            onClick={() => applyRecommendationOption(selectedRecommendationOption, "batch")}
+                          >
+                            Apply batch only
+                          </button>
+                          <button
+                            type="button"
+                            className="buttonGhost buttonSmall"
+                            onClick={() => applyRecommendationOption(selectedRecommendationOption, "lr")}
+                          >
+                            Apply LR only
+                          </button>
+                        </div>
+
+                        <div className="trainingAdvisorSignalRow" aria-label="Recommendation signals">
+                          <span className="pillBadge tone-neutral">
+                            {formatInteger(batchAndLrRecommendation.signals.max_memory_micro_batch_size)} max memory micro batch
+                          </span>
+                          <span className="pillBadge tone-neutral">
+                            {formatInteger(batchAndLrRecommendation.signals.dataset_count)} dataset
+                            {batchAndLrRecommendation.signals.dataset_count === 1 ? "" : "s"}
+                          </span>
+                          <span className="pillBadge tone-neutral">
+                            {formatInteger(batchAndLrRecommendation.signals.block_count)} blocks
+                          </span>
+                          <span className="pillBadge tone-neutral">
+                            {formatLearningRate(
+                              asNumber(asRecord(trainingConfig.optimizer).lr, 0.0003) *
+                                batchAndLrRecommendation.signals.schedule_peak_factor
+                            )} peak LR with current schedule
+                          </span>
+                        </div>
+
+                        <div className="trainingAdvisorFactorList">
+                          {batchAndLrRecommendation.factors.map((factor) => (
+                            <div
+                              key={factor.code}
+                              className={`trainingAdvisorFactor ${recommendationFactorToneClass(factor.tone)}`}
+                            >
+                              <strong>{factor.label}</strong>
+                              <p>{factor.detail}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="trainingAdvisorEmpty">
+                        {preflightError
+                          ? compactWorkflowMessage(preflightError)
+                          : "The advisor appears here once preflight can evaluate the current runtime."}
+                      </div>
+                    )}
+                  </section>
 
                   <LearningRateSchedulePlanner
                     baseLearningRate={asNumber(asRecord(trainingConfig.optimizer).lr, 0.0003)}
