@@ -1260,31 +1260,39 @@
   background: linear-gradient(180deg, var(--surface), var(--surface-soft));
   padding: 14px;
   display: grid;
+  justify-items: start;
   gap: 12px;
+  width: min(100%, 720px);
 }
 
 .trainingAdvisorHead,
-.trainingAdvisorOptionHead,
-.trainingAdvisorActionRow {
+.trainingAdvisorToolbar,
+.trainingAdvisorProfileRow,
+.trainingAdvisorFoot {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .trainingAdvisorHead h3,
-.trainingAdvisorOption strong,
-.trainingAdvisorFactor strong {
+.trainingAdvisorKeyStat > strong,
+.trainingAdvisorTooltip strong {
   margin: 0;
   font-size: 0.92rem;
   font-weight: 770;
   letter-spacing: -0.01em;
 }
 
+.trainingAdvisorHead h3 {
+  margin-bottom: 8px;
+}
+
 .trainingAdvisorCopy,
-.trainingAdvisorOption p,
-.trainingAdvisorFactor p,
+.trainingAdvisorTooltip p,
+.trainingAdvisorNote,
 .trainingAdvisorEmpty {
   margin: 0;
   font-size: 0.81rem;
@@ -1292,120 +1300,207 @@
   color: var(--text-muted);
 }
 
-.trainingAdvisorMeta,
-.trainingAdvisorSignalRow {
+.trainingAdvisorMeta {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
 }
 
-.trainingAdvisorOptionGrid,
-.trainingAdvisorSummaryGrid,
-.trainingAdvisorFactorList {
+.trainingAdvisorToolbar {
+  align-items: flex-start;
+}
+
+.trainingAdvisorProfileRow {
+  flex: 0 1 100%;
+  align-items: center;
+}
+
+.trainingAdvisorToolbarLabel {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.trainingAdvisorModeSwitch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 1 auto;
+  gap: 4px;
+  padding: 3px;
+}
+
+.trainingAdvisorModeSwitch .modeSwitchButton {
+  cursor: pointer;
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.trainingAdvisorProfileRow > .pillBadge {
+  align-self: center;
+}
+
+.trainingAdvisorCompactGrid {
   display: grid;
   gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  justify-content: start;
+  grid-template-columns: repeat(2, minmax(200px, 220px));
 }
 
-.trainingAdvisorOptionGrid {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.trainingAdvisorOption {
-  width: 100%;
-  text-align: left;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  padding: 12px;
-  display: grid;
-  gap: 8px;
-  cursor: pointer;
-  transition:
-    border-color 120ms ease,
-    box-shadow 120ms ease,
-    transform 120ms ease;
-}
-
-.trainingAdvisorOption:hover,
-.trainingAdvisorOption:focus-visible {
-  border-color: var(--line-strong);
-  box-shadow: 0 12px 24px rgba(9, 25, 49, 0.08);
-  transform: translateY(-1px);
-  outline: none;
-}
-
-.trainingAdvisorOption.is-active {
-  border-color: color-mix(in srgb, var(--brand) 36%, var(--line));
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--brand-soft) 38%, var(--surface)),
-    var(--surface)
-  );
-}
-
-.trainingAdvisorOptionMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-family: var(--font-mono), "IBM Plex Mono", monospace;
-}
-
-.trainingAdvisorSummaryGrid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.trainingAdvisorSummaryItem {
+.trainingAdvisorKeyStat {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface);
   padding: 10px;
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  width: min(100%, 220px);
 }
 
-.trainingAdvisorSummaryItem span,
-.trainingAdvisorSummaryItem small {
+.trainingAdvisorStatLabel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trainingAdvisorStatLabel > span,
+.trainingAdvisorKeyStat small {
   color: var(--text-muted);
   font-size: 0.73rem;
   line-height: 1.4;
 }
 
-.trainingAdvisorSummaryItem strong {
+.trainingAdvisorKeyStat > strong {
   font-family: var(--font-mono), "IBM Plex Mono", monospace;
-  font-size: 0.9rem;
+  font-size: 0.98rem;
 }
 
-.trainingAdvisorActionRow {
-  justify-content: flex-start;
+.trainingAdvisorInfo {
+  position: static;
+  display: inline-flex;
+  align-items: center;
 }
 
-.trainingAdvisorFactorList {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.trainingAdvisorInfoTrigger {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: help;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease;
 }
 
-.trainingAdvisorFactor {
-  border: 1px solid var(--line);
-  border-radius: 12px;
+.trainingAdvisorInfoTrigger:hover,
+.trainingAdvisorInfoTrigger:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 42%, var(--line-strong));
+  color: var(--text);
   background: var(--surface);
-  padding: 12px;
+  outline: none;
+}
+
+.trainingAdvisorTooltip {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 10px);
+  width: min(320px, calc(100vw - 40px));
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  box-shadow: 0 16px 30px rgba(8, 18, 30, 0.16);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 20;
+}
+
+.trainingAdvisorTooltip::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  bottom: 100%;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid var(--line-strong);
+  border-right: 1px solid var(--line-strong);
+  background: var(--surface);
+  transform: translateY(50%) rotate(-45deg);
+}
+
+.trainingAdvisorInfo:hover .trainingAdvisorTooltip,
+.trainingAdvisorInfo:focus-within .trainingAdvisorTooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.trainingAdvisorTooltipList {
   display: grid;
   gap: 6px;
 }
 
-.trainingAdvisorFactor.tone-good {
-  border-color: color-mix(in srgb, var(--ok) 36%, var(--line));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--ok-soft) 28%, var(--surface)), var(--surface));
+.trainingAdvisorTooltipItem {
+  display: grid;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
 }
 
-.trainingAdvisorFactor.tone-warning {
-  border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--warn-soft) 34%, var(--surface)), var(--surface));
+.trainingAdvisorTooltipItem:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
-.trainingAdvisorFactor.tone-neutral {
-  border-color: var(--line);
+.trainingAdvisorTooltipItem span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.trainingAdvisorTooltipItem strong {
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.trainingAdvisorTooltipItem.tone-good strong {
+  color: var(--ok);
+}
+
+.trainingAdvisorTooltipItem.tone-warning strong {
+  color: var(--warn);
+}
+
+.trainingAdvisorNote {
+  max-width: 48ch;
 }
 
 .trainingAdvisorEmpty {
@@ -1413,6 +1508,7 @@
   border-radius: 12px;
   background: var(--surface);
   padding: 14px;
+  width: 100%;
 }
 
 .lrPlanner {
@@ -2429,8 +2525,7 @@
   .trainingResultsGrid,
   .trainingJsonGrid,
   .trainingDualLog,
-  .lrPlannerBodyGrid,
-  .trainingAdvisorSummaryGrid {
+  .lrPlannerBodyGrid {
     grid-template-columns: 1fr;
   }
 
@@ -2462,11 +2557,14 @@
 
   .trainingPairGrid,
   .trainingChartGrid,
-  .trainingAdvisorOptionGrid,
-  .trainingAdvisorFactorList,
+  .trainingAdvisorCompactGrid,
   .lrPlannerSummaryGrid,
   .lrPlannerInsightGrid,
   .trainingPage .workflowStepGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .trainingAdvisorModeSwitch {
     grid-template-columns: 1fr;
   }
 

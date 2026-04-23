@@ -7,8 +7,9 @@
     "build": "next build",
     "build:desktop": "LLM_STUDIO_DESKTOP_BUILD=1 next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test:regression": "tsx --test \"app/**/*.test.ts\""
   },
   "dependencies": {
     "next": "^16.0.0",
@@ -18,11 +19,15 @@
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.13.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "eslint": "^10.0.1",
     "eslint-config-next": "^0.2.4",
-    "typescript": "^5.8.0"
+    "globals": "^17.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.59.0"
   }
 }

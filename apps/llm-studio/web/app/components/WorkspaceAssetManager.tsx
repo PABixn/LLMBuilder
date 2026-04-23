@@ -11,7 +11,6 @@ import {
   FiCpu,
   FiActivity,
   FiLayers,
-  FiPlus,
   FiArrowRight
 } from "react-icons/fi";
 import Link from "next/link";

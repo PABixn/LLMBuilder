@@ -13,7 +13,7 @@ import {
 
 import { ACTIVATION_TYPES, type ActivationType } from "../../../../lib/defaults";
 
-import type { StudioBlock, StudioComponent, StudioMlpStep } from "../../types";
+import type { StudioBlock } from "../../types";
 import {
   labelForActivationType,
   labelForComponentKind,

@@ -245,6 +245,107 @@ def test_batch_and_lr_recommendation_preserves_canonical_learning_rates() -> Non
     )
 
 
+def test_batch_and_lr_recommendation_keeps_named_profiles_even_when_values_match() -> None:
+    from app.training_recommendations import (
+        _BatchCandidate,
+        _DatasetSummary,
+        _ModelSummary,
+        _ScheduleSummary,
+        _build_options,
+    )
+    from training.training_config import TrainingConfig
+
+    training_config = TrainingConfig.model_validate(
+        {
+            "max_steps": 6,
+            "total_batch_size": 32,
+            "seq_len": 8,
+            "sample_every": 3,
+            "sampler": {
+                "prompts": [
+                    {
+                        "prompt": "hello",
+                        "max_tokens": 4,
+                        "temperature": 0.5,
+                        "top_k": 2,
+                    }
+                ]
+            },
+            "save_every": 3,
+            "optimizer": {
+                "lr": 0.001,
+                "weight_decay": 0.01,
+                "betas": [0.9, 0.95],
+                "eps": 1e-8,
+            },
+            "lr_scheduler": {
+                "type": "sequential",
+                "schedulers": [
+                    {
+                        "type": "linear",
+                        "steps": 2,
+                        "start_factor": 0.2,
+                        "end_factor": 1.0,
+                    },
+                    {
+                        "type": "cosine_annealing",
+                        "steps": 4,
+                        "eta_min": 1e-5,
+                    },
+                ],
+            },
+        }
+    )
+    model_summary = _ModelSummary(
+        total_parameters=124_000_000,
+        parameter_memory_bytes_bf16=248_000_000,
+        estimated_kv_cache_bytes_for_context_fp16=0,
+        block_count=12,
+        attention_component_count=12,
+        max_mlp_multiplier=4.0,
+        activation_types=("gelu",),
+        norm_types=("layernorm",),
+        uses_gqa=False,
+        weight_tying=True,
+    )
+    dataset_summary = _DatasetSummary(
+        dataset_count=1,
+        local_dataset_count=0,
+        streaming_dataset_count=1,
+        local_file_count=0,
+        local_total_size_bytes=None,
+        dominant_dataset_weight=1.0,
+        dataset_scale="streaming",
+        approx_local_tokens=None,
+        step_budget_cap_tokens=None,
+        tokenizer_bytes_per_token_assumption=4.0,
+    )
+    schedule_summary = _ScheduleSummary(
+        peak_factor=1.0,
+        warmup_fraction=0.1,
+        label="Warmup + cosine decay",
+    )
+    candidate = _BatchCandidate(
+        total_batch_size=262_144,
+        micro_batch_size=32,
+        grad_accum_steps=8,
+    )
+
+    options = _build_options(
+        training_config=training_config,
+        model_summary=model_summary,
+        dataset_summary=dataset_summary,
+        schedule_summary=schedule_summary,
+        current_micro_batch_size=None,
+        balanced_candidate=candidate,
+        stability_candidate=candidate,
+        throughput_candidate=candidate,
+    )
+
+    assert [option.key for option in options] == ["balanced", "stability", "throughput"]
+    assert [option.learning_rate for option in options] == [3e-4, 2e-4, 4e-4]
+
+
 def test_training_dataloader_config_accepts_hf_token() -> None:
     from training.dataloader_config import TrainingDataloaderConfig
 

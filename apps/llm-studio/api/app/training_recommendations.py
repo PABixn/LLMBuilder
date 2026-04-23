@@ -33,6 +33,9 @@ _REFERENCE_PARAMETER_COUNT = 124_000_000
 _REFERENCE_TOTAL_BATCH_SIZE = 524_288
 _REFERENCE_LEARNING_RATE = 3e-4
 _DEFAULT_BYTES_PER_TOKEN = 4.0
+_STABILITY_PROFILE_LR_MULTIPLIER = 0.68
+_THROUGHPUT_PROFILE_LR_MULTIPLIER = 1.28
+_CANONICAL_LR_MANTISSAS = (1, 2, 3, 4, 6, 8)
 
 
 @dataclass(frozen=True, slots=True)
@@ -611,7 +614,7 @@ def _build_options(
             "Uses a smaller optimizer step to make the run more forgiving when the dataset is small or the schedule is aggressive.",
             "neutral",
             stability_candidate,
-            0.92,
+            _STABILITY_PROFILE_LR_MULTIPLIER,
         ),
         (
             "throughput",
@@ -619,12 +622,11 @@ def _build_options(
             "Pushes toward fewer optimizer syncs and more tokens per step when memory headroom allows it.",
             "neutral",
             throughput_candidate,
-            1.04,
+            _THROUGHPUT_PROFILE_LR_MULTIPLIER,
         ),
     ]
 
     options: list[TrainingBatchLrRecommendationOption] = []
-    seen_signatures: set[tuple[int, int, int, int]] = set()
     for key, label, description, tone, candidate, lr_multiplier in option_specs:
         learning_rate = _recommend_learning_rate(
             total_batch_size=candidate.total_batch_size,
@@ -634,15 +636,6 @@ def _build_options(
             schedule_summary=schedule_summary,
             variant_multiplier=lr_multiplier,
         )
-        signature = (
-            candidate.total_batch_size,
-            candidate.micro_batch_size,
-            candidate.grad_accum_steps,
-            int(round(learning_rate * 1_000_000_000)),
-        )
-        if signature in seen_signatures:
-            continue
-        seen_signatures.add(signature)
         options.append(
             TrainingBatchLrRecommendationOption(
                 key=key,
@@ -685,7 +678,47 @@ def _build_options(
             )
         )
 
+    _ensure_profile_learning_rate_separation(
+        options=options,
+        total_parameters=model_summary.total_parameters,
+    )
     return options
+
+
+def _ensure_profile_learning_rate_separation(
+    *,
+    options: list[TrainingBatchLrRecommendationOption],
+    total_parameters: int,
+) -> None:
+    if not options:
+        return
+
+    option_by_key = {option.key: option for option in options}
+    balanced = option_by_key.get("balanced")
+    if balanced is None:
+        return
+
+    min_lr, max_lr = _learning_rate_bounds(total_parameters)
+    candidates = _canonical_learning_rate_candidates(lower=min_lr, upper=max_lr)
+    if len(candidates) < 2:
+        return
+
+    balanced_index = _nearest_canonical_learning_rate_index(
+        balanced.learning_rate,
+        candidates=candidates,
+    )
+
+    stability = option_by_key.get("stability")
+    if stability is not None and stability.learning_rate >= balanced.learning_rate and balanced_index > 0:
+        stability.learning_rate = candidates[balanced_index - 1]
+
+    throughput = option_by_key.get("throughput")
+    if (
+        throughput is not None
+        and throughput.learning_rate <= balanced.learning_rate
+        and balanced_index + 1 < len(candidates)
+    ):
+        throughput.learning_rate = candidates[balanced_index + 1]
 
 
 def _recommend_learning_rate(
@@ -1088,24 +1121,31 @@ def _round_learning_rate_to_canonical_mantissa(value: float, *, lower: float, up
     if value <= 0 or not math.isfinite(value):
         return value
 
+    candidates = _canonical_learning_rate_candidates(lower=lower, upper=upper)
+    if not candidates:
+        return value
+
+    return candidates[_nearest_canonical_learning_rate_index(value, candidates=candidates)]
+
+
+def _canonical_learning_rate_candidates(*, lower: float, upper: float) -> list[float]:
     lower_bound = max(lower, 1e-12)
     upper_bound = max(upper, lower_bound)
     min_exponent = int(math.floor(math.log10(lower_bound))) - 1
     max_exponent = int(math.ceil(math.log10(upper_bound))) + 1
-    candidates: list[float] = []
-    for exponent in range(min_exponent, max_exponent + 1):
-        scale = 10.0 ** exponent
-        for mantissa in (1, 2, 3, 4, 6, 8):
-            candidate = mantissa * scale
-            if lower_bound <= candidate <= upper_bound:
-                candidates.append(candidate)
+    candidates = {
+        mantissa * (10.0 ** exponent)
+        for exponent in range(min_exponent, max_exponent + 1)
+        for mantissa in _CANONICAL_LR_MANTISSAS
+        if lower_bound <= mantissa * (10.0 ** exponent) <= upper_bound
+    }
+    return sorted(candidates)
 
-    if not candidates:
-        return value
 
+def _nearest_canonical_learning_rate_index(value: float, *, candidates: list[float]) -> int:
     return min(
-        candidates,
-        key=lambda candidate: (abs(math.log(candidate / value)), -candidate),
+        range(len(candidates)),
+        key=lambda index: (abs(math.log(candidates[index] / value)), -candidates[index]),
     )
 
 
