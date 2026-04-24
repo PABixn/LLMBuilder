@@ -45,7 +45,7 @@ install-web:
 install: install-api install-web
 
 api-compile:
-	cd $(API_DIR) && $(PYTHON_BIN) -m py_compile app/main.py app/models.py app/config.py app/schemas.py app/serve.py app/tokenizer_models.py app/tokenizer_storage.py app/tokenizer_jobs.py
+	cd $(API_DIR) && $(PYTHON_BIN) -m py_compile app/main.py app/models.py app/config.py app/schemas.py app/serve.py app/tokenizer_models.py app/tokenizer_storage.py app/tokenizer_jobs.py app/training_models.py app/training_storage.py app/training_jobs.py app/training_executors/base.py app/training_executors/local.py app/training_executors/remote_sync.py app/training_executors/runpod_client.py app/training_executors/runpod_pod.py
 
 api-test:
 	cd $(API_DIR) && $(PYTHON_BIN) -m pytest -q

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
-from sqlalchemy import JSON, DateTime, Float, Index, Integer, String, Text, create_engine, event, select, update
+from sqlalchemy import JSON, Boolean, DateTime, Float, Index, Integer, String, Text, create_engine, event, inspect, select, text, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
@@ -60,6 +60,26 @@ class TrainingRunRow(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     process_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    executor_kind: Mapped[str] = mapped_column(String(32), nullable=False, default="local")
+    executor_status: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    runpod_pod_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    runpod_pod_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    runpod_network_volume_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    runpod_data_center_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    runpod_gpu_type_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    runpod_gpu_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    runpod_cloud_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    runpod_interruptible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    runpod_cost_per_hr: Mapped[float | None] = mapped_column(Float, nullable=True)
+    runpod_public_ip: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    runpod_port_mappings: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    runpod_agent_base_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    runpod_agent_token_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    runpod_last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    runpod_last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    runpod_cleanup_policy: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    remote_workspace_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    remote_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 @dataclass
@@ -99,6 +119,26 @@ class StoredTrainingJob:
     error: str | None
     process_id: int | None
     output_size_bytes: int
+    executor_kind: str = "local"
+    executor_status: str | None = None
+    runpod_pod_id: str | None = None
+    runpod_pod_name: str | None = None
+    runpod_network_volume_id: str | None = None
+    runpod_data_center_id: str | None = None
+    runpod_gpu_type_id: str | None = None
+    runpod_gpu_count: int = 1
+    runpod_cloud_type: str | None = None
+    runpod_interruptible: bool = False
+    runpod_cost_per_hr: float | None = None
+    runpod_public_ip: str | None = None
+    runpod_port_mappings: dict[str, Any] | None = None
+    runpod_agent_base_url: str | None = None
+    runpod_agent_token_hash: str | None = None
+    runpod_last_heartbeat_at: datetime | None = None
+    runpod_last_sync_at: datetime | None = None
+    runpod_cleanup_policy: dict[str, Any] | None = None
+    remote_workspace_path: str | None = None
+    remote_error: str | None = None
 
 
 class TrainingStudioStore:
@@ -113,6 +153,7 @@ class TrainingStudioStore:
 
     def initialize(self) -> None:
         Base.metadata.create_all(self._engine)
+        self._migrate_schema()
 
     def dispose(self) -> None:
         self._engine.dispose()
@@ -156,6 +197,26 @@ class TrainingStudioStore:
                     error=job.error,
                     process_id=job.process_id,
                     output_size_bytes=max(0, int(job.output_size_bytes)),
+                    executor_kind=job.executor_kind,
+                    executor_status=job.executor_status,
+                    runpod_pod_id=job.runpod_pod_id,
+                    runpod_pod_name=job.runpod_pod_name,
+                    runpod_network_volume_id=job.runpod_network_volume_id,
+                    runpod_data_center_id=job.runpod_data_center_id,
+                    runpod_gpu_type_id=job.runpod_gpu_type_id,
+                    runpod_gpu_count=max(1, int(job.runpod_gpu_count)),
+                    runpod_cloud_type=job.runpod_cloud_type,
+                    runpod_interruptible=bool(job.runpod_interruptible),
+                    runpod_cost_per_hr=job.runpod_cost_per_hr,
+                    runpod_public_ip=job.runpod_public_ip,
+                    runpod_port_mappings=job.runpod_port_mappings,
+                    runpod_agent_base_url=job.runpod_agent_base_url,
+                    runpod_agent_token_hash=job.runpod_agent_token_hash,
+                    runpod_last_heartbeat_at=_ensure_optional_utc(job.runpod_last_heartbeat_at),
+                    runpod_last_sync_at=_ensure_optional_utc(job.runpod_last_sync_at),
+                    runpod_cleanup_policy=job.runpod_cleanup_policy,
+                    remote_workspace_path=job.remote_workspace_path,
+                    remote_error=job.remote_error,
                 )
             )
 
@@ -210,12 +271,31 @@ class TrainingStudioStore:
                     "stdout_path",
                     "stderr_path",
                     "error",
+                    "executor_kind",
+                    "executor_status",
+                    "runpod_pod_id",
+                    "runpod_pod_name",
+                    "runpod_network_volume_id",
+                    "runpod_data_center_id",
+                    "runpod_gpu_type_id",
+                    "runpod_cloud_type",
+                    "runpod_public_ip",
+                    "runpod_agent_base_url",
+                    "runpod_agent_token_hash",
+                    "remote_workspace_path",
+                    "remote_error",
                 }:
                     setattr(row, field_name, None if value is None else str(value))
-                elif field_name in {"last_step", "max_steps", "checkpoint_count", "sample_count", "process_id", "output_size_bytes"}:
+                elif field_name in {"last_step", "max_steps", "checkpoint_count", "sample_count", "process_id", "output_size_bytes", "runpod_gpu_count"}:
                     setattr(row, field_name, None if value is None else int(value))
-                elif field_name in {"latest_loss", "latest_grad_norm", "latest_lr", "latest_tokens_per_sec"}:
+                elif field_name in {"latest_loss", "latest_grad_norm", "latest_lr", "latest_tokens_per_sec", "runpod_cost_per_hr"}:
                     setattr(row, field_name, None if value is None else float(value))
+                elif field_name in {"runpod_port_mappings", "runpod_cleanup_policy"}:
+                    setattr(row, field_name, None if value is None else dict(value))
+                elif field_name in {"runpod_interruptible"}:
+                    setattr(row, field_name, bool(value))
+                elif field_name in {"runpod_last_heartbeat_at", "runpod_last_sync_at"}:
+                    setattr(row, field_name, _ensure_optional_utc(value))
                 else:
                     raise ValueError(f"Unknown training job update field: {field_name}")
 
@@ -252,6 +332,42 @@ class TrainingStudioStore:
                 )
             )
             return int(result.rowcount or 0)
+
+    def mark_incomplete_local_jobs_failed(self, reason: str) -> int:
+        now = _utc_now()
+        with self._session() as session:
+            result = session.execute(
+                update(TrainingRunRow)
+                .where(
+                    TrainingRunRow.executor_kind == "local",
+                    TrainingRunRow.status.in_(
+                        [TrainingJobStatus.pending.value, TrainingJobStatus.running.value]
+                    ),
+                )
+                .values(
+                    status=TrainingJobStatus.failed.value,
+                    state=TrainingJobState.failed.value,
+                    stage="Interrupted by API restart",
+                    progress=1.0,
+                    finished_at=now,
+                    error=reason,
+                )
+            )
+            return int(result.rowcount or 0)
+
+    def list_incomplete_runpod_jobs(self) -> list[StoredTrainingJob]:
+        with self._session() as session:
+            rows = session.scalars(
+                select(TrainingRunRow)
+                .where(
+                    TrainingRunRow.executor_kind == "runpod_pod",
+                    TrainingRunRow.status.in_(
+                        [TrainingJobStatus.pending.value, TrainingJobStatus.running.value]
+                    ),
+                )
+                .order_by(TrainingRunRow.created_at.desc())
+            ).all()
+            return [_row_to_stored_job(row) for row in rows]
 
     @contextmanager
     def _session(self) -> Iterator[Session]:
@@ -293,6 +409,37 @@ class TrainingStudioStore:
 
         return engine
 
+    def _migrate_schema(self) -> None:
+        if not self._url.startswith("sqlite"):
+            return
+        existing = {column["name"] for column in inspect(self._engine).get_columns("llm_training_jobs")}
+        statements = {
+            "executor_kind": "ALTER TABLE llm_training_jobs ADD COLUMN executor_kind VARCHAR(32) NOT NULL DEFAULT 'local'",
+            "executor_status": "ALTER TABLE llm_training_jobs ADD COLUMN executor_status VARCHAR(64)",
+            "runpod_pod_id": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_pod_id VARCHAR(128)",
+            "runpod_pod_name": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_pod_name VARCHAR(255)",
+            "runpod_network_volume_id": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_network_volume_id VARCHAR(128)",
+            "runpod_data_center_id": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_data_center_id VARCHAR(128)",
+            "runpod_gpu_type_id": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_gpu_type_id VARCHAR(255)",
+            "runpod_gpu_count": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_gpu_count INTEGER NOT NULL DEFAULT 1",
+            "runpod_cloud_type": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_cloud_type VARCHAR(32)",
+            "runpod_interruptible": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_interruptible BOOLEAN NOT NULL DEFAULT 0",
+            "runpod_cost_per_hr": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_cost_per_hr FLOAT",
+            "runpod_public_ip": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_public_ip VARCHAR(255)",
+            "runpod_port_mappings": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_port_mappings JSON",
+            "runpod_agent_base_url": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_agent_base_url TEXT",
+            "runpod_agent_token_hash": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_agent_token_hash VARCHAR(128)",
+            "runpod_last_heartbeat_at": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_last_heartbeat_at DATETIME",
+            "runpod_last_sync_at": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_last_sync_at DATETIME",
+            "runpod_cleanup_policy": "ALTER TABLE llm_training_jobs ADD COLUMN runpod_cleanup_policy JSON",
+            "remote_workspace_path": "ALTER TABLE llm_training_jobs ADD COLUMN remote_workspace_path TEXT",
+            "remote_error": "ALTER TABLE llm_training_jobs ADD COLUMN remote_error TEXT",
+        }
+        with self._engine.begin() as connection:
+            for column_name, statement in statements.items():
+                if column_name not in existing:
+                    connection.execute(text(statement))
+
 
 def _row_to_stored_job(row: TrainingRunRow) -> StoredTrainingJob:
     return StoredTrainingJob(
@@ -309,11 +456,11 @@ def _row_to_stored_job(row: TrainingRunRow) -> StoredTrainingJob:
         project_name=row.project_name,
         tokenizer_job_id=row.tokenizer_job_id,
         tokenizer_name=row.tokenizer_name,
-        model_config=dict(row.model_config),
-        training_config=dict(row.training_config),
-        dataloader_config=dict(row.dataloader_config),
-        resolved_runtime=dict(row.resolved_runtime) if row.resolved_runtime is not None else None,
-        memory_estimate=dict(row.memory_estimate) if row.memory_estimate is not None else None,
+        model_config=_json_dict(row.model_config),
+        training_config=_json_dict(row.training_config),
+        dataloader_config=_json_dict(row.dataloader_config),
+        resolved_runtime=_json_optional_dict(row.resolved_runtime),
+        memory_estimate=_json_optional_dict(row.memory_estimate),
         artifact_dir=row.artifact_dir,
         artifact_bundle_file=row.artifact_bundle_file,
         stats_path=row.stats_path,
@@ -331,6 +478,26 @@ def _row_to_stored_job(row: TrainingRunRow) -> StoredTrainingJob:
         error=row.error,
         process_id=row.process_id,
         output_size_bytes=max(0, int(row.output_size_bytes)),
+        executor_kind=row.executor_kind or "local",
+        executor_status=row.executor_status,
+        runpod_pod_id=row.runpod_pod_id,
+        runpod_pod_name=row.runpod_pod_name,
+        runpod_network_volume_id=row.runpod_network_volume_id,
+        runpod_data_center_id=row.runpod_data_center_id,
+        runpod_gpu_type_id=row.runpod_gpu_type_id,
+        runpod_gpu_count=max(1, int(row.runpod_gpu_count or 1)),
+        runpod_cloud_type=row.runpod_cloud_type,
+        runpod_interruptible=bool(row.runpod_interruptible),
+        runpod_cost_per_hr=row.runpod_cost_per_hr,
+        runpod_public_ip=row.runpod_public_ip,
+        runpod_port_mappings=_json_optional_dict(row.runpod_port_mappings),
+        runpod_agent_base_url=row.runpod_agent_base_url,
+        runpod_agent_token_hash=row.runpod_agent_token_hash,
+        runpod_last_heartbeat_at=_ensure_optional_utc(row.runpod_last_heartbeat_at),
+        runpod_last_sync_at=_ensure_optional_utc(row.runpod_last_sync_at),
+        runpod_cleanup_policy=_json_optional_dict(row.runpod_cleanup_policy),
+        remote_workspace_path=row.remote_workspace_path,
+        remote_error=row.remote_error,
     )
 
 
@@ -344,6 +511,25 @@ def _coerce_state(value: TrainingJobState | str) -> TrainingJobState:
     if isinstance(value, TrainingJobState):
         return value
     return TrainingJobState(str(value))
+
+
+def _json_dict(value: Any) -> dict[str, Any]:
+    parsed = _json_optional_dict(value)
+    return parsed or {}
+
+
+def _json_optional_dict(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return dict(value)
+    if isinstance(value, str):
+        try:
+            parsed = __import__("json").loads(value)
+        except Exception:
+            return None
+        return dict(parsed) if isinstance(parsed, dict) else None
+    return None
 
 
 def _clamp_progress(progress: float) -> float:

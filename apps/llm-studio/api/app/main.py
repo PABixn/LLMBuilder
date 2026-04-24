@@ -81,12 +81,19 @@ from .training_models import (
     TrainingMetricsResponse,
     TrainingPreflightRequest,
     TrainingPreflightResponse,
+    RunPodProviderDefaults,
+    RunPodProviderStatus,
+    RunPodResourceListResponse,
+    RunPodValidateKeyRequest,
+    RunPodValidateKeyResponse,
+    RunPodCleanupPolicy,
     TrainingSamplesResponse,
     TrainingJobResponse as LLMTrainingJobResponse,
     ValidateConfigRequest as TrainingValidateConfigRequest,
     ValidateConfigResponse as TrainingValidateConfigResponse,
 )
 from .training_storage import TrainingStudioStore
+from .training_executors.runpod_client import RunPodClient, RunPodClientError
 from .schemas import load_json, write_json
 
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
@@ -165,13 +172,14 @@ async def lifespan(app: FastAPI):
     tokenizer_store.mark_incomplete_jobs_failed(
         "Training was interrupted because the API restarted before completion."
     )
-    training_store.mark_incomplete_jobs_failed(
+    training_store.mark_incomplete_local_jobs_failed(
         "Training was interrupted because the API restarted before completion."
     )
 
     app.state.settings = settings
     app.state.tokenizer_store = tokenizer_store
     app.state.training_store = training_store
+    app.state.runpod_api_key_override = None
     app.state.tokenizer_jobs = TrainingJobManager(store=tokenizer_store)
     app.state.training_jobs = TrainingRunManager(
         store=training_store,
@@ -518,10 +526,91 @@ def validate_training_preflight(payload: TrainingPreflightRequest) -> TrainingPr
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+def _runpod_defaults() -> RunPodProviderDefaults:
+    settings = get_settings()
+    return RunPodProviderDefaults(
+        gpu_type_id=settings.runpod_default_gpu_type,
+        gpu_count=settings.runpod_default_gpu_count,
+        cloud_type=settings.runpod_default_cloud_type,  # type: ignore[arg-type]
+        data_center_id=settings.runpod_default_data_center_id,
+        network_volume_size_gb=settings.runpod_default_volume_size_gb,
+        container_disk_gb=settings.runpod_container_disk_gb,
+        volume_mount_path=settings.runpod_volume_mount_path,
+        training_image=settings.runpod_training_image,
+        agent_port=settings.runpod_agent_port,
+        cleanup_policy=RunPodCleanupPolicy(
+            pod="delete_after_sync" if settings.runpod_auto_delete_pod else "stop_after_sync",
+            network_volume="delete_after_sync" if settings.runpod_auto_delete_volume else "keep",
+        ),
+    )
+
+
+def _runpod_api_key() -> tuple[str | None, str]:
+    override = getattr(app.state, "runpod_api_key_override", None)
+    if isinstance(override, str) and override.strip():
+        return override.strip(), "memory"
+    settings_key = get_settings().runpod_api_key
+    if settings_key:
+        return settings_key, "environment"
+    return None, "none"
+
+
+@training_api.get("/providers/runpod/defaults", response_model=RunPodProviderDefaults)
+def get_runpod_defaults() -> RunPodProviderDefaults:
+    return _runpod_defaults()
+
+
+@training_api.get("/providers/runpod/status", response_model=RunPodProviderStatus)
+def get_runpod_status() -> RunPodProviderStatus:
+    api_key, source = _runpod_api_key()
+    return RunPodProviderStatus(
+        configured=api_key is not None,
+        validated=api_key is not None,
+        source=source,  # type: ignore[arg-type]
+        defaults=_runpod_defaults(),
+    )
+
+
+@training_api.post("/providers/runpod/validate-key", response_model=RunPodValidateKeyResponse)
+def validate_runpod_key(payload: RunPodValidateKeyRequest) -> RunPodValidateKeyResponse:
+    api_key = payload.api_key.strip()
+    try:
+        account = RunPodClient(api_key).validate_key()
+    except RunPodClientError as exc:
+        return RunPodValidateKeyResponse(valid=False, message=str(exc), account=None)
+    app.state.runpod_api_key_override = api_key
+    return RunPodValidateKeyResponse(valid=True, message="RunPod API key validated.", account=account)
+
+
+@training_api.get("/providers/runpod/pods", response_model=RunPodResourceListResponse)
+def list_runpod_pods() -> RunPodResourceListResponse:
+    api_key, _ = _runpod_api_key()
+    if api_key is None:
+        raise HTTPException(status_code=409, detail="RunPod API key is not configured.")
+    try:
+        return RunPodResourceListResponse(items=RunPodClient(api_key).list_pods())
+    except RunPodClientError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@training_api.get("/providers/runpod/network-volumes", response_model=RunPodResourceListResponse)
+def list_runpod_network_volumes() -> RunPodResourceListResponse:
+    api_key, _ = _runpod_api_key()
+    if api_key is None:
+        raise HTTPException(status_code=409, detail="RunPod API key is not configured.")
+    try:
+        return RunPodResourceListResponse(items=RunPodClient(api_key).list_network_volumes())
+    except RunPodClientError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @training_api.post("/jobs", response_model=LLMTrainingJobResponse, status_code=201)
 def create_training_job(payload: CreateTrainingJobRequest) -> LLMTrainingJobResponse:
     manager = app.state.training_jobs
     try:
+        if payload.execution_target.kind.value == "runpod_pod" and payload.execution_target.api_key is None:
+            api_key, _ = _runpod_api_key()
+            payload.execution_target.api_key = api_key
         return manager.create_job(payload)
     except KeyError as exc:
         missing_id = str(exc).strip("'")
@@ -791,6 +880,39 @@ def stop_training_job(job_id: str) -> LLMTrainingJobResponse:
         return manager.stop_job(job_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+
+
+@training_api.post("/jobs/{job_id}/remote/resync", response_model=LLMTrainingJobResponse)
+def resync_remote_training_job(job_id: str) -> LLMTrainingJobResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.resync_remote_job(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@training_api.post("/jobs/{job_id}/remote/cleanup", response_model=LLMTrainingJobResponse)
+def cleanup_remote_training_job(job_id: str) -> LLMTrainingJobResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.cleanup_remote_job(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@training_api.post("/jobs/{job_id}/remote/reattach", response_model=LLMTrainingJobResponse)
+def reattach_remote_training_job(job_id: str) -> LLMTrainingJobResponse:
+    manager = app.state.training_jobs
+    try:
+        return manager.reattach_remote_job(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @training_api.get("/jobs/{job_id}/artifact")

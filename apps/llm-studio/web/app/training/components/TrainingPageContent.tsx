@@ -24,6 +24,7 @@ import {
   FiPlus,
   FiRefreshCw,
   FiSearch,
+  FiServer,
   FiTrash2,
   FiX,
   FiXCircle,
@@ -51,7 +52,9 @@ import {
   fetchTrainingLogs,
   fetchTrainingMetrics,
   fetchTrainingSamples,
+  fetchRunPodStatus,
   stopTrainingJob,
+  validateRunPodKey,
   validateTrainingPreflight,
   type TrainingBatchLrRecommendationOption,
   type TrainingCheckpointEntry,
@@ -61,6 +64,8 @@ import {
   type TrainingMetricPoint,
   type TrainingPreflightResponse,
   type TrainingSampleEntry,
+  type TrainingExecutionTarget,
+  type RunPodProviderStatus,
   createTrainingJob,
 } from "../../../lib/trainingApi";
 import {
@@ -323,6 +328,19 @@ export function TrainingPageContent() {
   const [checkpoints, setCheckpoints] = useState<TrainingCheckpointEntry[]>([]);
   const [launching, setLaunching] = useState(false);
   const [stoppingRunId, setStoppingRunId] = useState<string | null>(null);
+  const [executionKind, setExecutionKind] = useState<TrainingExecutionTarget["kind"]>("local");
+  const [runPodApiKey, setRunPodApiKey] = useState("");
+  const [runPodStatus, setRunPodStatus] = useState<RunPodProviderStatus | null>(null);
+  const [runPodValidationMessage, setRunPodValidationMessage] = useState<string | null>(null);
+  const [runPodValidationLoading, setRunPodValidationLoading] = useState(false);
+  const [runPodGpuType, setRunPodGpuType] = useState("");
+  const [runPodGpuCount, setRunPodGpuCount] = useState(1);
+  const [runPodCloudType, setRunPodCloudType] = useState<"SECURE" | "COMMUNITY">("SECURE");
+  const [runPodDataCenterId, setRunPodDataCenterId] = useState("");
+  const [runPodVolumeSizeGb, setRunPodVolumeSizeGb] = useState(100);
+  const [runPodInterruptible, setRunPodInterruptible] = useState(false);
+  const [runPodCleanupPod, setRunPodCleanupPod] = useState<"delete_after_sync" | "stop_after_sync" | "keep">("delete_after_sync");
+  const [runPodCleanupVolume, setRunPodCleanupVolume] = useState<"keep" | "delete_after_sync">("keep");
   const [toasts, setToasts] = useState<ToastState[]>([]);
   const [pickerKind, setPickerKind] = useState<AssetPickerKind | null>(null);
   const [pickerQuery, setPickerQuery] = useState("");
@@ -375,6 +393,32 @@ export function TrainingPageContent() {
       if (workflowHighlightTimeoutRef.current !== null) {
         window.clearTimeout(workflowHighlightTimeoutRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRunPodStatus()
+      .then((status) => {
+        if (cancelled) {
+          return;
+        }
+        setRunPodStatus(status);
+        setRunPodGpuType(status.defaults.gpu_type_id);
+        setRunPodGpuCount(status.defaults.gpu_count);
+        setRunPodCloudType(status.defaults.cloud_type);
+        setRunPodDataCenterId(status.defaults.data_center_id ?? "");
+        setRunPodVolumeSizeGb(status.defaults.network_volume_size_gb);
+        setRunPodCleanupPod(status.defaults.cleanup_policy.pod);
+        setRunPodCleanupVolume(status.defaults.cleanup_policy.network_volume);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setRunPodValidationMessage(error instanceof Error ? error.message : "RunPod settings unavailable.");
+        }
+      });
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -1367,14 +1411,54 @@ export function TrainingPageContent() {
       notify("error", "Training blocked", "Resolve the preflight issues before launching.");
       return;
     }
+    if (executionKind === "runpod_pod" && !runPodStatus?.configured && runPodApiKey.trim() === "") {
+      notify("error", "RunPod key required", "Paste and validate a RunPod API key before launching a pod.");
+      return;
+    }
+    if (executionKind === "runpod_pod" && runPodInterruptible) {
+      const confirmed = window.confirm("Start an interruptible RunPod pod? It can be preempted while training is running.");
+      if (!confirmed) {
+        return;
+      }
+    }
+    if (executionKind === "runpod_pod" && runPodCleanupPod === "keep") {
+      const confirmed = window.confirm("Keep the RunPod pod alive after training? This can continue billing until you stop it.");
+      if (!confirmed) {
+        return;
+      }
+    }
+    if (executionKind === "runpod_pod" && runPodCleanupVolume === "delete_after_sync") {
+      const confirmed = window.confirm("Delete the RunPod network volume after sync? Cached datasets and remote checkpoints on that volume will be removed.");
+      if (!confirmed) {
+        return;
+      }
+    }
     setLaunching(true);
     try {
+      const executionTarget: TrainingExecutionTarget =
+        executionKind === "local"
+          ? { kind: "local" }
+          : {
+              kind: "runpod_pod",
+              api_key: runPodApiKey.trim() || null,
+              gpu_type_id: runPodGpuType.trim() || null,
+              gpu_count: runPodGpuCount,
+              cloud_type: runPodCloudType,
+              data_center_id: runPodDataCenterId.trim() || null,
+              interruptible: runPodInterruptible,
+              network_volume_size_gb: runPodVolumeSizeGb,
+              cleanup_policy: {
+                pod: runPodCleanupPod,
+                network_volume: runPodCleanupVolume,
+              },
+            };
       const job = await createTrainingJob({
         name: runName.trim() || undefined,
         project_id: selectedProjectId,
         tokenizer_job_id: selectedTokenizerJobId,
         training_config: trainingConfig,
         dataloader_config: dataloaderConfig,
+        execution_target: executionTarget,
       });
       startTransition(() => {
         setActiveRunId(job.id);
@@ -1387,6 +1471,27 @@ export function TrainingPageContent() {
       notify("error", "Launch failed", error instanceof Error ? error.message : "Failed to start training.");
     } finally {
       setLaunching(false);
+    }
+  };
+
+  const handleValidateRunPodKey = async () => {
+    const key = runPodApiKey.trim();
+    if (!key) {
+      setRunPodValidationMessage("Paste a RunPod API key first.");
+      return;
+    }
+    setRunPodValidationLoading(true);
+    try {
+      const result = await validateRunPodKey(key);
+      setRunPodValidationMessage(result.message);
+      if (result.valid) {
+        const status = await fetchRunPodStatus();
+        setRunPodStatus(status);
+      }
+    } catch (error) {
+      setRunPodValidationMessage(error instanceof Error ? error.message : "RunPod key validation failed.");
+    } finally {
+      setRunPodValidationLoading(false);
     }
   };
 
@@ -1431,7 +1536,8 @@ export function TrainingPageContent() {
     }
   };
 
-  const startReady = Boolean(preflight?.valid && selectedProjectId && selectedTokenizerJobId && !launching);
+  const runPodReady = executionKind === "local" || Boolean(runPodStatus?.configured || runPodApiKey.trim());
+  const startReady = Boolean(preflight?.valid && selectedProjectId && selectedTokenizerJobId && !launching && runPodReady);
   const trainingRuntimeReady = Boolean(trainingConfig && dataloaderConfig);
   const hasTrainingInProgress =
     activeRun?.status === "running" || activeRun?.status === "pending";
@@ -1728,12 +1834,44 @@ export function TrainingPageContent() {
                 </div>
                 <div className="trainingInlineMeta">
                   <span>Run identifier: {activeRun.id.slice(0, 8)}</span>
+                  <span>Executor: {activeRun.executor_kind === "runpod_pod" ? "RunPod Pod" : "Local machine"}</span>
                   <span>Created {formatDate(activeRun.created_at)}</span>
                   <span>Started {activeRun.started_at ? formatDate(activeRun.started_at) : "waiting"}</span>
                   <span>Elapsed training time: {formatTrainingElapsed(activeRunStepProgress, activeRun.status)}</span>
                   <span>Estimated time remaining: {formatTrainingEta(activeRunStepProgress, activeRun.status)}</span>
                 </div>
               </div>
+
+              {activeRun.executor_kind === "runpod_pod" ? (
+                <div className="statusGrid">
+                  <div className="statusCard">
+                    <div className="statusCardIcon"><FiServer /></div>
+                    <div>
+                      <div className="statusCardTitle">RunPod lifecycle</div>
+                      <div className="statusCardValue">{activeRun.executor_status ?? activeRun.stage}</div>
+                      <div className="statusCardDetail">Pod: {activeRun.runpod_pod_id ?? "provisioning"}</div>
+                    </div>
+                  </div>
+                  <div className="statusCard">
+                    <div className="statusCardIcon"><FiCpu /></div>
+                    <div>
+                      <div className="statusCardTitle">Remote GPU</div>
+                      <div className="statusCardValue">{activeRun.runpod_gpu_type_id ?? "selected"}</div>
+                      <div className="statusCardDetail">
+                        {activeRun.runpod_gpu_count} GPU · {activeRun.runpod_cloud_type ?? "cloud"} · {activeRun.runpod_data_center_id ?? "any datacenter"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="statusCard">
+                    <div className="statusCardIcon"><FiRefreshCw /></div>
+                    <div>
+                      <div className="statusCardTitle">Sync</div>
+                      <div className="statusCardValue">{activeRun.runpod_last_sync_at ? formatDate(activeRun.runpod_last_sync_at) : "waiting"}</div>
+                      <div className="statusCardDetail">{activeRun.remote_error ?? "Metrics, logs, samples, and checkpoints sync to this machine."}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="statusGrid">
                 <div className="statusCard">
@@ -2148,6 +2286,122 @@ export function TrainingPageContent() {
 
         {trainingConfig && dataloaderConfig ? (
           <div className="trainingSettingsStack">
+            <details className="settingsPanel" open>
+              <summary>Execution target</summary>
+              <div className="settingsGrid">
+                <div className="settingsGroup">
+                  <div className="settingsGroupHeader">
+                    <h3>Where this run trains</h3>
+                    <p className="settingsGroupHint">
+                      Local runs keep using this machine. RunPod runs create a managed GPU pod, stream telemetry back here, then apply the selected cleanup policy.
+                    </p>
+                  </div>
+                  <div className="modeSwitch">
+                    <button
+                      type="button"
+                      className={`modeSwitchButton ${executionKind === "local" ? "modeSwitchButton-active" : ""}`}
+                      onClick={() => setExecutionKind("local")}
+                    >
+                      <FiCpu aria-hidden="true" />
+                      Local machine
+                    </button>
+                    <button
+                      type="button"
+                      className={`modeSwitchButton ${executionKind === "runpod_pod" ? "modeSwitchButton-active" : ""}`}
+                      onClick={() => setExecutionKind("runpod_pod")}
+                    >
+                      <FiServer aria-hidden="true" />
+                      RunPod Pod
+                    </button>
+                  </div>
+
+                  {executionKind === "runpod_pod" ? (
+                    <div className="settingsStack">
+                      <div className="fieldGrid trainingSettingsCompactGrid">
+                        <label className="fieldLabel">
+                          <span>RunPod API key</span>
+                          <input
+                            className="textInput"
+                            type="password"
+                            value={runPodApiKey}
+                            placeholder={runPodStatus?.source === "environment" ? "Using environment key" : "Paste RunPod API key"}
+                            onChange={(event) => setRunPodApiKey(event.target.value)}
+                          />
+                        </label>
+                        <label className="fieldLabel">
+                          <span>GPU type</span>
+                          <input
+                            className="textInput"
+                            value={runPodGpuType}
+                            onChange={(event) => setRunPodGpuType(event.target.value)}
+                          />
+                        </label>
+                        <label className="fieldLabel">
+                          <span>GPU count</span>
+                          <ConfigNumberInput value={runPodGpuCount} onCommit={setRunPodGpuCount} />
+                        </label>
+                        <label className="fieldLabel">
+                          <span>Cloud</span>
+                          <select className="selectInput" value={runPodCloudType} onChange={(event) => setRunPodCloudType(event.target.value as "SECURE" | "COMMUNITY")}>
+                            <option value="SECURE">Secure Cloud</option>
+                            <option value="COMMUNITY">Community Cloud</option>
+                          </select>
+                        </label>
+                        <label className="fieldLabel">
+                          <span>Datacenter</span>
+                          <input
+                            className="textInput"
+                            value={runPodDataCenterId}
+                            placeholder="Any available"
+                            onChange={(event) => setRunPodDataCenterId(event.target.value)}
+                          />
+                        </label>
+                        <label className="fieldLabel">
+                          <span>Network volume GB</span>
+                          <ConfigNumberInput value={runPodVolumeSizeGb} onCommit={setRunPodVolumeSizeGb} />
+                        </label>
+                        <label className="fieldLabel">
+                          <span>Pod cleanup</span>
+                          <select className="selectInput" value={runPodCleanupPod} onChange={(event) => setRunPodCleanupPod(event.target.value as "delete_after_sync" | "stop_after_sync" | "keep")}>
+                            <option value="delete_after_sync">Delete after sync</option>
+                            <option value="stop_after_sync">Stop after sync</option>
+                            <option value="keep">Keep running</option>
+                          </select>
+                        </label>
+                        <label className="fieldLabel">
+                          <span>Volume cleanup</span>
+                          <select className="selectInput" value={runPodCleanupVolume} onChange={(event) => setRunPodCleanupVolume(event.target.value as "keep" | "delete_after_sync")}>
+                            <option value="keep">Keep volume</option>
+                            <option value="delete_after_sync">Delete after sync</option>
+                          </select>
+                        </label>
+                      </div>
+                      <label className="trainingCheckboxLine">
+                        <input
+                          type="checkbox"
+                          checked={runPodInterruptible}
+                          onChange={(event) => setRunPodInterruptible(event.target.checked)}
+                        />
+                        <span>Use interruptible capacity</span>
+                      </label>
+                      <div className="trainingPromptToolbar">
+                        <button type="button" className="buttonSecondary" onClick={() => void handleValidateRunPodKey()} disabled={runPodValidationLoading || runPodApiKey.trim() === ""}>
+                          <FiCheckCircle aria-hidden="true" />
+                          {runPodValidationLoading ? "Validating..." : "Validate key"}
+                        </button>
+                        <span className={`pillBadge ${runPodStatus?.configured ? "tone-good" : "tone-neutral"}`}>
+                          {runPodStatus?.configured ? `Key ready (${runPodStatus.source})` : "Key required"}
+                        </span>
+                      </div>
+                      {runPodValidationMessage ? (
+                        <p className="settingsGroupHint">{runPodValidationMessage}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </details>
+
             <details className="settingsPanel" open ref={trainingPlanPanelRef}>
               <summary>Training plan</summary>
               <div className="settingsGrid">

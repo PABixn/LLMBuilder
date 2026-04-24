@@ -1,6 +1,7 @@
 import { apiBaseUrl } from "./api";
 
 export type TrainingJobStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+export type TrainingExecutorKind = "local" | "runpod_pod";
 export type TrainingJobState =
   | "queued"
   | "preflight"
@@ -208,6 +209,68 @@ export interface TrainingJob {
   error: string | null;
   process_id: number | null;
   output_size_bytes: number;
+  executor_kind: TrainingExecutorKind;
+  executor_status: string | null;
+  runpod_pod_id: string | null;
+  runpod_pod_name: string | null;
+  runpod_network_volume_id: string | null;
+  runpod_data_center_id: string | null;
+  runpod_gpu_type_id: string | null;
+  runpod_gpu_count: number;
+  runpod_cloud_type: string | null;
+  runpod_interruptible: boolean;
+  runpod_cost_per_hr: number | null;
+  runpod_public_ip: string | null;
+  runpod_port_mappings: Record<string, unknown> | null;
+  runpod_agent_base_url: string | null;
+  runpod_last_heartbeat_at: string | null;
+  runpod_last_sync_at: string | null;
+  runpod_cleanup_policy: Record<string, unknown> | null;
+  remote_workspace_path: string | null;
+  remote_error: string | null;
+}
+
+export interface RunPodCleanupPolicy {
+  pod: "delete_after_sync" | "stop_after_sync" | "keep";
+  network_volume: "keep" | "delete_after_sync";
+}
+
+export interface TrainingExecutionTarget {
+  kind: TrainingExecutorKind;
+  api_key?: string | null;
+  gpu_type_id?: string | null;
+  gpu_count?: number | null;
+  cloud_type?: "SECURE" | "COMMUNITY" | null;
+  data_center_id?: string | null;
+  interruptible?: boolean;
+  network_volume_size_gb?: number | null;
+  cleanup_policy?: RunPodCleanupPolicy;
+}
+
+export interface RunPodProviderDefaults {
+  gpu_type_id: string;
+  gpu_count: number;
+  cloud_type: "SECURE" | "COMMUNITY";
+  data_center_id: string | null;
+  network_volume_size_gb: number;
+  container_disk_gb: number;
+  volume_mount_path: string;
+  training_image: string;
+  agent_port: number;
+  cleanup_policy: RunPodCleanupPolicy;
+}
+
+export interface RunPodProviderStatus {
+  configured: boolean;
+  validated: boolean;
+  source: "environment" | "memory" | "none";
+  defaults: RunPodProviderDefaults;
+}
+
+export interface RunPodValidateKeyResponse {
+  valid: boolean;
+  message: string;
+  account: Record<string, unknown> | null;
 }
 
 export interface GenerateTrainingCompletionRequest {
@@ -422,11 +485,27 @@ export async function createTrainingJob(
     training_config: Record<string, unknown>;
     dataloader_config: Record<string, unknown>;
     name?: string | null;
+    execution_target?: TrainingExecutionTarget;
   }
 ): Promise<TrainingJob> {
   return request<TrainingJob>("/jobs", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchRunPodStatus(): Promise<RunPodProviderStatus> {
+  return request<RunPodProviderStatus>("/providers/runpod/status");
+}
+
+export async function fetchRunPodDefaults(): Promise<RunPodProviderDefaults> {
+  return request<RunPodProviderDefaults>("/providers/runpod/defaults");
+}
+
+export async function validateRunPodKey(apiKey: string): Promise<RunPodValidateKeyResponse> {
+  return request<RunPodValidateKeyResponse>("/providers/runpod/validate-key", {
+    method: "POST",
+    body: JSON.stringify({ api_key: apiKey }),
   });
 }
 

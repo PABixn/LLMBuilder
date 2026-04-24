@@ -6,8 +6,6 @@ import math
 import os
 import re
 import shutil
-import signal
-import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -46,6 +44,7 @@ from .training_models import (
 )
 from .training_recommendations import build_batch_and_lr_recommendation
 from .training_storage import StoredTrainingJob, TrainingStudioStore
+from .training_executors import LocalSubprocessExecutor, RunPodPodExecutor, TrainingExecutor, TrainingJobBundle
 
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
 if str(IMPORT_ROOT) not in sys.path:
@@ -88,7 +87,12 @@ class TrainingRunManager:
     ) -> None:
         self._store = store
         self._tokenizer_store = tokenizer_store
-        self._processes: dict[str, subprocess.Popen[bytes]] = {}
+        self._local_executor = LocalSubprocessExecutor()
+        self._runpod_executor = RunPodPodExecutor()
+        self._executors: dict[str, TrainingExecutor] = {
+            self._local_executor.kind: self._local_executor,
+            self._runpod_executor.kind: self._runpod_executor,
+        }
 
     def build_preflight(self, request: TrainingPreflightRequest) -> TrainingPreflightResponse:
         context = self._resolve_preflight_context(request)
@@ -144,6 +148,8 @@ class TrainingRunManager:
         shutil.copy2(tokenizer_source_path, tokenizer_path)
 
         name = request.name or f"{context.model_project.name} x {context.tokenizer.name}"
+        execution_target = request.execution_target
+        cleanup_policy = execution_target.cleanup_policy.model_dump(mode="json")
         stored = StoredTrainingJob(
             id=job_id,
             name=name,
@@ -182,33 +188,55 @@ class TrainingRunManager:
             error=None,
             process_id=None,
             output_size_bytes=directory_size(job_dir),
+            executor_kind=execution_target.kind.value,
+            executor_status="queued",
+            runpod_data_center_id=execution_target.data_center_id,
+            runpod_gpu_type_id=execution_target.gpu_type_id,
+            runpod_gpu_count=execution_target.gpu_count or get_settings().runpod_default_gpu_count,
+            runpod_cloud_type=execution_target.cloud_type.value if execution_target.cloud_type is not None else None,
+            runpod_interruptible=execution_target.interruptible,
+            runpod_cleanup_policy=cleanup_policy,
         )
         self._store.create_job(stored)
 
+        bundle = TrainingJobBundle(
+            job_id=job_id,
+            job_dir=job_dir,
+            model_config_path=model_config_path,
+            tokenizer_path=tokenizer_path,
+            training_config_path=training_config_path,
+            dataloader_config_path=dataloader_config_path,
+            resolved_preflight_path=resolved_preflight_path,
+            stdout_path=stdout_path,
+            stderr_path=stderr_path,
+            stats_path=stats_path,
+            samples_path=samples_path,
+            manifest={
+                "format": "llm-studio-training-bundle-v1",
+                "job_id": job_id,
+                "execution_target": execution_target.model_dump(mode="json"),
+            },
+        )
+        executor = self._executor_for_kind(request.execution_target.kind.value)
+
         try:
-            process = self._spawn_process(
-                job_id=job_id,
-                model_config_path=model_config_path,
-                tokenizer_path=tokenizer_path,
-                training_config_path=training_config_path,
-                dataloader_config_path=dataloader_config_path,
-                output_dir=job_dir,
-                stdout_path=stdout_path,
-                stderr_path=stderr_path,
+            handle = executor.submit(
+                stored,
+                bundle,
             )
         except Exception:
             self._store.delete_job(job_id)
             shutil.rmtree(job_dir, ignore_errors=True)
             raise
 
-        self._processes[job_id] = process
         self._store.update_job(
             job_id,
             status=TrainingJobStatus.running,
             state=TrainingJobState.preflight,
-            stage="Launching training process",
-            started_at=utc_now(),
-            process_id=process.pid,
+            stage="Launching training process" if handle.executor_kind == "local" else "Provisioning RunPod pod",
+            started_at=handle.started_at or utc_now(),
+            process_id=handle.process_id,
+            **handle.updates,
         )
         return self.get_job(job_id)
 
@@ -247,14 +275,8 @@ class TrainingRunManager:
         if job.status not in {TrainingJobStatus.pending, TrainingJobStatus.running}:
             return self._to_response(job)
 
-        pid = job.process_id
-        if pid is not None:
-            self._terminate_process(pid)
-        process = self._processes.pop(job_id, None)
-        if process is not None and process.poll() is None:
-            process.terminate()
-
         finished_at = utc_now()
+        snapshot = self._executor_for_job(job).stop(job)
         runtime_state_path = Path(job.artifact_dir) / "runtime_state.json"
         runtime_state = load_optional_json(runtime_state_path) or {}
         if isinstance(runtime_state, dict):
@@ -272,13 +294,13 @@ class TrainingRunManager:
 
         updated = self._store.update_job(
             job_id,
-            status=TrainingJobStatus.cancelled,
-            state=TrainingJobState.cancelled,
-            stage="Cancelled",
-            finished_at=finished_at,
-            progress=1.0,
-            error="Training was cancelled by the user.",
-            process_id=None,
+            status=snapshot.status or TrainingJobStatus.cancelled,
+            state=snapshot.state or TrainingJobState.cancelled,
+            stage=snapshot.stage or "Cancelled",
+            finished_at=snapshot.finished_at or finished_at,
+            progress=1.0 if snapshot.progress is None else snapshot.progress,
+            error=snapshot.error or "Training was cancelled by the user.",
+            **snapshot.updates,
         )
         if updated is None:
             raise KeyError(job_id)
@@ -360,11 +382,50 @@ class TrainingRunManager:
         self._store.update_job(job_id, artifact_bundle_file=bundle_name)
         return Path(archive_path)
 
+    def resync_remote_job(self, job_id: str) -> TrainingJobResponse:
+        job = self._refresh_job(job_id)
+        if job is None:
+            raise KeyError(job_id)
+        if job.executor_kind != "runpod_pod":
+            raise ValueError("Remote resync is only available for RunPod jobs.")
+        return self._to_response(job)
+
+    def cleanup_remote_job(self, job_id: str) -> TrainingJobResponse:
+        job = self._refresh_job(job_id)
+        if job is None:
+            raise KeyError(job_id)
+        if job.executor_kind != "runpod_pod":
+            raise ValueError("Remote cleanup is only available for RunPod jobs.")
+        policy_payload = job.runpod_cleanup_policy or {}
+        from .training_executors import CleanupPolicy
+
+        self._executor_for_job(job).cleanup(
+            job,
+            CleanupPolicy(
+                pod=str(policy_payload.get("pod") or "delete_after_sync"),
+                network_volume=str(policy_payload.get("network_volume") or "keep"),
+            ),
+        )
+        updated = self._store.update_job(job_id, executor_status="cleaned_up") or job
+        return self._to_response(updated)
+
+    def reattach_remote_job(self, job_id: str) -> TrainingJobResponse:
+        job = self._store.get_job(job_id)
+        if job is None:
+            raise KeyError(job_id)
+        if job.executor_kind != "runpod_pod":
+            raise ValueError("Remote reattach is only available for RunPod jobs.")
+        updated = self._store.update_job(
+            job_id,
+            remote_error=(
+                "Automatic reattach cannot recover the raw pod-agent token because only its hash is stored. "
+                "Stop the Pod or launch a new run."
+            ),
+        ) or job
+        return self._to_response(updated)
+
     def shutdown(self) -> None:
-        for process in self._processes.values():
-            if process.poll() is None:
-                process.terminate()
-        self._processes.clear()
+        self._local_executor.shutdown()
 
     def _refresh_job(self, job_id: str) -> StoredTrainingJob | None:
         validate_identifier(job_id, _JOB_ID_RE)
@@ -389,36 +450,27 @@ class TrainingRunManager:
             if isinstance(metadata.get("error"), str):
                 updates["error"] = metadata["error"]
 
-        process = self._processes.get(job_id)
-        exit_code = None
-        if process is not None:
-            exit_code = process.poll()
-            if exit_code is not None:
-                self._processes.pop(job_id, None)
-        elif job.process_id is not None and job.status in {TrainingJobStatus.pending, TrainingJobStatus.running}:
-            if not process_exists(job.process_id):
-                exit_code = 1
-
-        if exit_code is not None and job.status in {TrainingJobStatus.pending, TrainingJobStatus.running}:
+        snapshot = self._executor_for_job(job).refresh(job)
+        if snapshot.status is not None:
             status = runtime_state.get("status") if isinstance(runtime_state, dict) else None
-            if status == TrainingJobStatus.completed.value or exit_code == 0:
+            if status == TrainingJobStatus.completed.value:
                 updates.setdefault("status", TrainingJobStatus.completed)
                 updates.setdefault("state", TrainingJobState.completed)
                 updates.setdefault("stage", "Completed")
                 updates.setdefault("progress", 1.0)
-            elif status == TrainingJobStatus.cancelled.value or exit_code == 2:
-                updates.setdefault("status", TrainingJobStatus.cancelled)
-                updates.setdefault("state", TrainingJobState.cancelled)
-                updates.setdefault("stage", "Cancelled")
-                updates.setdefault("progress", 1.0)
-                updates.setdefault("error", "Training was cancelled.")
             else:
-                updates.setdefault("status", TrainingJobStatus.failed)
-                updates.setdefault("state", TrainingJobState.failed)
-                updates.setdefault("stage", "Failed")
-                updates.setdefault("progress", 1.0)
-                updates.setdefault("error", f"Training subprocess exited with code {exit_code}.")
-            updates.setdefault("finished_at", utc_now())
+                updates.setdefault("status", snapshot.status)
+                if snapshot.state is not None:
+                    updates.setdefault("state", snapshot.state)
+                if snapshot.stage is not None:
+                    updates.setdefault("stage", snapshot.stage)
+                if snapshot.progress is not None:
+                    updates.setdefault("progress", snapshot.progress)
+                if snapshot.error is not None:
+                    updates.setdefault("error", snapshot.error)
+            if snapshot.finished_at is not None:
+                updates.setdefault("finished_at", snapshot.finished_at)
+        updates.update(snapshot.updates)
 
         updates["output_size_bytes"] = directory_size(Path(job.artifact_dir))
 
@@ -757,61 +809,14 @@ class TrainingRunManager:
             raise FileNotFoundError(f"Tokenizer artifact missing: {artifact_path}")
         return artifact_path
 
-    def _spawn_process(
-        self,
-        *,
-        job_id: str,
-        model_config_path: Path,
-        tokenizer_path: Path,
-        training_config_path: Path,
-        dataloader_config_path: Path,
-        output_dir: Path,
-        stdout_path: Path,
-        stderr_path: Path,
-    ) -> subprocess.Popen[bytes]:
-        stdout_handle = stdout_path.open("ab")
-        stderr_handle = stderr_path.open("ab")
-        env = os.environ.copy()
-        env["PYTHONUNBUFFERED"] = "1"
-        command = [
-            sys.executable,
-            "-m",
-            "training.runner",
-            "--job-id",
-            job_id,
-            "--model-config-path",
-            str(model_config_path),
-            "--tokenizer-path",
-            str(tokenizer_path),
-            "--training-config-path",
-            str(training_config_path),
-            "--dataloader-config-path",
-            str(dataloader_config_path),
-            "--output-dir",
-            str(output_dir),
-        ]
-        try:
-            process = subprocess.Popen(
-                command,
-                cwd=IMPORT_ROOT,
-                stdout=stdout_handle,
-                stderr=stderr_handle,
-                env=env,
-                start_new_session=True,
-            )
-        finally:
-            stdout_handle.close()
-            stderr_handle.close()
-        return process
+    def _executor_for_kind(self, kind: str) -> TrainingExecutor:
+        executor = self._executors.get(kind)
+        if executor is None:
+            raise ValueError(f"Unsupported training execution target: {kind}")
+        return executor
 
-    def _terminate_process(self, pid: int) -> None:
-        try:
-            if hasattr(os, "killpg"):
-                os.killpg(pid, signal.SIGTERM)
-            else:
-                os.kill(pid, signal.SIGTERM)
-        except ProcessLookupError:
-            return
+    def _executor_for_job(self, job: StoredTrainingJob) -> TrainingExecutor:
+        return self._executor_for_kind(job.executor_kind or "local")
 
     def _to_response(self, job: StoredTrainingJob) -> TrainingJobResponse:
         runtime_state = load_optional_json(Path(job.artifact_dir) / "runtime_state.json")
@@ -853,6 +858,25 @@ class TrainingRunManager:
             error=job.error,
             process_id=job.process_id,
             output_size_bytes=job.output_size_bytes,
+            executor_kind=job.executor_kind,
+            executor_status=job.executor_status,
+            runpod_pod_id=job.runpod_pod_id,
+            runpod_pod_name=job.runpod_pod_name,
+            runpod_network_volume_id=job.runpod_network_volume_id,
+            runpod_data_center_id=job.runpod_data_center_id,
+            runpod_gpu_type_id=job.runpod_gpu_type_id,
+            runpod_gpu_count=job.runpod_gpu_count,
+            runpod_cloud_type=job.runpod_cloud_type,
+            runpod_interruptible=job.runpod_interruptible,
+            runpod_cost_per_hr=job.runpod_cost_per_hr,
+            runpod_public_ip=job.runpod_public_ip,
+            runpod_port_mappings=job.runpod_port_mappings,
+            runpod_agent_base_url=job.runpod_agent_base_url,
+            runpod_last_heartbeat_at=job.runpod_last_heartbeat_at,
+            runpod_last_sync_at=job.runpod_last_sync_at,
+            runpod_cleanup_policy=job.runpod_cleanup_policy,
+            remote_workspace_path=job.remote_workspace_path,
+            remote_error=job.remote_error,
         )
 
 

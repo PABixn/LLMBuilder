@@ -1,0 +1,26 @@
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    LLM_STUDIO_REMOTE_WORKSPACE=/workspace/llm-studio
+
+WORKDIR /opt/llm-builder
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends zstd ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY apps/llm-studio/api/requirements.txt /tmp/requirements.txt
+RUN python -m pip install --upgrade pip \
+    && python -m pip install -r /tmp/requirements.txt zstandard
+
+COPY model ./model
+COPY tokenizer ./tokenizer
+COPY training ./training
+COPY apps/llm-studio/remote_agent ./remote_agent
+
+COPY docker/training/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 8021
+ENTRYPOINT ["/entrypoint.sh"]

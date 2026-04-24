@@ -34,6 +34,67 @@ class TrainingJobState(str, Enum):
     cancelled = "cancelled"
 
 
+class TrainingExecutorKind(str, Enum):
+    local = "local"
+    runpod_pod = "runpod_pod"
+
+
+class RunPodCloudType(str, Enum):
+    secure = "SECURE"
+    community = "COMMUNITY"
+
+
+class RunPodCleanupPolicy(StrictModel):
+    pod: Literal["delete_after_sync", "stop_after_sync", "keep"] = "delete_after_sync"
+    network_volume: Literal["keep", "delete_after_sync"] = "keep"
+
+
+class TrainingExecutionTarget(StrictModel):
+    kind: TrainingExecutorKind = TrainingExecutorKind.local
+    api_key: str | None = Field(default=None, min_length=1)
+    gpu_type_id: str | None = None
+    gpu_count: int | None = Field(default=None, ge=1)
+    cloud_type: RunPodCloudType | None = None
+    data_center_id: str | None = None
+    interruptible: bool = False
+    network_volume_size_gb: int | None = Field(default=None, ge=1)
+    cleanup_policy: RunPodCleanupPolicy = Field(default_factory=RunPodCleanupPolicy)
+
+
+class RunPodProviderDefaults(BaseModel):
+    gpu_type_id: str
+    gpu_count: int
+    cloud_type: RunPodCloudType
+    data_center_id: str | None = None
+    network_volume_size_gb: int
+    container_disk_gb: int
+    volume_mount_path: str
+    training_image: str
+    agent_port: int
+    cleanup_policy: RunPodCleanupPolicy
+
+
+class RunPodProviderStatus(BaseModel):
+    configured: bool
+    validated: bool
+    source: Literal["environment", "memory", "none"]
+    defaults: RunPodProviderDefaults
+
+
+class RunPodValidateKeyRequest(StrictModel):
+    api_key: str = Field(min_length=1)
+
+
+class RunPodValidateKeyResponse(BaseModel):
+    valid: bool
+    message: str
+    account: dict[str, Any] | None = None
+
+
+class RunPodResourceListResponse(BaseModel):
+    items: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class TrainingConfigTemplatesResponse(BaseModel):
     training_config_template: dict[str, Any]
     dataloader_config_template: dict[str, Any]
@@ -181,6 +242,7 @@ class TrainingPreflightResponse(BaseModel):
 
 class CreateTrainingJobRequest(TrainingPreflightRequest):
     name: str | None = Field(default=None, max_length=200)
+    execution_target: TrainingExecutionTarget = Field(default_factory=TrainingExecutionTarget)
 
     @field_validator("name")
     @classmethod
@@ -303,6 +365,25 @@ class TrainingJobResponse(BaseModel):
     error: str | None = None
     process_id: int | None = None
     output_size_bytes: int = 0
+    executor_kind: TrainingExecutorKind = TrainingExecutorKind.local
+    executor_status: str | None = None
+    runpod_pod_id: str | None = None
+    runpod_pod_name: str | None = None
+    runpod_network_volume_id: str | None = None
+    runpod_data_center_id: str | None = None
+    runpod_gpu_type_id: str | None = None
+    runpod_gpu_count: int = 1
+    runpod_cloud_type: str | None = None
+    runpod_interruptible: bool = False
+    runpod_cost_per_hr: float | None = None
+    runpod_public_ip: str | None = None
+    runpod_port_mappings: dict[str, Any] | None = None
+    runpod_agent_base_url: str | None = None
+    runpod_last_heartbeat_at: datetime | None = None
+    runpod_last_sync_at: datetime | None = None
+    runpod_cleanup_policy: dict[str, Any] | None = None
+    remote_workspace_path: str | None = None
+    remote_error: str | None = None
 
 
 class TrainingJobsListResponse(BaseModel):

@@ -40,6 +40,19 @@ class RuntimeSettings:
     training_exports_dir: Path
     training_database_path: Path
     training_database_url: str
+    runpod_api_key: str | None
+    runpod_default_gpu_type: str
+    runpod_default_gpu_count: int
+    runpod_default_cloud_type: str
+    runpod_default_data_center_id: str | None
+    runpod_default_volume_size_gb: int
+    runpod_container_disk_gb: int
+    runpod_volume_mount_path: str
+    runpod_training_image: str
+    runpod_agent_port: int
+    runpod_pod_ttl_minutes: int
+    runpod_auto_delete_pod: bool
+    runpod_auto_delete_volume: bool
     host: str
     port: int
     serve_web: bool
@@ -142,6 +155,31 @@ def get_settings() -> RuntimeSettings:
         "LLM_STUDIO_TRAINING_DATABASE_URL",
         "TOKENIZER_STUDIO_TRAINING_DATABASE_URL",
     ) or f"sqlite:///{training_database_path.resolve()}"
+    runpod_api_key = _read_first_non_empty_env("LLM_STUDIO_RUNPOD_API_KEY")
+    runpod_default_gpu_type = (
+        _read_first_non_empty_env("LLM_STUDIO_RUNPOD_DEFAULT_GPU_TYPE")
+        or "NVIDIA GeForce RTX 4090"
+    )
+    runpod_default_gpu_count = _read_positive_int("LLM_STUDIO_RUNPOD_DEFAULT_GPU_COUNT", default=1)
+    runpod_default_cloud_type = (
+        _read_first_non_empty_env("LLM_STUDIO_RUNPOD_DEFAULT_CLOUD_TYPE")
+        or "SECURE"
+    ).upper()
+    runpod_default_data_center_id = _read_first_non_empty_env("LLM_STUDIO_RUNPOD_DEFAULT_DATA_CENTER_ID")
+    runpod_default_volume_size_gb = _read_positive_int("LLM_STUDIO_RUNPOD_DEFAULT_VOLUME_SIZE_GB", default=100)
+    runpod_container_disk_gb = _read_positive_int("LLM_STUDIO_RUNPOD_CONTAINER_DISK_GB", default=50)
+    runpod_volume_mount_path = (
+        _read_first_non_empty_env("LLM_STUDIO_RUNPOD_VOLUME_MOUNT_PATH")
+        or "/workspace"
+    )
+    runpod_training_image = (
+        _read_first_non_empty_env("LLM_STUDIO_RUNPOD_TRAINING_IMAGE")
+        or "ghcr.io/pabi/llm-builder-training:latest"
+    )
+    runpod_agent_port = _read_port("LLM_STUDIO_RUNPOD_AGENT_PORT", default=8021)
+    runpod_pod_ttl_minutes = _read_non_negative_int("LLM_STUDIO_RUNPOD_POD_TTL_MINUTES", default=0)
+    runpod_auto_delete_pod = _read_bool("LLM_STUDIO_RUNPOD_AUTO_DELETE_POD", default=True)
+    runpod_auto_delete_volume = _read_bool("LLM_STUDIO_RUNPOD_AUTO_DELETE_VOLUME", default=False)
 
     host = _read_first_non_empty_env("LLM_STUDIO_HOST", "TOKENIZER_STUDIO_HOST") or "127.0.0.1"
     port = _read_port(("LLM_STUDIO_PORT", "TOKENIZER_STUDIO_PORT"), default=8000)
@@ -171,6 +209,19 @@ def get_settings() -> RuntimeSettings:
         training_exports_dir=training_exports_dir,
         training_database_path=training_database_path,
         training_database_url=training_database_url,
+        runpod_api_key=runpod_api_key,
+        runpod_default_gpu_type=runpod_default_gpu_type,
+        runpod_default_gpu_count=runpod_default_gpu_count,
+        runpod_default_cloud_type=runpod_default_cloud_type,
+        runpod_default_data_center_id=runpod_default_data_center_id,
+        runpod_default_volume_size_gb=runpod_default_volume_size_gb,
+        runpod_container_disk_gb=runpod_container_disk_gb,
+        runpod_volume_mount_path=runpod_volume_mount_path,
+        runpod_training_image=runpod_training_image,
+        runpod_agent_port=runpod_agent_port,
+        runpod_pod_ttl_minutes=runpod_pod_ttl_minutes,
+        runpod_auto_delete_pod=runpod_auto_delete_pod,
+        runpod_auto_delete_volume=runpod_auto_delete_volume,
         host=host,
         port=port,
         serve_web=serve_web,
@@ -300,6 +351,18 @@ def _read_positive_int(var_name: str | tuple[str, ...], *, default: int) -> int:
     except ValueError:
         return default
     return value if value > 0 else default
+
+
+def _read_non_negative_int(var_name: str | tuple[str, ...], *, default: int) -> int:
+    var_names = var_name if isinstance(var_name, tuple) else (var_name,)
+    raw = _read_first_non_empty_env(*var_names)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value >= 0 else default
 
 
 def _read_port(var_name: str | tuple[str, ...], *, default: int) -> int:
