@@ -174,7 +174,7 @@ def get_settings() -> RuntimeSettings:
     )
     runpod_training_image = (
         _read_first_non_empty_env("LLM_STUDIO_RUNPOD_TRAINING_IMAGE")
-        or "ghcr.io/pabixn/llm-builder-training:sha-4406d0f"
+        or "ghcr.io/pabixn/llm-builder-training:sha-7037615"
     )
     runpod_agent_port = _read_port("LLM_STUDIO_RUNPOD_AGENT_PORT", default=8021)
     runpod_pod_ttl_minutes = _read_non_negative_int("LLM_STUDIO_RUNPOD_POD_TTL_MINUTES", default=0)

@@ -13,7 +13,7 @@ from typing import Any, Iterable, Iterator, List, Optional, Sequence
 import torch
 from torch.utils.data import DataLoader, IterableDataset, get_worker_info
 
-from local_text_data import is_local_text_dataset, resolve_local_data_files
+from llm_builder.local_text_data import is_local_text_dataset, resolve_local_data_files
 from training.dataloader_config import (
     DatasetSpec,
     MixingConfig,

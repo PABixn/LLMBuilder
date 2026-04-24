@@ -4,7 +4,7 @@ import glob
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def flatten_selected_data_files(value: Any, *, split: str | None = None) -> list[str]:

@@ -8,7 +8,7 @@ from typing import Iterable, Iterator, List, Optional, Sequence, Tuple
 
 from torch.utils.data import DataLoader, IterableDataset, get_worker_info
 
-from local_text_data import is_local_text_dataset, resolve_local_data_files
+from llm_builder.local_text_data import is_local_text_dataset, resolve_local_data_files
 from tokenizer.dataloader_config import (
     DataloaderConfig,
     DatasetSpec,

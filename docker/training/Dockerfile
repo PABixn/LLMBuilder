@@ -17,7 +17,10 @@ RUN python -m pip install --upgrade pip \
 COPY model ./model
 COPY tokenizer ./tokenizer
 COPY training ./training
+COPY llm_builder ./llm_builder
 COPY apps/llm-studio/remote_agent ./remote_agent
+
+RUN python -c "import llm_builder.local_text_data; import training.runner"
 
 COPY docker/training/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

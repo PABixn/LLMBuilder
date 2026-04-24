@@ -1,14 +1,27 @@
 from __future__ import annotations
 
+import importlib
 import json
 import sqlite3
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+from fastapi.testclient import TestClient
 
 from app.training_executors.remote_sync import build_remote_bundle, rewrite_local_dataset_files
 from app.training_executors.runpod_client import CreatePodRequest
 from app.training_executors.runpod_pod import build_agent_base_url
 from app.training_storage import TrainingStudioStore
+
+REPO_ROOT = Path(__file__).resolve().parents[4]
+
+
+class ExitedProcess:
+    pid = 12345
+
+    def poll(self) -> int:
+        return 1
 
 
 def test_training_store_migrates_old_sqlite_schema(tmp_path: Path) -> None:
@@ -147,6 +160,48 @@ def test_runpod_agent_url_uses_proxy_for_runtime_http_mapping() -> None:
     }
 
     assert build_agent_base_url(pod, 8021) == "https://ldl1dxirsim64n-8021.proxy.runpod.net"
+
+
+def test_training_image_includes_shared_local_text_module() -> None:
+    dockerfile = (REPO_ROOT / "docker" / "training" / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "COPY llm_builder ./llm_builder" in dockerfile
+    assert "import llm_builder.local_text_data; import training.runner" in dockerfile
+
+
+def test_remote_agent_runtime_state_reports_early_process_exit(monkeypatch, tmp_path: Path) -> None:
+    llm_studio_root = REPO_ROOT / "apps" / "llm-studio"
+    if str(llm_studio_root) not in sys.path:
+        sys.path.insert(0, str(llm_studio_root))
+    import remote_agent.app as remote_app
+    import remote_agent.runner as remote_runner
+
+    remote_runner = importlib.reload(remote_runner)
+    remote_app = importlib.reload(remote_app)
+    job_id = "job-early-exit"
+    monkeypatch.setenv("LLM_STUDIO_REMOTE_WORKSPACE", str(tmp_path / "workspace"))
+    monkeypatch.setenv("LLM_STUDIO_REMOTE_JOB_ID", job_id)
+    monkeypatch.setenv("LLM_STUDIO_REMOTE_AGENT_TOKEN", "token")
+    outputs = tmp_path / "workspace" / "jobs" / job_id / "outputs"
+    outputs.mkdir(parents=True)
+    remote_app.runner._processes[job_id] = remote_runner.RemoteProcess(
+        process=ExitedProcess(),
+        stdout_path=outputs / "stdout.log",
+        stderr_path=outputs / "stderr.log",
+    )
+
+    client = TestClient(remote_app.app)
+    response = client.get(
+        f"/v1/jobs/{job_id}/runtime-state",
+        headers={"Authorization": "Bearer token", "X-LLM-Studio-Job-Id": job_id},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "failed"
+    assert payload["state"] == "failed"
+    assert payload["process"]["exit_code"] == 1
+    assert "stderr.log" in payload["error"]
 
 
 def test_rewrite_local_dataset_files_copies_and_rewrites_paths(tmp_path: Path) -> None:

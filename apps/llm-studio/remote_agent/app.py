@@ -98,8 +98,32 @@ def job_status(job_id: str, _: AuthDependency) -> dict[str, Any]:
 @app.get("/v1/jobs/{job_id}/runtime-state")
 def runtime_state(job_id: str, _: AuthDependency) -> dict[str, Any]:
     payload = read_json(outputs_dir(job_id) / "runtime_state.json")
+    process = runner.status(job_id)
+    exit_code = process.get("exit_code")
+    if isinstance(exit_code, int):
+        terminal_statuses = {"completed", "failed", "cancelled"}
+        if payload is None or payload.get("status") not in terminal_statuses:
+            return {
+                "job_id": job_id,
+                "status": "failed",
+                "state": "failed",
+                "stage": "Training runner exited before reporting progress",
+                "progress": 1.0,
+                "error": f"Training subprocess exited with code {exit_code}. Check stderr.log for details.",
+                "process": process,
+            }
     if payload is None:
+        if process.get("running") is True:
+            return {
+                "job_id": job_id,
+                "status": "running",
+                "state": "preflight",
+                "stage": "Launching training runner",
+                "progress": 0.0,
+                "process": process,
+            }
         return {"job_id": job_id, "status": "pending", "state": "queued", "stage": "Waiting for runner", "progress": 0.0}
+    payload.setdefault("process", process)
     return payload
 
 
