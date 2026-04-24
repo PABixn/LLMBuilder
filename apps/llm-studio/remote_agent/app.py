@@ -33,6 +33,16 @@ def outputs_dir(job_id: str) -> Path:
 AuthDependency = Annotated[None, Depends(require_agent_auth)]
 
 
+@app.get("/")
+def root() -> dict[str, Any]:
+    return {"ok": True, "service": "llm-studio-remote-training-agent", "health": "/health"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> Response:
+    return Response(status_code=204)
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "job_id": configured_job_id()}

@@ -12,6 +12,8 @@ Try another GPU type, datacenter, or cloud type. Secure Cloud is the default. Co
 
 The job remains visible locally with the RunPod Pod ID when available. Stop or delete the Pod from `llm-studio`; if the API process has restarted and cannot recover the pod-agent token, use the RunPod console to stop the visible Pod ID.
 
+If the RunPod container logs show Uvicorn listening on `0.0.0.0:8021` but no `/health` or `/v1/jobs/...` requests from the desktop API, the local API is probably trying the wrong agent URL. HTTP ports must be reached through RunPod's proxy URL, `https://<pod-id>-8021.proxy.runpod.net`, not a private `100.x` pod IP.
+
 ## Agent Unreachable
 
 The training image must expose the configured agent port, default `8021/http`. Check that `LLM_STUDIO_RUNPOD_TRAINING_IMAGE` points to an image built from `docker/training/Dockerfile`.

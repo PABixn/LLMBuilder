@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import sys
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -219,6 +220,25 @@ class TrainingRunManager:
         )
         executor = self._executor_for_kind(request.execution_target.kind.value)
 
+        if executor.kind == self._runpod_executor.kind:
+            started_at = utc_now()
+            self._store.update_job(
+                job_id,
+                status=TrainingJobStatus.running,
+                state=TrainingJobState.preflight,
+                stage="Provisioning RunPod pod",
+                started_at=started_at,
+                executor_status="provisioning",
+            )
+            thread = threading.Thread(
+                target=self._submit_remote_job,
+                args=(job_id, stored, bundle),
+                name=f"llm-studio-runpod-{job_id[:12]}",
+                daemon=True,
+            )
+            thread.start()
+            return self.get_job(job_id)
+
         try:
             handle = executor.submit(
                 stored,
@@ -239,6 +259,33 @@ class TrainingRunManager:
             **handle.updates,
         )
         return self.get_job(job_id)
+
+    def _submit_remote_job(self, job_id: str, stored: StoredTrainingJob, bundle: TrainingJobBundle) -> None:
+        try:
+            handle = self._runpod_executor.submit(stored, bundle)
+        except Exception as exc:
+            self._store.update_job(
+                job_id,
+                status=TrainingJobStatus.failed,
+                state=TrainingJobState.failed,
+                stage="RunPod launch failed",
+                progress=1.0,
+                finished_at=utc_now(),
+                error=str(exc),
+                executor_status="failed",
+                remote_error=str(exc),
+            )
+            return
+
+        self._store.update_job(
+            job_id,
+            status=TrainingJobStatus.running,
+            state=TrainingJobState.preflight,
+            stage="Training started on RunPod",
+            started_at=handle.started_at or utc_now(),
+            process_id=handle.process_id,
+            **handle.updates,
+        )
 
     def list_jobs(self) -> list[TrainingJobResponse]:
         jobs = self._store.list_jobs()

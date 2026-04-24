@@ -7,6 +7,7 @@ from pathlib import Path
 
 from app.training_executors.remote_sync import build_remote_bundle, rewrite_local_dataset_files
 from app.training_executors.runpod_client import CreatePodRequest
+from app.training_executors.runpod_pod import build_agent_base_url
 from app.training_storage import TrainingStudioStore
 
 
@@ -116,6 +117,36 @@ def test_runpod_create_pod_payload_uses_current_image_name_field() -> None:
     assert payload["gpuTypeIds"] == ["NVIDIA GeForce RTX 4090"]
     assert payload["ports"] == ["8021/http"]
     assert "image" not in payload
+
+
+def test_runpod_agent_url_prefers_http_proxy_for_declared_http_port() -> None:
+    pod = {
+        "id": "abc123xyz",
+        "publicIp": "100.65.0.119",
+        "ports": ["8021/http"],
+        "portMappings": {},
+    }
+
+    assert build_agent_base_url(pod, 8021) == "https://abc123xyz-8021.proxy.runpod.net"
+
+
+def test_runpod_agent_url_uses_proxy_for_runtime_http_mapping() -> None:
+    pod = {
+        "id": "ldl1dxirsim64n",
+        "runtime": {
+            "ports": [
+                {
+                    "ip": "100.65.0.101",
+                    "isIpPublic": False,
+                    "privatePort": 8021,
+                    "publicPort": 60141,
+                    "type": "http",
+                }
+            ]
+        },
+    }
+
+    assert build_agent_base_url(pod, 8021) == "https://ldl1dxirsim64n-8021.proxy.runpod.net"
 
 
 def test_rewrite_local_dataset_files_copies_and_rewrites_paths(tmp_path: Path) -> None:
