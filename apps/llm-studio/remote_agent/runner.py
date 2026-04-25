@@ -65,6 +65,14 @@ class RemoteTrainingRunner:
             stdout_handle.close()
             stderr_handle.close()
         self._processes[job_id] = RemoteProcess(process=process, stdout_path=stdout_path, stderr_path=stderr_path)
+        time.sleep(1.0)
+        exit_code = process.poll()
+        if exit_code is not None:
+            stderr_tail = tail_text(stderr_path)
+            detail = f"Training subprocess exited during startup with code {exit_code}."
+            if stderr_tail:
+                detail = f"{detail}\n\nstderr tail:\n{stderr_tail}"
+            raise RuntimeError(detail)
         return process.pid
 
     def status(self, job_id: str) -> dict[str, Any]:
@@ -110,3 +118,14 @@ def repo_root() -> Path:
         if (parent / "training").is_dir() and (parent / "model").is_dir():
             return parent
     return current.parents[1]
+
+
+def tail_text(path: Path, *, max_bytes: int = 4096) -> str:
+    if not path.exists() or not path.is_file():
+        return ""
+    size = path.stat().st_size
+    with path.open("rb") as handle:
+        if size > max_bytes:
+            handle.seek(size - max_bytes)
+        data = handle.read(max_bytes)
+    return data.decode("utf-8", errors="replace").strip()

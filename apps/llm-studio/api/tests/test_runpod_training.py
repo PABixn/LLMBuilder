@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from app.training_executors.remote_sync import build_remote_bundle, rewrite_local_dataset_files
 from app.training_executors.runpod_client import CreatePodRequest
-from app.training_executors.runpod_pod import build_agent_base_url
+from app.training_executors.runpod_pod import RunPodPodExecutor, build_agent_base_url
 from app.training_storage import TrainingStudioStore
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -22,6 +22,21 @@ class ExitedProcess:
 
     def poll(self) -> int:
         return 1
+
+
+class FakeCompatibleAgent:
+    def system(self) -> dict[str, object]:
+        return {"runner": {"import_ok": True}}
+
+
+class FakeOldAgent:
+    def system(self) -> dict[str, object]:
+        return {"workspace": "/workspace/llm-studio"}
+
+
+class FakeBrokenAgent:
+    def system(self) -> dict[str, object]:
+        return {"runner": {"import_ok": False, "error": "ModuleNotFoundError: No module named 'llm_builder'"}}
 
 
 def test_training_store_migrates_old_sqlite_schema(tmp_path: Path) -> None:
@@ -169,6 +184,43 @@ def test_training_image_includes_shared_local_text_module() -> None:
     assert "import llm_builder.local_text_data; import training.runner" in dockerfile
 
 
+def test_default_runpod_training_image_does_not_point_at_stale_import_broken_tag() -> None:
+    config_source = (REPO_ROOT / "apps" / "llm-studio" / "api" / "app" / "config.py").read_text(encoding="utf-8")
+    env_example = (REPO_ROOT / "apps" / "llm-studio" / "api" / ".env.example").read_text(encoding="utf-8")
+
+    assert "ghcr.io/pabixn/llm-builder-training:sha-7037615" not in config_source
+    assert "ghcr.io/pabixn/llm-builder-training:sha-7037615" not in env_example
+    assert "ghcr.io/pabixn/llm-builder-training:latest" in config_source
+    assert "LLM_STUDIO_RUNPOD_TRAINING_IMAGE=ghcr.io/pabixn/llm-builder-training:latest" in env_example
+
+
+def test_runpod_executor_rejects_agent_without_runner_compatibility_report() -> None:
+    executor = RunPodPodExecutor()
+
+    try:
+        executor._verify_agent_compatibility(FakeOldAgent())  # type: ignore[arg-type]
+    except RuntimeError as exc:
+        assert "too old" in str(exc)
+    else:
+        raise AssertionError("Expected old agent compatibility check to fail")
+
+
+def test_runpod_executor_rejects_agent_with_broken_runner_import() -> None:
+    executor = RunPodPodExecutor()
+
+    try:
+        executor._verify_agent_compatibility(FakeBrokenAgent())  # type: ignore[arg-type]
+    except RuntimeError as exc:
+        assert "cannot import the training runner" in str(exc)
+        assert "llm_builder" in str(exc)
+    else:
+        raise AssertionError("Expected broken runner compatibility check to fail")
+
+
+def test_runpod_executor_accepts_agent_with_runner_compatibility_report() -> None:
+    RunPodPodExecutor()._verify_agent_compatibility(FakeCompatibleAgent())  # type: ignore[arg-type]
+
+
 def test_remote_agent_runtime_state_reports_early_process_exit(monkeypatch, tmp_path: Path) -> None:
     llm_studio_root = REPO_ROOT / "apps" / "llm-studio"
     if str(llm_studio_root) not in sys.path:
@@ -202,6 +254,40 @@ def test_remote_agent_runtime_state_reports_early_process_exit(monkeypatch, tmp_
     assert payload["state"] == "failed"
     assert payload["process"]["exit_code"] == 1
     assert "stderr.log" in payload["error"]
+
+
+def test_remote_agent_start_reports_immediate_subprocess_failure(monkeypatch, tmp_path: Path) -> None:
+    llm_studio_root = REPO_ROOT / "apps" / "llm-studio"
+    if str(llm_studio_root) not in sys.path:
+        sys.path.insert(0, str(llm_studio_root))
+    import remote_agent.runner as remote_runner
+
+    remote_runner = importlib.reload(remote_runner)
+    job_id = "job-start-exit"
+    job_root = tmp_path / "workspace" / "jobs" / job_id
+    outputs = job_root / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "stderr.log").write_text("ModuleNotFoundError: No module named 'llm_builder'\n", encoding="utf-8")
+
+    class FakePopen:
+        def __init__(self, *args, **kwargs) -> None:
+            self.pid = 45678
+
+        def poll(self) -> int:
+            return 1
+
+    monkeypatch.setattr(remote_runner.subprocess, "Popen", FakePopen)
+    monkeypatch.setattr(remote_runner.time, "sleep", lambda _seconds: None)
+
+    runner = remote_runner.RemoteTrainingRunner()
+    try:
+        runner.start(job_id=job_id, job_root=job_root, manifest={"runner": {"args": {}}})
+    except RuntimeError as exc:
+        message = str(exc)
+        assert "exited during startup" in message
+        assert "llm_builder" in message
+    else:
+        raise AssertionError("Expected immediate subprocess failure to be reported")
 
 
 def test_rewrite_local_dataset_files_copies_and_rewrites_paths(tmp_path: Path) -> None:

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import importlib
+import traceback
+from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -10,7 +13,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 
 from .auth import configured_job_id, require_agent_auth
 from .bundle import extract_bundle, safe_join
-from .runner import RemoteTrainingRunner
+from .runner import RemoteTrainingRunner, repo_root as training_repo_root
 from .sync_manifest import checkpoint_entries
 
 app = FastAPI(title="LLM Studio Remote Training Agent", version="0.1.0")
@@ -54,6 +57,7 @@ def system(_: AuthDependency) -> dict[str, Any]:
         "workspace": str(workspace_root()),
         "job_id": configured_job_id(),
         "cuda_visible_devices": os.getenv("CUDA_VISIBLE_DEVICES"),
+        "runner": runner_probe(),
     }
 
 
@@ -82,7 +86,10 @@ def start_job(job_id: str, _: AuthDependency) -> dict[str, Any]:
         manifests[job_id] = manifest
     if manifest is None:
         raise HTTPException(status_code=409, detail="Upload a bundle before starting the job.")
-    pid = runner.start(job_id=job_id, job_root=job_root(job_id), manifest=manifest)
+    try:
+        pid = runner.start(job_id=job_id, job_root=job_root(job_id), manifest=manifest)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return {"ok": True, "job_id": job_id, "process_id": pid}
 
 
@@ -201,3 +208,25 @@ def read_json(path: Path) -> dict[str, Any] | None:
     except Exception:
         return None
     return payload if isinstance(payload, dict) else None
+
+
+@lru_cache(maxsize=1)
+def runner_probe() -> dict[str, Any]:
+    modules = ("llm_builder.local_text_data", "training.runner")
+    imported: list[str] = []
+    try:
+        for module in modules:
+            importlib.import_module(module)
+            imported.append(module)
+    except Exception as exc:
+        return {
+            "import_ok": False,
+            "imported": imported,
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(limit=8),
+        }
+    return {
+        "import_ok": True,
+        "imported": imported,
+        "repo_root": str(training_repo_root()),
+    }

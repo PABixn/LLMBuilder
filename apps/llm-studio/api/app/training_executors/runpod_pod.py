@@ -1,0 +1,376 @@
+from __future__ import annotations
+
+import hashlib
+import secrets
+import time
+from datetime import datetime, timezone
+from typing import Any
+
+from ..config import get_settings
+from ..training_models import TrainingJobState, TrainingJobStatus
+from ..training_storage import StoredTrainingJob
+from .base import CleanupPolicy, ExecutionHandle, ExecutionSnapshot, TrainingJobBundle
+from .remote_sync import RemoteAgentClient, RemoteAgentError, build_remote_bundle
+from .runpod_client import CreatePodRequest, RunPodClient, RunPodClientError
+
+
+class RunPodPodExecutor:
+    kind = "runpod_pod"
+
+    def __init__(self) -> None:
+        self._agent_tokens: dict[str, str] = {}
+
+    def submit(self, job: StoredTrainingJob, bundle: TrainingJobBundle) -> ExecutionHandle:
+        target = bundle.manifest.get("execution_target") if isinstance(bundle.manifest, dict) else {}
+        if not isinstance(target, dict):
+            target = {}
+        settings = get_settings()
+        api_key = str(target.get("api_key") or settings.runpod_api_key or "").strip()
+        if not api_key:
+            raise ValueError("RunPod API key is required. Paste one in the UI or set LLM_STUDIO_RUNPOD_API_KEY.")
+
+        agent_token = secrets.token_urlsafe(32)
+        self._agent_tokens[job.id] = agent_token
+        gpu_type_id = str(target.get("gpu_type_id") or settings.runpod_default_gpu_type)
+        gpu_count = int(target.get("gpu_count") or settings.runpod_default_gpu_count)
+        cloud_type = str(target.get("cloud_type") or settings.runpod_default_cloud_type).upper()
+        data_center_id = _optional_str(target.get("data_center_id") or settings.runpod_default_data_center_id)
+        volume_size_gb = int(target.get("network_volume_size_gb") or settings.runpod_default_volume_size_gb)
+        cleanup_policy = target.get("cleanup_policy") if isinstance(target.get("cleanup_policy"), dict) else {}
+
+        client = RunPodClient(api_key)
+        pod_id = ""
+        try:
+            pod = client.create_pod(
+                CreatePodRequest(
+                    name=f"llm-studio-{job.id[:12]}",
+                    image_name=settings.runpod_training_image,
+                    gpu_type_id=gpu_type_id,
+                    gpu_count=gpu_count,
+                    cloud_type=cloud_type,
+                    data_center_id=data_center_id,
+                    container_disk_gb=settings.runpod_container_disk_gb,
+                    volume_gb=volume_size_gb,
+                    volume_mount_path=settings.runpod_volume_mount_path,
+                    ports=[f"{settings.runpod_agent_port}/http"],
+                    env={
+                        "LLM_STUDIO_REMOTE_AGENT_TOKEN": agent_token,
+                        "LLM_STUDIO_REMOTE_JOB_ID": job.id,
+                        "LLM_STUDIO_REMOTE_WORKSPACE": f"{settings.runpod_volume_mount_path.rstrip('/')}/llm-studio",
+                        "HF_HOME": f"{settings.runpod_volume_mount_path.rstrip('/')}/llm-studio/cache/huggingface",
+                        "HF_DATASETS_CACHE": f"{settings.runpod_volume_mount_path.rstrip('/')}/llm-studio/cache/huggingface/datasets",
+                        "LLM_STUDIO_RUNPOD_AGENT_PORT": str(settings.runpod_agent_port),
+                        "PYTHONUNBUFFERED": "1",
+                    },
+                    interruptible=bool(target.get("interruptible", False)),
+                )
+            )
+            pod_id = str(pod.get("id") or pod.get("podId") or "")
+            if not pod_id:
+                raise RunPodClientError("RunPod did not return a pod id after creation.", payload=pod)
+
+            pod = self._wait_for_pod_ready(client, pod_id)
+            agent_base_url = build_agent_base_url(pod, settings.runpod_agent_port)
+            agent = RemoteAgentClient(agent_base_url, agent_token, job.id)
+            self._wait_for_agent(agent)
+            self._verify_agent_compatibility(agent)
+            bundle_result = build_remote_bundle(bundle)
+            agent.upload_bundle(bundle_result.path, content_type=bundle_result.content_type)
+            agent.start()
+        except Exception:
+            if pod_id:
+                try:
+                    client.delete_pod(pod_id)
+                except Exception:
+                    try:
+                        client.stop_pod(pod_id)
+                    except Exception:
+                        pass
+            self._agent_tokens.pop(job.id, None)
+            raise
+
+        now = _utc_now()
+        return ExecutionHandle(
+            executor_kind=self.kind,
+            started_at=now,
+            agent_base_url=agent_base_url,
+            remote_ids={"runpod_pod_id": pod_id},
+            updates={
+                "executor_kind": self.kind,
+                "executor_status": "running",
+                "runpod_pod_id": pod_id,
+                "runpod_pod_name": _optional_str(pod.get("name")) or f"llm-studio-{job.id[:12]}",
+                "runpod_data_center_id": data_center_id or _optional_str(pod.get("dataCenterId")),
+                "runpod_gpu_type_id": gpu_type_id,
+                "runpod_gpu_count": gpu_count,
+                "runpod_cloud_type": cloud_type,
+                "runpod_interruptible": bool(target.get("interruptible", False)),
+                "runpod_public_ip": _optional_str(pod.get("publicIp")),
+                "runpod_port_mappings": extract_port_mappings(pod),
+                "runpod_agent_base_url": agent_base_url,
+                "runpod_agent_token_hash": hash_token(agent_token),
+                "runpod_last_heartbeat_at": now,
+                "runpod_last_sync_at": now,
+                "runpod_cleanup_policy": cleanup_policy,
+                "remote_workspace_path": f"{settings.runpod_volume_mount_path.rstrip('/')}/llm-studio/jobs/{job.id}",
+            },
+        )
+
+    def refresh(self, job: StoredTrainingJob) -> ExecutionSnapshot:
+        if not job.runpod_agent_base_url:
+            return ExecutionSnapshot(
+                updates={"executor_status": "provisioning"},
+            )
+        token = self._unavailable_token(job)
+        if token is None:
+            return ExecutionSnapshot(
+                updates={
+                    "executor_status": job.executor_status or "running",
+                    "remote_error": "Pod-agent token is not recoverable after API restart; use remote reattach with a fresh token or stop the pod from RunPod.",
+                }
+            )
+        agent = RemoteAgentClient(job.runpod_agent_base_url, token, job.id)
+        try:
+            state = agent.runtime_state()
+            sync_small_outputs(agent, job)
+        except RemoteAgentError as exc:
+            return ExecutionSnapshot(updates={"remote_error": str(exc)})
+        updates = {
+            "runpod_last_heartbeat_at": _utc_now(),
+            "runpod_last_sync_at": _utc_now(),
+            "executor_status": remote_executor_status(state),
+        }
+        status = _coerce_status(state.get("status"))
+        snapshot = ExecutionSnapshot(
+            status=status,
+            state=_coerce_state(state.get("state")),
+            stage=state.get("stage") if isinstance(state.get("stage"), str) else None,
+            progress=float(state["progress"]) if isinstance(state.get("progress"), (int, float)) else None,
+            error=state.get("error") if isinstance(state.get("error"), str) else None,
+            updates=updates,
+        )
+        if status in {TrainingJobStatus.completed, TrainingJobStatus.failed, TrainingJobStatus.cancelled}:
+            snapshot.finished_at = _parse_datetime(state.get("finished_at")) or _utc_now()
+            policy = policy_from_job(job)
+            try:
+                self.cleanup(job, policy)
+                snapshot.updates["executor_status"] = status.value
+            except Exception as exc:
+                snapshot.updates["remote_error"] = f"Training finished, but cleanup failed: {exc}"
+        return snapshot
+
+    def stop(self, job: StoredTrainingJob) -> ExecutionSnapshot:
+        token = self._unavailable_token(job)
+        if token is not None and job.runpod_agent_base_url:
+            try:
+                RemoteAgentClient(job.runpod_agent_base_url, token, job.id).cancel()
+            except RemoteAgentError:
+                pass
+        if job.runpod_pod_id:
+            try:
+                self._client_from_settings().stop_pod(job.runpod_pod_id)
+            except Exception:
+                pass
+        return ExecutionSnapshot(
+            status=TrainingJobStatus.cancelled,
+            state=TrainingJobState.cancelled,
+            stage="Cancelled",
+            progress=1.0,
+            error="Training was cancelled by the user.",
+            finished_at=_utc_now(),
+            updates={"executor_status": "cancelled"},
+        )
+
+    def cleanup(self, job: StoredTrainingJob, policy: CleanupPolicy) -> None:
+        if not job.runpod_pod_id:
+            return
+        client = self._client_from_settings()
+        if policy.pod == "delete_after_sync":
+            client.delete_pod(job.runpod_pod_id)
+        elif policy.pod == "stop_after_sync":
+            client.stop_pod(job.runpod_pod_id)
+
+    def _client_from_settings(self) -> RunPodClient:
+        api_key = get_settings().runpod_api_key
+        if not api_key:
+            raise ValueError("LLM_STUDIO_RUNPOD_API_KEY is required for cleanup after API restart.")
+        return RunPodClient(api_key)
+
+    def _wait_for_pod_ready(self, client: RunPodClient, pod_id: str) -> dict[str, Any]:
+        deadline = time.monotonic() + 600
+        last_pod: dict[str, Any] = {}
+        while time.monotonic() < deadline:
+            last_pod = client.get_pod(pod_id)
+            if build_agent_base_url(last_pod, get_settings().runpod_agent_port):
+                return last_pod
+            time.sleep(5)
+        raise TimeoutError(f"RunPod pod {pod_id} did not expose the training agent port before timeout.")
+
+    def _wait_for_agent(self, agent: RemoteAgentClient) -> None:
+        deadline = time.monotonic() + 300
+        last_error: Exception | None = None
+        while time.monotonic() < deadline:
+            try:
+                agent.health()
+                return
+            except Exception as exc:
+                last_error = exc
+                time.sleep(3)
+        raise TimeoutError(f"RunPod pod booted, but the training agent did not become healthy: {last_error}")
+
+    def _verify_agent_compatibility(self, agent: RemoteAgentClient) -> None:
+        try:
+            system = agent.system()
+        except RemoteAgentError as exc:
+            raise RuntimeError(f"RunPod pod agent is healthy, but the authenticated system check failed: {exc}") from exc
+
+        runner = system.get("runner") if isinstance(system.get("runner"), dict) else None
+        if runner is None:
+            raise RuntimeError(
+                "RunPod training image is too old for this app: the pod agent did not report trainer "
+                "compatibility. Set LLM_STUDIO_RUNPOD_TRAINING_IMAGE to "
+                "ghcr.io/pabixn/llm-builder-training:latest or another image built from the current Dockerfile."
+            )
+        if runner.get("import_ok") is not True:
+            detail = runner.get("error") if isinstance(runner.get("error"), str) else "unknown import error"
+            raise RuntimeError(f"RunPod training image cannot import the training runner: {detail}")
+
+    def _unavailable_token(self, job: StoredTrainingJob) -> str | None:
+        return self._agent_tokens.get(job.id)
+
+
+def sync_small_outputs(agent: RemoteAgentClient, job: StoredTrainingJob) -> None:
+    root = __import__("pathlib").Path(job.artifact_dir)
+    agent.download_append_file("metrics", root / "stats.jsonl")
+    agent.download_append_file("samples", root / "samples.jsonl")
+    agent.download_append_file("logs/stdout", root / "stdout.log")
+    agent.download_append_file("logs/stderr", root / "stderr.log")
+    for remote_name in ("runtime_state.json", "metadata.json", "artifact_manifest.json", "training_data_preview.json"):
+        try:
+            agent.download_file(remote_name, root / remote_name)
+        except RemoteAgentError:
+            continue
+
+
+def build_agent_base_url(pod: dict[str, Any], port: int) -> str:
+    pod_id = _optional_str(pod.get("id")) or _optional_str(pod.get("podId"))
+    if pod_id and pod_exposes_http_port(pod, port):
+        return f"https://{pod_id}-{port}.proxy.runpod.net"
+
+    mappings = extract_port_mappings(pod)
+    for value in mappings.values():
+        if isinstance(value, dict):
+            url = value.get("url") or value.get("uri")
+            if isinstance(url, str) and url.startswith(("http://", "https://")):
+                return url.rstrip("/")
+            if pod_id and is_http_port_mapping(value, port):
+                return f"https://{pod_id}-{port}.proxy.runpod.net"
+            if not is_tcp_port_mapping(value):
+                continue
+            host = value.get("host") or value.get("ip") or pod.get("publicIp")
+            mapped_port = value.get("publicPort") or value.get("externalPort") or value.get("port")
+            if host and mapped_port:
+                return f"http://{host}:{mapped_port}"
+        elif isinstance(value, str) and value.startswith(("http://", "https://")):
+            return value.rstrip("/")
+    return ""
+
+
+def extract_port_mappings(pod: dict[str, Any]) -> dict[str, Any]:
+    for key in ("portMappings", "ports"):
+        value = pod.get(key)
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, list):
+            return {str(index): item for index, item in enumerate(value)}
+    runtime = pod.get("runtime")
+    if isinstance(runtime, dict):
+        value = runtime.get("ports")
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, list):
+            return {str(index): item for index, item in enumerate(value)}
+    return {}
+
+
+def pod_exposes_http_port(pod: dict[str, Any], port: int) -> bool:
+    expected = f"{port}/http"
+    ports = pod.get("ports")
+    if isinstance(ports, list) and any(item == expected for item in ports):
+        return True
+    mappings = extract_port_mappings(pod)
+    return any(is_http_port_mapping(value, port) for value in mappings.values())
+
+
+def is_http_port_mapping(value: Any, port: int) -> bool:
+    if not isinstance(value, dict):
+        return False
+    mapping_type = str(value.get("type") or value.get("protocol") or "").lower()
+    private_port = value.get("privatePort") or value.get("containerPort") or value.get("port")
+    try:
+        private_port_number = int(private_port)
+    except (TypeError, ValueError):
+        private_port_number = None
+    return mapping_type == "http" and private_port_number == port
+
+
+def is_tcp_port_mapping(value: Any) -> bool:
+    if not isinstance(value, dict):
+        return False
+    mapping_type = str(value.get("type") or value.get("protocol") or "").lower()
+    return mapping_type in {"", "tcp"}
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def policy_from_job(job: StoredTrainingJob) -> CleanupPolicy:
+    payload = job.runpod_cleanup_policy or {}
+    return CleanupPolicy(
+        pod=str(payload.get("pod") or "delete_after_sync"),
+        network_volume=str(payload.get("network_volume") or "keep"),
+    )
+
+
+def remote_executor_status(state: dict[str, Any]) -> str:
+    status = state.get("status")
+    if status in {"completed", "failed", "cancelled"}:
+        return str(status)
+    stage = str(state.get("stage") or "").lower()
+    if "sync" in stage:
+        return "syncing"
+    if "upload" in stage:
+        return "uploading"
+    return "running"
+
+
+def _coerce_status(value: Any) -> TrainingJobStatus | None:
+    try:
+        return TrainingJobStatus(str(value))
+    except Exception:
+        return None
+
+
+def _coerce_state(value: Any) -> TrainingJobState | None:
+    try:
+        return TrainingJobState(str(value))
+    except Exception:
+        return None
+
+
+def _parse_datetime(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _optional_str(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)

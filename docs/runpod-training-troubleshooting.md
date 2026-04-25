@@ -18,6 +18,12 @@ If the RunPod container logs show Uvicorn listening on `0.0.0.0:8021` but no `/h
 
 The training image must expose the configured agent port, default `8021/http`. Check that `LLM_STUDIO_RUNPOD_TRAINING_IMAGE` points to an image built from `docker/training/Dockerfile`.
 
+## Pod Agent Is Healthy But Training Never Uses CPU Or GPU
+
+If the RunPod logs repeatedly show `200 OK` health or runtime-state requests while the Pod has no CPU/GPU/VRAM load, verify the image tag. The old `ghcr.io/pabixn/llm-builder-training:sha-7037615` image can boot the HTTP agent but does not contain the shared `llm_builder` package required by the current trainer. Use `ghcr.io/pabixn/llm-builder-training:latest` or another image built from the current `docker/training/Dockerfile`.
+
+The local API now performs an authenticated `/v1/system` compatibility check before uploading a job. A stale image should fail during launch with a trainer-import error instead of leaving a healthy idle Pod.
+
 ## Training Failed
 
 Open the active run logs. `stdout.log`, `stderr.log`, `runtime_state.json`, and checkpoints are synced into the local job directory when the pod agent is reachable.

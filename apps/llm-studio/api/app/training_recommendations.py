@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from local_text_data import is_local_text_dataset, resolve_local_data_files
+from llm_builder.local_text_data import is_local_text_dataset, resolve_local_data_files
 from model.loader import ActivationComponent, AttentionComponent, LLMConfig, MLPComponent, NormComponent
 from model.model import ConfigurableGPT
 from training.dataloader_config import TrainingDataloaderConfig
