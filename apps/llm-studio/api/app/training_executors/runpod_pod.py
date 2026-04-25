@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import secrets
 import time
+import traceback
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from ..config import get_settings
@@ -12,6 +15,8 @@ from ..training_storage import StoredTrainingJob
 from .base import CleanupPolicy, ExecutionHandle, ExecutionSnapshot, TrainingJobBundle
 from .remote_sync import RemoteAgentClient, RemoteAgentError, build_remote_bundle
 from .runpod_client import CreatePodRequest, RunPodClient, RunPodClientError
+
+_LAST_LIFECYCLE_LOG_AT: dict[tuple[str, str, str], float] = {}
 
 
 class RunPodPodExecutor:
@@ -37,10 +42,29 @@ class RunPodPodExecutor:
         data_center_id = _optional_str(target.get("data_center_id") or settings.runpod_default_data_center_id)
         volume_size_gb = int(target.get("network_volume_size_gb") or settings.runpod_default_volume_size_gb)
         cleanup_policy = target.get("cleanup_policy") if isinstance(target.get("cleanup_policy"), dict) else {}
+        log_lifecycle(
+            job,
+            "submit_start",
+            "Starting RunPod training submission.",
+            image=settings.runpod_training_image,
+            gpu_type_id=gpu_type_id,
+            gpu_count=gpu_count,
+            cloud_type=cloud_type,
+            data_center_id=data_center_id,
+            container_disk_gb=settings.runpod_container_disk_gb,
+            volume_size_gb=volume_size_gb,
+            volume_mount_path=settings.runpod_volume_mount_path,
+            agent_port=settings.runpod_agent_port,
+            cleanup_policy=cleanup_policy,
+            interruptible=bool(target.get("interruptible", False)),
+        )
 
         client = RunPodClient(api_key)
         pod_id = ""
+        agent_base_url = ""
+        started_monotonic = time.monotonic()
         try:
+            log_lifecycle(job, "create_pod_start", "Creating RunPod pod.")
             pod = client.create_pod(
                 CreatePodRequest(
                     name=f"llm-studio-{job.id[:12]}",
@@ -68,24 +92,90 @@ class RunPodPodExecutor:
             pod_id = str(pod.get("id") or pod.get("podId") or "")
             if not pod_id:
                 raise RunPodClientError("RunPod did not return a pod id after creation.", payload=pod)
+            log_lifecycle(
+                job,
+                "create_pod_done",
+                "RunPod pod created.",
+                pod_id=pod_id,
+                pod_status=_optional_str(pod.get("status")) or _optional_str(pod.get("desiredStatus")),
+                elapsed_seconds=round(time.monotonic() - started_monotonic, 3),
+            )
 
-            pod = self._wait_for_pod_ready(client, pod_id)
+            pod = self._wait_for_pod_ready(client, pod_id, job=job)
             agent_base_url = build_agent_base_url(pod, settings.runpod_agent_port)
+            log_lifecycle(
+                job,
+                "agent_url_resolved",
+                "Resolved RunPod pod-agent URL.",
+                pod_id=pod_id,
+                agent_base_url=agent_base_url,
+                port_mappings=extract_port_mappings(pod),
+            )
             agent = RemoteAgentClient(agent_base_url, agent_token, job.id)
-            self._wait_for_agent(agent)
-            self._verify_agent_compatibility(agent)
+            self._wait_for_agent(agent, job=job)
+            self._verify_agent_compatibility(agent, job=job)
+            log_lifecycle(job, "bundle_build_start", "Building remote training bundle.")
             bundle_result = build_remote_bundle(bundle)
+            bundle_size = bundle_result.path.stat().st_size if bundle_result.path.exists() else None
+            log_lifecycle(
+                job,
+                "bundle_build_done",
+                "Remote training bundle built.",
+                bundle_path=str(bundle_result.path),
+                bundle_size_bytes=bundle_size,
+                content_type=bundle_result.content_type,
+                file_count=len(bundle_result.manifest.get("files", []))
+                if isinstance(bundle_result.manifest.get("files"), list)
+                else None,
+            )
+            log_lifecycle(job, "bundle_upload_start", "Uploading remote training bundle.", bundle_size_bytes=bundle_size)
             agent.upload_bundle(bundle_result.path, content_type=bundle_result.content_type)
-            agent.start()
-        except Exception:
+            log_lifecycle(job, "bundle_upload_done", "Remote training bundle uploaded.")
+            log_lifecycle(job, "agent_start_start", "Requesting remote training process start.")
+            start_payload = agent.start()
+            log_lifecycle(
+                job,
+                "agent_start_done",
+                "Remote training process started.",
+                process_id=start_payload.get("process_id"),
+                elapsed_seconds=round(time.monotonic() - started_monotonic, 3),
+            )
+        except Exception as exc:
+            log_lifecycle(
+                job,
+                "submit_failed",
+                "RunPod training submission failed.",
+                error=f"{type(exc).__name__}: {exc}",
+                traceback=traceback.format_exc(limit=12),
+                pod_id=pod_id or None,
+                agent_base_url=agent_base_url or None,
+                elapsed_seconds=round(time.monotonic() - started_monotonic, 3),
+            )
             if pod_id:
                 try:
+                    log_lifecycle(job, "cleanup_after_failure_start", "Deleting failed RunPod pod.", pod_id=pod_id)
                     client.delete_pod(pod_id)
-                except Exception:
+                    log_lifecycle(job, "cleanup_after_failure_done", "Deleted failed RunPod pod.", pod_id=pod_id)
+                except Exception as delete_exc:
+                    log_lifecycle(
+                        job,
+                        "cleanup_after_failure_delete_failed",
+                        "Failed to delete RunPod pod after launch failure; attempting stop.",
+                        pod_id=pod_id,
+                        error=f"{type(delete_exc).__name__}: {delete_exc}",
+                    )
                     try:
+                        log_lifecycle(job, "cleanup_after_failure_stop_start", "Stopping failed RunPod pod.", pod_id=pod_id)
                         client.stop_pod(pod_id)
-                    except Exception:
-                        pass
+                        log_lifecycle(job, "cleanup_after_failure_stop_done", "Stopped failed RunPod pod.", pod_id=pod_id)
+                    except Exception as stop_exc:
+                        log_lifecycle(
+                            job,
+                            "cleanup_after_failure_stop_failed",
+                            "Failed to stop RunPod pod after launch failure.",
+                            pod_id=pod_id,
+                            error=f"{type(stop_exc).__name__}: {stop_exc}",
+                        )
             self._agent_tokens.pop(job.id, None)
             raise
 
@@ -118,11 +208,23 @@ class RunPodPodExecutor:
 
     def refresh(self, job: StoredTrainingJob) -> ExecutionSnapshot:
         if not job.runpod_agent_base_url:
+            log_lifecycle(
+                job,
+                "refresh_waiting_for_agent_url",
+                "RunPod refresh is waiting for the agent URL.",
+                throttle_seconds=30,
+            )
             return ExecutionSnapshot(
                 updates={"executor_status": "provisioning"},
             )
         token = self._unavailable_token(job)
         if token is None:
+            log_lifecycle(
+                job,
+                "refresh_missing_agent_token",
+                "RunPod refresh cannot authenticate because the in-memory pod-agent token is unavailable.",
+                throttle_seconds=30,
+            )
             return ExecutionSnapshot(
                 updates={
                     "executor_status": job.executor_status or "running",
@@ -134,6 +236,13 @@ class RunPodPodExecutor:
             state = agent.runtime_state()
             sync_small_outputs(agent, job)
         except RemoteAgentError as exc:
+            log_lifecycle(
+                job,
+                "refresh_agent_error",
+                "RunPod pod-agent refresh failed.",
+                error=str(exc),
+                throttle_seconds=30,
+            )
             return ExecutionSnapshot(updates={"remote_error": str(exc)})
         updates = {
             "runpod_last_heartbeat_at": _utc_now(),
@@ -153,9 +262,17 @@ class RunPodPodExecutor:
             snapshot.finished_at = _parse_datetime(state.get("finished_at")) or _utc_now()
             policy = policy_from_job(job)
             try:
+                log_lifecycle(job, "cleanup_start", "Applying RunPod cleanup policy.", policy=policy_payload(policy))
                 self.cleanup(job, policy)
+                log_lifecycle(job, "cleanup_done", "RunPod cleanup policy applied.", policy=policy_payload(policy))
                 snapshot.updates["executor_status"] = status.value
             except Exception as exc:
+                log_lifecycle(
+                    job,
+                    "cleanup_failed",
+                    "Training finished, but RunPod cleanup failed.",
+                    error=f"{type(exc).__name__}: {exc}",
+                )
                 snapshot.updates["remote_error"] = f"Training finished, but cleanup failed: {exc}"
         return snapshot
 
@@ -163,14 +280,24 @@ class RunPodPodExecutor:
         token = self._unavailable_token(job)
         if token is not None and job.runpod_agent_base_url:
             try:
+                log_lifecycle(job, "stop_agent_cancel_start", "Sending cancel request to RunPod pod agent.")
                 RemoteAgentClient(job.runpod_agent_base_url, token, job.id).cancel()
-            except RemoteAgentError:
-                pass
+                log_lifecycle(job, "stop_agent_cancel_done", "RunPod pod-agent cancel request returned.")
+            except RemoteAgentError as exc:
+                log_lifecycle(job, "stop_agent_cancel_failed", "RunPod pod-agent cancel request failed.", error=str(exc))
         if job.runpod_pod_id:
             try:
+                log_lifecycle(job, "stop_pod_start", "Stopping RunPod pod.", pod_id=job.runpod_pod_id)
                 self._client_from_settings().stop_pod(job.runpod_pod_id)
-            except Exception:
-                pass
+                log_lifecycle(job, "stop_pod_done", "RunPod pod stop request returned.", pod_id=job.runpod_pod_id)
+            except Exception as exc:
+                log_lifecycle(
+                    job,
+                    "stop_pod_failed",
+                    "RunPod pod stop request failed.",
+                    pod_id=job.runpod_pod_id,
+                    error=f"{type(exc).__name__}: {exc}",
+                )
         return ExecutionSnapshot(
             status=TrainingJobStatus.cancelled,
             state=TrainingJobState.cancelled,
@@ -186,9 +313,13 @@ class RunPodPodExecutor:
             return
         client = self._client_from_settings()
         if policy.pod == "delete_after_sync":
+            log_lifecycle(job, "cleanup_delete_pod_start", "Deleting RunPod pod.", pod_id=job.runpod_pod_id)
             client.delete_pod(job.runpod_pod_id)
+            log_lifecycle(job, "cleanup_delete_pod_done", "RunPod pod delete request returned.", pod_id=job.runpod_pod_id)
         elif policy.pod == "stop_after_sync":
+            log_lifecycle(job, "cleanup_stop_pod_start", "Stopping RunPod pod.", pod_id=job.runpod_pod_id)
             client.stop_pod(job.runpod_pod_id)
+            log_lifecycle(job, "cleanup_stop_pod_done", "RunPod pod stop request returned.", pod_id=job.runpod_pod_id)
 
     def _client_from_settings(self) -> RunPodClient:
         api_key = get_settings().runpod_api_key
@@ -196,35 +327,71 @@ class RunPodPodExecutor:
             raise ValueError("LLM_STUDIO_RUNPOD_API_KEY is required for cleanup after API restart.")
         return RunPodClient(api_key)
 
-    def _wait_for_pod_ready(self, client: RunPodClient, pod_id: str) -> dict[str, Any]:
+    def _wait_for_pod_ready(self, client: RunPodClient, pod_id: str, *, job: StoredTrainingJob) -> dict[str, Any]:
         deadline = time.monotonic() + 600
         last_pod: dict[str, Any] = {}
+        last_log_at = 0.0
+        started = time.monotonic()
         while time.monotonic() < deadline:
             last_pod = client.get_pod(pod_id)
-            if build_agent_base_url(last_pod, get_settings().runpod_agent_port):
+            agent_url = build_agent_base_url(last_pod, get_settings().runpod_agent_port)
+            now = time.monotonic()
+            if now - last_log_at >= 15 or agent_url:
+                last_log_at = now
+                log_lifecycle(
+                    job,
+                    "pod_ready_poll",
+                    "Polling RunPod pod for exposed agent port.",
+                    pod_id=pod_id,
+                    elapsed_seconds=round(now - started, 3),
+                    pod_status=_optional_str(last_pod.get("status")) or _optional_str(last_pod.get("desiredStatus")),
+                    public_ip=_optional_str(last_pod.get("publicIp")),
+                    agent_url=agent_url or None,
+                    port_mappings=extract_port_mappings(last_pod),
+                )
+            if agent_url:
                 return last_pod
             time.sleep(5)
         raise TimeoutError(f"RunPod pod {pod_id} did not expose the training agent port before timeout.")
 
-    def _wait_for_agent(self, agent: RemoteAgentClient) -> None:
+    def _wait_for_agent(self, agent: RemoteAgentClient, *, job: StoredTrainingJob) -> None:
         deadline = time.monotonic() + 300
         last_error: Exception | None = None
+        attempt = 0
         while time.monotonic() < deadline:
+            attempt += 1
             try:
                 agent.health()
+                log_lifecycle(job, "agent_health_ok", "RunPod pod agent is reachable.", attempt=attempt)
                 return
             except Exception as exc:
                 last_error = exc
+                log_lifecycle(
+                    job,
+                    "agent_health_retry",
+                    "RunPod pod agent is not reachable yet.",
+                    attempt=attempt,
+                    error=f"{type(exc).__name__}: {exc}",
+                )
                 time.sleep(3)
         raise TimeoutError(f"RunPod pod booted, but the training agent did not become healthy: {last_error}")
 
-    def _verify_agent_compatibility(self, agent: RemoteAgentClient) -> None:
+    def _verify_agent_compatibility(self, agent: RemoteAgentClient, *, job: StoredTrainingJob | None = None) -> None:
         try:
             system = agent.system()
         except RemoteAgentError as exc:
             raise RuntimeError(f"RunPod pod agent is healthy, but the authenticated system check failed: {exc}") from exc
 
         runner = system.get("runner") if isinstance(system.get("runner"), dict) else None
+        if job is not None:
+            log_lifecycle(
+                job,
+                "agent_system",
+                "RunPod pod-agent system check returned.",
+                workspace=system.get("workspace"),
+                cuda_visible_devices=system.get("cuda_visible_devices"),
+                runner=runner,
+            )
         if runner is None:
             raise RuntimeError(
                 "RunPod training image is too old for this app: the pod agent did not report trainer "
@@ -241,14 +408,38 @@ class RunPodPodExecutor:
 
 def sync_small_outputs(agent: RemoteAgentClient, job: StoredTrainingJob) -> None:
     root = __import__("pathlib").Path(job.artifact_dir)
-    agent.download_append_file("metrics", root / "stats.jsonl")
-    agent.download_append_file("samples", root / "samples.jsonl")
-    agent.download_append_file("logs/stdout", root / "stdout.log")
-    agent.download_append_file("logs/stderr", root / "stderr.log")
+    for remote_kind, local_path in (
+        ("metrics", root / "stats.jsonl"),
+        ("samples", root / "samples.jsonl"),
+        ("logs/stdout", root / "stdout.log"),
+        ("logs/stderr", root / "stderr.log"),
+    ):
+        before = local_path.stat().st_size if local_path.exists() else 0
+        agent.download_append_file(remote_kind, local_path)
+        after = local_path.stat().st_size if local_path.exists() else 0
+        if after > before:
+            log_lifecycle(
+                job,
+                "sync_append",
+                "Synced appended remote output.",
+                remote_kind=remote_kind,
+                local_path=str(local_path),
+                bytes_added=after - before,
+                size_bytes=after,
+            )
     for remote_name in ("runtime_state.json", "metadata.json", "artifact_manifest.json", "training_data_preview.json"):
         try:
             agent.download_file(remote_name, root / remote_name)
-        except RemoteAgentError:
+        except RemoteAgentError as exc:
+            log_lifecycle(
+                job,
+                "sync_file_unavailable",
+                "Remote output file is not available yet.",
+                remote_name=remote_name,
+                error=str(exc),
+                throttle_seconds=60,
+                throttle_key=remote_name,
+            )
             continue
 
 
@@ -374,3 +565,89 @@ def _optional_str(value: Any) -> str | None:
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def policy_payload(policy: CleanupPolicy) -> dict[str, str]:
+    return {"pod": policy.pod, "network_volume": policy.network_volume}
+
+
+def log_lifecycle(
+    job: StoredTrainingJob,
+    event: str,
+    message: str,
+    *,
+    throttle_seconds: float | None = None,
+    throttle_key: str | None = None,
+    **fields: Any,
+) -> None:
+    if throttle_seconds is not None:
+        key = (job.id, event, throttle_key or "")
+        now_monotonic = time.monotonic()
+        previous = _LAST_LIFECYCLE_LOG_AT.get(key)
+        if previous is not None and now_monotonic - previous < throttle_seconds:
+            return
+        _LAST_LIFECYCLE_LOG_AT[key] = now_monotonic
+
+    payload = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "job_id": job.id,
+        "executor": RunPodPodExecutor.kind,
+        "event": event,
+        "message": message,
+        **sanitize_log_fields(fields),
+    }
+    line = json.dumps(payload, ensure_ascii=True, default=str, sort_keys=True)
+
+    artifact_dir = Path(job.artifact_dir)
+    try:
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        with (artifact_dir / "runpod_lifecycle.jsonl").open("a", encoding="utf-8") as handle:
+            handle.write(line)
+            handle.write("\n")
+        with (artifact_dir / "runpod_lifecycle.log").open("a", encoding="utf-8") as handle:
+            handle.write(f"[runpod:{event}] {message}")
+            detail = compact_log_detail(payload)
+            if detail:
+                handle.write(f" | {detail}")
+            handle.write("\n")
+    except Exception:
+        pass
+
+    print(f"[llm-studio-runpod] {line}", flush=True)
+
+
+def sanitize_log_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    sanitized: dict[str, Any] = {}
+    for key, value in fields.items():
+        key_lower = key.lower()
+        if "token" in key_lower or "api_key" in key_lower or "authorization" in key_lower:
+            sanitized[key] = "[redacted]"
+        elif isinstance(value, dict):
+            sanitized[key] = sanitize_log_fields(value)
+        elif isinstance(value, list):
+            sanitized[key] = [sanitize_log_value(item) for item in value]
+        else:
+            sanitized[key] = sanitize_log_value(value)
+    return sanitized
+
+
+def sanitize_log_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return sanitize_log_fields(value)
+    if isinstance(value, list):
+        return [sanitize_log_value(item) for item in value]
+    return value
+
+
+def compact_log_detail(payload: dict[str, Any]) -> str:
+    details = {
+        key: value
+        for key, value in payload.items()
+        if key not in {"timestamp", "job_id", "executor", "event", "message"}
+        and value is not None
+        and value != {}
+        and value != []
+    }
+    if not details:
+        return ""
+    return json.dumps(details, ensure_ascii=True, default=str, sort_keys=True)

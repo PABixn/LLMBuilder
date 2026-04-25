@@ -53,12 +53,14 @@ def health() -> dict[str, Any]:
 
 @app.get("/v1/system")
 def system(_: AuthDependency) -> dict[str, Any]:
-    return {
+    payload = {
         "workspace": str(workspace_root()),
         "job_id": configured_job_id(),
         "cuda_visible_devices": os.getenv("CUDA_VISIBLE_DEVICES"),
         "runner": runner_probe(),
     }
+    agent_log("system", job_id=configured_job_id(), **payload)
+    return payload
 
 
 @app.post("/v1/jobs/{job_id}/bundle")
@@ -70,15 +72,40 @@ async def upload_bundle(
 ) -> dict[str, Any]:
     raw = await request.body()
     if not raw:
+        agent_log("bundle_empty", job_id=job_id)
         raise HTTPException(status_code=400, detail="Bundle upload is empty.")
     incoming = workspace_root() / "incoming" / f"{job_id}.bundle"
-    manifest = extract_bundle(raw, content_type=content_type, incoming_path=incoming, job_root=job_root(job_id))
+    agent_log(
+        "bundle_received",
+        job_id=job_id,
+        content_type=content_type,
+        size_bytes=len(raw),
+        incoming_path=str(incoming),
+        job_root=str(job_root(job_id)),
+    )
+    try:
+        manifest = extract_bundle(raw, content_type=content_type, incoming_path=incoming, job_root=job_root(job_id))
+    except Exception as exc:
+        agent_log(
+            "bundle_failed",
+            job_id=job_id,
+            error=f"{type(exc).__name__}: {exc}",
+            traceback=traceback.format_exc(limit=8),
+        )
+        raise
     manifests[job_id] = manifest
+    agent_log(
+        "bundle_extracted",
+        job_id=job_id,
+        file_count=len(manifest.get("files", [])) if isinstance(manifest.get("files"), list) else None,
+        runner=manifest.get("runner"),
+    )
     return {"ok": True, "job_id": job_id, "files": len(manifest.get("files", []))}
 
 
 @app.post("/v1/jobs/{job_id}/start")
 def start_job(job_id: str, _: AuthDependency) -> dict[str, Any]:
+    agent_log("start_requested", job_id=job_id)
     manifest = manifests.get(job_id)
     manifest_path = job_root(job_id) / "manifest.json"
     if manifest is None and manifest_path.exists():
@@ -89,7 +116,9 @@ def start_job(job_id: str, _: AuthDependency) -> dict[str, Any]:
     try:
         pid = runner.start(job_id=job_id, job_root=job_root(job_id), manifest=manifest)
     except RuntimeError as exc:
+        agent_log("start_failed", job_id=job_id, error=str(exc), traceback=traceback.format_exc(limit=8))
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    agent_log("start_done", job_id=job_id, process_id=pid)
     return {"ok": True, "job_id": job_id, "process_id": pid}
 
 
@@ -174,13 +203,17 @@ def files(
 
 @app.post("/v1/jobs/{job_id}/cancel")
 def cancel(job_id: str, _: AuthDependency) -> dict[str, Any]:
+    agent_log("cancel_requested", job_id=job_id)
     runner.cancel(job_id)
+    agent_log("cancel_done", job_id=job_id)
     return {"ok": True, "job_id": job_id}
 
 
 @app.post("/v1/jobs/{job_id}/shutdown")
 def shutdown(job_id: str, _: AuthDependency) -> dict[str, Any]:
+    agent_log("shutdown_requested", job_id=job_id)
     runner.cancel(job_id)
+    agent_log("shutdown_done", job_id=job_id)
     return {"ok": True, "job_id": job_id}
 
 
@@ -230,3 +263,36 @@ def runner_probe() -> dict[str, Any]:
         "imported": imported,
         "repo_root": str(training_repo_root()),
     }
+
+
+def agent_log(event: str, *, job_id: str | None = None, **fields: Any) -> None:
+    payload = {
+        "event": event,
+        "job_id": job_id,
+        "service": "llm-studio-remote-training-agent",
+        **sanitize_log_fields(fields),
+    }
+    print(f"[llm-studio-agent] {json.dumps(payload, ensure_ascii=True, default=str, sort_keys=True)}", flush=True)
+
+
+def sanitize_log_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    sanitized: dict[str, Any] = {}
+    for key, value in fields.items():
+        key_lower = key.lower()
+        if "token" in key_lower or "authorization" in key_lower or "api_key" in key_lower:
+            sanitized[key] = "[redacted]"
+        elif isinstance(value, dict):
+            sanitized[key] = sanitize_log_fields(value)
+        elif isinstance(value, list):
+            sanitized[key] = [sanitize_log_value(item) for item in value]
+        else:
+            sanitized[key] = sanitize_log_value(value)
+    return sanitized
+
+
+def sanitize_log_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return sanitize_log_fields(value)
+    if isinstance(value, list):
+        return [sanitize_log_value(item) for item in value]
+    return value

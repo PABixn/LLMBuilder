@@ -381,9 +381,15 @@ class TrainingRunManager:
 
     def get_logs(self, job_id: str, *, lines: int | None = None) -> TrainingLogsResponse:
         job = self.get_job(job_id)
+        stdout_lines = tail_lines(Path(job.stdout_path), lines)
+        if job.executor_kind == "runpod_pod":
+            lifecycle_lines = tail_lines(Path(job.artifact_dir) / "runpod_lifecycle.log", lines)
+            stdout_lines = lifecycle_lines + stdout_lines
+            if lines is not None and lines > 0:
+                stdout_lines = stdout_lines[-lines:]
         return TrainingLogsResponse(
             job_id=job_id,
-            stdout_lines=tail_lines(Path(job.stdout_path), lines),
+            stdout_lines=stdout_lines,
             stderr_lines=tail_lines(Path(job.stderr_path), lines),
         )
 

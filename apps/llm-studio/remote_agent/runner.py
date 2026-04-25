@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import signal
 import subprocess
@@ -24,6 +25,7 @@ class RemoteTrainingRunner:
     def start(self, *, job_id: str, job_root: Path, manifest: dict[str, Any]) -> int:
         existing = self._processes.get(job_id)
         if existing is not None and existing.process.poll() is None:
+            runner_log("start_existing_process", job_id=job_id, process_id=existing.process.pid)
             return existing.process.pid
         runner = manifest.get("runner") if isinstance(manifest.get("runner"), dict) else {}
         args = runner.get("args") if isinstance(runner.get("args"), dict) else {}
@@ -48,6 +50,15 @@ class RemoteTrainingRunner:
             "--output-dir",
             str(outputs),
         ]
+        runner_log(
+            "start_command",
+            job_id=job_id,
+            cwd=str(repo_root()),
+            command=command,
+            job_root=str(job_root),
+            outputs=str(outputs),
+            cuda_visible_devices=os.getenv("CUDA_VISIBLE_DEVICES"),
+        )
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
         stdout_handle = stdout_path.open("ab")
@@ -65,6 +76,13 @@ class RemoteTrainingRunner:
             stdout_handle.close()
             stderr_handle.close()
         self._processes[job_id] = RemoteProcess(process=process, stdout_path=stdout_path, stderr_path=stderr_path)
+        runner_log(
+            "process_spawned",
+            job_id=job_id,
+            process_id=process.pid,
+            stdout_path=str(stdout_path),
+            stderr_path=str(stderr_path),
+        )
         time.sleep(1.0)
         exit_code = process.poll()
         if exit_code is not None:
@@ -72,7 +90,15 @@ class RemoteTrainingRunner:
             detail = f"Training subprocess exited during startup with code {exit_code}."
             if stderr_tail:
                 detail = f"{detail}\n\nstderr tail:\n{stderr_tail}"
+            runner_log(
+                "process_startup_exit",
+                job_id=job_id,
+                process_id=process.pid,
+                exit_code=exit_code,
+                stderr_tail=stderr_tail,
+            )
             raise RuntimeError(detail)
+        runner_log("process_startup_alive", job_id=job_id, process_id=process.pid)
         return process.pid
 
     def status(self, job_id: str) -> dict[str, Any]:
@@ -89,6 +115,7 @@ class RemoteTrainingRunner:
     def cancel(self, job_id: str) -> None:
         remote_process = self._processes.get(job_id)
         if remote_process is None or remote_process.process.poll() is not None:
+            runner_log("cancel_no_running_process", job_id=job_id)
             return
         pid = remote_process.process.pid
         try:
@@ -96,11 +123,14 @@ class RemoteTrainingRunner:
                 os.killpg(pid, signal.SIGTERM)
             else:
                 os.kill(pid, signal.SIGTERM)
+            runner_log("cancel_sigterm_sent", job_id=job_id, process_id=pid)
         except ProcessLookupError:
+            runner_log("cancel_process_missing", job_id=job_id, process_id=pid)
             return
         deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
             if remote_process.process.poll() is not None:
+                runner_log("cancel_process_exited", job_id=job_id, process_id=pid, exit_code=remote_process.process.poll())
                 return
             time.sleep(0.25)
         try:
@@ -108,7 +138,9 @@ class RemoteTrainingRunner:
                 os.killpg(pid, signal.SIGKILL)
             else:
                 os.kill(pid, signal.SIGKILL)
+            runner_log("cancel_sigkill_sent", job_id=job_id, process_id=pid)
         except ProcessLookupError:
+            runner_log("cancel_process_missing_before_sigkill", job_id=job_id, process_id=pid)
             return
 
 
@@ -129,3 +161,13 @@ def tail_text(path: Path, *, max_bytes: int = 4096) -> str:
             handle.seek(size - max_bytes)
         data = handle.read(max_bytes)
     return data.decode("utf-8", errors="replace").strip()
+
+
+def runner_log(event: str, *, job_id: str | None = None, **fields: Any) -> None:
+    payload = {
+        "event": event,
+        "job_id": job_id,
+        "service": "llm-studio-remote-training-runner",
+        **fields,
+    }
+    print(f"[llm-studio-runner] {json.dumps(payload, ensure_ascii=True, default=str, sort_keys=True)}", flush=True)
