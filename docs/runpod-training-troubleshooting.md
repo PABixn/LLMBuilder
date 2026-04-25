@@ -30,6 +30,8 @@ Current training images write structured startup diagnostics to `/workspace/llm-
 
 When the pod agent is reachable, the local API syncs those files into the job artifact directory as `runpod_startup.log`, `runpod_agent.log`, and `runpod_runner.log`, and includes them in the Training page log panel with `runpod_lifecycle.log`.
 
+The current custom GPT training runner requires `torch`, `datasets`, `tokenizers`, `llm_builder.local_text_data`, and `training.runner`. It does not require Hugging Face `transformers`; older diagnostics briefly probed it as if it were required, which could produce a misleading `ModuleNotFoundError: No module named 'transformers'` line even though the image had the dependencies this runner uses.
+
 ## Training Failed
 
 Open the active run logs. `stdout.log`, `stderr.log`, `runtime_state.json`, and checkpoints are synced into the local job directory when the pod agent is reachable.

@@ -214,32 +214,33 @@ def torch_cuda_report() -> dict[str, Any]:
 
 
 def module_import_report() -> list[dict[str, Any]]:
-    modules = (
-        "zstandard",
-        "fastapi",
-        "uvicorn",
-        "torch",
-        "datasets",
-        "transformers",
-        "llm_builder.local_text_data",
-        "training.runner",
-        "remote_agent.app",
-    )
+    modules = {
+        "zstandard": True,
+        "fastapi": True,
+        "uvicorn": True,
+        "torch": True,
+        "datasets": True,
+        "tokenizers": True,
+        "llm_builder.local_text_data": True,
+        "training.runner": True,
+        "remote_agent.app": True,
+    }
     results: list[dict[str, Any]] = []
-    for module in modules:
+    for module, required in modules.items():
         try:
             imported = importlib.import_module(module)
         except Exception as exc:
             results.append(
                 {
                     "module": module,
+                    "required": required,
                     "import_ok": False,
                     "error": f"{type(exc).__name__}: {exc}",
                     "traceback": traceback.format_exc(limit=8),
                 }
             )
             continue
-        results.append({"module": module, "import_ok": True, "file": getattr(imported, "__file__", None)})
+        results.append({"module": module, "required": required, "import_ok": True, "file": getattr(imported, "__file__", None)})
     return results
 
 

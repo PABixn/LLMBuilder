@@ -297,7 +297,7 @@ def read_json(path: Path) -> dict[str, Any] | None:
 
 @lru_cache(maxsize=1)
 def runner_probe() -> dict[str, Any]:
-    modules = ("llm_builder.local_text_data", "training.runner")
+    modules = ("torch", "datasets", "tokenizers", "llm_builder.local_text_data", "training.runner")
     imported: list[str] = []
     try:
         for module in modules:

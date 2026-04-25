@@ -212,10 +212,13 @@ def test_training_image_includes_shared_local_text_module() -> None:
 
 def test_training_entrypoint_runs_startup_diagnostics() -> None:
     entrypoint = (REPO_ROOT / "docker" / "training" / "entrypoint.sh").read_text(encoding="utf-8")
+    diagnostics = (REPO_ROOT / "apps" / "llm-studio" / "remote_agent" / "diagnostics.py").read_text(encoding="utf-8")
 
     assert "python -m remote_agent.diagnostics startup" in entrypoint
     assert "startup.log" in entrypoint
     assert "uvicorn_start" in entrypoint
+    assert '"tokenizers": True' in diagnostics
+    assert "transformers" not in diagnostics
 
 
 def test_default_runpod_training_image_does_not_point_at_stale_import_broken_tag() -> None:
