@@ -9,7 +9,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from app.training_executors.remote_sync import build_remote_bundle, rewrite_local_dataset_files
+from app.training_executors import remote_sync
+from app.training_executors.remote_sync import RemoteAgentClient, build_remote_bundle, rewrite_local_dataset_files
 from app.training_executors.runpod_client import CreatePodRequest
 from app.training_executors.runpod_pod import RunPodPodExecutor, build_agent_base_url
 from app.training_storage import TrainingStudioStore
@@ -177,11 +178,44 @@ def test_runpod_agent_url_uses_proxy_for_runtime_http_mapping() -> None:
     assert build_agent_base_url(pod, 8021) == "https://ldl1dxirsim64n-8021.proxy.runpod.net"
 
 
+def test_remote_agent_client_uses_certifi_ssl_context(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self) -> "FakeResponse":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"ok": true}'
+
+    def fake_urlopen(request: object, **kwargs: object) -> FakeResponse:
+        captured.update(kwargs)
+        return FakeResponse()
+
+    monkeypatch.setattr(remote_sync, "urlopen", fake_urlopen)
+
+    payload = RemoteAgentClient("https://example.test", "token", "job123").health()
+
+    assert payload == {"ok": True}
+    assert captured["context"] is not None
+
+
 def test_training_image_includes_shared_local_text_module() -> None:
     dockerfile = (REPO_ROOT / "docker" / "training" / "Dockerfile").read_text(encoding="utf-8")
 
     assert "COPY llm_builder ./llm_builder" in dockerfile
     assert "import llm_builder.local_text_data; import training.runner" in dockerfile
+
+
+def test_training_entrypoint_runs_startup_diagnostics() -> None:
+    entrypoint = (REPO_ROOT / "docker" / "training" / "entrypoint.sh").read_text(encoding="utf-8")
+
+    assert "python -m remote_agent.diagnostics startup" in entrypoint
+    assert "startup.log" in entrypoint
+    assert "uvicorn_start" in entrypoint
 
 
 def test_default_runpod_training_image_does_not_point_at_stale_import_broken_tag() -> None:
@@ -256,6 +290,49 @@ def test_remote_agent_runtime_state_reports_early_process_exit(monkeypatch, tmp_
     assert "stderr.log" in payload["error"]
 
 
+def test_remote_agent_exposes_container_diagnostic_logs(monkeypatch, tmp_path: Path) -> None:
+    llm_studio_root = REPO_ROOT / "apps" / "llm-studio"
+    if str(llm_studio_root) not in sys.path:
+        sys.path.insert(0, str(llm_studio_root))
+    import remote_agent.app as remote_app
+
+    remote_app = importlib.reload(remote_app)
+    job_id = "job-diagnostics"
+    workspace = tmp_path / "workspace"
+    logs_dir = workspace / "logs"
+    logs_dir.mkdir(parents=True)
+    (logs_dir / "startup.log").write_text("startup ready\n", encoding="utf-8")
+    (logs_dir / "agent.log").write_text("agent ready\n", encoding="utf-8")
+    (logs_dir / "runner.log").write_text("runner ready\n", encoding="utf-8")
+    monkeypatch.setenv("LLM_STUDIO_REMOTE_WORKSPACE", str(workspace))
+    monkeypatch.setenv("LLM_STUDIO_REMOTE_JOB_ID", job_id)
+    monkeypatch.setenv("LLM_STUDIO_REMOTE_AGENT_TOKEN", "token")
+
+    client = TestClient(remote_app.app)
+    headers = {"Authorization": "Bearer token", "X-LLM-Studio-Job-Id": job_id}
+
+    assert client.get(f"/v1/jobs/{job_id}/logs/startup", headers=headers).text == "startup ready\n"
+    assert client.get(f"/v1/jobs/{job_id}/logs/agent", headers=headers).text == "agent ready\n"
+    assert client.get(f"/v1/jobs/{job_id}/logs/runner", headers=headers).text == "runner ready\n"
+
+
+def test_remote_runner_log_persists_to_workspace(monkeypatch, tmp_path: Path) -> None:
+    llm_studio_root = REPO_ROOT / "apps" / "llm-studio"
+    if str(llm_studio_root) not in sys.path:
+        sys.path.insert(0, str(llm_studio_root))
+    import remote_agent.runner as remote_runner
+
+    remote_runner = importlib.reload(remote_runner)
+    monkeypatch.setenv("LLM_STUDIO_REMOTE_WORKSPACE", str(tmp_path / "workspace"))
+
+    remote_runner.runner_log("diagnostic_probe", job_id="job-runner-log", api_key="secret")
+
+    payload = json.loads((tmp_path / "workspace" / "logs" / "runner.log").read_text(encoding="utf-8"))
+    assert payload["event"] == "diagnostic_probe"
+    assert payload["job_id"] == "job-runner-log"
+    assert payload["api_key"] == "[redacted]"
+
+
 def test_remote_agent_start_reports_immediate_subprocess_failure(monkeypatch, tmp_path: Path) -> None:
     llm_studio_root = REPO_ROOT / "apps" / "llm-studio"
     if str(llm_studio_root) not in sys.path:
@@ -265,6 +342,11 @@ def test_remote_agent_start_reports_immediate_subprocess_failure(monkeypatch, tm
     remote_runner = importlib.reload(remote_runner)
     job_id = "job-start-exit"
     job_root = tmp_path / "workspace" / "jobs" / job_id
+    monkeypatch.setenv("LLM_STUDIO_REMOTE_WORKSPACE", str(tmp_path / "workspace"))
+    inputs = job_root / "inputs"
+    inputs.mkdir(parents=True)
+    for name in ("model_config.json", "tokenizer_artifact.json", "training_config.json", "dataloader_config.json"):
+        (inputs / name).write_text("{}", encoding="utf-8")
     outputs = job_root / "outputs"
     outputs.mkdir(parents=True)
     (outputs / "stderr.log").write_text("ModuleNotFoundError: No module named 'llm_builder'\n", encoding="utf-8")

@@ -413,9 +413,24 @@ def sync_small_outputs(agent: RemoteAgentClient, job: StoredTrainingJob) -> None
         ("samples", root / "samples.jsonl"),
         ("logs/stdout", root / "stdout.log"),
         ("logs/stderr", root / "stderr.log"),
+        ("logs/startup", root / "runpod_startup.log"),
+        ("logs/agent", root / "runpod_agent.log"),
+        ("logs/runner", root / "runpod_runner.log"),
     ):
         before = local_path.stat().st_size if local_path.exists() else 0
-        agent.download_append_file(remote_kind, local_path)
+        try:
+            agent.download_append_file(remote_kind, local_path)
+        except RemoteAgentError as exc:
+            log_lifecycle(
+                job,
+                "sync_output_unavailable",
+                "Remote append-only output is not available yet.",
+                remote_kind=remote_kind,
+                error=str(exc),
+                throttle_seconds=60,
+                throttle_key=remote_kind,
+            )
+            continue
         after = local_path.stat().st_size if local_path.exists() else 0
         if after > before:
             log_lifecycle(

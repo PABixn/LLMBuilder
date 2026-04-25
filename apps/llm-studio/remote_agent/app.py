@@ -4,6 +4,7 @@ import json
 import os
 import importlib
 import traceback
+import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
@@ -13,12 +14,41 @@ from fastapi.responses import FileResponse, PlainTextResponse
 
 from .auth import configured_job_id, require_agent_auth
 from .bundle import extract_bundle, safe_join
+from .diagnostics import log_event, log_file_path
 from .runner import RemoteTrainingRunner, repo_root as training_repo_root
 from .sync_manifest import checkpoint_entries
 
 app = FastAPI(title="LLM Studio Remote Training Agent", version="0.1.0")
 runner = RemoteTrainingRunner()
 manifests: dict[str, dict[str, Any]] = {}
+
+
+@app.middleware("http")
+async def log_failed_requests(request: Request, call_next):
+    started = time.monotonic()
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        agent_log(
+            "request_exception",
+            job_id=request.headers.get("x-llm-studio-job-id") or configured_job_id() or None,
+            method=request.method,
+            path=request.url.path,
+            elapsed_seconds=round(time.monotonic() - started, 3),
+            error=f"{type(exc).__name__}: {exc}",
+            traceback=traceback.format_exc(limit=8),
+        )
+        raise
+    if response.status_code >= 400 and request.url.path.startswith("/v1/"):
+        agent_log(
+            "request_error_response",
+            job_id=request.headers.get("x-llm-studio-job-id") or configured_job_id() or None,
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            elapsed_seconds=round(time.monotonic() - started, 3),
+        )
+    return response
 
 
 def workspace_root() -> Path:
@@ -57,6 +87,13 @@ def system(_: AuthDependency) -> dict[str, Any]:
         "workspace": str(workspace_root()),
         "job_id": configured_job_id(),
         "cuda_visible_devices": os.getenv("CUDA_VISIBLE_DEVICES"),
+        "image_revision": os.getenv("LLM_STUDIO_IMAGE_REVISION"),
+        "image_built_at": os.getenv("LLM_STUDIO_IMAGE_BUILT_AT"),
+        "logs": {
+            "startup": str(log_file_path("startup.log")),
+            "agent": str(log_file_path("agent.log")),
+            "runner": str(log_file_path("runner.log")),
+        },
         "runner": runner_probe(),
     }
     agent_log("system", job_id=configured_job_id(), **payload)
@@ -183,6 +220,21 @@ def stderr_log(job_id: str, _: AuthDependency, offset: int = Query(default=0, ge
     return ranged_file(outputs_dir(job_id) / "stderr.log", offset)
 
 
+@app.get("/v1/jobs/{job_id}/logs/startup")
+def startup_log(job_id: str, _: AuthDependency, offset: int = Query(default=0, ge=0)) -> Response:
+    return ranged_file(log_file_path("startup.log"), offset)
+
+
+@app.get("/v1/jobs/{job_id}/logs/agent")
+def agent_diagnostic_log(job_id: str, _: AuthDependency, offset: int = Query(default=0, ge=0)) -> Response:
+    return ranged_file(log_file_path("agent.log"), offset)
+
+
+@app.get("/v1/jobs/{job_id}/logs/runner")
+def runner_diagnostic_log(job_id: str, _: AuthDependency, offset: int = Query(default=0, ge=0)) -> Response:
+    return ranged_file(log_file_path("runner.log"), offset)
+
+
 @app.get("/v1/jobs/{job_id}/checkpoints")
 def checkpoints(job_id: str, _: AuthDependency) -> dict[str, Any]:
     return {"job_id": job_id, "checkpoints": checkpoint_entries(outputs_dir(job_id))}
@@ -266,33 +318,11 @@ def runner_probe() -> dict[str, Any]:
 
 
 def agent_log(event: str, *, job_id: str | None = None, **fields: Any) -> None:
-    payload = {
-        "event": event,
-        "job_id": job_id,
-        "service": "llm-studio-remote-training-agent",
-        **sanitize_log_fields(fields),
-    }
-    print(f"[llm-studio-agent] {json.dumps(payload, ensure_ascii=True, default=str, sort_keys=True)}", flush=True)
-
-
-def sanitize_log_fields(fields: dict[str, Any]) -> dict[str, Any]:
-    sanitized: dict[str, Any] = {}
-    for key, value in fields.items():
-        key_lower = key.lower()
-        if "token" in key_lower or "authorization" in key_lower or "api_key" in key_lower:
-            sanitized[key] = "[redacted]"
-        elif isinstance(value, dict):
-            sanitized[key] = sanitize_log_fields(value)
-        elif isinstance(value, list):
-            sanitized[key] = [sanitize_log_value(item) for item in value]
-        else:
-            sanitized[key] = sanitize_log_value(value)
-    return sanitized
-
-
-def sanitize_log_value(value: Any) -> Any:
-    if isinstance(value, dict):
-        return sanitize_log_fields(value)
-    if isinstance(value, list):
-        return [sanitize_log_value(item) for item in value]
-    return value
+    log_event(
+        service="llm-studio-remote-training-agent",
+        event=event,
+        job_id=job_id,
+        file_name="agent.log",
+        prefix="llm-studio-agent",
+        **fields,
+    )

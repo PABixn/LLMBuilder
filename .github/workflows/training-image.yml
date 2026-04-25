@@ -34,6 +34,9 @@ jobs:
           tags: |
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
+      - name: Capture build timestamp
+        id: build_time
+        run: echo "value=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -41,3 +44,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            LLM_STUDIO_IMAGE_REVISION=${{ github.sha }}
+            LLM_STUDIO_IMAGE_BUILT_AT=${{ steps.build_time.outputs.value }}

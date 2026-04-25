@@ -383,8 +383,15 @@ class TrainingRunManager:
         job = self.get_job(job_id)
         stdout_lines = tail_lines(Path(job.stdout_path), lines)
         if job.executor_kind == "runpod_pod":
-            lifecycle_lines = tail_lines(Path(job.artifact_dir) / "runpod_lifecycle.log", lines)
-            stdout_lines = lifecycle_lines + stdout_lines
+            runpod_lines: list[str] = []
+            for log_name in (
+                "runpod_lifecycle.log",
+                "runpod_startup.log",
+                "runpod_agent.log",
+                "runpod_runner.log",
+            ):
+                runpod_lines.extend(tail_lines(Path(job.artifact_dir) / log_name, lines))
+            stdout_lines = runpod_lines + stdout_lines
             if lines is not None and lines > 0:
                 stdout_lines = stdout_lines[-lines:]
         return TrainingLogsResponse(

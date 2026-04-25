@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import signal
 import subprocess
@@ -9,6 +8,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from .diagnostics import log_event
 
 
 @dataclass(slots=True)
@@ -33,6 +34,22 @@ class RemoteTrainingRunner:
         outputs.mkdir(parents=True, exist_ok=True)
         stdout_path = outputs / "stdout.log"
         stderr_path = outputs / "stderr.log"
+        model_config_path = job_root / str(args.get("model_config_path", "inputs/model_config.json"))
+        tokenizer_path = job_root / str(args.get("tokenizer_path", "inputs/tokenizer_artifact.json"))
+        training_config_path = job_root / str(args.get("training_config_path", "inputs/training_config.json"))
+        dataloader_config_path = job_root / str(args.get("dataloader_config_path", "inputs/dataloader_config.json"))
+        input_report = input_file_report(
+            {
+                "model_config": model_config_path,
+                "tokenizer": tokenizer_path,
+                "training_config": training_config_path,
+                "dataloader_config": dataloader_config_path,
+            }
+        )
+        missing_inputs = [item["path"] for item in input_report.values() if item.get("exists") is not True]
+        if missing_inputs:
+            runner_log("input_files_missing", job_id=job_id, job_root=str(job_root), inputs=input_report)
+            raise RuntimeError(f"Training subprocess cannot start because required input files are missing: {missing_inputs}")
         command = [
             sys.executable,
             "-m",
@@ -40,13 +57,13 @@ class RemoteTrainingRunner:
             "--job-id",
             job_id,
             "--model-config-path",
-            str(job_root / str(args.get("model_config_path", "inputs/model_config.json"))),
+            str(model_config_path),
             "--tokenizer-path",
-            str(job_root / str(args.get("tokenizer_path", "inputs/tokenizer_artifact.json"))),
+            str(tokenizer_path),
             "--training-config-path",
-            str(job_root / str(args.get("training_config_path", "inputs/training_config.json"))),
+            str(training_config_path),
             "--dataloader-config-path",
-            str(job_root / str(args.get("dataloader_config_path", "inputs/dataloader_config.json"))),
+            str(dataloader_config_path),
             "--output-dir",
             str(outputs),
         ]
@@ -57,21 +74,32 @@ class RemoteTrainingRunner:
             command=command,
             job_root=str(job_root),
             outputs=str(outputs),
+            inputs=input_report,
             cuda_visible_devices=os.getenv("CUDA_VISIBLE_DEVICES"),
+            python_executable=sys.executable,
         )
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
         stdout_handle = stdout_path.open("ab")
         stderr_handle = stderr_path.open("ab")
         try:
-            process = subprocess.Popen(
-                command,
-                cwd=repo_root(),
-                stdout=stdout_handle,
-                stderr=stderr_handle,
-                env=env,
-                start_new_session=True,
-            )
+            try:
+                process = subprocess.Popen(
+                    command,
+                    cwd=repo_root(),
+                    stdout=stdout_handle,
+                    stderr=stderr_handle,
+                    env=env,
+                    start_new_session=True,
+                )
+            except Exception as exc:
+                runner_log(
+                    "process_spawn_failed",
+                    job_id=job_id,
+                    error=f"{type(exc).__name__}: {exc}",
+                    traceback=traceback_text(),
+                )
+                raise
         finally:
             stdout_handle.close()
             stderr_handle.close()
@@ -86,8 +114,11 @@ class RemoteTrainingRunner:
         time.sleep(1.0)
         exit_code = process.poll()
         if exit_code is not None:
+            stdout_tail = tail_text(stdout_path)
             stderr_tail = tail_text(stderr_path)
             detail = f"Training subprocess exited during startup with code {exit_code}."
+            if stdout_tail:
+                detail = f"{detail}\n\nstdout tail:\n{stdout_tail}"
             if stderr_tail:
                 detail = f"{detail}\n\nstderr tail:\n{stderr_tail}"
             runner_log(
@@ -95,6 +126,7 @@ class RemoteTrainingRunner:
                 job_id=job_id,
                 process_id=process.pid,
                 exit_code=exit_code,
+                stdout_tail=stdout_tail,
                 stderr_tail=stderr_tail,
             )
             raise RuntimeError(detail)
@@ -163,11 +195,31 @@ def tail_text(path: Path, *, max_bytes: int = 4096) -> str:
     return data.decode("utf-8", errors="replace").strip()
 
 
+def input_file_report(paths: dict[str, Path]) -> dict[str, dict[str, Any]]:
+    report: dict[str, dict[str, Any]] = {}
+    for label, path in paths.items():
+        item: dict[str, Any] = {"path": str(path), "exists": path.exists(), "is_file": path.is_file()}
+        if path.exists():
+            try:
+                item["size_bytes"] = path.stat().st_size
+            except OSError as exc:
+                item["stat_error"] = f"{type(exc).__name__}: {exc}"
+        report[label] = item
+    return report
+
+
+def traceback_text() -> str:
+    import traceback
+
+    return traceback.format_exc(limit=8)
+
+
 def runner_log(event: str, *, job_id: str | None = None, **fields: Any) -> None:
-    payload = {
-        "event": event,
-        "job_id": job_id,
-        "service": "llm-studio-remote-training-runner",
+    log_event(
+        service="llm-studio-remote-training-runner",
+        event=event,
+        job_id=job_id,
+        file_name="runner.log",
+        prefix="llm-studio-runner",
         **fields,
-    }
-    print(f"[llm-studio-runner] {json.dumps(payload, ensure_ascii=True, default=str, sort_keys=True)}", flush=True)
+    )

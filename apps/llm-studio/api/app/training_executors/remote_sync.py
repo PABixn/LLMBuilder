@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import shutil
+import ssl
 import tarfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -13,6 +14,8 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
+
+import certifi
 
 from ..schemas import load_json, write_json
 from .base import TrainingJobBundle
@@ -36,6 +39,7 @@ class RemoteAgentClient:
         self._token = token
         self._job_id = job_id
         self._timeout = timeout
+        self._ssl_context = ssl.create_default_context(cafile=certifi.where())
 
     def health(self) -> dict[str, Any]:
         return self._json("GET", "/health", include_job_header=False)
@@ -134,7 +138,7 @@ class RemoteAgentClient:
             headers["Content-Type"] = content_type
         request = Request(f"{self._base_url}{path}", data=body, headers=headers, method=method)
         try:
-            with urlopen(request, timeout=timeout or self._timeout) as response:
+            with urlopen(request, timeout=timeout or self._timeout, context=self._ssl_context) as response:
                 return response.read()
         except HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")

@@ -24,6 +24,12 @@ If the RunPod logs repeatedly show `200 OK` health or runtime-state requests whi
 
 The local API now performs an authenticated `/v1/system` compatibility check before uploading a job. A stale image should fail during launch with a trainer-import error instead of leaving a healthy idle Pod.
 
+## Container Diagnostics
+
+Current training images write structured startup diagnostics to `/workspace/llm-studio/logs/startup.log`, pod-agent events to `/workspace/llm-studio/logs/agent.log`, and runner launch events to `/workspace/llm-studio/logs/runner.log`. These include image revision, Python and CUDA probes, `nvidia-smi`, key import checks, bundle receipt/extraction, start requests, subprocess command, missing input files, immediate exit code, and stdout/stderr tails.
+
+When the pod agent is reachable, the local API syncs those files into the job artifact directory as `runpod_startup.log`, `runpod_agent.log`, and `runpod_runner.log`, and includes them in the Training page log panel with `runpod_lifecycle.log`.
+
 ## Training Failed
 
 Open the active run logs. `stdout.log`, `stderr.log`, `runtime_state.json`, and checkpoints are synced into the local job directory when the pod agent is reachable.
