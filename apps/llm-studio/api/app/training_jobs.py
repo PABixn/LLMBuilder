@@ -8,6 +8,7 @@ import re
 import shutil
 import sys
 import threading
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,7 +46,13 @@ from .training_models import (
 )
 from .training_recommendations import build_batch_and_lr_recommendation
 from .training_storage import StoredTrainingJob, TrainingStudioStore
-from .training_executors import LocalSubprocessExecutor, RunPodPodExecutor, TrainingExecutor, TrainingJobBundle
+from .training_executors import (
+    ExecutionSnapshot,
+    LocalSubprocessExecutor,
+    RunPodPodExecutor,
+    TrainingExecutor,
+    TrainingJobBundle,
+)
 
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
 if str(IMPORT_ROOT) not in sys.path:
@@ -60,6 +67,7 @@ from training.training_config import TrainingConfig, derive_batch_runtime_plan
 _JOB_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{6,64}$")
 _PROJECT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{6,64}$")
 _FILENAME_SANITIZER = re.compile(r"[^a-zA-Z0-9._-]+")
+_RUNPOD_REFRESH_CACHE_SECONDS = 1.5
 
 
 @dataclass(slots=True)
@@ -94,6 +102,9 @@ class TrainingRunManager:
             self._local_executor.kind: self._local_executor,
             self._runpod_executor.kind: self._runpod_executor,
         }
+        self._refresh_locks: dict[str, threading.RLock] = {}
+        self._refresh_locks_guard = threading.Lock()
+        self._last_runpod_refresh_at: dict[str, float] = {}
 
     def build_preflight(self, request: TrainingPreflightRequest) -> TrainingPreflightResponse:
         context = self._resolve_preflight_context(request)
@@ -489,6 +500,10 @@ class TrainingRunManager:
 
     def _refresh_job(self, job_id: str) -> StoredTrainingJob | None:
         validate_identifier(job_id, _JOB_ID_RE)
+        with self._refresh_lock_for_job(job_id):
+            return self._refresh_job_locked(job_id)
+
+    def _refresh_job_locked(self, job_id: str) -> StoredTrainingJob | None:
         job = self._store.get_job(job_id)
         if job is None:
             return None
@@ -510,7 +525,10 @@ class TrainingRunManager:
             if isinstance(metadata.get("error"), str):
                 updates["error"] = metadata["error"]
 
-        snapshot = self._executor_for_job(job).refresh(job)
+        snapshot = ExecutionSnapshot()
+        if self._should_refresh_executor(job):
+            snapshot = self._executor_for_job(job).refresh(job)
+            self._record_executor_refresh(job)
         if snapshot.status is not None:
             status = runtime_state.get("status") if isinstance(runtime_state, dict) else None
             if status == TrainingJobStatus.completed.value:
@@ -537,6 +555,28 @@ class TrainingRunManager:
         if updates:
             job = self._store.update_job(job_id, **updates) or job
         return job
+
+    def _refresh_lock_for_job(self, job_id: str) -> threading.RLock:
+        with self._refresh_locks_guard:
+            lock = self._refresh_locks.get(job_id)
+            if lock is None:
+                lock = threading.RLock()
+                self._refresh_locks[job_id] = lock
+            return lock
+
+    def _should_refresh_executor(self, job: StoredTrainingJob) -> bool:
+        if job.executor_kind != self._runpod_executor.kind:
+            return True
+        if job.status not in {TrainingJobStatus.pending, TrainingJobStatus.running}:
+            return True
+        last_refresh = self._last_runpod_refresh_at.get(job.id)
+        if last_refresh is None:
+            return True
+        return (time.monotonic() - last_refresh) >= _RUNPOD_REFRESH_CACHE_SECONDS
+
+    def _record_executor_refresh(self, job: StoredTrainingJob) -> None:
+        if job.executor_kind == self._runpod_executor.kind:
+            self._last_runpod_refresh_at[job.id] = time.monotonic()
 
     def _state_updates_from_runtime(self, payload: dict[str, Any]) -> dict[str, Any]:
         updates: dict[str, Any] = {}

@@ -257,6 +257,7 @@ export interface RunPodProviderDefaults {
   volume_mount_path: string;
   training_image: string;
   agent_port: number;
+  agent_port_protocol: "tcp" | "http";
   cleanup_policy: RunPodCleanupPolicy;
 }
 

@@ -4,6 +4,7 @@ import glob
 import hashlib
 import io
 import json
+import os
 import shutil
 import ssl
 import tarfile
@@ -22,8 +23,27 @@ from .base import TrainingJobBundle
 
 IMPORT_ROOT = Path(__file__).resolve().parents[5]
 
+
+DEFAULT_POD_AGENT_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
+
+
 class RemoteAgentError(RuntimeError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        payload: Any = None,
+        retryable: bool = True,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.payload = payload
+        self.retryable = retryable
 
 
 @dataclass(slots=True)
@@ -34,18 +54,33 @@ class BundleBuildResult:
 
 
 class RemoteAgentClient:
-    def __init__(self, base_url: str, token: str, job_id: str, *, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        job_id: str,
+        *,
+        timeout: float = 30.0,
+        user_agent: str | None = None,
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._token = token
         self._job_id = job_id
         self._timeout = timeout
+        configured_user_agent = (
+            user_agent
+            or os.getenv("LLM_STUDIO_RUNPOD_AGENT_USER_AGENT")
+            or DEFAULT_POD_AGENT_USER_AGENT
+        )
+        self._user_agent = configured_user_agent.strip() or DEFAULT_POD_AGENT_USER_AGENT
         self._ssl_context = ssl.create_default_context(cafile=certifi.where())
 
     def health(self) -> dict[str, Any]:
-        return self._json("GET", "/health", include_job_header=False)
+        return self._json("GET", "/health", include_job_header=False, include_auth=False)
 
     def system(self) -> dict[str, Any]:
-        return self._json("GET", "/v1/system")
+        query = urlencode({"job_id": self._job_id})
+        return self._json("GET", f"/v1/system?{query}")
 
     def upload_bundle(self, bundle_path: Path, *, content_type: str) -> dict[str, Any]:
         data = bundle_path.read_bytes()
@@ -86,9 +121,17 @@ class RemoteAgentClient:
             with local_path.open("ab") as handle:
                 handle.write(raw)
 
-    def download_file(self, relative_path: str, local_path: Path, *, offset: int = 0) -> bytes:
-        query = urlencode({"path": relative_path, "offset": offset})
-        raw = self._bytes("GET", f"/v1/jobs/{quote(self._job_id)}/files?{query}", timeout=120.0)
+    def download_file(self, relative_path: str, local_path: Path, *, offset: int = 0, optional: bool = False) -> bytes:
+        query_payload: dict[str, str | int] = {"path": relative_path, "offset": offset}
+        if optional:
+            query_payload["optional"] = "1"
+        query = urlencode(query_payload)
+        try:
+            raw = self._bytes("GET", f"/v1/jobs/{quote(self._job_id)}/files?{query}", timeout=120.0)
+        except RemoteAgentError as exc:
+            if optional and exc.status_code == 404:
+                return b""
+            raise
         if raw:
             local_path.parent.mkdir(parents=True, exist_ok=True)
             mode = "ab" if offset else "wb"
@@ -104,9 +147,18 @@ class RemoteAgentClient:
         body: bytes | None = None,
         content_type: str | None = None,
         include_job_header: bool = True,
+        include_auth: bool = True,
         timeout: float | None = None,
     ) -> dict[str, Any]:
-        raw = self._request(method, path, body=body, content_type=content_type, include_job_header=include_job_header, timeout=timeout)
+        raw = self._request(
+            method,
+            path,
+            body=body,
+            content_type=content_type,
+            include_job_header=include_job_header,
+            include_auth=include_auth,
+            timeout=timeout,
+        )
         if not raw:
             return {}
         try:
@@ -126,12 +178,15 @@ class RemoteAgentClient:
         body: bytes | None = None,
         content_type: str | None = None,
         include_job_header: bool = True,
+        include_auth: bool = True,
         timeout: float | None = None,
     ) -> bytes:
         headers = {
-            "Authorization": f"Bearer {self._token}",
             "Accept": "application/json",
+            "User-Agent": self._user_agent,
         }
+        if include_auth:
+            headers["Authorization"] = f"Bearer {self._token}"
         if include_job_header:
             headers["X-LLM-Studio-Job-Id"] = self._job_id
         if content_type:
@@ -141,10 +196,44 @@ class RemoteAgentClient:
             with urlopen(request, timeout=timeout or self._timeout, context=self._ssl_context) as response:
                 return response.read()
         except HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RemoteAgentError(f"Pod agent request failed with HTTP {exc.code}: {detail}") from exc
+            detail, payload = _decode_http_error(exc)
+            retryable = _is_retryable_agent_http_error(exc.code, payload)
+            message = _format_agent_http_error(exc.code, detail, payload)
+            raise RemoteAgentError(message, status_code=exc.code, payload=payload, retryable=retryable) from exc
         except URLError as exc:
             raise RemoteAgentError(f"Pod agent is unreachable: {exc.reason}") from exc
+
+
+def _decode_http_error(exc: HTTPError) -> tuple[str, Any]:
+    raw = exc.read()
+    detail = raw.decode("utf-8", errors="replace") if raw else ""
+    try:
+        return detail, json.loads(detail)
+    except Exception:
+        return detail, None
+
+
+def _format_agent_http_error(status_code: int, detail: str, payload: Any) -> str:
+    if isinstance(payload, dict):
+        error_code = payload.get("error_code")
+        error_name = payload.get("error_name")
+        title = payload.get("title")
+        if payload.get("cloudflare_error") is True and error_code == 1010:
+            return (
+                "RunPod proxy rejected the pod-agent request with Cloudflare 1010 "
+                f"({error_name or title or 'browser signature blocked'})."
+            )
+    return f"Pod agent request failed with HTTP {status_code}: {detail}"
+
+
+def _is_retryable_agent_http_error(status_code: int, payload: Any) -> bool:
+    if isinstance(payload, dict) and payload.get("cloudflare_error") is True:
+        retryable = payload.get("retryable")
+        if retryable is False:
+            return False
+    if status_code in {401, 403}:
+        return False
+    return status_code == 404 or status_code >= 500
 
 
 def build_remote_bundle(bundle: TrainingJobBundle) -> BundleBuildResult:

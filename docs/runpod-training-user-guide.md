@@ -21,7 +21,7 @@ You can also set `LLM_STUDIO_RUNPOD_API_KEY` in the API environment. UI-pasted k
 5. Choose GPU type, GPU count, Secure or Community Cloud, optional datacenter, volume size, interruptible mode, and cleanup policy.
 6. Click `Start training`.
 
-The local API creates the job record first, creates a RunPod Pod with the training image, uploads a signed bundle to the pod agent, starts `python -m training.runner`, then polls and syncs outputs into the normal local job directory.
+The local API creates the job record first, creates a RunPod Pod with the training image, exposes the pod-agent over a direct TCP port by default, uploads a signed bundle to the pod agent, starts `python -m training.runner`, then polls and syncs outputs into the normal local job directory.
 
 ## Cleanup Policies
 

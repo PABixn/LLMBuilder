@@ -15,7 +15,7 @@ def configured_token() -> str:
 
 
 def require_agent_auth(
-    job_id: str,
+    job_id: str | None = None,
     authorization: str | None = Header(default=None),
     x_llm_studio_job_id: str | None = Header(default=None),
 ) -> None:
@@ -23,7 +23,7 @@ def require_agent_auth(
     expected_token = configured_token()
     if not expected_job_id or not expected_token:
         raise HTTPException(status_code=503, detail="Remote agent is not configured.")
-    if not hmac.compare_digest(job_id, expected_job_id):
+    if job_id is not None and not hmac.compare_digest(job_id, expected_job_id):
         raise HTTPException(status_code=403, detail="Job id is not allowed on this pod.")
     if not x_llm_studio_job_id or not hmac.compare_digest(x_llm_studio_job_id, expected_job_id):
         raise HTTPException(status_code=403, detail="Missing or invalid job id header.")

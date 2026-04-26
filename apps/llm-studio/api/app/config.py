@@ -50,6 +50,7 @@ class RuntimeSettings:
     runpod_volume_mount_path: str
     runpod_training_image: str
     runpod_agent_port: int
+    runpod_agent_port_protocol: str
     runpod_pod_ttl_minutes: int
     runpod_auto_delete_pod: bool
     runpod_auto_delete_volume: bool
@@ -177,6 +178,11 @@ def get_settings() -> RuntimeSettings:
         or "ghcr.io/pabixn/llm-builder-training:latest"
     )
     runpod_agent_port = _read_port("LLM_STUDIO_RUNPOD_AGENT_PORT", default=8021)
+    runpod_agent_port_protocol = _read_choice(
+        "LLM_STUDIO_RUNPOD_AGENT_PORT_PROTOCOL",
+        choices={"tcp", "http"},
+        default="tcp",
+    )
     runpod_pod_ttl_minutes = _read_non_negative_int("LLM_STUDIO_RUNPOD_POD_TTL_MINUTES", default=0)
     runpod_auto_delete_pod = _read_bool("LLM_STUDIO_RUNPOD_AUTO_DELETE_POD", default=True)
     runpod_auto_delete_volume = _read_bool("LLM_STUDIO_RUNPOD_AUTO_DELETE_VOLUME", default=False)
@@ -219,6 +225,7 @@ def get_settings() -> RuntimeSettings:
         runpod_volume_mount_path=runpod_volume_mount_path,
         runpod_training_image=runpod_training_image,
         runpod_agent_port=runpod_agent_port,
+        runpod_agent_port_protocol=runpod_agent_port_protocol,
         runpod_pod_ttl_minutes=runpod_pod_ttl_minutes,
         runpod_auto_delete_pod=runpod_auto_delete_pod,
         runpod_auto_delete_volume=runpod_auto_delete_volume,
@@ -377,6 +384,15 @@ def _read_port(var_name: str | tuple[str, ...], *, default: int) -> int:
     if value < 0 or value > 65535:
         return default
     return value
+
+
+def _read_choice(var_name: str | tuple[str, ...], *, choices: set[str], default: str) -> str:
+    var_names = var_name if isinstance(var_name, tuple) else (var_name,)
+    raw = _read_first_non_empty_env(*var_names)
+    if raw is None:
+        return default
+    normalized = raw.lower()
+    return normalized if normalized in choices else default
 
 
 def _read_origins() -> tuple[str, ...]:

@@ -96,7 +96,16 @@ def system(_: AuthDependency) -> dict[str, Any]:
         },
         "runner": runner_probe(),
     }
-    agent_log("system", job_id=configured_job_id(), **payload)
+    agent_log(
+        "system",
+        job_id=configured_job_id(),
+        workspace=payload["workspace"],
+        cuda_visible_devices=payload["cuda_visible_devices"],
+        image_revision=payload["image_revision"],
+        image_built_at=payload["image_built_at"],
+        logs=payload["logs"],
+        runner=payload["runner"],
+    )
     return payload
 
 
@@ -246,9 +255,12 @@ def files(
     _: AuthDependency,
     path: str = Query(min_length=1),
     offset: int = Query(default=0, ge=0),
+    optional: bool = Query(default=False),
 ) -> Response:
     target = safe_join(outputs_dir(job_id), path)
     if not target.exists() or not target.is_file():
+        if optional:
+            return PlainTextResponse("", media_type="text/plain")
         raise HTTPException(status_code=404, detail="File is not available.")
     return ranged_file(target, offset)
 

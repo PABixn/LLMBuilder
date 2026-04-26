@@ -71,6 +71,7 @@ class RunPodProviderDefaults(BaseModel):
     volume_mount_path: str
     training_image: str
     agent_port: int
+    agent_port_protocol: Literal["tcp", "http"]
     cleanup_policy: RunPodCleanupPolicy
 
 

@@ -538,6 +538,7 @@ def _runpod_defaults() -> RunPodProviderDefaults:
         volume_mount_path=settings.runpod_volume_mount_path,
         training_image=settings.runpod_training_image,
         agent_port=settings.runpod_agent_port,
+        agent_port_protocol=settings.runpod_agent_port_protocol,  # type: ignore[arg-type]
         cleanup_policy=RunPodCleanupPolicy(
             pod="delete_after_sync" if settings.runpod_auto_delete_pod else "stop_after_sync",
             network_volume="delete_after_sync" if settings.runpod_auto_delete_volume else "keep",

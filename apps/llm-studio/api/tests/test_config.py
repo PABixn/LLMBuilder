@@ -76,3 +76,17 @@ def test_default_upload_dir_uses_repo_datasets_uploads(monkeypatch) -> None:
 
     assert settings.tokenizer_output_dir == config.API_ROOT / "artifacts" / "tokenizers"
     assert settings.tokenizer_upload_dir == config.API_ROOT / "datasets" / "uploads"
+
+
+def test_runpod_agent_port_protocol_defaults_to_tcp(monkeypatch) -> None:
+    monkeypatch.delenv("LLM_STUDIO_RUNPOD_AGENT_PORT_PROTOCOL", raising=False)
+    config.reset_settings_cache()
+
+    assert config.get_settings().runpod_agent_port_protocol == "tcp"
+
+
+def test_runpod_agent_port_protocol_can_use_http_proxy(monkeypatch) -> None:
+    monkeypatch.setenv("LLM_STUDIO_RUNPOD_AGENT_PORT_PROTOCOL", "http")
+    config.reset_settings_cache()
+
+    assert config.get_settings().runpod_agent_port_protocol == "http"
