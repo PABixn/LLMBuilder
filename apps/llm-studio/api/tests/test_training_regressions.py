@@ -227,6 +227,42 @@ def test_model_generate_stops_before_emitting_stop_token() -> None:
     assert generated == [2]
 
 
+def test_cuda_memory_snapshot_accepts_unindexed_cuda_device(monkeypatch) -> None:
+    from training import memory_estimator
+
+    calls: dict[str, torch.device] = {}
+
+    def fake_mem_get_info(device: torch.device) -> tuple[int, int]:
+        calls["mem_get_info_device"] = device
+        return 10, 20
+
+    def fake_memory_allocated(device: torch.device) -> int:
+        calls["memory_allocated_device"] = device
+        return 3
+
+    def fake_memory_reserved(device: torch.device) -> int:
+        calls["memory_reserved_device"] = device
+        return 4
+
+    monkeypatch.setattr(memory_estimator.torch.cuda, "current_device", lambda: 0)
+    monkeypatch.setattr(memory_estimator.torch.cuda, "mem_get_info", fake_mem_get_info)
+    monkeypatch.setattr(memory_estimator.torch.cuda, "memory_allocated", fake_memory_allocated)
+    monkeypatch.setattr(memory_estimator.torch.cuda, "memory_reserved", fake_memory_reserved)
+
+    snapshot = memory_estimator.get_device_memory_snapshot(torch.device("cuda"))
+
+    assert snapshot.device == torch.device("cuda:0")
+    assert snapshot.free_bytes == 10
+    assert snapshot.total_bytes == 20
+    assert snapshot.allocated_bytes == 3
+    assert snapshot.reserved_bytes == 4
+    assert calls == {
+        "mem_get_info_device": torch.device("cuda:0"),
+        "memory_allocated_device": torch.device("cuda:0"),
+        "memory_reserved_device": torch.device("cuda:0"),
+    }
+
+
 def test_model_initial_loss_stays_near_log_vocab_for_tied_and_untied_heads() -> None:
     vocab_size = 2000
     idx = torch.tensor([[1, 2, 3, 4, 5, 6, 7, 8]])

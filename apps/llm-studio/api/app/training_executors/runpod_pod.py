@@ -24,6 +24,7 @@ class RunPodPodExecutor:
 
     def __init__(self) -> None:
         self._agent_tokens: dict[str, str] = {}
+        self._api_keys: dict[str, str] = {}
 
     def submit(self, job: StoredTrainingJob, bundle: TrainingJobBundle) -> ExecutionHandle:
         target = bundle.manifest.get("execution_target") if isinstance(bundle.manifest, dict) else {}
@@ -36,6 +37,7 @@ class RunPodPodExecutor:
 
         agent_token = secrets.token_urlsafe(32)
         self._agent_tokens[job.id] = agent_token
+        self._api_keys[job.id] = api_key
         gpu_type_id = str(target.get("gpu_type_id") or settings.runpod_default_gpu_type)
         gpu_count = int(target.get("gpu_count") or settings.runpod_default_gpu_count)
         cloud_type = str(target.get("cloud_type") or settings.runpod_default_cloud_type).upper()
@@ -157,6 +159,7 @@ class RunPodPodExecutor:
             if pod_id:
                 self._cleanup_after_submit_failure(client, job, pod_id, cleanup_policy=cleanup_policy)
             self._agent_tokens.pop(job.id, None)
+            self._api_keys.pop(job.id, None)
             raise
 
         now = _utc_now()
@@ -248,6 +251,8 @@ class RunPodPodExecutor:
                 self.cleanup(job, policy)
                 log_lifecycle(job, "cleanup_done", "RunPod cleanup policy applied.", policy=policy_payload(policy))
                 snapshot.updates["executor_status"] = status.value
+                self._agent_tokens.pop(job.id, None)
+                self._api_keys.pop(job.id, None)
             except Exception as exc:
                 log_lifecycle(
                     job,
@@ -270,7 +275,7 @@ class RunPodPodExecutor:
         if job.runpod_pod_id:
             try:
                 log_lifecycle(job, "stop_pod_start", "Stopping RunPod pod.", pod_id=job.runpod_pod_id)
-                self._client_from_settings().stop_pod(job.runpod_pod_id)
+                self._client_for_job(job).stop_pod(job.runpod_pod_id)
                 log_lifecycle(job, "stop_pod_done", "RunPod pod stop request returned.", pod_id=job.runpod_pod_id)
             except Exception as exc:
                 log_lifecycle(
@@ -293,7 +298,7 @@ class RunPodPodExecutor:
     def cleanup(self, job: StoredTrainingJob, policy: CleanupPolicy) -> None:
         if not job.runpod_pod_id:
             return
-        client = self._client_from_settings()
+        client = self._client_for_job(job)
         if policy.pod == "delete_after_sync":
             log_lifecycle(job, "cleanup_delete_pod_start", "Deleting RunPod pod.", pod_id=job.runpod_pod_id)
             client.delete_pod(job.runpod_pod_id)
@@ -339,10 +344,13 @@ class RunPodPodExecutor:
                 error=f"{type(stop_exc).__name__}: {stop_exc}",
             )
 
-    def _client_from_settings(self) -> RunPodClient:
-        api_key = get_settings().runpod_api_key
+    def _client_for_job(self, job: StoredTrainingJob) -> RunPodClient:
+        api_key = self._api_keys.get(job.id) or get_settings().runpod_api_key
         if not api_key:
-            raise ValueError("LLM_STUDIO_RUNPOD_API_KEY is required for cleanup after API restart.")
+            raise ValueError(
+                "RunPod API key is required for cleanup. Keep the API process running after launch, "
+                "or set LLM_STUDIO_RUNPOD_API_KEY so cleanup can recover after restart."
+            )
         return RunPodClient(api_key)
 
     def _wait_for_pod_ready(self, client: RunPodClient, pod_id: str, *, job: StoredTrainingJob) -> dict[str, Any]:

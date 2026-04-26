@@ -391,6 +391,7 @@ def estimate_max_step_tokens(
 
 def get_device_memory_snapshot(device: torch.device | str | None = None) -> DeviceMemorySnapshot:
     resolved_device = torch.device(device) if device is not None else _infer_default_device()
+    resolved_device = _resolve_indexed_cuda_device(resolved_device)
 
     if resolved_device.type == "cuda":
         free_bytes, total_bytes = torch.cuda.mem_get_info(resolved_device)
@@ -430,19 +431,29 @@ def get_device_memory_snapshot(device: torch.device | str | None = None) -> Devi
 
 def _resolve_device(model: nn.Module, device: torch.device | str | None) -> torch.device:
     if device is not None:
-        return torch.device(device)
+        return _resolve_indexed_cuda_device(torch.device(device))
     try:
-        return next(model.parameters()).device
+        return _resolve_indexed_cuda_device(next(model.parameters()).device)
     except StopIteration:
         return _infer_default_device()
 
 
 def _infer_default_device() -> torch.device:
     if torch.cuda.is_available():
-        return torch.device("cuda")
+        return _resolve_indexed_cuda_device(torch.device("cuda"))
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
         return torch.device("mps")
     return torch.device("cpu")
+
+
+def _resolve_indexed_cuda_device(device: torch.device) -> torch.device:
+    if device.type != "cuda" or device.index is not None:
+        return device
+    try:
+        index = int(torch.cuda.current_device())
+    except Exception:
+        index = 0
+    return torch.device("cuda", index)
 
 
 def _resolve_attention_backend(

@@ -13,7 +13,7 @@ from urllib.error import HTTPError
 from fastapi.testclient import TestClient
 
 from app.training_executors import remote_sync
-from app.training_executors.base import ExecutionSnapshot
+from app.training_executors.base import CleanupPolicy, ExecutionSnapshot
 from app.training_executors.remote_sync import (
     DEFAULT_POD_AGENT_USER_AGENT,
     RemoteAgentClient,
@@ -565,6 +565,32 @@ def test_runpod_submit_failure_cleanup_honors_keep_policy(tmp_path: Path) -> Non
     )
 
     assert client.calls == []
+
+
+def test_runpod_cleanup_uses_ui_api_key_kept_in_memory(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, str] = {}
+    client = FakeCleanupClient()
+
+    class FakeRunPodClient:
+        def __init__(self, api_key: str) -> None:
+            captured["api_key"] = api_key
+
+        def stop_pod(self, pod_id: str) -> None:
+            client.stop_pod(pod_id)
+
+        def delete_pod(self, pod_id: str) -> None:
+            client.delete_pod(pod_id)
+
+    monkeypatch.setattr("app.training_executors.runpod_pod.RunPodClient", FakeRunPodClient)
+    executor = RunPodPodExecutor()
+    job = stored_runpod_job(tmp_path)
+    job.runpod_pod_id = "pod123"
+    executor._api_keys[job.id] = "ui-key"
+
+    executor.cleanup(job, CleanupPolicy(pod="delete_after_sync"))
+
+    assert captured["api_key"] == "ui-key"
+    assert client.calls == [("delete", "pod123")]
 
 
 def test_runpod_bundle_upload_proxy_404_points_to_tcp_transport() -> None:
