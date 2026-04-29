@@ -546,6 +546,43 @@ def test_training_manager_coalesces_back_to_back_runpod_refreshes(tmp_path: Path
     assert executor.calls == 1
 
 
+def test_training_manager_marks_executor_status_from_terminal_runtime_state(tmp_path: Path) -> None:
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.append(str(REPO_ROOT))
+    from app.training_jobs import TrainingRunManager
+
+    job = stored_runpod_job(tmp_path, status=TrainingJobStatus.running)
+    job.executor_status = "running"
+    (tmp_path / "runtime_state.json").write_text(
+        json.dumps(
+            {
+                "status": "failed",
+                "state": "failed",
+                "stage": "Failed",
+                "progress": 1.0,
+                "error": "TypeError: scaled_dot_product_attention() got an unexpected keyword argument 'enable_gqa'",
+            }
+        ),
+        encoding="utf-8",
+    )
+    store = FakeRefreshStore(job)
+    executor = FakeRefreshExecutor()
+    manager = TrainingRunManager.__new__(TrainingRunManager)
+    manager._store = store
+    manager._runpod_executor = executor
+    manager._executors = {executor.kind: executor}
+    manager._refresh_locks = {}
+    manager._refresh_locks_guard = threading.Lock()
+    manager._last_runpod_refresh_at = {job.id: float("inf")}
+
+    refreshed = manager._refresh_job(job.id)
+
+    assert refreshed is job
+    assert refreshed.status == TrainingJobStatus.failed
+    assert refreshed.executor_status == "failed"
+    assert executor.calls == 0
+
+
 def test_runpod_submit_failure_cleanup_stops_instead_of_deleting_by_default(tmp_path: Path) -> None:
     client = FakeCleanupClient()
 
@@ -615,6 +652,34 @@ def test_runpod_completed_terminal_cleanup_honors_delete_policy(tmp_path: Path) 
     policy = terminal_cleanup_policy(job, TrainingJobStatus.completed)
 
     assert policy.pod == "delete_after_sync"
+
+
+def test_runpod_refresh_cleans_up_terminal_job_with_stale_executor_status(monkeypatch, tmp_path: Path) -> None:
+    client = FakeCleanupClient()
+
+    class FakeRunPodClient:
+        def __init__(self, _api_key: str) -> None:
+            pass
+
+        def stop_pod(self, pod_id: str) -> None:
+            client.stop_pod(pod_id)
+
+        def delete_pod(self, pod_id: str) -> None:
+            client.delete_pod(pod_id)
+
+    monkeypatch.setattr("app.training_executors.runpod_pod.RunPodClient", FakeRunPodClient)
+    executor = RunPodPodExecutor()
+    job = stored_runpod_job(tmp_path, status=TrainingJobStatus.failed)
+    job.executor_status = "running"
+    job.runpod_pod_id = "pod123"
+    job.runpod_cleanup_policy = {"pod": "delete_after_sync", "network_volume": "keep"}
+    executor._api_keys[job.id] = "ui-key"
+
+    snapshot = executor.refresh(job)
+
+    assert snapshot.updates["executor_status"] == "failed"
+    assert client.calls == [("stop", "pod123")]
+    assert job.id not in executor._api_keys
 
 
 def test_runpod_create_pod_retries_transient_capacity_errors(monkeypatch, tmp_path: Path) -> None:

@@ -581,7 +581,10 @@ class TrainingRunManager:
     def _state_updates_from_runtime(self, payload: dict[str, Any]) -> dict[str, Any]:
         updates: dict[str, Any] = {}
         if "status" in payload and isinstance(payload["status"], str):
-            updates["status"] = TrainingJobStatus(payload["status"])
+            status = TrainingJobStatus(payload["status"])
+            updates["status"] = status
+            if status in {TrainingJobStatus.completed, TrainingJobStatus.failed, TrainingJobStatus.cancelled}:
+                updates["executor_status"] = status.value
         if "state" in payload and isinstance(payload["state"], str):
             updates["state"] = TrainingJobState(payload["state"])
         if "stage" in payload and isinstance(payload["stage"], str):

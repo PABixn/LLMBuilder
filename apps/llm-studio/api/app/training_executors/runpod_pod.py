@@ -190,7 +190,7 @@ class RunPodPodExecutor:
 
     def refresh(self, job: StoredTrainingJob) -> ExecutionSnapshot:
         if job.status in {TrainingJobStatus.completed, TrainingJobStatus.failed, TrainingJobStatus.cancelled}:
-            return ExecutionSnapshot()
+            return self._refresh_terminal_job(job)
         if not job.runpod_agent_base_url:
             log_lifecycle(
                 job,
@@ -261,6 +261,44 @@ class RunPodPodExecutor:
                 )
                 snapshot.updates["remote_error"] = f"Training finished, but cleanup failed: {exc}"
         return snapshot
+
+    def _refresh_terminal_job(self, job: StoredTrainingJob) -> ExecutionSnapshot:
+        terminal_status = job.status.value
+        if job.executor_status in {terminal_status, "cleaned_up"}:
+            return ExecutionSnapshot()
+
+        updates = {"executor_status": terminal_status}
+        if not job.runpod_pod_id:
+            self._agent_tokens.pop(job.id, None)
+            self._api_keys.pop(job.id, None)
+            return ExecutionSnapshot(updates=updates)
+
+        try:
+            policy = terminal_cleanup_policy(job, job.status)
+            log_lifecycle(
+                job,
+                "cleanup_start",
+                "Applying RunPod cleanup policy for terminal job.",
+                policy=policy_payload(policy),
+            )
+            self.cleanup(job, policy)
+            log_lifecycle(
+                job,
+                "cleanup_done",
+                "RunPod cleanup policy applied for terminal job.",
+                policy=policy_payload(policy),
+            )
+            self._agent_tokens.pop(job.id, None)
+            self._api_keys.pop(job.id, None)
+        except Exception as exc:
+            log_lifecycle(
+                job,
+                "cleanup_failed",
+                "Terminal RunPod job cleanup failed.",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            updates["remote_error"] = f"Training finished, but cleanup failed: {exc}"
+        return ExecutionSnapshot(updates=updates)
 
     def stop(self, job: StoredTrainingJob) -> ExecutionSnapshot:
         token = self._unavailable_token(job)

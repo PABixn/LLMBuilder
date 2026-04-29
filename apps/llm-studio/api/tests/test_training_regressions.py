@@ -4,8 +4,9 @@ import math
 from pathlib import Path
 
 import torch
+import model.model as model_module
 
-from model.loader import LLMConfig
+from model.loader import Attention, LLMConfig
 from model.model import CausalSelfAttention, ConfigurableGPT
 from tokenizer.dataloader import build_dataset
 from training.dataloader import build_training_dataset
@@ -352,3 +353,28 @@ def test_block_preactivation_feeds_attention_branch_without_overwriting_residual
     expected = x + torch.tanh(x)
 
     assert torch.allclose(out, expected, atol=1e-6)
+
+
+def test_attention_uses_pytorch_24_compatible_gqa_fallback(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_scaled_dot_product_attention(q, k, v, *, attn_mask=None, is_causal=False, **kwargs):
+        calls["kwargs"] = kwargs
+        calls["q_heads"] = q.size(1)
+        calls["k_heads"] = k.size(1)
+        calls["v_heads"] = v.size(1)
+        calls["is_causal"] = is_causal
+        return torch.zeros_like(q)
+
+    monkeypatch.setattr(model_module.F, "scaled_dot_product_attention", fake_scaled_dot_product_attention)
+
+    attention = CausalSelfAttention(0, 8, Attention(n_head=4, n_kv_head=2))
+    x = torch.randn(1, 3, 8)
+    out = attention(x, None)
+
+    assert out.shape == x.shape
+    assert calls["kwargs"] == {}
+    assert calls["q_heads"] == 4
+    assert calls["k_heads"] == 4
+    assert calls["v_heads"] == 4
+    assert calls["is_causal"] is True

@@ -234,16 +234,16 @@ class CausalSelfAttention(nn.Module):
         enable_gqa = self.n_head != self.n_kv_head
 
         if kv_cache is None or Tq == Tk:
-            y = F.scaled_dot_product_attention(q, k, v, is_causal=True, enable_gqa=enable_gqa)
+            y = scaled_dot_product_attention(q, k, v, is_causal=True, enable_gqa=enable_gqa)
         elif Tq == 1:
-            y = F.scaled_dot_product_attention(q, k, v, is_causal=False, enable_gqa=enable_gqa)
+            y = scaled_dot_product_attention(q, k, v, is_causal=False, enable_gqa=enable_gqa)
         else:
             attn_mask = torch.zeros((Tq, Tk), dtype=torch.bool, device=q.device)
             prefix_len = Tk - Tq
             attn_mask[:, :prefix_len] = True
             attn_mask[:, prefix_len:] = torch.tril(torch.ones((Tq, Tq), dtype=torch.bool, device=q.device))
 
-            y = F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask, enable_gqa=enable_gqa)
+            y = scaled_dot_product_attention(q, k, v, attn_mask=attn_mask, enable_gqa=enable_gqa)
 
         y = y.transpose(1, 2).contiguous().view(B, T, -1)
         y = self.c_proj(y)
@@ -348,6 +348,23 @@ def apply_rotary_emb(x, cos, sin):
     out = out.to(x.dtype)
 
     return out
+
+
+def scaled_dot_product_attention(q, k, v, *, attn_mask=None, is_causal=False, enable_gqa=False):
+    if enable_gqa:
+        k, v = repeat_kv_heads(k, v, q.size(1))
+    return F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask, is_causal=is_causal)
+
+
+def repeat_kv_heads(k, v, n_head: int):
+    n_kv_head = k.size(1)
+    if n_kv_head == n_head:
+        return k, v
+    if n_head % n_kv_head != 0:
+        raise ValueError(f"Number of query heads ({n_head}) must be divisible by key/value heads ({n_kv_head}).")
+    repeats = n_head // n_kv_head
+    return k.repeat_interleave(repeats, dim=1), v.repeat_interleave(repeats, dim=1)
+
 
 def get_norm(norm: Norm, dim: int) -> nn.Module:
     if isinstance(norm, RMSNorm):
