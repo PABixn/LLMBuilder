@@ -3,662 +3,332 @@ Using Python interpreter: python3
 cd /Users/pabi/Documents/GitHub/LLMBuilder/apps/llm-studio/api && python3 -m uvicorn app.main:app --reload --port 8000
 INFO:     Will watch for changes in these directories: ['/Users/pabi/Documents/GitHub/LLMBuilder/apps/llm-studio/api']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [23893] using WatchFiles
-INFO:     Started server process [23896]
+INFO:     Started reloader process [26398] using WatchFiles
+INFO:     Started server process [26400]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:52135 - "GET /api/v1/tokenizer/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/projects HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52136 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52136 - "GET /api/v1/training/providers/runpod/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52135 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52140 - "GET /api/v1/tokenizer/jobs/28e414e8bcc84be4ad81ca2f8e5c5181 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52138 - "GET /api/v1/training/providers/runpod/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52139 - "GET /api/v1/projects/c974c88fea1a HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/config/templates HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52139 - "OPTIONS /api/v1/training/validate/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52139 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52139 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52139 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "POST /api/v1/training/validate/preflight HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "OPTIONS /api/v1/training/providers/runpod/validate-key HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "POST /api/v1/training/providers/runpod/validate-key HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/providers/runpod/status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "OPTIONS /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-[llm-studio-runpod] {"agent_port": 8021, "agent_port_protocol": "tcp", "cleanup_policy": {"network_volume": "keep", "pod": "delete_after_sync"}, "cloud_type": "SECURE", "container_disk_gb": 50, "data_center_id": null, "event": "submit_start", "executor": "runpod_pod", "gpu_count": 1, "gpu_type_id": "NVIDIA GeForce RTX 4090", "image": "ghcr.io/pabixn/llm-builder-training:latest", "interruptible": false, "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Starting RunPod training submission.", "timestamp": "2026-04-29T08:46:46.784226+00:00", "volume_mount_path": "/workspace", "volume_size_gb": 100}
-[llm-studio-runpod] {"event": "refresh_waiting_for_agent_url", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "RunPod refresh is waiting for the agent URL.", "timestamp": "2026-04-29T08:46:46.784474+00:00"}
-INFO:     127.0.0.1:52151 - "POST /api/v1/training/jobs HTTP/1.1" 201 Created
-[llm-studio-runpod] {"event": "create_pod_start", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Creating RunPod pod.", "timestamp": "2026-04-29T08:46:46.797639+00:00"}
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-[llm-studio-runpod] {"elapsed_seconds": 1.507, "event": "create_pod_done", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "RunPod pod created.", "pod_id": "ifcjfk289oczkt", "pod_status": "RUNNING", "timestamp": "2026-04-29T08:46:48.304417+00:00"}
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-[llm-studio-runpod] {"agent_url": null, "elapsed_seconds": 0.887, "event": "pod_ready_poll", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Polling RunPod pod for exposed agent port.", "pod_id": "ifcjfk289oczkt", "pod_status": "RUNNING", "port_mappings": {"0": "8021/tcp"}, "public_ip": null, "timestamp": "2026-04-29T08:46:49.192886+00:00"}
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-[llm-studio-runpod] {"agent_url": null, "elapsed_seconds": 18.635, "event": "pod_ready_poll", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Polling RunPod pod for exposed agent port.", "pod_id": "ifcjfk289oczkt", "pod_status": "RUNNING", "port_mappings": {"0": "8021/tcp"}, "public_ip": null, "timestamp": "2026-04-29T08:47:06.940878+00:00"}
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-[llm-studio-runpod] {"event": "refresh_waiting_for_agent_url", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "RunPod refresh is waiting for the agent URL.", "timestamp": "2026-04-29T08:47:17.036988+00:00"}
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-[llm-studio-runpod] {"agent_url": null, "elapsed_seconds": 37.288, "event": "pod_ready_poll", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Polling RunPod pod for exposed agent port.", "pod_id": "ifcjfk289oczkt", "pod_status": "RUNNING", "port_mappings": {"0": "8021/tcp"}, "public_ip": null, "timestamp": "2026-04-29T08:47:25.593733+00:00"}
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-[llm-studio-runpod] {"agent_url": null, "elapsed_seconds": 55.215, "event": "pod_ready_poll", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Polling RunPod pod for exposed agent port.", "pod_id": "ifcjfk289oczkt", "pod_status": "RUNNING", "port_mappings": {"0": "8021/tcp"}, "public_ip": null, "timestamp": "2026-04-29T08:47:43.520794+00:00"}
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-[llm-studio-runpod] {"event": "refresh_waiting_for_agent_url", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "RunPod refresh is waiting for the agent URL.", "timestamp": "2026-04-29T08:47:47.049804+00:00"}
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-[llm-studio-runpod] {"agent_url": "http://213.173.102.197:16691", "elapsed_seconds": 73.06, "event": "pod_ready_poll", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Polling RunPod pod for exposed agent port.", "pod_id": "ifcjfk289oczkt", "pod_status": "RUNNING", "port_mappings": {"8021": 16691}, "public_ip": "213.173.102.197", "timestamp": "2026-04-29T08:48:01.366198+00:00"}
-[llm-studio-runpod] {"agent_base_url": "http://213.173.102.197:16691", "event": "agent_url_resolved", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Resolved RunPod pod-agent URL.", "pod_id": "ifcjfk289oczkt", "port_mappings": {"8021": 16691}, "timestamp": "2026-04-29T08:48:01.367779+00:00"}
-[llm-studio-runpod] {"attempt": 1, "event": "agent_health_ok", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "RunPod pod agent is reachable.", "timestamp": "2026-04-29T08:48:01.537149+00:00"}
-[llm-studio-runpod] {"event": "bundle_build_start", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Building remote training bundle.", "timestamp": "2026-04-29T08:48:01.538573+00:00"}
-[llm-studio-runpod] {"bundle_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/bundle.tar.zst", "bundle_size_bytes": 615343, "content_type": "application/zstd", "event": "bundle_build_done", "executor": "runpod_pod", "file_count": 5, "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Remote training bundle built.", "timestamp": "2026-04-29T08:48:01.673245+00:00"}
-[llm-studio-runpod] {"bundle_size_bytes": 615343, "event": "bundle_upload_start", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Uploading remote training bundle.", "timestamp": "2026-04-29T08:48:01.673463+00:00"}
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-[llm-studio-runpod] {"event": "bundle_upload_done", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Remote training bundle uploaded.", "timestamp": "2026-04-29T08:48:03.329767+00:00"}
-[llm-studio-runpod] {"event": "agent_start_start", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Requesting remote training process start.", "timestamp": "2026-04-29T08:48:03.331221+00:00"}
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-[llm-studio-runpod] {"elapsed_seconds": 78.108, "event": "agent_start_done", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Remote training process started.", "process_id": 166, "timestamp": "2026-04-29T08:48:04.905725+00:00"}
-[llm-studio-runpod] {"bytes_added": 27, "event": "sync_append", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/stdout.log", "message": "Synced appended remote output.", "remote_kind": "logs/stdout", "size_bytes": 27, "timestamp": "2026-04-29T08:48:06.185042+00:00"}
-[llm-studio-runpod] {"bytes_added": 6111, "event": "sync_append", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/runpod_startup.log", "message": "Synced appended remote output.", "remote_kind": "logs/startup", "size_bytes": 6111, "timestamp": "2026-04-29T08:48:06.547534+00:00"}
-[llm-studio-runpod] {"bytes_added": 1231, "event": "sync_append", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/runpod_agent.log", "message": "Synced appended remote output.", "remote_kind": "logs/agent", "size_bytes": 1231, "timestamp": "2026-04-29T08:48:06.725640+00:00"}
-[llm-studio-runpod] {"bytes_added": 2375, "event": "sync_append", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/runpod_runner.log", "message": "Synced appended remote output.", "remote_kind": "logs/runner", "size_bytes": 2375, "timestamp": "2026-04-29T08:48:06.889224+00:00"}
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-[llm-studio-runpod] {"bytes_added": 584, "event": "sync_append", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/stdout.log", "message": "Synced appended remote output.", "remote_kind": "logs/stdout", "size_bytes": 611, "timestamp": "2026-04-29T08:48:11.044959+00:00"}
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 404 Not Found
-[llm-studio-runpod] {"bytes_added": 1663, "event": "sync_append", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/stdout.log", "message": "Synced appended remote output.", "remote_kind": "logs/stdout", "size_bytes": 2274, "timestamp": "2026-04-29T08:48:58.744558+00:00"}
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-[llm-studio-runpod] {"error": "Pod agent is unreachable: [Errno 60] Operation timed out", "event": "sync_output_unavailable", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Remote append-only output is not available yet.", "remote_kind": "samples", "timestamp": "2026-04-29T08:49:39.806535+00:00"}
-[llm-studio-runpod] {"bytes_added": 13404, "event": "sync_append", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/stdout.log", "message": "Synced appended remote output.", "remote_kind": "logs/stdout", "size_bytes": 15678, "timestamp": "2026-04-29T08:49:39.985364+00:00"}
-[llm-studio-runpod] {"bytes_added": 495, "event": "sync_append", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/stderr.log", "message": "Synced appended remote output.", "remote_kind": "logs/stderr", "size_bytes": 495, "timestamp": "2026-04-29T08:49:40.159248+00:00"}
-[llm-studio-runpod] {"event": "cleanup_start", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Applying RunPod cleanup policy.", "policy": {"network_volume": "keep", "pod": "delete_after_sync"}, "timestamp": "2026-04-29T08:49:41.581949+00:00"}
-[llm-studio-runpod] {"event": "cleanup_delete_pod_start", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "Deleting RunPod pod.", "pod_id": "ifcjfk289oczkt", "timestamp": "2026-04-29T08:49:41.616957+00:00"}
-[llm-studio-runpod] {"event": "cleanup_delete_pod_done", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "RunPod pod delete request returned.", "pod_id": "ifcjfk289oczkt", "timestamp": "2026-04-29T08:49:42.552355+00:00"}
-[llm-studio-runpod] {"event": "cleanup_done", "executor": "runpod_pod", "job_id": "650d09cbf3eb4882aec2560ff50d9d78", "message": "RunPod cleanup policy applied.", "policy": {"network_volume": "keep", "pod": "delete_after_sync"}, "timestamp": "2026-04-29T08:49:42.554188+00:00"}
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52157 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52158 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52134 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52151 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52159 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52156 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52848 - "GET /api/v1/tokenizer/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52847 - "GET /api/v1/projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52849 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52849 - "GET /api/v1/training/providers/runpod/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52851 - "GET /api/v1/training/providers/runpod/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52847 - "GET /api/v1/training/config/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/tokenizer/jobs/28e414e8bcc84be4ad81ca2f8e5c5181 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52852 - "GET /api/v1/projects/c974c88fea1a HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52848 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52849 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52847 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52851 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52852 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/data-preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52848 - "GET /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52848 - "OPTIONS /api/v1/training/validate/preflight HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52848 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52848 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52848 - "OPTIONS /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52852 - "DELETE /api/v1/training/jobs/650d09cbf3eb4882aec2560ff50d9d78 HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:52852 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "POST /api/v1/training/validate/preflight HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "OPTIONS /api/v1/training/providers/runpod/validate-key HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52855 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "POST /api/v1/training/providers/runpod/validate-key HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/providers/runpod/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "OPTIONS /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52857 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52857 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+[llm-studio-runpod] {"event": "refresh_waiting_for_agent_url", "executor": "runpod_pod", "job_id": "510d6f1e98bb468bb34956e13015de91", "message": "RunPod refresh is waiting for the agent URL.", "timestamp": "2026-04-29T09:44:07.789955+00:00"}
+[llm-studio-runpod] {"agent_port": 8021, "agent_port_protocol": "tcp", "cleanup_policy": {"network_volume": "keep", "pod": "delete_after_sync"}, "cloud_type": "SECURE", "container_disk_gb": 50, "data_center_id": null, "event": "submit_start", "executor": "runpod_pod", "gpu_count": 1, "gpu_type_id": "NVIDIA GeForce RTX 4090", "image": "ghcr.io/pabixn/llm-builder-training:latest", "interruptible": false, "job_id": "510d6f1e98bb468bb34956e13015de91", "message": "Starting RunPod training submission.", "timestamp": "2026-04-29T09:44:07.789614+00:00", "volume_mount_path": "/workspace", "volume_size_gb": 100}
+INFO:     127.0.0.1:52853 - "POST /api/v1/training/jobs HTTP/1.1" 201 Created
+[llm-studio-runpod] {"event": "create_pod_start", "executor": "runpod_pod", "job_id": "510d6f1e98bb468bb34956e13015de91", "message": "Creating RunPod pod.", "timestamp": "2026-04-29T09:44:07.800822+00:00"}
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52857 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52860 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52861 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52862 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52862 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+[llm-studio-runpod] {"agent_base_url": null, "elapsed_seconds": 0.962, "error": "RunPodClientError: create pod: There are no instances currently available", "event": "submit_failed", "executor": "runpod_pod", "job_id": "510d6f1e98bb468bb34956e13015de91", "message": "RunPod training submission failed.", "pod_id": null, "timestamp": "2026-04-29T09:44:08.762847+00:00", "traceback": "Traceback (most recent call last):\n  File \"/Users/pabi/Documents/GitHub/LLMBuilder/apps/llm-studio/api/app/training_executors/runpod_client.py\", line 133, in _request\n    with urlopen(request, timeout=self._timeout, context=self._ssl_context) as response:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py\", line 215, in urlopen\n    return opener.open(url, data, timeout)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py\", line 521, in open\n    response = meth(req, response)\n               ^^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py\", line 630, in http_response\n    response = self.parent.error(\n               ^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py\", line 559, in error\n    return self._call_chain(*args)\n           ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py\", line 492, in _call_chain\n    result = func(*args)\n             ^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/urllib/request.py\", line 639, in http_error_default\n    raise HTTPError(req.full_url, code, msg, hdrs, fp)\nurllib.error.HTTPError: HTTP Error 500: Internal Server Error\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/pabi/Documents/GitHub/LLMBuilder/apps/llm-studio/api/app/training_executors/runpod_pod.py\", line 71, in submit\n    pod = client.create_pod(\n          ^^^^^^^^^^^^^^^^^^\n  File \"/Users/pabi/Documents/GitHub/LLMBuilder/apps/llm-studio/api/app/training_executors/runpod_client.py\", line 102, in create_pod\n    payload = self._request(\"POST\", \"/pods\", json_body=request.to_payload())\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/pabi/Documents/GitHub/LLMBuilder/apps/llm-studio/api/app/training_executors/runpod_client.py\", line 138, in _request\n    raise RunPodClientError(message, status_code=exc.code, payload=payload) from exc\napp.training_executors.runpod_client.RunPodClientError: create pod: There are no instances currently available\n"}
+INFO:     127.0.0.1:52862 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52861 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52853 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52857 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52860 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "OPTIONS /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "DELETE /api/v1/training/jobs/510d6f1e98bb468bb34956e13015de91 HTTP/1.1" 204 No Content
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "OPTIONS /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+[llm-studio-runpod] {"agent_port": 8021, "agent_port_protocol": "tcp", "cleanup_policy": {"network_volume": "keep", "pod": "delete_after_sync"}, "cloud_type": "SECURE", "container_disk_gb": 50, "data_center_id": null, "event": "submit_start", "executor": "runpod_pod", "gpu_count": 1, "gpu_type_id": "NVIDIA GeForce RTX 4090", "image": "ghcr.io/pabixn/llm-builder-training:latest", "interruptible": false, "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Starting RunPod training submission.", "timestamp": "2026-04-29T09:44:30.900783+00:00", "volume_mount_path": "/workspace", "volume_size_gb": 100}
+[llm-studio-runpod] {"event": "refresh_waiting_for_agent_url", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "RunPod refresh is waiting for the agent URL.", "timestamp": "2026-04-29T09:44:30.901026+00:00"}
+INFO:     127.0.0.1:52868 - "POST /api/v1/training/jobs HTTP/1.1" 201 Created
+[llm-studio-runpod] {"event": "create_pod_start", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Creating RunPod pod.", "timestamp": "2026-04-29T09:44:30.913279+00:00"}
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+[llm-studio-runpod] {"elapsed_seconds": 1.421, "event": "create_pod_done", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "RunPod pod created.", "pod_id": "ihypje85iynj5m", "pod_status": "RUNNING", "timestamp": "2026-04-29T09:44:32.334551+00:00"}
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+[llm-studio-runpod] {"agent_url": null, "elapsed_seconds": 0.887, "event": "pod_ready_poll", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Polling RunPod pod for exposed agent port.", "pod_id": "ihypje85iynj5m", "pod_status": "RUNNING", "port_mappings": {"0": "8021/tcp"}, "public_ip": null, "timestamp": "2026-04-29T09:44:33.222605+00:00"}
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+[llm-studio-runpod] {"agent_url": "http://213.173.109.167:15205", "elapsed_seconds": 18.699, "event": "pod_ready_poll", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Polling RunPod pod for exposed agent port.", "pod_id": "ihypje85iynj5m", "pod_status": "RUNNING", "port_mappings": {"8021": 15205}, "public_ip": "213.173.109.167", "timestamp": "2026-04-29T09:44:51.034091+00:00"}
+[llm-studio-runpod] {"agent_base_url": "http://213.173.109.167:15205", "event": "agent_url_resolved", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Resolved RunPod pod-agent URL.", "pod_id": "ihypje85iynj5m", "port_mappings": {"8021": 15205}, "timestamp": "2026-04-29T09:44:51.035419+00:00"}
+[llm-studio-runpod] {"attempt": 1, "event": "agent_health_ok", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "RunPod pod agent is reachable.", "timestamp": "2026-04-29T09:44:51.197969+00:00"}
+[llm-studio-runpod] {"event": "bundle_build_start", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Building remote training bundle.", "timestamp": "2026-04-29T09:44:51.198893+00:00"}
+[llm-studio-runpod] {"bundle_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/773f922f314c4863a7a320ee6fec2cf7/bundle.tar.zst", "bundle_size_bytes": 615351, "content_type": "application/zstd", "event": "bundle_build_done", "executor": "runpod_pod", "file_count": 5, "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Remote training bundle built.", "timestamp": "2026-04-29T09:44:51.287420+00:00"}
+[llm-studio-runpod] {"bundle_size_bytes": 615351, "event": "bundle_upload_start", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Uploading remote training bundle.", "timestamp": "2026-04-29T09:44:51.287678+00:00"}
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+[llm-studio-runpod] {"event": "bundle_upload_done", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Remote training bundle uploaded.", "timestamp": "2026-04-29T09:44:52.471380+00:00"}
+[llm-studio-runpod] {"event": "agent_start_start", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Requesting remote training process start.", "timestamp": "2026-04-29T09:44:52.472414+00:00"}
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+[llm-studio-runpod] {"elapsed_seconds": 23.103, "event": "agent_start_done", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "message": "Remote training process started.", "process_id": 165, "timestamp": "2026-04-29T09:44:54.016483+00:00"}
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+[llm-studio-runpod] {"bytes_added": 663, "event": "sync_append", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/773f922f314c4863a7a320ee6fec2cf7/stdout.log", "message": "Synced appended remote output.", "remote_kind": "logs/stdout", "size_bytes": 663, "timestamp": "2026-04-29T09:44:58.127835+00:00"}
+[llm-studio-runpod] {"bytes_added": 6953, "event": "sync_append", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/773f922f314c4863a7a320ee6fec2cf7/runpod_startup.log", "message": "Synced appended remote output.", "remote_kind": "logs/startup", "size_bytes": 6953, "timestamp": "2026-04-29T09:44:58.473315+00:00"}
+[llm-studio-runpod] {"bytes_added": 1231, "event": "sync_append", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/773f922f314c4863a7a320ee6fec2cf7/runpod_agent.log", "message": "Synced appended remote output.", "remote_kind": "logs/agent", "size_bytes": 1231, "timestamp": "2026-04-29T09:44:58.634435+00:00"}
+[llm-studio-runpod] {"bytes_added": 2375, "event": "sync_append", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/773f922f314c4863a7a320ee6fec2cf7/runpod_runner.log", "message": "Synced appended remote output.", "remote_kind": "logs/runner", "size_bytes": 2375, "timestamp": "2026-04-29T09:44:58.791526+00:00"}
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+[llm-studio-runpod] {"bytes_added": 1663, "event": "sync_append", "executor": "runpod_pod", "job_id": "773f922f314c4863a7a320ee6fec2cf7", "local_path": "/Users/pabi/Library/Application Support/LLMStudio/training/jobs/773f922f314c4863a7a320ee6fec2cf7/stdout.log", "message": "Synced appended remote output.", "remote_kind": "logs/stdout", "size_bytes": 2326, "timestamp": "2026-04-29T09:45:23.988925+00:00"}
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52868 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52872 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/metrics HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52873 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/logs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52871 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/data-preview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52859 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/samples?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs/773f922f314c4863a7a320ee6fec2cf7/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52870 - "GET /api/v1/training/jobs HTTP/1.1" 200 OK

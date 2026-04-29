@@ -523,6 +523,13 @@ def maybe_compile_model(model: torch.nn.Module, *, is_cuda: bool) -> torch.nn.Mo
     if not is_cuda:
         return model
 
+    if not torch_compile_enabled():
+        print(
+            "torch.compile disabled: set LLM_STUDIO_TORCH_COMPILE=1 to opt in; running training in eager mode.",
+            flush=True,
+        )
+        return model
+
     compiler = find_c_compiler()
     if compiler is None:
         print("torch.compile disabled: no C compiler found on PATH; running training in eager mode.", flush=True)
@@ -536,6 +543,11 @@ def maybe_compile_model(model: torch.nn.Module, *, is_cuda: bool) -> torch.nn.Mo
 
     print(f"torch.compile enabled with C compiler: {compiler}", flush=True)
     return compiled
+
+
+def torch_compile_enabled() -> bool:
+    value = os.getenv("LLM_STUDIO_TORCH_COMPILE", "0").strip().lower()
+    return value in {"1", "true", "yes", "on"}
 
 
 def find_c_compiler() -> str | None:

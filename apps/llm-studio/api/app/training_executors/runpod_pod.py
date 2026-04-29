@@ -68,30 +68,29 @@ class RunPodPodExecutor:
         started_monotonic = time.monotonic()
         try:
             log_lifecycle(job, "create_pod_start", "Creating RunPod pod.")
-            pod = client.create_pod(
-                CreatePodRequest(
-                    name=f"llm-studio-{job.id[:12]}",
-                    image_name=settings.runpod_training_image,
-                    gpu_type_id=gpu_type_id,
-                    gpu_count=gpu_count,
-                    cloud_type=cloud_type,
-                    data_center_id=data_center_id,
-                    container_disk_gb=settings.runpod_container_disk_gb,
-                    volume_gb=volume_size_gb,
-                    volume_mount_path=settings.runpod_volume_mount_path,
-                    ports=[f"{settings.runpod_agent_port}/{settings.runpod_agent_port_protocol}"],
-                    env={
-                        "LLM_STUDIO_REMOTE_AGENT_TOKEN": agent_token,
-                        "LLM_STUDIO_REMOTE_JOB_ID": job.id,
-                        "LLM_STUDIO_REMOTE_WORKSPACE": f"{settings.runpod_volume_mount_path.rstrip('/')}/llm-studio",
-                        "HF_HOME": f"{settings.runpod_volume_mount_path.rstrip('/')}/llm-studio/cache/huggingface",
-                        "HF_DATASETS_CACHE": f"{settings.runpod_volume_mount_path.rstrip('/')}/llm-studio/cache/huggingface/datasets",
-                        "LLM_STUDIO_RUNPOD_AGENT_PORT": str(settings.runpod_agent_port),
-                        "PYTHONUNBUFFERED": "1",
-                    },
-                    interruptible=bool(target.get("interruptible", False)),
-                )
+            pod_request = CreatePodRequest(
+                name=f"llm-studio-{job.id[:12]}",
+                image_name=settings.runpod_training_image,
+                gpu_type_id=gpu_type_id,
+                gpu_count=gpu_count,
+                cloud_type=cloud_type,
+                data_center_id=data_center_id,
+                container_disk_gb=settings.runpod_container_disk_gb,
+                volume_gb=volume_size_gb,
+                volume_mount_path=settings.runpod_volume_mount_path,
+                ports=[f"{settings.runpod_agent_port}/{settings.runpod_agent_port_protocol}"],
+                env={
+                    "LLM_STUDIO_REMOTE_AGENT_TOKEN": agent_token,
+                    "LLM_STUDIO_REMOTE_JOB_ID": job.id,
+                    "LLM_STUDIO_REMOTE_WORKSPACE": f"{settings.runpod_volume_mount_path.rstrip('/')}/llm-studio",
+                    "HF_HOME": f"{settings.runpod_volume_mount_path.rstrip('/')}/llm-studio/cache/huggingface",
+                    "HF_DATASETS_CACHE": f"{settings.runpod_volume_mount_path.rstrip('/')}/llm-studio/cache/huggingface/datasets",
+                    "LLM_STUDIO_RUNPOD_AGENT_PORT": str(settings.runpod_agent_port),
+                    "PYTHONUNBUFFERED": "1",
+                },
+                interruptible=bool(target.get("interruptible", False)),
             )
+            pod = self._create_pod_with_retries(client, pod_request, job=job)
             pod_id = str(pod.get("id") or pod.get("podId") or "")
             if not pod_id:
                 raise RunPodClientError("RunPod did not return a pod id after creation.", payload=pod)
@@ -245,7 +244,7 @@ class RunPodPodExecutor:
         )
         if status in {TrainingJobStatus.completed, TrainingJobStatus.failed, TrainingJobStatus.cancelled}:
             snapshot.finished_at = _parse_datetime(state.get("finished_at")) or _utc_now()
-            policy = policy_from_job(job)
+            policy = terminal_cleanup_policy(job, status)
             try:
                 log_lifecycle(job, "cleanup_start", "Applying RunPod cleanup policy.", policy=policy_payload(policy))
                 self.cleanup(job, policy)
@@ -352,6 +351,36 @@ class RunPodPodExecutor:
                 "or set LLM_STUDIO_RUNPOD_API_KEY so cleanup can recover after restart."
             )
         return RunPodClient(api_key)
+
+    def _create_pod_with_retries(
+        self,
+        client: RunPodClient,
+        request: CreatePodRequest,
+        *,
+        job: StoredTrainingJob,
+    ) -> dict[str, Any]:
+        max_attempts = 3
+        last_error: RunPodClientError | None = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return client.create_pod(request)
+            except RunPodClientError as exc:
+                last_error = exc
+                if not _is_retryable_create_pod_error(exc) or attempt >= max_attempts:
+                    raise
+                delay_seconds = 3 * attempt
+                log_lifecycle(
+                    job,
+                    "create_pod_retry",
+                    "RunPod pod creation failed with a transient capacity error; retrying.",
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    delay_seconds=delay_seconds,
+                    error=str(exc),
+                )
+                time.sleep(delay_seconds)
+        assert last_error is not None
+        raise last_error
 
     def _wait_for_pod_ready(self, client: RunPodClient, pod_id: str, *, job: StoredTrainingJob) -> dict[str, Any]:
         deadline = time.monotonic() + 600
@@ -463,6 +492,15 @@ def _system_check_can_be_skipped(exc: RemoteAgentError) -> bool:
     if exc.status_code is not None and exc.status_code >= 500:
         return True
     return False
+
+
+def _is_retryable_create_pod_error(exc: RunPodClientError) -> bool:
+    message = str(exc).lower()
+    if "no instances currently available" in message:
+        return True
+    if "insufficient capacity" in message:
+        return True
+    return exc.status_code is not None and exc.status_code in {500, 502, 503, 504}
 
 
 def _is_missing_system_query_job_id_error(payload: Any) -> bool:
@@ -645,6 +683,13 @@ def policy_from_job(job: StoredTrainingJob) -> CleanupPolicy:
         pod=str(payload.get("pod") or "delete_after_sync"),
         network_volume=str(payload.get("network_volume") or "keep"),
     )
+
+
+def terminal_cleanup_policy(job: StoredTrainingJob, status: TrainingJobStatus) -> CleanupPolicy:
+    policy = policy_from_job(job)
+    if status in {TrainingJobStatus.failed, TrainingJobStatus.cancelled} and policy.pod == "delete_after_sync":
+        return CleanupPolicy(pod="stop_after_sync", network_volume=policy.network_volume)
+    return policy
 
 
 def remote_executor_status(state: dict[str, Any]) -> str:

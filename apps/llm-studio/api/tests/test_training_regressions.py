@@ -263,11 +263,28 @@ def test_cuda_memory_snapshot_accepts_unindexed_cuda_device(monkeypatch) -> None
     }
 
 
-def test_runner_skips_torch_compile_without_c_compiler(monkeypatch, capsys) -> None:
+def test_runner_skips_torch_compile_by_default(monkeypatch, capsys) -> None:
     from training import runner
 
     model = torch.nn.Linear(1, 1)
 
+    monkeypatch.delenv("LLM_STUDIO_TORCH_COMPILE", raising=False)
+
+    def fail_compile(*_args, **_kwargs):
+        raise AssertionError("torch.compile should be opt-in")
+
+    monkeypatch.setattr(runner.torch, "compile", fail_compile)
+
+    assert runner.maybe_compile_model(model, is_cuda=True) is model
+    assert "set LLM_STUDIO_TORCH_COMPILE=1" in capsys.readouterr().out
+
+
+def test_runner_skips_torch_compile_without_c_compiler_when_opted_in(monkeypatch, capsys) -> None:
+    from training import runner
+
+    model = torch.nn.Linear(1, 1)
+
+    monkeypatch.setenv("LLM_STUDIO_TORCH_COMPILE", "1")
     monkeypatch.delenv("CC", raising=False)
     monkeypatch.setattr(runner.shutil, "which", lambda _name: None)
 

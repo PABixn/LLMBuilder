@@ -21,8 +21,13 @@ from app.training_executors.remote_sync import (
     build_remote_bundle,
     rewrite_local_dataset_files,
 )
-from app.training_executors.runpod_client import CreatePodRequest
-from app.training_executors.runpod_pod import RunPodPodExecutor, _bundle_upload_error, build_agent_base_url
+from app.training_executors.runpod_client import CreatePodRequest, RunPodClientError
+from app.training_executors.runpod_pod import (
+    RunPodPodExecutor,
+    _bundle_upload_error,
+    build_agent_base_url,
+    terminal_cleanup_policy,
+)
 from app.training_models import TrainingJobState, TrainingJobStatus
 from app.training_storage import StoredTrainingJob, TrainingStudioStore
 
@@ -593,6 +598,61 @@ def test_runpod_cleanup_uses_ui_api_key_kept_in_memory(monkeypatch, tmp_path: Pa
     assert client.calls == [("delete", "pod123")]
 
 
+def test_runpod_failed_terminal_cleanup_stops_pod_for_inspection(tmp_path: Path) -> None:
+    job = stored_runpod_job(tmp_path, status=TrainingJobStatus.failed)
+    job.runpod_cleanup_policy = {"pod": "delete_after_sync", "network_volume": "keep"}
+
+    policy = terminal_cleanup_policy(job, TrainingJobStatus.failed)
+
+    assert policy.pod == "stop_after_sync"
+    assert policy.network_volume == "keep"
+
+
+def test_runpod_completed_terminal_cleanup_honors_delete_policy(tmp_path: Path) -> None:
+    job = stored_runpod_job(tmp_path, status=TrainingJobStatus.completed)
+    job.runpod_cleanup_policy = {"pod": "delete_after_sync", "network_volume": "keep"}
+
+    policy = terminal_cleanup_policy(job, TrainingJobStatus.completed)
+
+    assert policy.pod == "delete_after_sync"
+
+
+def test_runpod_create_pod_retries_transient_capacity_errors(monkeypatch, tmp_path: Path) -> None:
+    class FlakyCreatePodClient:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def create_pod(self, _request: CreatePodRequest) -> dict[str, str]:
+            self.calls += 1
+            if self.calls == 1:
+                raise RunPodClientError("create pod: There are no instances currently available", status_code=500)
+            return {"id": "pod123"}
+
+    client = FlakyCreatePodClient()
+    request = CreatePodRequest(
+        name="llm-studio-test",
+        image_name="ghcr.io/example/llm-builder-training:latest",
+        gpu_type_id="NVIDIA GeForce RTX 4090",
+        gpu_count=1,
+        cloud_type="SECURE",
+        container_disk_gb=50,
+        volume_gb=100,
+        volume_mount_path="/workspace",
+        ports=["8021/tcp"],
+        env={},
+    )
+    monkeypatch.setattr("app.training_executors.runpod_pod.time.sleep", lambda _seconds: None)
+
+    pod = RunPodPodExecutor()._create_pod_with_retries(  # type: ignore[arg-type]
+        client,
+        request,
+        job=stored_runpod_job(tmp_path),
+    )
+
+    assert pod == {"id": "pod123"}
+    assert client.calls == 2
+
+
 def test_runpod_bundle_upload_proxy_404_points_to_tcp_transport() -> None:
     error = _bundle_upload_error(
         RemoteAgentError("Pod agent request failed with HTTP 404: ", status_code=404),
@@ -619,6 +679,7 @@ def test_training_image_includes_shared_local_text_module() -> None:
     assert "build-essential" in dockerfile
     assert "CC=/usr/bin/gcc" in dockerfile
     assert "CXX=/usr/bin/g++" in dockerfile
+    assert "LLM_STUDIO_TORCH_COMPILE=0" in dockerfile
     assert "assert shutil.which('gcc')" in dockerfile
     assert "COPY llm_builder ./llm_builder" in dockerfile
     assert "import llm_builder.local_text_data; import training.runner" in dockerfile
