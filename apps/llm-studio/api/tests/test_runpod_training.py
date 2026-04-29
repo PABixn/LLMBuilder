@@ -616,6 +616,10 @@ def test_runpod_bundle_upload_direct_404_points_to_training_image() -> None:
 def test_training_image_includes_shared_local_text_module() -> None:
     dockerfile = (REPO_ROOT / "docker" / "training" / "Dockerfile").read_text(encoding="utf-8")
 
+    assert "build-essential" in dockerfile
+    assert "CC=/usr/bin/gcc" in dockerfile
+    assert "CXX=/usr/bin/g++" in dockerfile
+    assert "assert shutil.which('gcc')" in dockerfile
     assert "COPY llm_builder ./llm_builder" in dockerfile
     assert "import llm_builder.local_text_data; import training.runner" in dockerfile
 
@@ -627,6 +631,8 @@ def test_training_entrypoint_runs_startup_diagnostics() -> None:
     assert "python -m remote_agent.diagnostics startup" in entrypoint
     assert "startup.log" in entrypoint
     assert "uvicorn_start" in entrypoint
+    assert "system_tools" in diagnostics
+    assert '"gcc"' in diagnostics
     assert '"tokenizers": True' in diagnostics
     assert "transformers" not in diagnostics
 

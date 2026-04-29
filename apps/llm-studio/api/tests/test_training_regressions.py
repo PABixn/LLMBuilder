@@ -263,6 +263,23 @@ def test_cuda_memory_snapshot_accepts_unindexed_cuda_device(monkeypatch) -> None
     }
 
 
+def test_runner_skips_torch_compile_without_c_compiler(monkeypatch, capsys) -> None:
+    from training import runner
+
+    model = torch.nn.Linear(1, 1)
+
+    monkeypatch.delenv("CC", raising=False)
+    monkeypatch.setattr(runner.shutil, "which", lambda _name: None)
+
+    def fail_compile(*_args, **_kwargs):
+        raise AssertionError("torch.compile should not be called without a C compiler")
+
+    monkeypatch.setattr(runner.torch, "compile", fail_compile)
+
+    assert runner.maybe_compile_model(model, is_cuda=True) is model
+    assert "no C compiler" in capsys.readouterr().out
+
+
 def test_model_initial_loss_stays_near_log_vocab_for_tied_and_untied_heads() -> None:
     vocab_size = 2000
     idx = torch.tensor([[1, 2, 3, 4, 5, 6, 7, 8]])

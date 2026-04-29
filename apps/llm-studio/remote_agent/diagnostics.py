@@ -97,6 +97,7 @@ def emit_startup_diagnostics() -> None:
         path=sys.path[:12],
     )
     log_startup("filesystem", job_id=job_id, checks=filesystem_checks(), disk_usage=disk_usage_report())
+    log_startup("system_tools", job_id=job_id, tools=system_tool_report())
     log_startup("nvidia_smi", job_id=job_id, **nvidia_smi_report())
     log_startup("torch_cuda", job_id=job_id, **torch_cuda_report())
     log_startup("module_imports", job_id=job_id, modules=module_import_report())
@@ -177,6 +178,30 @@ def nvidia_smi_report() -> dict[str, Any]:
         "stdout": completed.stdout.strip().splitlines(),
         "stderr": completed.stderr.strip().splitlines(),
     }
+
+
+def system_tool_report() -> list[dict[str, Any]]:
+    tools = ("cc", "gcc", "g++", "make", "zstd")
+    results: list[dict[str, Any]] = []
+    for tool in tools:
+        executable = shutil.which(tool)
+        item: dict[str, Any] = {"tool": tool, "available": executable is not None, "path": executable}
+        if executable is not None:
+            try:
+                completed = subprocess.run(
+                    [executable, "--version"],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+            except Exception as exc:
+                item["version_error"] = f"{type(exc).__name__}: {exc}"
+            else:
+                item["returncode"] = completed.returncode
+                item["version"] = (completed.stdout or completed.stderr).strip().splitlines()[:1]
+        results.append(item)
+    return results
 
 
 def torch_cuda_report() -> dict[str, Any]:

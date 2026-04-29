@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import signal
+import shutil
 import time
 import traceback
 from contextlib import nullcontext
@@ -266,12 +268,7 @@ def run_training_job(
 
     orig_model = ConfigurableGPT(model_config)
     orig_model = orig_model.to(device)
-    compiled_model = orig_model
-    if is_cuda:
-        try:
-            compiled_model = torch.compile(orig_model, dynamic=False)
-        except Exception:
-            compiled_model = orig_model
+    compiled_model = maybe_compile_model(orig_model, is_cuda=is_cuda)
 
     if ddp:
         model = DDP(compiled_model, device_ids=[ddp_local_rank] if is_cuda else None)
@@ -520,6 +517,42 @@ def run_training_job(
 def install_signal_handlers() -> None:
     signal.signal(signal.SIGTERM, _cancel_signal_handler)
     signal.signal(signal.SIGINT, _cancel_signal_handler)
+
+
+def maybe_compile_model(model: torch.nn.Module, *, is_cuda: bool) -> torch.nn.Module:
+    if not is_cuda:
+        return model
+
+    compiler = find_c_compiler()
+    if compiler is None:
+        print("torch.compile disabled: no C compiler found on PATH; running training in eager mode.", flush=True)
+        return model
+
+    try:
+        compiled = torch.compile(model, dynamic=False)
+    except Exception as exc:
+        print(f"torch.compile disabled: {type(exc).__name__}: {exc}; running training in eager mode.", flush=True)
+        return model
+
+    print(f"torch.compile enabled with C compiler: {compiler}", flush=True)
+    return compiled
+
+
+def find_c_compiler() -> str | None:
+    configured = os.getenv("CC")
+    if configured:
+        resolved = shutil.which(configured)
+        if resolved:
+            return resolved
+        configured_path = Path(configured)
+        if configured_path.exists():
+            return str(configured_path)
+
+    for candidate in ("cc", "gcc", "clang"):
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    return None
 
 
 def phase_progress(fraction: float, progress_start: float, progress_end: float) -> float:

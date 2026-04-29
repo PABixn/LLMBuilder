@@ -5,6 +5,8 @@ ARG LLM_STUDIO_IMAGE_BUILT_AT=unknown
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
+    CC=/usr/bin/gcc \
+    CXX=/usr/bin/g++ \
     LLM_STUDIO_REMOTE_WORKSPACE=/workspace/llm-studio \
     LLM_STUDIO_IMAGE_REVISION=${LLM_STUDIO_IMAGE_REVISION} \
     LLM_STUDIO_IMAGE_BUILT_AT=${LLM_STUDIO_IMAGE_BUILT_AT}
@@ -12,7 +14,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /opt/llm-builder
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends zstd ca-certificates \
+    && apt-get install -y --no-install-recommends build-essential zstd ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY apps/llm-studio/api/requirements.txt /tmp/requirements.txt
@@ -25,7 +27,7 @@ COPY training ./training
 COPY llm_builder ./llm_builder
 COPY apps/llm-studio/remote_agent ./remote_agent
 
-RUN python -c "import llm_builder.local_text_data; import training.runner"
+RUN python -c "import shutil; assert shutil.which('gcc'); import llm_builder.local_text_data; import training.runner"
 
 COPY docker/training/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
