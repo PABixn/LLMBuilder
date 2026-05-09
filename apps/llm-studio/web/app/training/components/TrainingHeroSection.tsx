@@ -9,10 +9,8 @@ import {
 } from "react-icons/fi";
 
 import type { ProjectDetail } from "../../../lib/api";
-import {
-  trainingArtifactDownloadUrl,
-  type TrainingJob,
-} from "../../../lib/trainingApi";
+import { trainingArtifactDownloadUrl } from "../../../lib/training/artifacts";
+import type { TrainingJob } from "../../../lib/training/types";
 import type { TrainingJob as TokenizerTrainingJob } from "../../../lib/tokenizerLegacyApi";
 import {
   formatModelConfigMeta,

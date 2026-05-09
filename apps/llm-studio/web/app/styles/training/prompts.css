@@ -1,0 +1,108 @@
+.trainingPromptToolbar {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.trainingPromptHintLine {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  max-width: 64ch;
+}
+
+.trainingPromptGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.trainingPromptCard {
+  align-content: start;
+  gap: 12px;
+}
+
+.trainingPromptCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trainingPromptTitleGroup {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.trainingPromptMeta {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.trainingPromptRemoveButton {
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.trainingPromptRemoveButton:hover,
+.trainingPromptRemoveButton:focus-visible {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  outline: none;
+}
+
+.trainingPromptRemoveButton svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.trainingPromptEditor {
+  gap: 7px;
+}
+
+.trainingPromptEditor textarea {
+  min-height: 104px;
+  resize: vertical;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.trainingPromptFields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trainingPromptFields .fieldLabel {
+  width: 100%;
+}
+
+.trainingCodeBlock,
+.trainingLogBox {
+  margin: 0;
+  border-radius: 16px;
+  border: 1px solid var(--pre-line);
+  background: var(--pre-bg);
+  color: var(--pre-text);
+  padding: 12px;
+  font-size: 0.78rem;
+  line-height: 1.48;
+  overflow: auto;
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  white-space: pre-wrap;
+}
+

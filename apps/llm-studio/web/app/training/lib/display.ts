@@ -2,7 +2,7 @@ import type {
   TrainingIssue,
   TrainingJob,
   TrainingJobStatus,
-} from "../../../lib/trainingApi";
+} from "../../../lib/training/types";
 import type { ProjectDetail } from "../../../lib/api";
 import type { TrainingJob as TokenizerTrainingJob } from "../../../lib/tokenizerLegacyApi";
 import { formatInteger } from "./metrics";

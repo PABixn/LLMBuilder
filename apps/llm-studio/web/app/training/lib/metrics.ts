@@ -1,5 +1,5 @@
 import { formatExponentialValue } from "../../shared/lib/configNumber";
-import type { TrainingMetricPoint } from "../../../lib/trainingApi";
+import type { TrainingMetricPoint } from "../../../lib/training/types";
 import type { MetricChartKey, MetricValueNotation } from "../types";
 
 export type MetricChartDatum = {

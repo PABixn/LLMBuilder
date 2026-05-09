@@ -119,7 +119,7 @@ def filesystem_checks() -> list[dict[str, Any]]:
     candidates = (
         "/opt/llm-builder",
         "/opt/llm-builder/training/runner.py",
-        "/opt/llm-builder/llm_builder/local_text_data.py",
+        "/opt/llm-builder/training/local_text_data.py",
         "/opt/llm-builder/remote_agent/app.py",
         str(workspace_root()),
     )
@@ -246,7 +246,7 @@ def module_import_report() -> list[dict[str, Any]]:
         "torch": True,
         "datasets": True,
         "tokenizers": True,
-        "llm_builder.local_text_data": True,
+        "training.local_text_data": True,
         "training.runner": True,
         "remote_agent.app": True,
     }

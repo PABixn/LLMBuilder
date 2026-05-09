@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FiActivity, FiRefreshCw, FiSearch } from "react-icons/fi";
 
-import type { TrainingCheckpointEntry, TrainingJob } from "../../../lib/trainingApi";
+import type { TrainingCheckpointEntry, TrainingJob } from "../../../lib/training/types";
 import {
   completedArtifactName,
   formatCheckpointMeta,

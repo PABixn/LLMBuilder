@@ -1,0 +1,230 @@
+@media (max-width: 1180px) {
+  .trainingResultsGrid,
+  .trainingJsonGrid,
+  .trainingDualLog,
+  .lrPlannerBodyGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .trainingPage .workflowStepGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lrPlannerChartPanel {
+    margin-top: 0;
+    grid-template-rows: auto minmax(240px, auto) auto auto auto;
+  }
+}
+
+@media (max-width: 860px) {
+  .studioRoot.trainingPage {
+    width: min(100%, calc(100% - 12px));
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .trainingPage .fieldGrid,
+  .trainingPage .fieldGrid.compact {
+    grid-template-columns: 1fr;
+  }
+
+  .trainingRunNameField {
+    width: 100%;
+  }
+
+  .trainingPairGrid,
+  .trainingChartGrid,
+  .trainingAdvisorCompactGrid,
+  .lrPlannerSummaryGrid,
+  .lrPlannerInsightGrid,
+  .trainingPage .workflowStepGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .trainingAdvisorModeSwitch {
+    grid-template-columns: 1fr;
+  }
+
+  .lrPlannerSummary,
+  .lrPlannerSectionHead {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lrPlannerPhaseHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .lrPlannerToolbar,
+  .lrPlannerPresetRow,
+  .lrPlannerSectionActions,
+  .lrPlannerPhaseActions,
+  .lrPlannerPresetRow .secondaryButton,
+  .lrPlannerSectionActions .secondaryButton,
+  .lrPlannerDuplicatePhaseButton,
+  .lrPlannerToolbar .buttonGhost {
+    width: 100%;
+  }
+
+  .lrPlannerToolbar .buttonGhost,
+  .lrPlannerPresetRow .secondaryButton,
+  .lrPlannerSectionActions .secondaryButton,
+  .lrPlannerDuplicatePhaseButton {
+    justify-content: center;
+  }
+
+  .lrPlannerSummary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .lrPlannerSummary::after {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .lrPlannerSummary .lrPlannerToolbar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .lrPlannerChartFrame {
+    height: 240px;
+  }
+
+  .trainingChartCard {
+    min-height: 300px;
+  }
+
+  .trainingChartHead,
+  .trainingChartStats {
+    grid-template-columns: 1fr;
+  }
+
+  .trainingChartHead {
+    display: grid;
+  }
+
+  .trainingChartLatest {
+    text-align: left;
+  }
+
+  .trainingChartFrame {
+    height: 190px;
+  }
+
+  .trainingHeroActions,
+  .trainingHeroActions > .buttonGhost,
+  .trainingHeroActions > .buttonPrimary,
+  .trainingHeroActions > .buttonDanger {
+    width: 100%;
+  }
+
+  .trainingHeroActions > .buttonGhost,
+  .trainingHeroActions > .buttonPrimary,
+  .trainingHeroActions > .buttonDanger {
+    justify-content: center;
+  }
+
+  .trainingSectionHeader,
+  .trainingSettingsSectionHead,
+  .trainingPromptCardHead,
+  .trainingAssetPickerHeader,
+  .trainingAssetPickerOptionHead {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .trainingAssetPickerOverlay {
+    padding: 12px;
+    align-items: end;
+  }
+
+  .trainingAssetPickerDialog {
+    width: 100%;
+    max-height: calc(100vh - 24px);
+  }
+
+  .trainingAssetPickerControls {
+    grid-template-columns: 1fr;
+  }
+
+  .modeSwitch {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .modeSwitchButton,
+  .datasetCardHeader .textButton {
+    width: 100%;
+  }
+
+  .datasetCardHeader .datasetRemoveButton {
+    width: auto;
+  }
+
+  .actionRow {
+    flex-direction: column;
+  }
+
+  .localFileUploadButton {
+    width: 100%;
+  }
+
+  .localFileHeaderActions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .localFileHeaderButtons {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .localFileHeaderButtons .localFileUploadButton,
+  .localFileHeaderButtons .localFileHeaderButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .localFileList {
+    display: grid;
+    gap: 4px;
+  }
+
+  .trainingPromptFields {
+    grid-template-columns: 1fr;
+  }
+
+  .trainingSampleList {
+    max-height: 460px;
+  }
+
+  .trainingSampleStepSummary,
+  .trainingSampleTextSummary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .trainingSampleTextSummary > .trainingSampleMeta {
+    grid-column: 2;
+    white-space: normal;
+  }
+
+  .localFileItem,
+  .filterRow {
+    width: 100%;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 4px;
+  }
+
+  .localFileActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

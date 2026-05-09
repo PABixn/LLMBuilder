@@ -1,0 +1,163 @@
+.trainingPage {
+  padding-bottom: 72px;
+}
+
+.studioRoot.trainingPage {
+  width: min(1380px, calc(100% - 32px));
+  margin: 18px auto 44px;
+}
+
+.trainingPage .panelHead,
+.trainingSectionHeader,
+.trainingSettingsSectionHead,
+.trainingSettingsPanelHead,
+.trainingPromptCardHead,
+.trainingAssetPickerHeader,
+.trainingAssetPickerOptionHead,
+.localFileManagerHeader,
+.datasetCardHeader,
+.filterBuilderHeader {
+  flex-wrap: wrap;
+}
+
+.trainingPage .panelHead > :first-child,
+.trainingSectionHeader > :first-child,
+.trainingSettingsSectionHead > :first-child,
+.trainingSettingsPanelHead > :first-child,
+.trainingPromptCardHead > :first-child,
+.trainingAssetPickerHeader > :first-child,
+.trainingAssetPickerOptionHead > :first-child,
+.localFileManagerHeader > :first-child,
+.datasetCardHeader > :first-child,
+.filterBuilderHeader > :first-child {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.trainingPage .panelHead > :not(:first-child),
+.trainingSectionHeader > :not(:first-child),
+.trainingSettingsSectionHead > :not(:first-child),
+.trainingSettingsPanelHead > :not(:first-child),
+.trainingPromptCardHead > :not(:first-child),
+.trainingAssetPickerHeader > :not(:first-child),
+.trainingAssetPickerOptionHead > :not(:first-child),
+.localFileManagerHeader > :not(:first-child),
+.datasetCardHeader > :not(:first-child),
+.filterBuilderHeader > :not(:first-child) {
+  flex: 0 0 auto;
+}
+
+.trainingPage .fieldGrid,
+.trainingPage .fieldGrid.compact {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 260px));
+  justify-content: start;
+  align-items: start;
+  gap: 10px 14px;
+}
+
+.trainingPage .fieldGrid {
+  margin-top: 0;
+}
+
+.trainingPage .fieldGrid.compact {
+  margin-top: 0;
+}
+
+.trainingRunNameField {
+  width: min(100%, 220px);
+}
+
+.trainingPairGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trainingAssetCard {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--surface), var(--surface-raised));
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+  min-height: 110px;
+}
+
+.trainingAssetPickerEmpty h3 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.trainingToastStack {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  gap: 10px;
+  z-index: 50;
+}
+
+.trainingToast {
+  min-width: min(360px, calc(100vw - 36px));
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.trainingToast.tone-success {
+  border-color: color-mix(in srgb, var(--ok) 28%, transparent);
+}
+
+.trainingToast.tone-error {
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+}
+
+.trainingToastTitle {
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.trainingToastBody {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.trainingEmpty {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.trainingEmptyAction {
+  margin-top: 10px;
+}
+
+.trainingDualLog {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  height: 320px;
+  overflow: auto;
+  align-items: stretch;
+}
+
+.trainingSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trainingSectionHeader h3,
+.trainingSectionHeader h4 {
+  margin: 0;
+}
+
+.trainingTokenizerDatasetSection {
+  margin-top: 12px;
+}

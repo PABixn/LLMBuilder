@@ -1,0 +1,168 @@
+.trainingAssetLabel,
+.trainingWorkflowStep {
+  font-size: 0.71rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 760;
+  color: var(--text-muted);
+}
+
+.trainingAssetName,
+.trainingWorkflowTitle {
+  font-size: 0.96rem;
+  font-weight: 760;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.trainingAssetMeta,
+.trainingWorkflowMeta,
+.trainingIssueMeta,
+.trainingRecentMeta,
+.trainingCheckpointMeta,
+.trainingSampleMeta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
+.trainingAssetActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.trainingPage .workflowStepGrid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.trainingPage .workflowStepTile {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 184px;
+  min-width: 0;
+}
+
+.trainingPage .workflowStepTile > * {
+  min-width: 0;
+}
+
+.trainingPage .workflowStepTile strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--surface-soft);
+}
+
+.trainingPage .workflowStepTile strong::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.trainingPage .workflowStepTitle {
+  margin: 0;
+  font-size: 0.83rem;
+  font-weight: 700;
+  line-height: 1.32;
+  letter-spacing: 0;
+}
+
+.trainingPage .workflowStepTile .fieldNote {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.38;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.trainingPage .workflowStepAction {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+.trainingPage .workflowStepButtonCompact {
+  padding: 6px 8px;
+  font-size: 0.76rem;
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.trainingPage .workflowStepLink {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-decoration: none;
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  background: transparent;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.trainingPage .workflowStepLink:hover,
+.trainingPage .workflowStepLink:focus-visible {
+  border-color: var(--brand);
+  background: var(--surface-soft);
+  outline: none;
+}
+
+.trainingPage .workflowStepTile-ready {
+  border-color: var(--ok-border);
+  border-left: 4px solid var(--ok);
+}
+
+.trainingPage .workflowStepTile-ready strong {
+  color: var(--ok);
+  border-color: var(--ok-border);
+  background: var(--ok-soft);
+}
+
+.trainingPage .workflowStepTile-waiting {
+  border-color: var(--danger-border);
+  border-left: 4px solid var(--danger);
+}
+
+.trainingPage .workflowStepTile-waiting strong {
+  color: var(--danger);
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+}
+
+.trainingPage .workflowStepTile-inProgress {
+  border-color: var(--brand);
+  border-left: 4px solid var(--brand);
+}
+
+.trainingPage .workflowStepTile-inProgress strong {
+  color: var(--brand-strong);
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+

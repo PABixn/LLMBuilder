@@ -7,7 +7,7 @@ import {
   matchesCheckpointQuery,
   matchesJobQuery,
 } from "./formatters";
-import type { TrainingCheckpointEntry, TrainingJob } from "../../../lib/trainingApi";
+import type { TrainingCheckpointEntry, TrainingJob } from "../../../lib/training/types";
 
 test("inference job and checkpoint search covers identifiers, metadata, and files", () => {
   const job = {

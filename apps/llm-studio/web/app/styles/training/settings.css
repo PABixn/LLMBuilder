@@ -1,0 +1,907 @@
+.trainingSettingsStudio {
+  display: grid;
+  gap: 10px;
+}
+
+.trainingSettingsStudio .settingsPanel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+
+.trainingSettingsStudio .settingsPanel > summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 700;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trainingSettingsStudio .settingsPanel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.trainingSettingsStudio .settingsPanel > summary::after {
+  content: "▾";
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1;
+  transition: transform 0.16s ease;
+}
+
+.trainingSettingsStudio .settingsPanel[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.trainingSettingsStudio .settingsPanel[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.trainingSettingsStudio .settingsGrid {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.trainingSettingsStudio .settingsGroup {
+  display: grid;
+  gap: 10px;
+}
+
+.trainingSettingsStudio .settingsGroup + .settingsGroup {
+  padding-top: 10px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.trainingSettingsStudio,
+.trainingSettingsStudio .settingsPanel,
+.trainingSettingsStudio .settingsGrid,
+.trainingSettingsStudio .settingsGroup,
+.trainingSettingsStudio .fieldGrid,
+.trainingSettingsStudio .fieldLabel,
+.trainingSettingsStudio .datasetConfigurator,
+.trainingSettingsStudio .datasetList,
+.trainingSettingsStudio .datasetCard,
+.trainingSettingsStudio .subPanel,
+.trainingSettingsStudio .filterBuilder,
+.trainingSettingsStudio .filterList,
+.trainingSettingsStudio .filterRow,
+.trainingSettingsStudio .localFileManager,
+.trainingSettingsStudio .localFileList,
+.trainingSettingsStudio .localFileItem {
+  min-width: 0;
+}
+
+.trainingSettingsSectionHead,
+.trainingSettingsPanelHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.trainingSettingsStudio .settingsGroupHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.trainingSettingsSectionHead h3,
+.trainingSettingsStudio .settingsGroupHeader h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 760;
+  letter-spacing: -0.01em;
+}
+
+.trainingSettingsSectionCopy,
+.trainingSettingsStudio .settingsGroupHint {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.trainingSettingsStudio .fullWidthField {
+  max-width: 560px;
+}
+
+.trainingSettingsStudio .inlineField {
+  max-width: 260px;
+}
+
+.trainingSettingsStudio .fieldLabel small {
+  margin-left: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.trainingSettingsStudio .fieldGrid > .fieldLabel {
+  justify-self: start;
+  width: min(100%, 260px);
+}
+
+.trainingSettingsStudio .fieldGrid > .fieldLabel.fullWidthField {
+  width: min(100%, 560px);
+}
+
+.trainingSettingsStudio .trainingSettingsCompactGrid > .fieldLabel {
+  justify-self: start;
+  width: min(100%, 260px);
+}
+
+.trainingSettingsStudio .trainingSettingsCompactGrid > .fieldLabel.fullWidthField {
+  width: min(100%, 560px);
+}
+
+.trainingAdvisorCard {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  padding: 14px;
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  width: min(100%, 720px);
+}
+
+.trainingAdvisorHead,
+.trainingAdvisorToolbar,
+.trainingAdvisorProfileRow,
+.trainingAdvisorFoot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.trainingAdvisorHead h3,
+.trainingAdvisorKeyStat > strong,
+.trainingAdvisorTooltip strong {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 770;
+  letter-spacing: -0.01em;
+}
+
+.trainingAdvisorHead h3 {
+  margin-bottom: 8px;
+}
+
+.trainingAdvisorCopy,
+.trainingAdvisorTooltip p,
+.trainingAdvisorNote,
+.trainingAdvisorEmpty {
+  margin: 0;
+  font-size: 0.81rem;
+  line-height: 1.48;
+  color: var(--text-muted);
+}
+
+.trainingAdvisorMeta {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.trainingAdvisorToolbar {
+  align-items: flex-start;
+}
+
+.trainingAdvisorProfileRow {
+  flex: 0 1 100%;
+  align-items: center;
+}
+
+.trainingAdvisorToolbarLabel {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.trainingAdvisorModeSwitch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 1 auto;
+  gap: 4px;
+  padding: 3px;
+}
+
+.trainingAdvisorModeSwitch .modeSwitchButton {
+  cursor: pointer;
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.trainingAdvisorProfileRow > .pillBadge {
+  align-self: center;
+}
+
+.trainingAdvisorCompactGrid {
+  display: grid;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  justify-content: start;
+  grid-template-columns: repeat(2, minmax(200px, 220px));
+}
+
+.trainingAdvisorKeyStat {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+  width: min(100%, 220px);
+}
+
+.trainingAdvisorStatLabel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trainingAdvisorStatLabel > span,
+.trainingAdvisorKeyStat small {
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  line-height: 1.4;
+}
+
+.trainingAdvisorKeyStat > strong {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.98rem;
+}
+
+.trainingAdvisorInfo {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+}
+
+.trainingAdvisorInfoTrigger {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: help;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.trainingAdvisorInfoTrigger:hover,
+.trainingAdvisorInfoTrigger:focus-visible {
+  border-color: color-mix(in srgb, var(--brand) 42%, var(--line-strong));
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+}
+
+.trainingAdvisorTooltip {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 10px);
+  width: min(320px, calc(100vw - 40px));
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  box-shadow: 0 16px 30px rgba(8, 18, 30, 0.16);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 20;
+}
+
+.trainingAdvisorTooltip::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  bottom: 100%;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid var(--line-strong);
+  border-right: 1px solid var(--line-strong);
+  background: var(--surface);
+  transform: translateY(50%) rotate(-45deg);
+}
+
+.trainingAdvisorInfo:hover .trainingAdvisorTooltip,
+.trainingAdvisorInfo:focus-within .trainingAdvisorTooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.trainingAdvisorTooltipList {
+  display: grid;
+  gap: 6px;
+}
+
+.trainingAdvisorTooltipItem {
+  display: grid;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.trainingAdvisorTooltipItem:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.trainingAdvisorTooltipItem span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.trainingAdvisorTooltipItem strong {
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.trainingAdvisorTooltipItem.tone-good strong {
+  color: var(--ok);
+}
+
+.trainingAdvisorTooltipItem.tone-warning strong {
+  color: var(--warn);
+}
+
+.trainingAdvisorNote {
+  max-width: 48ch;
+}
+
+.trainingAdvisorEmpty {
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 14px;
+  width: 100%;
+}
+
+.lrPlanner {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 14px;
+  display: block;
+  min-width: 0;
+}
+
+.lrPlanner,
+.lrPlannerContent,
+.lrPlannerBodyGrid,
+.lrPlannerPhaseList,
+.lrPlannerPhaseCard,
+.lrPlannerChartPanel,
+.lrPlannerChartFrame,
+.lrPlannerFieldGrid {
+  min-width: 0;
+}
+
+.lrPlannerSummary,
+.lrPlannerSectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lrPlannerSummary {
+  cursor: pointer;
+  list-style: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  justify-content: stretch;
+  align-items: start;
+}
+
+.lrPlannerSummary::-webkit-details-marker {
+  display: none;
+}
+
+.lrPlannerSummary::after {
+  content: "▾";
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1;
+  margin-top: 4px;
+  justify-self: end;
+  transition: transform 0.16s ease;
+}
+
+.lrPlanner[open] .lrPlannerSummary::after {
+  transform: rotate(180deg);
+}
+
+.lrPlannerContent {
+  margin-top: 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.lrPlanner:not([open]) .lrPlannerContent {
+  display: none;
+}
+
+.lrPlannerSummary h3 {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 780;
+  letter-spacing: -0.01em;
+}
+
+.lrPlannerToolbar,
+.lrPlannerPresetRow,
+.lrPlannerSectionActions,
+.lrPlannerPhaseActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lrPlannerToolbar {
+  justify-self: end;
+}
+
+.lrPlannerSummaryGrid,
+.lrPlannerInsightGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lrPlannerSummaryItem,
+.lrPlannerInsightGrid > div {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  padding: 9px 10px;
+  display: grid;
+  gap: 3px;
+}
+
+.lrPlannerSummaryItem span,
+.lrPlannerInsightGrid span,
+.lrPlannerSectionHead span,
+.lrPlannerPhaseHeader span,
+.lrPlannerPhaseRange {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.lrPlannerSummaryItem strong,
+.lrPlannerInsightGrid strong {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.lrPlannerPresetRow {
+  align-items: stretch;
+}
+
+.lrPlannerPresetRow .secondaryButton {
+  min-height: 34px;
+}
+
+.lrPlannerBodyGrid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.08fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.lrPlannerPhaseList,
+.lrPlannerChartPanel {
+  display: grid;
+  gap: 10px;
+}
+
+.lrPlannerPhaseList-single {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.lrPlannerSectionHead > div:not(.lrPlannerSectionActions) {
+  display: grid;
+  gap: 2px;
+}
+
+.lrPlannerSectionHead > .lrPlannerSectionActions {
+  justify-content: flex-end;
+}
+
+.lrPlannerSectionHead strong {
+  font-size: 0.86rem;
+  font-weight: 760;
+}
+
+.lrPlannerPhaseCard {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.lrPlannerPhaseCard-single {
+  align-content: start;
+}
+
+.lrPlannerPhaseHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.lrPlannerPhaseHeader > div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lrPlannerPhaseHeader strong {
+  font-size: 0.9rem;
+  font-weight: 780;
+  letter-spacing: -0.01em;
+}
+
+.lrPlannerPhaseHeader p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.36;
+}
+
+.lrPlannerPhaseCard-single .lrPlannerPhaseActions {
+  justify-content: flex-end;
+}
+
+.lrPlannerDuplicatePhaseButton {
+  min-height: 30px;
+  border-radius: 8px;
+}
+
+.lrPlannerPhaseRange {
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 3px 8px;
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+}
+
+.lrPlannerFieldGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0;
+}
+
+.trainingSettingsStudio .lrPlannerFieldGrid > .fieldLabel,
+.trainingSettingsStudio .lrPlannerFieldGrid > .fieldLabel.fullWidthField {
+  width: 100%;
+  max-width: none;
+}
+
+.lrPlannerChartPanel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 12px;
+  margin-top: 46px;
+  align-self: stretch;
+  grid-template-rows: auto minmax(300px, 1fr) auto auto auto;
+}
+
+.lrPlannerChartFrame {
+  width: 100%;
+  height: auto;
+  min-height: 300px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 8px;
+}
+
+.lrPlannerChartFrame .recharts-wrapper,
+.lrPlannerChartFrame .recharts-surface {
+  overflow: visible;
+}
+
+.lrPlannerTimeline {
+  display: grid;
+  grid-template-columns: var(--lr-chart-left-gutter, 68px) minmax(0, 1fr) var(--lr-chart-right-gutter, 12px);
+  gap: 0;
+  align-items: stretch;
+  min-height: 34px;
+}
+
+.lrPlannerTimelineTrack {
+  display: flex;
+  min-width: 0;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+
+.lrPlannerTimelineGutter {
+  min-width: 0;
+}
+
+.lrPlannerTimelineSegment {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--line);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  font-size: 0.68rem;
+  font-weight: 760;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 6px;
+}
+
+.lrPlannerTimelineSegment:nth-child(2n) {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.lrPlannerTimelineSegment:nth-child(3n) {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.lrPlannerTimelineSegment:last-child {
+  border-right: 0;
+}
+
+.lrPlannerWarning {
+  margin: 0;
+  border: 1px solid var(--warn);
+  border-radius: 10px;
+  background: var(--warn-soft);
+  color: var(--text);
+  padding: 9px 10px;
+  font-size: 0.8rem;
+  line-height: 1.42;
+}
+
+.trainingAdvancedDisclosure {
+  margin-top: 0;
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+}
+
+.trainingSettingsStudio .trainingPromptCard,
+.trainingSettingsStudio .datasetCard {
+  border-radius: 12px;
+  padding: 12px;
+  gap: 8px;
+  background: var(--surface);
+}
+
+.trainingSettingsStudio .trainingPromptFields > .fieldLabel {
+  width: 100%;
+}
+
+.trainingJsonGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sourceModeRow {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sourceModeRow > span {
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.modeSwitch {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  width: fit-content;
+}
+
+.modeSwitchButton {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 650;
+  padding: 7px 10px;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.modeSwitchButton-active {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.modeSwitchButton:hover:not(:disabled),
+.modeSwitchButton:focus-visible {
+  background: var(--surface-soft);
+  border-color: var(--line-strong);
+  color: var(--text);
+  outline: none;
+}
+
+.settingsStack {
+  display: grid;
+  gap: 12px;
+}
+
+.trainingCheckboxLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.trainingCheckboxLine input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand);
+}
+
+.datasetConfigurator {
+  display: grid;
+  gap: 10px;
+}
+
+.trainingPage .settingsCategoryAnchor {
+  scroll-margin-top: 86px;
+  border-radius: 10px;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.trainingPage .settingsCategoryAnchor-highlight {
+  margin: -8px;
+  padding: 8px;
+  border: 1px solid var(--brand);
+  background: linear-gradient(0deg, var(--brand-soft), var(--brand-soft)),
+    var(--surface-soft);
+  box-shadow: 0 0 0 4px var(--input-focus);
+}
+
+.primaryButton,
+.secondaryButton,
+.textButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 650;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.primaryButton {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: white;
+}
+
+.primaryButton:hover:not(:disabled),
+.primaryButton:focus-visible {
+  background: var(--brand-strong);
+  border-color: var(--brand-strong);
+  color: white;
+  outline: none;
+}
+
+.secondaryButton {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.secondaryButton:hover:not(:disabled),
+.secondaryButton:focus-visible {
+  border-color: var(--brand);
+  background: var(--surface-raised);
+  color: var(--text);
+  outline: none;
+}
+
+.textButton {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.textButton:hover:not(:disabled),
+.textButton:focus-visible {
+  background: var(--surface-raised);
+  color: var(--text);
+  outline: none;
+}
+
+.textButton.trainingPromptRemoveButton:hover:not(:disabled),
+.textButton.trainingPromptRemoveButton:focus-visible {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.textButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+

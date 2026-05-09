@@ -13,20 +13,20 @@ Each RunPod job gets a random pod-agent bearer token. The token is injected into
 - `Authorization: Bearer <token>`
 - `X-LLM-Studio-Job-Id: <job_id>`
 
-The local database stores only a SHA-256 token hash. The raw token is kept in process memory so API restarts do not leak it to disk.
+The local database stores only a SHA-256 token hash. The raw token is kept in process memory so API restarts do not leak it to disk. After an API restart, the app can still show the RunPod pod ID from job metadata, but it cannot authenticate to the pod agent unless a new supported recovery flow is added.
 
 ## Uploaded Data
 
-The job bundle contains model config, tokenizer artifact, training config, dataloader config, resolved preflight metadata, and local dataset files referenced by the dataloader. Hugging Face dataset references remain remote references.
+The job bundle contains model config, tokenizer artifact, training config, dataloader config, resolved preflight metadata, and local dataset files referenced by the dataloader. Hugging Face dataset references remain remote references. Bundle staging directories are removed after a successful archive is written.
 
 ## No S3 Key Requirement
 
-RunPod network-volume S3 access requires separate S3 credentials. The standard `llm-studio` path avoids that requirement by uploading and downloading through the authenticated pod agent over the exposed HTTP port.
+RunPod network-volume S3 access requires separate S3 credentials. The standard `llm-studio` path avoids that requirement by using the Pod's attached volume and uploading/downloading through the authenticated pod agent over the exposed HTTP port.
 
 ## File Access Controls
 
-The pod agent rejects path traversal and serves files only from the current job output directory. Downloaded artifacts are treated as untrusted until checksums and manifests are verified.
+The pod agent rejects path traversal and serves files only from the current job output directory. Downloaded checkpoints are size/checksum verified when the pod-agent manifest provides those fields, and `Delete after sync` waits for a verified final `artifact_manifest.json`.
 
 ## Deleting Remote Resources
 
-Use the Training page stop/cleanup controls first. If cleanup fails, use the displayed Pod ID in RunPod to stop or delete the Pod and, if selected, remove the network volume.
+Use the Training page stop/cleanup controls first. If cleanup fails, use the displayed Pod ID in RunPod to stop or delete the Pod.

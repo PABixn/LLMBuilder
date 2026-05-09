@@ -24,11 +24,11 @@ For current launches the configured RunPod port is `8021/tcp`, even though the s
 
 ## Pod Agent Is Healthy But Training Never Uses CPU Or GPU
 
-If the RunPod logs repeatedly show `200 OK` health or runtime-state requests while the Pod has no CPU/GPU/VRAM load, verify the image tag. The old `ghcr.io/pabixn/llm-builder-training:sha-7037615` image can boot the HTTP agent but does not contain the shared `llm_builder` package required by the current trainer. Use `ghcr.io/pabixn/llm-builder-training:latest` or another image built from the current `docker/training/Dockerfile`.
+If the RunPod logs repeatedly show `200 OK` health or runtime-state requests while the Pod has no CPU/GPU/VRAM load, verify the image tag. Old training images can boot the HTTP agent but may be missing helper modules required by the current trainer. Use `ghcr.io/pabixn/llm-builder-training:latest` or another image built from the current `docker/training/Dockerfile`.
 
 The local API uses authenticated `/v1/system` compatibility details when the pod image exposes them. It sends the job id as both the legacy query parameter and the current header because older remote-agent builds require `?job_id=...` on this endpoint. Legacy or buggy pod-agent images that return 404, the known missing-query 422, or a diagnostic-only 5xx from `/v1/system` are allowed to continue to upload/start; if the trainer import is actually broken, the start request should fail with the runner error instead of stopping at the compatibility probe.
 
-On launch failure, the local API stops the Pod by default instead of deleting it so the RunPod console and remote volume remain available for inspection. Use remote cleanup after inspecting the failure if you want to delete the Pod.
+On launch failure, the local API stops the Pod by default instead of deleting it so the RunPod console and Pod volume remain available for inspection. Use remote cleanup after inspecting the failure if you want to delete the Pod.
 
 ## Container Diagnostics
 
@@ -40,7 +40,7 @@ If container access logs show repeated `GET /v1/jobs/<job>/files?path=training_d
 
 If the container logs show `TypeError: remote_agent.app.agent_log() got multiple values for keyword argument 'job_id'` on `GET /v1/system`, the Pod is running an image built before the remote-agent logging fix. Rebuild and push `ghcr.io/pabixn/llm-builder-training:latest` from the current workspace, or set `LLM_STUDIO_RUNPOD_TRAINING_IMAGE` to a freshly built tag. The local launcher no longer depends on `/v1/system` during normal startup so stale images can still reach the bundle/start path, but rebuilt images are required to remove that container-side exception.
 
-The current custom GPT training runner requires `torch`, `datasets`, `tokenizers`, `llm_builder.local_text_data`, and `training.runner`. It does not require Hugging Face `transformers`; older diagnostics briefly probed it as if it were required, which could produce a misleading `ModuleNotFoundError: No module named 'transformers'` line even though the image had the dependencies this runner uses.
+The current custom GPT training runner requires `torch`, `datasets`, `tokenizers`, `training.local_text_data`, and `training.runner`. It does not require Hugging Face `transformers`; older diagnostics briefly probed it as if it were required, which could produce a misleading `ModuleNotFoundError: No module named 'transformers'` line even though the image had the dependencies this runner uses.
 
 ## Training Failed
 
@@ -48,8 +48,23 @@ Open the active run logs. `stdout.log`, `stderr.log`, `runtime_state.json`, and 
 
 ## Checkpoints Not Synced
 
-Keep the Pod until sync finishes. The local API cannot read a RunPod network volume after deleting the last Pod that can access it unless separate S3 credentials are introduced.
+Keep the Pod until sync finishes. The local API syncs through the pod agent and does not create a separately managed RunPod network volume for later reads.
 
 ## Cleanup Failed Or Unexpected Charges
 
 Use the Pod ID shown in the active run monitor to stop or delete the Pod in RunPod. Prefer `Delete after sync` for the Pod cleanup policy when you do not need to inspect the remote machine after training.
+
+## Lifecycle Categories
+
+Local `runpod_lifecycle.jsonl` entries include `job_id`, `correlation_id`, `event`, and `category`. Map categories to actions as follows:
+
+- `invalid_api_key`: validate or rotate the RunPod API key.
+- `no_capacity`: choose another GPU, datacenter, or cloud type.
+- `pod_no_port`: inspect RunPod networking and the configured `8021/tcp` port.
+- `agent_unreachable`: check the pod-agent process and training image logs.
+- `stale_image`: rebuild or select a current training image.
+- `bundle_upload_rejected`: inspect pod-agent auth, bundle size, and proxy transport.
+- `trainer_import_failure`: rebuild the image with current trainer dependencies.
+- `trainer_runtime_failure`: inspect synced `stderr.log` and `runtime_state.json`.
+- `sync_failure`: keep the pod available until final manifest and checkpoint sync succeeds.
+- `cleanup_failure`: stop or delete the visible pod in the RunPod console.

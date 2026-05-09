@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import codecs
 from collections import Counter, defaultdict
-import json
 import re
 import shutil
 import sys
@@ -14,22 +13,17 @@ from uuid import uuid4
 
 from fastapi import APIRouter, FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 import torch
 import torch.nn as nn
-from tokenizers import Tokenizer
 
 from .config import (
     DATALOADER_CONFIG_TEMPLATE_PATH,
     DATALOADER_SCHEMA_PATH,
     MODEL_CONFIG_TEMPLATE_PATH,
     MODEL_SCHEMA_PATH,
-    TRAINING_DATALOADER_SCHEMA_PATH,
-    TRAINING_DATALOADER_TEMPLATE_PATH,
-    TRAINING_LOOP_SCHEMA_PATH,
-    TRAINING_LOOP_TEMPLATE_PATH,
     TOKENIZER_CONFIG_TEMPLATE_PATH,
     TOKENIZER_SCHEMA_PATH,
     apply_runtime_environment,
@@ -69,31 +63,8 @@ from .tokenizer_models import (
 )
 from .tokenizer_storage import StudioStore as TokenizerStudioStore
 from .training_jobs import TrainingRunManager
-from .training_models import (
-    TrainingCheckpointsResponse,
-    TrainingConfigSchemasResponse,
-    TrainingConfigTemplatesResponse,
-    CreateTrainingJobRequest,
-    TrainingGenerateRequest,
-    TrainingGenerateResponse,
-    TrainingJobsListResponse as LLMTrainingJobsListResponse,
-    TrainingLogsResponse,
-    TrainingMetricsResponse,
-    TrainingPreflightRequest,
-    TrainingPreflightResponse,
-    RunPodProviderDefaults,
-    RunPodProviderStatus,
-    RunPodResourceListResponse,
-    RunPodValidateKeyRequest,
-    RunPodValidateKeyResponse,
-    RunPodCleanupPolicy,
-    TrainingSamplesResponse,
-    TrainingJobResponse as LLMTrainingJobResponse,
-    ValidateConfigRequest as TrainingValidateConfigRequest,
-    ValidateConfigResponse as TrainingValidateConfigResponse,
-)
-from .training_storage import TrainingStudioStore
-from .training_executors.runpod_client import RunPodClient, RunPodClientError
+from .training_runs.store import TrainingStudioStore
+from .training_runs.routes import register_training_routes
 from .schemas import load_json, write_json
 
 IMPORT_ROOT = Path(__file__).resolve().parents[4]
@@ -116,8 +87,6 @@ from model.model import (
 )
 from tokenizer.dataloader_config import DataloaderConfig
 from tokenizer.loader import TokenizerConfig
-from training.dataloader_config import TrainingDataloaderConfig
-from training.training_config import TrainingConfig
 
 _PROJECT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{6,64}$")
 _METADATA_FILE = "metadata.json"
@@ -175,6 +144,11 @@ async def lifespan(app: FastAPI):
     training_store.mark_incomplete_local_jobs_failed(
         "Training was interrupted because the API restarted before completion."
     )
+    training_store.mark_incomplete_runpod_jobs_recovery_limited(
+        "API restarted while this RunPod job was incomplete. The pod may still be running, "
+        "but the raw pod-agent token is not persisted, so automatic refresh cannot resume "
+        "and remote reattach is unavailable in this version."
+    )
 
     app.state.settings = settings
     app.state.tokenizer_store = tokenizer_store
@@ -214,7 +188,6 @@ app.add_middleware(
 
 api = APIRouter(prefix="/api/v1", tags=["llm-studio"])
 tokenizer_api = APIRouter(prefix="/api/v1/tokenizer", tags=["tokenizer-workspace"])
-training_api = APIRouter(prefix="/api/v1/training", tags=["training-workspace"])
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
@@ -473,488 +446,8 @@ def tokenizer_artifact_download(job_id: str) -> FileResponse:
     return FileResponse(path, filename=path.name, media_type="application/json")
 
 
-@training_api.get("/health", response_model=HealthResponse)
-def training_health() -> HealthResponse:
-    return HealthResponse()
-
-
-@training_api.get("/config/templates", response_model=TrainingConfigTemplatesResponse)
-def training_config_templates() -> TrainingConfigTemplatesResponse:
-    return TrainingConfigTemplatesResponse(
-        training_config_template=load_json(TRAINING_LOOP_TEMPLATE_PATH),
-        dataloader_config_template=load_json(TRAINING_DATALOADER_TEMPLATE_PATH),
-    )
-
-
-@training_api.get("/config/schemas", response_model=TrainingConfigSchemasResponse)
-def training_config_schemas() -> TrainingConfigSchemasResponse:
-    return TrainingConfigSchemasResponse(
-        training_config_schema=load_json(TRAINING_LOOP_SCHEMA_PATH),
-        dataloader_schema=load_json(TRAINING_DATALOADER_SCHEMA_PATH),
-    )
-
-
-@training_api.post("/validate/dataloader", response_model=TrainingValidateConfigResponse)
-def validate_training_dataloader(payload: TrainingValidateConfigRequest) -> TrainingValidateConfigResponse:
-    try:
-        normalized = TrainingDataloaderConfig.model_validate(payload.config).model_dump(mode="json")
-    except ValidationError as exc:
-        raise HTTPException(status_code=422, detail=exc.errors()) from exc
-    return TrainingValidateConfigResponse(normalized_config=normalized)
-
-
-@training_api.post("/validate/training-config", response_model=TrainingValidateConfigResponse)
-def validate_training_config(payload: TrainingValidateConfigRequest) -> TrainingValidateConfigResponse:
-    try:
-        normalized = TrainingConfig.model_validate(payload.config).model_dump(mode="json")
-    except ValidationError as exc:
-        raise HTTPException(status_code=422, detail=exc.errors()) from exc
-    return TrainingValidateConfigResponse(normalized_config=normalized)
-
-
-@training_api.post("/validate/preflight", response_model=TrainingPreflightResponse)
-def validate_training_preflight(payload: TrainingPreflightRequest) -> TrainingPreflightResponse:
-    manager = app.state.training_jobs
-    try:
-        return manager.build_preflight(payload)
-    except KeyError as exc:
-        missing_id = str(exc).strip("'")
-        raise HTTPException(status_code=404, detail=f"Unknown asset id: {missing_id}") from exc
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-
-
-def _runpod_defaults() -> RunPodProviderDefaults:
-    settings = get_settings()
-    return RunPodProviderDefaults(
-        gpu_type_id=settings.runpod_default_gpu_type,
-        gpu_count=settings.runpod_default_gpu_count,
-        cloud_type=settings.runpod_default_cloud_type,  # type: ignore[arg-type]
-        data_center_id=settings.runpod_default_data_center_id,
-        network_volume_size_gb=settings.runpod_default_volume_size_gb,
-        container_disk_gb=settings.runpod_container_disk_gb,
-        volume_mount_path=settings.runpod_volume_mount_path,
-        training_image=settings.runpod_training_image,
-        agent_port=settings.runpod_agent_port,
-        agent_port_protocol=settings.runpod_agent_port_protocol,  # type: ignore[arg-type]
-        cleanup_policy=RunPodCleanupPolicy(
-            pod="delete_after_sync" if settings.runpod_auto_delete_pod else "stop_after_sync",
-            network_volume="delete_after_sync" if settings.runpod_auto_delete_volume else "keep",
-        ),
-    )
-
-
-def _runpod_api_key() -> tuple[str | None, str]:
-    override = getattr(app.state, "runpod_api_key_override", None)
-    if isinstance(override, str) and override.strip():
-        return override.strip(), "memory"
-    settings_key = get_settings().runpod_api_key
-    if settings_key:
-        return settings_key, "environment"
-    return None, "none"
-
-
-@training_api.get("/providers/runpod/defaults", response_model=RunPodProviderDefaults)
-def get_runpod_defaults() -> RunPodProviderDefaults:
-    return _runpod_defaults()
-
-
-@training_api.get("/providers/runpod/status", response_model=RunPodProviderStatus)
-def get_runpod_status() -> RunPodProviderStatus:
-    api_key, source = _runpod_api_key()
-    return RunPodProviderStatus(
-        configured=api_key is not None,
-        validated=api_key is not None,
-        source=source,  # type: ignore[arg-type]
-        defaults=_runpod_defaults(),
-    )
-
-
-@training_api.post("/providers/runpod/validate-key", response_model=RunPodValidateKeyResponse)
-def validate_runpod_key(payload: RunPodValidateKeyRequest) -> RunPodValidateKeyResponse:
-    api_key = payload.api_key.strip()
-    try:
-        account = RunPodClient(api_key).validate_key()
-    except RunPodClientError as exc:
-        return RunPodValidateKeyResponse(valid=False, message=str(exc), account=None)
-    app.state.runpod_api_key_override = api_key
-    return RunPodValidateKeyResponse(valid=True, message="RunPod API key validated.", account=account)
-
-
-@training_api.get("/providers/runpod/pods", response_model=RunPodResourceListResponse)
-def list_runpod_pods() -> RunPodResourceListResponse:
-    api_key, _ = _runpod_api_key()
-    if api_key is None:
-        raise HTTPException(status_code=409, detail="RunPod API key is not configured.")
-    try:
-        return RunPodResourceListResponse(items=RunPodClient(api_key).list_pods())
-    except RunPodClientError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-
-@training_api.get("/providers/runpod/network-volumes", response_model=RunPodResourceListResponse)
-def list_runpod_network_volumes() -> RunPodResourceListResponse:
-    api_key, _ = _runpod_api_key()
-    if api_key is None:
-        raise HTTPException(status_code=409, detail="RunPod API key is not configured.")
-    try:
-        return RunPodResourceListResponse(items=RunPodClient(api_key).list_network_volumes())
-    except RunPodClientError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-
-@training_api.post("/jobs", response_model=LLMTrainingJobResponse, status_code=201)
-def create_training_job(payload: CreateTrainingJobRequest) -> LLMTrainingJobResponse:
-    manager = app.state.training_jobs
-    try:
-        if payload.execution_target.kind.value == "runpod_pod" and payload.execution_target.api_key is None:
-            api_key, _ = _runpod_api_key()
-            payload.execution_target.api_key = api_key
-        return manager.create_job(payload)
-    except KeyError as exc:
-        missing_id = str(exc).strip("'")
-        raise HTTPException(status_code=404, detail=f"Unknown asset id: {missing_id}") from exc
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-
-
-@training_api.get("/jobs", response_model=LLMTrainingJobsListResponse)
-def list_training_jobs() -> LLMTrainingJobsListResponse:
-    manager = app.state.training_jobs
-    return LLMTrainingJobsListResponse(jobs=manager.list_jobs())
-
-
-@training_api.get("/jobs/{job_id}", response_model=LLMTrainingJobResponse)
-def get_training_job(job_id: str) -> LLMTrainingJobResponse:
-    manager = app.state.training_jobs
-    try:
-        return manager.get_job(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-
-
-@training_api.delete("/jobs/{job_id}", status_code=204)
-def delete_training_job(job_id: str) -> Response:
-    manager = app.state.training_jobs
-    try:
-        manager.delete_job(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return Response(status_code=204)
-
-
-@training_api.get("/jobs/{job_id}/metrics", response_model=TrainingMetricsResponse)
-def get_training_metrics(job_id: str, limit: int | None = None) -> TrainingMetricsResponse:
-    manager = app.state.training_jobs
-    try:
-        return manager.get_metrics(job_id, limit=limit)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-
-
-@training_api.get("/jobs/{job_id}/samples", response_model=TrainingSamplesResponse)
-def get_training_samples(job_id: str, limit: int = 50) -> TrainingSamplesResponse:
-    manager = app.state.training_jobs
-    try:
-        return manager.get_samples(job_id, limit=limit)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-
-
-@training_api.get("/jobs/{job_id}/logs", response_model=TrainingLogsResponse)
-def get_training_logs(job_id: str, lines: int | None = None) -> TrainingLogsResponse:
-    manager = app.state.training_jobs
-    try:
-        return manager.get_logs(job_id, lines=lines)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-
-
-@training_api.get("/jobs/{job_id}/data-preview")
-def get_training_data_preview(job_id: str) -> dict[str, object]:
-    manager = app.state.training_jobs
-    try:
-        return manager.get_data_preview(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-    except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Training data preview is not available yet for job {job_id}.",
-        ) from exc
-
-
-@training_api.get("/jobs/{job_id}/checkpoints", response_model=TrainingCheckpointsResponse)
-def get_training_checkpoints(job_id: str) -> TrainingCheckpointsResponse:
-    manager = app.state.training_jobs
-    try:
-        return manager.get_checkpoints(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-
-
-def _prepare_training_generation(
-    job_id: str,
-    request: TrainingGenerateRequest,
-):
-    manager = app.state.training_jobs
-    tokenizer_manager = app.state.tokenizer_jobs
-
-    try:
-        job = manager.get_job(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-
-    if job.status != "completed":
-        raise HTTPException(status_code=409, detail="Only completed training jobs can be used for inference.")
-
-    try:
-        checkpoints = manager.get_checkpoints(job_id).checkpoints
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-
-    if request.checkpoint_step is None:
-        checkpoint = max(checkpoints, key=lambda item: item.step, default=None)
-    else:
-        checkpoint = next(
-            (item for item in checkpoints if item.step == request.checkpoint_step),
-            None,
-        )
-    if checkpoint is None:
-        if request.checkpoint_step is None:
-            raise HTTPException(status_code=409, detail="Training job has no saved checkpoints.")
-        raise HTTPException(
-            status_code=404,
-            detail=f"Training job does not have a checkpoint at step {request.checkpoint_step}.",
-        )
-
-    checkpoint_path = _checkpoint_model_path(checkpoint.directory, checkpoint.files)
-    if checkpoint_path is None:
-        raise HTTPException(status_code=409, detail=f"Checkpoint step {checkpoint.step} does not contain a model weights file.")
-    if not checkpoint_path.exists() or not checkpoint_path.is_file():
-        raise HTTPException(status_code=404, detail=f"Checkpoint weights missing: {checkpoint_path}")
-
-    try:
-        tokenizer_path = tokenizer_manager.get_artifact_path(job.tokenizer_job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown tokenizer job id: {job.tokenizer_job_id}") from exc
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    try:
-        tokenizer = Tokenizer.from_file(str(tokenizer_path))
-        prompt_token_ids = tokenizer.encode(request.prompt).ids
-        if not prompt_token_ids:
-            raise HTTPException(status_code=422, detail="Prompt did not produce any tokens.")
-        model = ConfigurableGPT(LLMConfig.model_validate(job.model_payload))
-        device = _default_inference_device()
-        model.to(device)
-        model.load_state_dict(_torch_load_state_dict(checkpoint_path, device))
-        model.eval()
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Inference failed: {type(exc).__name__}: {exc}") from exc
-
-    return job, checkpoint, checkpoint_path, tokenizer, prompt_token_ids, model
-
-
-@training_api.post("/jobs/{job_id}/generate", response_model=TrainingGenerateResponse)
-def generate_from_training_job(
-    job_id: str,
-    request: TrainingGenerateRequest,
-) -> TrainingGenerateResponse:
-    job, checkpoint, checkpoint_path, tokenizer, prompt_token_ids, model = _prepare_training_generation(
-        job_id,
-        request,
-    )
-    try:
-        generated_token_ids = list(
-            model.generate(
-                tokens=prompt_token_ids,
-                max_tokens=request.max_tokens,
-                temperature=request.temperature,
-                top_k=request.top_k,
-                seed=request.seed,
-                repetition_penalty=request.repetition_penalty,
-            )
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Inference failed: {type(exc).__name__}: {exc}") from exc
-
-    full_token_ids = prompt_token_ids + generated_token_ids
-    completion = tokenizer.decode(generated_token_ids, skip_special_tokens=False)
-    text = tokenizer.decode(full_token_ids, skip_special_tokens=False)
-    return TrainingGenerateResponse(
-        job_id=job_id,
-        checkpoint_step=checkpoint.step,
-        checkpoint_path=str(checkpoint_path),
-        tokenizer_job_id=job.tokenizer_job_id,
-        prompt=request.prompt,
-        completion=completion,
-        text=text,
-        prompt_token_count=len(prompt_token_ids),
-        generated_token_count=len(generated_token_ids),
-        generated_token_ids=generated_token_ids,
-    )
-
-
-@training_api.post("/jobs/{job_id}/generate/stream")
-def stream_generate_from_training_job(
-    job_id: str,
-    request: TrainingGenerateRequest,
-) -> StreamingResponse:
-    job, checkpoint, checkpoint_path, tokenizer, prompt_token_ids, model = _prepare_training_generation(
-        job_id,
-        request,
-    )
-
-    def encode_event(payload: dict[str, object]) -> str:
-        return json.dumps(payload, ensure_ascii=False) + "\n"
-
-    def stream_events():
-        generated_token_ids: list[int] = []
-        try:
-            yield encode_event(
-                {
-                    "type": "start",
-                    "job_id": job_id,
-                    "checkpoint_step": checkpoint.step,
-                    "checkpoint_path": str(checkpoint_path),
-                    "tokenizer_job_id": job.tokenizer_job_id,
-                    "prompt": request.prompt,
-                    "prompt_token_count": len(prompt_token_ids),
-                }
-            )
-            for token_id in model.generate(
-                tokens=prompt_token_ids,
-                max_tokens=request.max_tokens,
-                temperature=request.temperature,
-                top_k=request.top_k,
-                seed=request.seed,
-                repetition_penalty=request.repetition_penalty,
-            ):
-                generated_token_ids.append(token_id)
-                yield encode_event(
-                    {
-                        "type": "token",
-                        "index": len(generated_token_ids),
-                        "token_id": token_id,
-                        "token_text": tokenizer.decode([token_id], skip_special_tokens=False),
-                    }
-                )
-            full_token_ids = prompt_token_ids + generated_token_ids
-            yield encode_event(
-                {
-                    "type": "done",
-                    "completion": tokenizer.decode(generated_token_ids, skip_special_tokens=False),
-                    "text": tokenizer.decode(full_token_ids, skip_special_tokens=False),
-                    "generated_token_count": len(generated_token_ids),
-                    "generated_token_ids": generated_token_ids,
-                }
-            )
-        except Exception as exc:
-            yield encode_event(
-                {
-                    "type": "error",
-                    "detail": f"Inference failed: {type(exc).__name__}: {exc}",
-                }
-            )
-
-    return StreamingResponse(
-        stream_events(),
-        media_type="application/x-ndjson",
-        headers={"Cache-Control": "no-cache"},
-    )
-
-
-@training_api.post("/jobs/{job_id}/stop", response_model=LLMTrainingJobResponse)
-def stop_training_job(job_id: str) -> LLMTrainingJobResponse:
-    manager = app.state.training_jobs
-    try:
-        return manager.stop_job(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-
-
-@training_api.post("/jobs/{job_id}/remote/resync", response_model=LLMTrainingJobResponse)
-def resync_remote_training_job(job_id: str) -> LLMTrainingJobResponse:
-    manager = app.state.training_jobs
-    try:
-        return manager.resync_remote_job(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-
-
-@training_api.post("/jobs/{job_id}/remote/cleanup", response_model=LLMTrainingJobResponse)
-def cleanup_remote_training_job(job_id: str) -> LLMTrainingJobResponse:
-    manager = app.state.training_jobs
-    try:
-        return manager.cleanup_remote_job(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-
-
-@training_api.post("/jobs/{job_id}/remote/reattach", response_model=LLMTrainingJobResponse)
-def reattach_remote_training_job(job_id: str) -> LLMTrainingJobResponse:
-    manager = app.state.training_jobs
-    try:
-        return manager.reattach_remote_job(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-
-
-@training_api.get("/jobs/{job_id}/artifact")
-def download_training_job_artifact(job_id: str) -> FileResponse:
-    manager = app.state.training_jobs
-    try:
-        path = manager.build_artifact_bundle(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-    return FileResponse(path, filename=path.name, media_type="application/zip")
-
-
 def _validation_issue(code: str, message: str, path: str) -> ValidationIssue:
     return ValidationIssue(code=code, message=message, path=path)
-
-
-def _checkpoint_model_path(directory: str, files: list[str]) -> Path | None:
-    checkpoint_dir = Path(directory)
-    for file_name in files:
-        path = Path(file_name)
-        if path.name.startswith("model-") and path.suffix == ".pt":
-            return path if path.is_absolute() else checkpoint_dir / path
-    return None
-
-
-def _torch_load_state_dict(path: Path, device: torch.device) -> dict[str, torch.Tensor]:
-    try:
-        loaded = torch.load(path, map_location=device, weights_only=True)
-    except TypeError:
-        loaded = torch.load(path, map_location=device)
-    if not isinstance(loaded, dict):
-        raise ValueError("Checkpoint weights payload must be a state dict.")
-    return loaded
-
-
-def _default_inference_device() -> torch.device:
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
 
 
 def _semantic_validate_model(config: LLMConfig) -> tuple[list[ValidationIssue], list[ValidationIssue]]:
@@ -1441,7 +934,7 @@ def delete_project(project_id: str) -> Response:
 
 app.include_router(api)
 app.include_router(tokenizer_api)
-app.include_router(training_api)
+register_training_routes(app)
 
 if _settings.serve_web and _settings.web_index_path.exists():
 

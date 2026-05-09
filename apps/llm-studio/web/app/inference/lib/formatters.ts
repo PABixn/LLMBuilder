@@ -1,5 +1,5 @@
 import { formatBytes } from "../../../lib/workspaceAssets";
-import type { TrainingCheckpointEntry, TrainingJob } from "../../../lib/trainingApi";
+import type { TrainingCheckpointEntry, TrainingJob } from "../../../lib/training/types";
 
 export function formatInteger(value: number | null | undefined): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {

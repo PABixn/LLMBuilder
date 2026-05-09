@@ -12,9 +12,9 @@ import {
 import {
   deleteTrainingJob as deleteModelTrainingJob,
   fetchTrainingJobs as fetchModelTrainingJobs,
-  trainingArtifactDownloadUrl,
-  type TrainingJob as ModelTrainingJob,
-} from "./trainingApi";
+} from "./training/jobs";
+import { trainingArtifactDownloadUrl } from "./training/artifacts";
+import type { TrainingJob as ModelTrainingJob } from "./training/types";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",

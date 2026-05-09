@@ -19,7 +19,7 @@ import {
   YAxis,
 } from "recharts";
 
-import type { TrainingMetricPoint } from "../../../lib/trainingApi";
+import type { TrainingMetricPoint } from "../../../lib/training/types";
 import {
   chartBrushHandlePosition,
   clampMetricRange,

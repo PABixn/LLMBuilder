@@ -1,0 +1,13 @@
+.trainingHero {
+  display: grid;
+  gap: 16px;
+}
+
+.trainingHeroActions {
+  align-self: flex-start;
+}
+
+.trainingHeroBody {
+  display: grid;
+  gap: 14px;
+}

@@ -1,4 +1,4 @@
-import type { GenerateTrainingCompletionResponse } from "../../../lib/trainingApi";
+import type { GenerateTrainingCompletionResponse } from "../../../lib/training/types";
 import { formatInteger } from "../lib/formatters";
 
 type InferenceOutputPanelProps = {

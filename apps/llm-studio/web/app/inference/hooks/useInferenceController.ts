@@ -6,11 +6,13 @@ import { useThemeMode } from "../../../lib/theme";
 import {
   fetchTrainingCheckpoints,
   fetchTrainingJobs,
-  streamTrainingCompletion,
-  type GenerateTrainingCompletionResponse,
-  type TrainingCheckpointEntry,
-  type TrainingJob,
-} from "../../../lib/trainingApi";
+} from "../../../lib/training/jobs";
+import { streamTrainingCompletion } from "../../../lib/training/generation";
+import type {
+  GenerateTrainingCompletionResponse,
+  TrainingCheckpointEntry,
+  TrainingJob,
+} from "../../../lib/training/types";
 import {
   CHECKPOINT_SEARCH_PLACEHOLDER,
   DEFAULT_PROMPT,

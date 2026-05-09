@@ -569,7 +569,7 @@ def test_training_endpoints_validate_and_preflight(monkeypatch, tmp_path: Path) 
         save_fix = next(
             fix for fix in preflight_body["recommended_fixes"] if fix["code"] == "set_save_every_to_periodic_cadence"
         )
-        assert save_fix["value"] == 30
+        assert save_fix["value"] == 1
         assert "load_starter_optimizer_defaults" not in fix_codes
         assert "load_starter_scheduler_template" not in fix_codes
 

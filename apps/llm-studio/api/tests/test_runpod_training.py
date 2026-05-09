@@ -13,6 +13,7 @@ from urllib.error import HTTPError
 from fastapi.testclient import TestClient
 
 from app.training_executors import remote_sync
+from app.training_runs.executors.runpod import agent_client
 from app.training_executors.base import CleanupPolicy, ExecutionSnapshot
 from app.training_executors.remote_sync import (
     DEFAULT_POD_AGENT_USER_AGENT,
@@ -46,6 +47,28 @@ class FakeCompatibleAgent:
         return {"runner": {"import_ok": True}}
 
 
+class FakeProtocolAwareAgent:
+    def system(self) -> dict[str, object]:
+        return {
+            "agent_protocol_version": 1,
+            "bundle_format_versions": ["llm-studio-training-bundle-v1"],
+            "supports_optional_files": True,
+            "supports_checkpoint_manifest": True,
+            "runner": {"import_ok": True},
+        }
+
+
+class FakeProtocolAgentMissingCheckpointManifest:
+    def system(self) -> dict[str, object]:
+        return {
+            "agent_protocol_version": 1,
+            "bundle_format_versions": ["llm-studio-training-bundle-v1"],
+            "supports_optional_files": True,
+            "supports_checkpoint_manifest": False,
+            "runner": {"import_ok": True},
+        }
+
+
 class FakeOldAgent:
     def system(self) -> dict[str, object]:
         return {"workspace": "/workspace/llm-studio"}
@@ -53,7 +76,7 @@ class FakeOldAgent:
 
 class FakeBrokenAgent:
     def system(self) -> dict[str, object]:
-        return {"runner": {"import_ok": False, "error": "ModuleNotFoundError: No module named 'llm_builder'"}}
+        return {"runner": {"import_ok": False, "error": "ModuleNotFoundError: No module named 'training.local_text_data'"}}
 
 
 class FakeLegacyAgentWithoutSystem:
@@ -242,12 +265,55 @@ def test_training_store_migrates_old_sqlite_schema(tmp_path: Path) -> None:
 
     store = TrainingStudioStore(url=f"sqlite:///{db_path}")
     store.initialize()
+    store.initialize()
     job = store.get_job("job123456")
+    with sqlite3.connect(db_path) as migrated_connection:
+        migrated_columns = [row[1] for row in migrated_connection.execute("PRAGMA table_info(llm_training_jobs)")]
 
     assert job is not None
     assert job.executor_kind == "local"
     assert job.runpod_gpu_count == 1
     assert job.runpod_pod_id is None
+    assert job.runpod_network_volume_id is None
+    assert job.runpod_cost_per_hr is None
+    assert job.runpod_agent_base_url is None
+    assert job.runpod_cleanup_policy is None
+    assert job.remote_workspace_path is None
+    assert len(migrated_columns) == len(set(migrated_columns))
+    assert "remote_error" in migrated_columns
+
+
+def test_training_store_skips_sqlite_migrations_for_non_sqlite_urls(monkeypatch) -> None:
+    called = False
+
+    def fake_apply_sqlite_migrations(_engine: object) -> None:
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr("app.training_runs.store.apply_sqlite_migrations", fake_apply_sqlite_migrations)
+    store = TrainingStudioStore.__new__(TrainingStudioStore)
+    store._url = "postgresql://example.test/db"
+    store._engine = object()
+
+    store._migrate_schema()
+
+    assert called is False
+
+
+def test_incomplete_runpod_restart_recovery_is_explicit_without_failing_job(tmp_path: Path) -> None:
+    store = TrainingStudioStore(url=f"sqlite:///{tmp_path / 'training.db'}")
+    store.initialize()
+    job = stored_runpod_job(tmp_path / "artifacts", status=TrainingJobStatus.running)
+    store.create_job(job)
+
+    count = store.mark_incomplete_runpod_jobs_recovery_limited("token unavailable after restart")
+    recovered = store.get_job(job.id)
+
+    assert count == 1
+    assert recovered is not None
+    assert recovered.status == TrainingJobStatus.running
+    assert recovered.executor_status == "running"
+    assert recovered.remote_error == "token unavailable after restart"
 
 
 def test_runpod_create_pod_payload_uses_current_image_name_field() -> None:
@@ -269,6 +335,16 @@ def test_runpod_create_pod_payload_uses_current_image_name_field() -> None:
     assert payload["gpuTypeIds"] == ["NVIDIA GeForce RTX 4090"]
     assert payload["ports"] == ["8021/http"]
     assert "image" not in payload
+
+
+def test_runpod_cleanup_policy_normalizes_unsupported_network_volume_delete() -> None:
+    from app.training_models import RunPodCleanupPolicy
+
+    policy = RunPodCleanupPolicy.model_validate(
+        {"pod": "delete_after_sync", "network_volume": "delete_after_sync"}
+    )
+
+    assert policy.network_volume == "keep"
 
 
 def test_runpod_agent_url_prefers_http_proxy_for_declared_http_port() -> None:
@@ -369,7 +445,7 @@ def test_remote_agent_client_uses_certifi_ssl_context(monkeypatch) -> None:
         captured["authorization"] = request.get_header("Authorization")  # type: ignore[attr-defined]
         return FakeResponse()
 
-    monkeypatch.setattr(remote_sync, "urlopen", fake_urlopen)
+    monkeypatch.setattr(agent_client, "urlopen", fake_urlopen)
 
     payload = RemoteAgentClient("https://example.test", "token", "job123").health()
 
@@ -398,7 +474,7 @@ def test_remote_agent_client_system_supports_legacy_query_job_auth(monkeypatch) 
         captured["job_header"] = request.get_header("X-llm-studio-job-id")  # type: ignore[attr-defined]
         return FakeResponse()
 
-    monkeypatch.setattr(remote_sync, "urlopen", fake_urlopen)
+    monkeypatch.setattr(agent_client, "urlopen", fake_urlopen)
 
     payload = RemoteAgentClient("https://example.test", "token", "job123").system()
 
@@ -425,7 +501,7 @@ def test_remote_agent_client_download_optional_file_sends_optional_query(monkeyp
         captured["url"] = request.full_url  # type: ignore[attr-defined]
         return FakeResponse()
 
-    monkeypatch.setattr(remote_sync, "urlopen", fake_urlopen)
+    monkeypatch.setattr(agent_client, "urlopen", fake_urlopen)
 
     target = tmp_path / "training_data_preview.json"
     raw = RemoteAgentClient("https://example.test", "token", "job123").download_file(
@@ -451,7 +527,7 @@ def test_remote_agent_client_optional_file_404_is_empty(monkeypatch, tmp_path: P
             fp=io.BytesIO(b'{"detail": "File is not available."}'),
         )
 
-    monkeypatch.setattr(remote_sync, "urlopen", fake_urlopen)
+    monkeypatch.setattr(agent_client, "urlopen", fake_urlopen)
 
     target = tmp_path / "training_data_preview.json"
     raw = RemoteAgentClient("https://example.test", "token", "job123").download_file(
@@ -483,7 +559,7 @@ def test_remote_agent_client_marks_cloudflare_1010_as_non_retryable(monkeypatch)
             fp=io.BytesIO(json.dumps(cloudflare_payload).encode("utf-8")),
         )
 
-    monkeypatch.setattr(remote_sync, "urlopen", fake_urlopen)
+    monkeypatch.setattr(agent_client, "urlopen", fake_urlopen)
 
     try:
         RemoteAgentClient("https://pod-8021.proxy.runpod.net", "token", "job123").health()
@@ -746,8 +822,8 @@ def test_training_image_includes_shared_local_text_module() -> None:
     assert "CXX=/usr/bin/g++" in dockerfile
     assert "LLM_STUDIO_TORCH_COMPILE=0" in dockerfile
     assert "assert shutil.which('gcc')" in dockerfile
-    assert "COPY llm_builder ./llm_builder" in dockerfile
-    assert "import llm_builder.local_text_data; import training.runner" in dockerfile
+    assert "COPY training ./training" in dockerfile
+    assert "import training.local_text_data; import training.runner" in dockerfile
 
 
 def test_training_entrypoint_runs_startup_diagnostics() -> None:
@@ -793,13 +869,28 @@ def test_runpod_executor_rejects_agent_with_broken_runner_import() -> None:
         executor._verify_agent_compatibility(FakeBrokenAgent())  # type: ignore[arg-type]
     except RuntimeError as exc:
         assert "cannot import the training runner" in str(exc)
-        assert "llm_builder" in str(exc)
+        assert "training.local_text_data" in str(exc)
     else:
         raise AssertionError("Expected broken runner compatibility check to fail")
 
 
 def test_runpod_executor_accepts_agent_with_runner_compatibility_report() -> None:
     RunPodPodExecutor()._verify_agent_compatibility(FakeCompatibleAgent())  # type: ignore[arg-type]
+
+
+def test_runpod_executor_accepts_protocol_aware_agent() -> None:
+    RunPodPodExecutor()._verify_agent_compatibility(FakeProtocolAwareAgent())  # type: ignore[arg-type]
+
+
+def test_runpod_executor_rejects_protocol_agent_without_checkpoint_manifest() -> None:
+    try:
+        RunPodPodExecutor()._verify_agent_compatibility(
+            FakeProtocolAgentMissingCheckpointManifest()  # type: ignore[arg-type]
+        )
+    except RuntimeError as exc:
+        assert "checkpoint manifests" in str(exc)
+    else:
+        raise AssertionError("Expected incompatible protocol capabilities to fail")
 
 
 def test_runpod_executor_allows_legacy_agent_without_system_endpoint(tmp_path: Path) -> None:
@@ -854,6 +945,9 @@ def test_remote_agent_system_auth_accepts_header_without_query_job_id(monkeypatc
 
     assert system_response.status_code == 200
     assert system_response.json()["job_id"] == job_id
+    assert system_response.json()["agent_protocol_version"] == 1
+    assert "llm-studio-training-bundle-v1" in system_response.json()["bundle_format_versions"]
+    assert system_response.json()["supports_optional_files"] is True
     assert mismatched_job_response.status_code == 403
 
 
@@ -981,7 +1075,10 @@ def test_remote_agent_start_reports_immediate_subprocess_failure(monkeypatch, tm
         (inputs / name).write_text("{}", encoding="utf-8")
     outputs = job_root / "outputs"
     outputs.mkdir(parents=True)
-    (outputs / "stderr.log").write_text("ModuleNotFoundError: No module named 'llm_builder'\n", encoding="utf-8")
+    (outputs / "stderr.log").write_text(
+        "ModuleNotFoundError: No module named 'training.local_text_data'\n",
+        encoding="utf-8",
+    )
 
     class FakePopen:
         def __init__(self, *args, **kwargs) -> None:
@@ -999,7 +1096,7 @@ def test_remote_agent_start_reports_immediate_subprocess_failure(monkeypatch, tm
     except RuntimeError as exc:
         message = str(exc)
         assert "exited during startup" in message
-        assert "llm_builder" in message
+        assert "training.local_text_data" in message
     else:
         raise AssertionError("Expected immediate subprocess failure to be reported")
 

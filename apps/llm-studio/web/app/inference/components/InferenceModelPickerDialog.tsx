@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FiActivity, FiLayers, FiRefreshCw, FiSearch, FiXCircle } from "react-icons/fi";
 
-import type { TrainingJob } from "../../../lib/trainingApi";
+import type { TrainingJob } from "../../../lib/training/types";
 import { completedArtifactName, formatJobMeta } from "../lib/formatters";
 
 type InferenceModelPickerDialogProps = {

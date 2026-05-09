@@ -1,0 +1,223 @@
+.trainingChartGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.trainingChartCard {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--surface-raised));
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  min-height: 304px;
+}
+
+.trainingChartHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+
+.trainingChartHead > div {
+  display: grid;
+  gap: 3px;
+}
+
+.trainingChartHead strong {
+  font-size: 0.88rem;
+  font-weight: 760;
+}
+
+.trainingChartHead span {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.trainingChartLatest {
+  text-align: right;
+  min-width: 86px;
+}
+
+.trainingChartLatest strong {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.86rem;
+}
+
+.trainingChartStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.trainingChartStats span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  padding: 6px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingChartFrame {
+  width: 100%;
+  height: 210px;
+  display: block;
+  min-width: 0;
+}
+
+.trainingChartFrame .recharts-wrapper,
+.trainingChartFrame .recharts-surface {
+  overflow: visible;
+}
+
+.trainingChartTooltip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+}
+
+.trainingChartTooltip span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.trainingChartTooltip strong {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.trainingChartRange {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  display: grid;
+  gap: 8px;
+  padding: 8px 10px 10px;
+  touch-action: none;
+  user-select: none;
+}
+
+.trainingChartRangeMeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trainingChartRangeMeta span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.trainingChartRangeMeta strong {
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  font-weight: 740;
+}
+
+.trainingChartBrush {
+  position: relative;
+  height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: crosshair;
+  overflow: hidden;
+}
+
+.trainingChartBrush svg {
+  position: absolute;
+  inset: 7px 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 14px);
+  pointer-events: none;
+}
+
+.trainingChartBrush svg path {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 2.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.trainingChartBrushShade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+  pointer-events: none;
+}
+
+.trainingChartBrushShade.left {
+  left: 0;
+}
+
+.trainingChartBrushShade.right {
+  right: 0;
+}
+
+.trainingChartBrushSelection {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 66%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--brand-soft) 68%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--surface) 55%, transparent);
+  cursor: grab;
+}
+
+.trainingChartRange.isDragging .trainingChartBrushSelection {
+  cursor: grabbing;
+}
+
+.trainingChartBrushHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 70%, var(--line));
+  border-radius: 8px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow);
+  cursor: ew-resize;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.trainingChartBrushHandle::after {
+  content: "";
+  position: absolute;
+  inset: 11px 4px;
+  border-left: 1px solid var(--text-muted);
+  border-right: 1px solid var(--text-muted);
+  opacity: 0.72;
+}
+
+.trainingChartBrushHandle:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.trainingChartBrushHandle:hover,
+.trainingChartRange.isDragging .trainingChartBrushHandle {
+  border-color: var(--brand);
+}
+
+.trainingChartRange.isDragging .trainingChartBrush {
+  cursor: grabbing;
+}
+

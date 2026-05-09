@@ -1,0 +1,518 @@
+.trainingResultsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.95fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.trainingResultsGrid > .trainingPanelStack {
+  order: 1;
+}
+
+.trainingResultsGrid > .trainingActiveRunPanel {
+  grid-column: 1 / -1;
+  order: 2;
+}
+
+.trainingPage .panelCard > .trainingProgress,
+.trainingPage .panelCard > .statusGrid,
+.trainingPage .panelCard > .trainingChartGrid,
+.trainingPage .panelCard > .trainingIssueList,
+.trainingPage .panelCard > .sectionDisclosure,
+.trainingPage .panelCard > .trainingEmpty {
+  margin-top: 14px;
+}
+
+.trainingPage .sectionDisclosure[open] > :not(summary) {
+  margin-top: 10px;
+}
+
+.trainingActiveRunHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trainingActiveRunCloseButton {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.trainingActiveRunCloseButton:hover,
+.trainingActiveRunCloseButton:focus-visible {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  outline: none;
+}
+
+.trainingActiveRunCloseButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.trainingPanelStack {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.trainingProgress {
+  display: grid;
+  gap: 8px;
+}
+
+.trainingProgressBar {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+}
+
+.trainingProgressBar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 40%, white));
+}
+
+.trainingInlineMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.trainingIssueList,
+.trainingFixList,
+.trainingPromptList,
+.trainingDatasetList,
+.trainingRecentList,
+.trainingCheckpointList,
+.trainingSampleList,
+.trainingSettingsStack {
+  display: grid;
+  gap: 12px;
+}
+
+.trainingIssueCard,
+.trainingFixCard,
+.trainingPromptCard,
+.trainingDatasetCard,
+.trainingRecentCard,
+.trainingCheckpointCard,
+.trainingSampleCard,
+.trainingSettingsSection {
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.trainingSampleList {
+  max-height: min(520px, 64vh);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.trainingSampleStepDisclosure {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.trainingSampleStepSummary,
+.trainingSampleTextSummary {
+  cursor: pointer;
+  list-style: none;
+  display: grid;
+  min-width: 0;
+}
+
+.trainingSampleStepSummary::-webkit-details-marker,
+.trainingSampleTextSummary::-webkit-details-marker {
+  display: none;
+}
+
+.trainingSampleStepSummary {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.trainingSampleStepSummary > span:first-child,
+.trainingSampleTextSummary > span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.trainingSampleStepSummary::before,
+.trainingSampleTextSummary::before {
+  content: "▸";
+  color: var(--text-muted);
+  line-height: 1;
+  transition: transform 0.12s ease;
+}
+
+.trainingSampleStepSummary::before {
+  grid-row: 1;
+  grid-column: 1;
+  align-self: center;
+}
+
+.trainingSampleStepSummary > span:first-child {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.trainingSampleStepDisclosure[open] > .trainingSampleStepSummary {
+  border-bottom: 1px solid var(--line);
+}
+
+.trainingSampleStepDisclosure[open] > .trainingSampleStepSummary::before,
+.trainingSampleTextDisclosure[open] > .trainingSampleTextSummary::before {
+  transform: rotate(90deg);
+}
+
+.trainingSampleStepSummary:hover,
+.trainingSampleStepSummary:focus-visible,
+.trainingSampleTextSummary:hover,
+.trainingSampleTextSummary:focus-visible {
+  color: var(--brand-strong);
+  outline: none;
+}
+
+.trainingSampleStepBody {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  max-height: 380px;
+  overflow: auto;
+}
+
+.trainingSampleTextDisclosure {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.trainingSampleTextSummary {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+}
+
+.trainingSampleTextSummary > span:first-child {
+  grid-column: 2;
+  font-size: 0.82rem;
+  font-weight: 740;
+}
+
+.trainingSamplePromptSummary {
+  color: var(--text);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingSampleTextSummary > .trainingSampleMeta {
+  grid-column: 3;
+  white-space: nowrap;
+}
+
+.trainingSampleTextDisclosure[open] > .trainingSampleTextSummary {
+  border-bottom: 1px solid var(--line);
+}
+
+.trainingSamplePromptBlock {
+  display: grid;
+  gap: 5px;
+  padding: 10px 10px 0;
+}
+
+.trainingSamplePromptBlock > span {
+  font-size: 0.7rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.trainingSamplePromptBlock > pre {
+  margin: 0;
+  max-height: 120px;
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 9px;
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.trainingSampleCodeBlock {
+  max-height: 240px;
+  border-radius: 0;
+  border-width: 0;
+  border-top: 1px solid var(--pre-line);
+}
+
+.trainingSamplePromptBlock + .trainingSampleCodeBlock {
+  margin-top: 10px;
+}
+
+.trainingSampleGeneratedBlock {
+  display: grid;
+  gap: 0;
+  background: var(--surface);
+}
+
+.trainingSampleGeneratedHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.trainingSampleGeneratedHead > span:first-child {
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+}
+
+.trainingSampleGeneratedHead > span:last-child {
+  white-space: nowrap;
+}
+
+.trainingSampleGeneratedText {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono), "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  line-height: 1.62;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.trainingSampleGeneratedPrompt {
+  color: var(--text-muted);
+}
+
+.trainingSampleGeneratedContinuation {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.trainingIssueCard.tone-error {
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+  background: linear-gradient(180deg, var(--danger-soft), var(--surface-soft));
+}
+
+.trainingIssueCard.tone-warning {
+  border-color: color-mix(in srgb, var(--warn) 28%, transparent);
+  background: linear-gradient(180deg, var(--warn-soft), var(--surface-soft));
+}
+
+.trainingRecentCard {
+  border-radius: 10px;
+  padding: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+  background: var(--input-bg);
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.trainingRecentPanelCopy {
+  margin-bottom: 12px;
+}
+
+.trainingRecentCard:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand);
+  background: var(--surface-soft);
+  box-shadow: 0 6px 14px rgba(20, 35, 53, 0.1);
+}
+
+.trainingRecentCard.is-active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.trainingRecentCard.is-active:hover,
+.trainingRecentCard.is-active:focus-within {
+  background: var(--brand-soft);
+}
+
+.trainingRecentSelect {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.trainingRecentSelect > * {
+  min-width: 0;
+}
+
+.trainingRecentSelect p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.trainingRecentSelect:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.trainingRecentRowMeta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  min-width: 104px;
+}
+
+.trainingRecentRowMeta p {
+  text-align: right;
+}
+
+.trainingRecentIconActions {
+  margin-right: 8px;
+  align-self: center;
+  display: grid;
+  gap: 6px;
+}
+
+.trainingRecentIconButton {
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  cursor: pointer;
+}
+
+.trainingRecentIconButton svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.trainingRecentIconButton:hover:not(:disabled),
+.trainingRecentIconButton:focus-visible:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: var(--surface-soft);
+  outline: none;
+}
+
+.trainingRecentIconButton-danger:hover:not(:disabled),
+.trainingRecentIconButton-danger:focus-visible:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.trainingRecentIconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.trainingIssueTitle,
+.trainingPromptTitle,
+.trainingDatasetTitle,
+.trainingCheckpointTitle,
+.trainingRecentTitle,
+.trainingSampleTitle {
+  font-size: 0.88rem;
+  font-weight: 760;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.trainingIssueCard,
+.trainingIssueMeta,
+.trainingFixCard,
+.trainingToast,
+.trainingToastBody,
+.trainingAssetPickerOptionMeta {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.trainingFixActions,
+.trainingRecentActions,
+.trainingDatasetActions,
+.trainingPromptActions,
+.trainingCheckpointActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+

@@ -8,7 +8,7 @@ import {
   metricChartData,
   metricChartStats,
 } from "./metrics";
-import type { TrainingMetricPoint } from "../../../lib/trainingApi";
+import type { TrainingMetricPoint } from "../../../lib/training/types";
 
 test("training metric helpers filter invalid values and preserve chart domains", () => {
   const metrics = [

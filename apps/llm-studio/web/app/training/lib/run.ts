@@ -1,4 +1,4 @@
-import type { TrainingJob } from "../../../lib/trainingApi";
+import type { TrainingJob } from "../../../lib/training/types";
 import { formatExponentialValue } from "../../shared/lib/configNumber";
 import { fileNameFromPath } from "./files";
 
