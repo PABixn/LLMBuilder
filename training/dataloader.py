@@ -172,6 +172,7 @@ class TrainingTokenDataset(IterableDataset):
             raise ValueError("tokenizer must expose encode_batch() and token_to_id()")
         self._epoch = multiprocessing.Value("i", 0)
         self._shuffle_seed_fallbacks: Optional[List[int]] = None
+        self._relative_data_file_bases = tuple(getattr(config, "_relative_data_file_bases", ()) or ())
         self._init_shuffle_seed_fallbacks()
         self._bos_id = self._resolve_token_id(self.config.bos_token, "bos_token")
         self._eos_id = self._resolve_token_id(self.config.eos_token, "eos_token")
@@ -246,7 +247,11 @@ class TrainingTokenDataset(IterableDataset):
                 "token_records": [],
             }
             if dataset_payload["is_local_text"]:
-                resolved_files = resolve_local_data_files(spec.data_files, split=spec.split)
+                resolved_files = resolve_local_data_files(
+                    spec.data_files,
+                    split=spec.split,
+                    relative_base=self._relative_data_file_bases or None,
+                )
                 dataset_payload["resolved_file_count"] = len(resolved_files)
                 dataset_payload["resolved_files"] = [
                     str(path) for path in resolved_files[:max_resolved_files]
@@ -404,7 +409,11 @@ class TrainingTokenDataset(IterableDataset):
         if is_local_text_dataset(spec.name, spec.data_files, split=spec.split):
             # The HF text builder samples local files line-by-line by default. For causal LM training
             # that would inject EOS at every line break, so local text files are treated as documents.
-            paths = resolve_local_data_files(spec.data_files, split=spec.split)
+            paths = resolve_local_data_files(
+                spec.data_files,
+                split=spec.split,
+                relative_base=self._relative_data_file_bases or None,
+            )
             if not paths:
                 raise FileNotFoundError(
                     f"Local text dataset '{spec.name}' did not resolve any files for split '{spec.split}'."

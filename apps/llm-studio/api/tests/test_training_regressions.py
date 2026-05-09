@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from model.loader import Attention, LLMConfig
 from model.model import CausalSelfAttention, ConfigurableGPT
 from tokenizer.dataloader import build_dataset
 from training.dataloader import build_training_dataset
+from training.dataloader_config import load_training_dataloader_config
 
 
 class _Encoding:
@@ -202,6 +204,45 @@ def test_training_debug_preview_shows_local_text_record_and_windows(tmp_path: Pa
     assert first_record["decoded_head"] == "a\nb\nc<|endoftext|>"
     assert len(preview["packed_windows"]) == 2
     assert preview["packed_windows"][0]["input"]["decoded_head"] == "a\n"
+
+
+def test_training_local_text_paths_loaded_from_runpod_bundle_resolve_under_job_root(tmp_path: Path) -> None:
+    job_root = tmp_path / "jobs" / "job-123"
+    inputs_dir = job_root / "inputs"
+    local_dataset = inputs_dir / "local_files" / "000-text" / "00000-shake.txt"
+    local_dataset.parent.mkdir(parents=True, exist_ok=True)
+    local_dataset.write_text("remote bundle text", encoding="utf-8")
+    dataloader_config_path = inputs_dir / "dataloader_config.json"
+    dataloader_config_path.write_text(
+        json.dumps(
+            {
+                "datasets": [
+                    {
+                        "name": "text",
+                        "data_files": {"train": "inputs/local_files/000-text/00000-shake.txt"},
+                        "split": "train",
+                        "text_columns": ["text"],
+                        "weight": 1.0,
+                        "streaming": True,
+                    }
+                ],
+                "add_eos": True,
+                "eos_token": "<|endoftext|>",
+                "drop_last": True,
+                "mixing": {"seed": 42, "exhausted_policy": "stop"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_training_dataloader_config(dataloader_config_path)
+    dataset = build_training_dataset(config, _CharTokenizer(), seq_len=4)
+
+    preview = dataset.debug_preview(max_token_records=1, max_windows=1, preview_token_count=32)
+
+    dataset_preview = preview["datasets"][0]
+    assert dataset_preview["resolved_files"] == [str(local_dataset.resolve())]
+    assert dataset_preview["token_records"][0]["decoded_head"] == "remote bundle text<|endoftext|>"
 
 
 def test_model_generate_stops_before_emitting_stop_token() -> None:

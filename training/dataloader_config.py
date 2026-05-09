@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Annotated, Any, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationError, model_validator
 
 
 class StrictModel(BaseModel):
@@ -58,6 +58,8 @@ class MixingConfig(StrictModel):
 
 
 class TrainingDataloaderConfig(StrictModel):
+    _relative_data_file_bases: tuple[Path, ...] = PrivateAttr(default_factory=tuple)
+
     datasets: Annotated[List[DatasetSpec], Field(min_length=1)]
     add_bos: bool = False
     add_eos: bool = False
@@ -104,6 +106,26 @@ def load_training_dataloader_config(
     with path.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
     try:
-        return TrainingDataloaderConfig.model_validate(data)
+        config = TrainingDataloaderConfig.model_validate(data)
     except ValidationError as exc:
         raise ValueError(str(exc)) from exc
+    config._relative_data_file_bases = _relative_data_file_bases(path)
+    return config
+
+
+def _relative_data_file_bases(config_path: Path) -> tuple[Path, ...]:
+    resolved = config_path.resolve()
+    bases = [resolved.parent]
+    if resolved.parent.name == "inputs":
+        bases.append(resolved.parent.parent)
+    bases.append(Path(__file__).resolve().parents[1])
+
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for base in bases:
+        normalized = base.resolve()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        unique.append(normalized)
+    return tuple(unique)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import glob
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,23 +36,16 @@ def resolve_local_data_files(
     data_files: Any,
     *,
     split: str | None = None,
-    relative_base: Path | None = None,
+    relative_base: Path | Sequence[Path] | None = None,
 ) -> list[Path]:
     selected = flatten_selected_data_files(data_files, split=split)
-    base_dir = relative_base or REPO_ROOT
+    base_dirs = _relative_base_candidates(relative_base)
     resolved_paths: list[Path] = []
     seen_paths: set[Path] = set()
 
     for raw_path in selected:
         candidate = Path(raw_path).expanduser()
-        if not candidate.is_absolute():
-            candidate = base_dir / candidate
-
-        matches = (
-            [Path(match) for match in glob.glob(str(candidate), recursive=True)]
-            if has_glob_magic(raw_path)
-            else [candidate]
-        )
+        matches = _resolve_matches(candidate, raw_path=raw_path, base_dirs=base_dirs)
         for match in matches:
             normalized = match.resolve()
             if normalized in seen_paths:
@@ -61,6 +54,37 @@ def resolve_local_data_files(
             resolved_paths.append(normalized)
 
     return resolved_paths
+
+
+def _relative_base_candidates(relative_base: Path | Sequence[Path] | None) -> list[Path]:
+    if relative_base is None:
+        return [REPO_ROOT]
+    if isinstance(relative_base, Path):
+        return [relative_base]
+    candidates = [Path(item) for item in relative_base]
+    return candidates or [REPO_ROOT]
+
+
+def _resolve_matches(candidate: Path, *, raw_path: str, base_dirs: Sequence[Path]) -> list[Path]:
+    if candidate.is_absolute():
+        return _matches_for_candidate(candidate, raw_path=raw_path)
+
+    fallback = base_dirs[0] / candidate
+    for base_dir in base_dirs:
+        based_candidate = base_dir / candidate
+        matches = _matches_for_candidate(based_candidate, raw_path=raw_path)
+        if has_glob_magic(raw_path):
+            if matches:
+                return matches
+        elif based_candidate.exists():
+            return matches
+    return _matches_for_candidate(fallback, raw_path=raw_path)
+
+
+def _matches_for_candidate(candidate: Path, *, raw_path: str) -> list[Path]:
+    if has_glob_magic(raw_path):
+        return [Path(match) for match in glob.glob(str(candidate), recursive=True)]
+    return [candidate]
 
 
 def has_glob_magic(value: str) -> bool:
