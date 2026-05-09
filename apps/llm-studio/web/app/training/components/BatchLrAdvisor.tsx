@@ -1,4 +1,5 @@
 import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { FiRefreshCw } from "react-icons/fi";
 import type {
   TrainingBatchLrRecommendation,
   TrainingBatchLrRecommendationOption,
@@ -40,6 +41,7 @@ type BatchLrAdvisorProps = {
   preflightError: string | null;
   preflightLoading: boolean;
   onApplyRecommendation: (option: TrainingBatchLrRecommendationOption) => void;
+  onRefreshRecommendation: () => void;
 };
 
 export function BatchLrAdvisor({
@@ -50,6 +52,7 @@ export function BatchLrAdvisor({
   preflightError,
   preflightLoading,
   onApplyRecommendation,
+  onRefreshRecommendation,
 }: BatchLrAdvisorProps) {
   const {
     recommendationConfidenceLabel,
@@ -63,11 +66,36 @@ export function BatchLrAdvisor({
   } = buildBatchLrAdvisorViewModel(recommendation, selectedRecommendationOptionKey);
 
   return (
-    <section className="trainingAdvisorCard">
+    <details className="trainingAdvisorCard" open>
+      <summary className="trainingAdvisorSummary">
+        <span>
+          <span className="panelEyebrow">Batch And LR Advisor</span>
+          <span className="trainingAdvisorSummaryTitle">Recommended optimizer step sizing</span>
+        </span>
+        <span className="trainingAdvisorSummaryActions">
+          {recommendation ? (
+            <span className={`pillBadge ${recommendationConfidenceTone}`}>
+              {recommendationConfidenceLabel}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            className="buttonGhost iconOnly"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onRefreshRecommendation();
+            }}
+            disabled={preflightLoading}
+            aria-label={preflightLoading ? "Refreshing recommendation" : "Refresh recommendation"}
+            title={preflightLoading ? "Refreshing recommendation" : "Refresh recommendation"}
+          >
+            <FiRefreshCw aria-hidden="true" />
+          </button>
+        </span>
+      </summary>
       <div className="trainingAdvisorHead">
         <div>
-          <p className="panelEyebrow">Batch And LR Advisor</p>
-          <h3>Recommended optimizer step sizing</h3>
           <p className="trainingAdvisorCopy">
             {recommendation
               ? recommendation.summary
@@ -76,13 +104,6 @@ export function BatchLrAdvisor({
                 : "Select a model and tokenizer and let preflight run to see the recommended optimizer-step token batch and learning rate."}
           </p>
         </div>
-        {recommendation ? (
-          <div className="trainingAdvisorMeta">
-            <span className={`pillBadge ${recommendationConfidenceTone}`}>
-              {recommendationConfidenceLabel}
-            </span>
-          </div>
-        ) : null}
       </div>
 
       {recommendation && selectedRecommendationOption ? (
@@ -209,6 +230,6 @@ export function BatchLrAdvisor({
             : "The advisor appears here once preflight can evaluate the current runtime."}
         </div>
       )}
-    </section>
+    </details>
   );
 }

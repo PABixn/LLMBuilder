@@ -8,7 +8,6 @@ import {
 
 import type {
   TrainingCheckpointEntry,
-  TrainingDataPreview,
   TrainingJob,
   TrainingMetricPoint,
   TrainingSampleEntry,
@@ -35,7 +34,6 @@ import { SamplesPanel } from "./SamplesPanel";
 interface ActiveRunPanelProps {
   activeRun: TrainingJob | null;
   checkpoints: TrainingCheckpointEntry[];
-  dataPreview: TrainingDataPreview | null;
   logs: {
     stderr: string[];
     stdout: string[];
@@ -51,7 +49,6 @@ interface ActiveRunPanelProps {
 export function ActiveRunPanel({
   activeRun,
   checkpoints,
-  dataPreview,
   logs,
   metrics,
   onClose,
@@ -125,7 +122,7 @@ export function ActiveRunPanel({
           <SamplesPanel samples={samples} />
           <CheckpointsPanel checkpoints={checkpoints} />
           <LogsPanel logs={logs} />
-          <RunDetailsPanel activeRun={activeRun} dataPreview={dataPreview} />
+          <RunDetailsPanel activeRun={activeRun} />
         </>
       ) : (
         <div className="trainingEmpty">No active run selected. Launch a new run or choose one from the recent runs column.</div>

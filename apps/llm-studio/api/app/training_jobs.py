@@ -297,14 +297,6 @@ class TrainingRunManager:
             stderr_lines=stderr_lines,
         )
 
-    def get_data_preview(self, job_id: str) -> dict[str, Any]:
-        job = self.get_job(job_id)
-        preview_path = Path(job.artifact_dir) / "training_data_preview.json"
-        payload = load_optional_json(preview_path)
-        if payload is None:
-            raise FileNotFoundError(preview_path)
-        return payload
-
     def get_checkpoints(self, job_id: str) -> TrainingCheckpointsResponse:
         job = self.get_job(job_id)
         return TrainingCheckpointsResponse(

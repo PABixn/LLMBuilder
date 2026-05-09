@@ -142,11 +142,63 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   background: linear-gradient(180deg, var(--surface), var(--surface-soft));
-  padding: 14px;
-  display: grid;
-  justify-items: start;
-  gap: 12px;
+  display: block;
   width: min(100%, 720px);
+  overflow: hidden;
+}
+
+.trainingAdvisorCard > :not(summary) {
+  margin: 14px;
+}
+
+.trainingAdvisorSummary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trainingAdvisorSummary::-webkit-details-marker {
+  display: none;
+}
+
+.trainingAdvisorSummary::after {
+  content: "▾";
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1;
+  transition: transform 0.16s ease;
+}
+
+.trainingAdvisorCard[open] > .trainingAdvisorSummary {
+  border-bottom: 1px solid var(--line);
+}
+
+.trainingAdvisorCard[open] > .trainingAdvisorSummary::after {
+  transform: rotate(180deg);
+}
+
+.trainingAdvisorSummary > span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.trainingAdvisorSummaryActions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.trainingAdvisorSummaryTitle {
+  font-size: 0.92rem;
+  font-weight: 770;
+  letter-spacing: -0.01em;
 }
 
 .trainingAdvisorHead,
@@ -904,4 +956,3 @@
   box-shadow: none;
   transform: none;
 }
-

@@ -35,7 +35,6 @@ def test_training_public_routes_are_registered() -> None:
         ("GET", "/api/v1/training/jobs/{job_id}/metrics"),
         ("GET", "/api/v1/training/jobs/{job_id}/samples"),
         ("GET", "/api/v1/training/jobs/{job_id}/logs"),
-        ("GET", "/api/v1/training/jobs/{job_id}/data-preview"),
         ("GET", "/api/v1/training/jobs/{job_id}/checkpoints"),
         ("POST", "/api/v1/training/jobs/{job_id}/generate"),
         ("POST", "/api/v1/training/jobs/{job_id}/generate/stream"),

@@ -13,7 +13,6 @@ import {
 import { TrainingApiError } from "../../../lib/training/errors";
 import {
   fetchTrainingCheckpoints,
-  fetchTrainingDataPreview,
   fetchTrainingJob,
   fetchTrainingJobs,
   fetchTrainingLogs,
@@ -22,7 +21,6 @@ import {
 } from "../../../lib/training/jobs";
 import type {
   TrainingCheckpointEntry,
-  TrainingDataPreview,
   TrainingJob,
   TrainingMetricPoint,
   TrainingSampleEntry,
@@ -58,7 +56,6 @@ export function useTrainingPolling({
     stdout: [],
     stderr: [],
   });
-  const [dataPreview, setDataPreview] = useState<TrainingDataPreview | null>(null);
   const [checkpoints, setCheckpoints] = useState<TrainingCheckpointEntry[]>([]);
   const recentRunsRequestPendingRef = useRef(false);
 
@@ -86,7 +83,6 @@ export function useTrainingPolling({
       setMetrics([]);
       setSamples([]);
       setLogs({ stdout: [], stderr: [] });
-      setDataPreview(null);
       setCheckpoints([]);
       return;
     }
@@ -102,17 +98,11 @@ export function useTrainingPolling({
       pollInFlight = true;
       let shouldPollAgain = true;
       try {
-        const [job, fetchedMetrics, fetchedSamples, fetchedLogs, fetchedDataPreview, fetchedCheckpoints] = await Promise.all([
+        const [job, fetchedMetrics, fetchedSamples, fetchedLogs, fetchedCheckpoints] = await Promise.all([
           fetchTrainingJob(activeRunId),
           fetchTrainingMetrics(activeRunId),
           fetchTrainingSamples(activeRunId),
           fetchTrainingLogs(activeRunId),
-          fetchTrainingDataPreview(activeRunId).catch((error) => {
-            if (error instanceof TrainingApiError && error.status === 404) {
-              return null;
-            }
-            throw error;
-          }),
           fetchTrainingCheckpoints(activeRunId),
         ]);
         if (cancelled) {
@@ -126,7 +116,6 @@ export function useTrainingPolling({
             stdout: fetchedLogs.stdout_lines,
             stderr: fetchedLogs.stderr_lines,
           });
-          setDataPreview(fetchedDataPreview);
           setCheckpoints(fetchedCheckpoints);
           setRecentRuns((current) => replaceRunInOrder(current, job).slice(0, 12));
         });
@@ -141,7 +130,6 @@ export function useTrainingPolling({
               setMetrics([]);
               setSamples([]);
               setLogs({ stdout: [], stderr: [] });
-              setDataPreview(null);
               setCheckpoints([]);
               setRecentRuns((current) => current.filter((item) => item.id !== activeRunId));
             });
@@ -180,7 +168,6 @@ export function useTrainingPolling({
   return {
     activeRun,
     checkpoints,
-    dataPreview,
     logs,
     metrics,
     recentRuns,

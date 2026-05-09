@@ -495,7 +495,7 @@ def test_remote_agent_client_download_optional_file_sends_optional_query(monkeyp
             return None
 
         def read(self) -> bytes:
-            return b'{"preview": true}'
+            return b'{"optional": true}'
 
     def fake_urlopen(request: object, **_kwargs: object) -> FakeResponse:
         captured["url"] = request.full_url  # type: ignore[attr-defined]
@@ -503,24 +503,24 @@ def test_remote_agent_client_download_optional_file_sends_optional_query(monkeyp
 
     monkeypatch.setattr(agent_client, "urlopen", fake_urlopen)
 
-    target = tmp_path / "training_data_preview.json"
+    target = tmp_path / "optional_status.json"
     raw = RemoteAgentClient("https://example.test", "token", "job123").download_file(
-        "training_data_preview.json",
+        "optional_status.json",
         target,
         optional=True,
     )
 
-    assert raw == b'{"preview": true}'
-    assert target.read_text(encoding="utf-8") == '{"preview": true}'
+    assert raw == b'{"optional": true}'
+    assert target.read_text(encoding="utf-8") == '{"optional": true}'
     assert captured["url"] == (
-        "https://example.test/v1/jobs/job123/files?path=training_data_preview.json&offset=0&optional=1"
+        "https://example.test/v1/jobs/job123/files?path=optional_status.json&offset=0&optional=1"
     )
 
 
 def test_remote_agent_client_optional_file_404_is_empty(monkeypatch, tmp_path: Path) -> None:
     def fake_urlopen(*_args: object, **_kwargs: object) -> object:
         raise HTTPError(
-            "https://example.test/v1/jobs/job123/files?path=training_data_preview.json&optional=1",
+            "https://example.test/v1/jobs/job123/files?path=optional_status.json&optional=1",
             404,
             "Not Found",
             hdrs=None,
@@ -529,9 +529,9 @@ def test_remote_agent_client_optional_file_404_is_empty(monkeypatch, tmp_path: P
 
     monkeypatch.setattr(agent_client, "urlopen", fake_urlopen)
 
-    target = tmp_path / "training_data_preview.json"
+    target = tmp_path / "optional_status.json"
     raw = RemoteAgentClient("https://example.test", "token", "job123").download_file(
-        "training_data_preview.json",
+        "optional_status.json",
         target,
         optional=True,
     )
@@ -1028,12 +1028,12 @@ def test_remote_agent_optional_missing_file_returns_empty_200(monkeypatch, tmp_p
 
     optional_response = client.get(
         f"/v1/jobs/{job_id}/files",
-        params={"path": "training_data_preview.json", "optional": "true"},
+        params={"path": "optional_status.json", "optional": "true"},
         headers=headers,
     )
     required_response = client.get(
         f"/v1/jobs/{job_id}/files",
-        params={"path": "training_data_preview.json"},
+        params={"path": "optional_status.json"},
         headers=headers,
     )
 

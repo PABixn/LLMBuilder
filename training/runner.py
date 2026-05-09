@@ -50,7 +50,6 @@ class TrainingRunPaths:
     state_path: Path
     stats_path: Path
     samples_path: Path
-    data_preview_path: Path
     checkpoints_dir: Path
     artifact_manifest_path: Path
 
@@ -63,7 +62,6 @@ class TrainingRunPaths:
             state_path=output_dir / "runtime_state.json",
             stats_path=output_dir / "stats.jsonl",
             samples_path=output_dir / "samples.jsonl",
-            data_preview_path=output_dir / "training_data_preview.json",
             checkpoints_dir=output_dir / "checkpoints",
             artifact_manifest_path=output_dir / "artifact_manifest.json",
         )
@@ -357,20 +355,6 @@ def run_training_job(
         seq_len=training_config.seq_len,
     )
 
-    resolved_writer.update(
-        status="running",
-        state="building_dataloader",
-        stage="Inspecting training data",
-        progress=0.2,
-    )
-    try:
-        training_data_preview = train_loader.dataset.debug_preview()
-    except Exception as exc:
-        print(f"Training data preview failed: {type(exc).__name__}: {exc}")
-    else:
-        atomic_write_json(paths.data_preview_path, training_data_preview)
-        print_training_data_preview(training_data_preview, paths.data_preview_path)
-
     tokenizer_vocab_size = tokenizer.get_vocab_size()
     if model_config.vocab_size != tokenizer_vocab_size:
         raise ValueError(
@@ -608,58 +592,6 @@ def build_artifact_manifest(output_dir: Path, state: dict[str, Any]) -> dict[str
         "total_size_bytes": total_size,
         "files": files,
     }
-
-
-def print_training_data_preview(payload: dict[str, Any], path: Path) -> None:
-    datasets = payload.get("datasets")
-    dataset_count = len(datasets) if isinstance(datasets, list) else 0
-    print(f"Training data preview saved: {path}")
-    print(
-        "Training data preview summary | "
-        f"seq_len={payload.get('seq_len')} | "
-        f"eos_token_id={payload.get('eos_token_id')} | "
-        f"datasets={dataset_count}"
-    )
-
-    if isinstance(datasets, list):
-        for dataset in datasets[:3]:
-            if not isinstance(dataset, dict):
-                continue
-            token_records = dataset.get("token_records")
-            first_record = token_records[0] if isinstance(token_records, list) and token_records else None
-            parts = [
-                f"dataset_index={dataset.get('dataset_index')}",
-                f"name={dataset.get('name')}",
-                f"split={dataset.get('split')}",
-            ]
-            if dataset.get("is_local_text"):
-                parts.append(f"resolved_files={dataset.get('resolved_file_count', 0)}")
-            if isinstance(first_record, dict):
-                parts.append(f"first_record_tokens={first_record.get('token_count')}")
-                parts.append(f"first_record_eos={first_record.get('eos_count')}")
-            print("Training data preview dataset | " + " | ".join(parts))
-            if isinstance(first_record, dict):
-                decoded_head = first_record.get("decoded_head")
-                if isinstance(decoded_head, str) and decoded_head:
-                    print(f"Training data preview dataset head | {decoded_head!r}")
-
-    packed_windows = payload.get("packed_windows")
-    if isinstance(packed_windows, list):
-        for window in packed_windows[:2]:
-            if not isinstance(window, dict):
-                continue
-            input_summary = window.get("input")
-            if not isinstance(input_summary, dict):
-                continue
-            print(
-                "Training data preview window | "
-                f"window_index={window.get('window_index')} | "
-                f"input_tokens={input_summary.get('token_count')} | "
-                f"input_eos={input_summary.get('eos_count')}"
-            )
-            decoded_head = input_summary.get("decoded_head")
-            if isinstance(decoded_head, str) and decoded_head:
-                print(f"Training data preview window head | {decoded_head!r}")
 
 
 def raise_if_cancelled() -> None:

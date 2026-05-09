@@ -2,6 +2,7 @@
 
 import {
   startTransition,
+  useCallback,
   useDeferredValue,
   useEffect,
   useState,
@@ -44,18 +45,25 @@ export function useTrainingPreflight({
     useState<string | null>(null);
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [preflightError, setPreflightError] = useState<string | null>(null);
+  const [manualPreflightRefreshId, setManualPreflightRefreshId] = useState(0);
 
   const deferredTrainingConfig = useDeferredValue(trainingConfig);
   const deferredDataloaderConfig = useDeferredValue(dataloaderConfig);
+  const refreshPreflight = useCallback(() => {
+    setPreflightLoading(true);
+    setManualPreflightRefreshId((current) => current + 1);
+  }, []);
 
   useEffect(() => {
     if (!selectedProjectId || !selectedTokenizerJobId || !deferredTrainingConfig || !deferredDataloaderConfig) {
       setPreflight(null);
       setPreflightError(null);
+      setPreflightLoading(false);
       return;
     }
 
     const controller = new AbortController();
+    const delayMs = manualPreflightRefreshId > 0 ? 0 : 420;
     const timeoutId = window.setTimeout(() => {
       setPreflightLoading(true);
       void validateTrainingPreflight(
@@ -84,13 +92,19 @@ export function useTrainingPreflight({
             setPreflightLoading(false);
           }
         });
-    }, 420);
+    }, delayMs);
 
     return () => {
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [deferredDataloaderConfig, deferredTrainingConfig, selectedProjectId, selectedTokenizerJobId]);
+  }, [
+    deferredDataloaderConfig,
+    deferredTrainingConfig,
+    manualPreflightRefreshId,
+    selectedProjectId,
+    selectedTokenizerJobId,
+  ]);
 
   useEffect(() => {
     setSelectedRecommendationOptionKey((current) =>
@@ -102,6 +116,7 @@ export function useTrainingPreflight({
     preflight,
     preflightError,
     preflightLoading,
+    refreshPreflight,
     selectedRecommendationOptionKey,
     setSelectedRecommendationOptionKey,
   };

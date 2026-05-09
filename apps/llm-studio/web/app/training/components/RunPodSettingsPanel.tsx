@@ -176,31 +176,16 @@ export function RunPodSettingsPanel({
           Keep running is for debugging. The app will not automatically stop billing for that pod.
         </p>
       ) : null}
-      <div className="settingsGroup">
-        <div className="settingsGroupHeader">
-          <h3>What happens next</h3>
-        </div>
-        <div className="trainingWorkflowList">
-          {[
-            "Create RunPod pod",
-            "Wait for exposed agent port",
-            "Start pod agent",
-            "Upload training bundle",
-            "Start trainer",
-            "Sync logs, metrics, samples, checkpoints, and manifest",
-            cleanupLabel,
-          ].map((item) => (
-            <div key={item} className="trainingWorkflowStep trainingWorkflowStep-waiting">
-              <span className="trainingWorkflowStepStatus">Next</span>
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
-      </div>
       <div className="trainingPromptToolbar">
-        <button type="button" className="buttonSecondary" onClick={onValidateKey} disabled={validationLoading || apiKey.trim() === ""}>
+        <button
+          type="button"
+          className="buttonGhost iconOnly"
+          onClick={onValidateKey}
+          disabled={validationLoading || apiKey.trim() === ""}
+          aria-label={validationLoading ? "Validating RunPod key" : "Validate RunPod key"}
+          title={validationLoading ? "Validating RunPod key" : "Validate RunPod key"}
+        >
           <FiCheckCircle aria-hidden="true" />
-          {validationLoading ? "Validating..." : "Validate key"}
         </button>
         <span className={`pillBadge ${status?.configured ? "tone-good" : "tone-neutral"}`}>
           {status?.configured ? `Key ready (${status.source})` : "Key required"}

@@ -54,7 +54,7 @@ def sync_incremental_outputs(agent: RemoteAgentClient, job: StoredTrainingJob) -
                 bytes_added=after - before,
                 size_bytes=after,
             )
-    for remote_name in ("runtime_state.json", "metadata.json", "artifact_manifest.json", "training_data_preview.json"):
+    for remote_name in ("runtime_state.json", "metadata.json", "artifact_manifest.json"):
         try:
             agent.download_file(remote_name, root / remote_name, optional=True)
         except RemoteAgentError as exc:

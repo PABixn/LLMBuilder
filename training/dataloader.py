@@ -8,7 +8,7 @@ import random
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Iterator, List, Optional, Sequence
+from typing import Iterable, Iterator, List, Optional, Sequence
 
 import torch
 from torch.utils.data import DataLoader, IterableDataset, get_worker_info
@@ -204,98 +204,6 @@ class TrainingTokenDataset(IterableDataset):
         mixed_iter = self._interleave(states, self.config.mixing)
         yield from self._pack_tokens(mixed_iter)
 
-    def debug_preview(
-        self,
-        *,
-        max_token_records: int = 3,
-        max_windows: int = 3,
-        preview_token_count: int = 48,
-        max_resolved_files: int = 8,
-    ) -> dict[str, Any]:
-        max_token_records = max(int(max_token_records), 0)
-        max_windows = max(int(max_windows), 0)
-        preview_token_count = max(int(preview_token_count), 1)
-        max_resolved_files = max(int(max_resolved_files), 0)
-
-        payload: dict[str, Any] = {
-            "seq_len": self.seq_len,
-            "token_dtype": self.config.token_dtype,
-            "add_bos": self.config.add_bos,
-            "add_eos": self.config.add_eos,
-            "bos_token": self.config.bos_token,
-            "eos_token": self.config.eos_token,
-            "pad_token": self.config.pad_token,
-            "bos_token_id": self._bos_id,
-            "eos_token_id": self._eos_id,
-            "pad_token_id": self._pad_id,
-            "datasets": [],
-            "packed_windows": [],
-        }
-
-        for dataset_index, spec in enumerate(self.config.datasets):
-            state = self._load_dataset(dataset_index, spec, worker_info=None)
-            dataset_payload: dict[str, Any] = {
-                "dataset_index": dataset_index,
-                "name": spec.name,
-                "config": spec.config,
-                "split": spec.split,
-                "streaming": spec.streaming,
-                "weight": float(spec.weight),
-                "text_columns": list(spec.text_columns),
-                "data_files": spec.data_files,
-                "is_local_text": is_local_text_dataset(spec.name, spec.data_files, split=spec.split),
-                "token_records": [],
-            }
-            if dataset_payload["is_local_text"]:
-                resolved_files = resolve_local_data_files(
-                    spec.data_files,
-                    split=spec.split,
-                    relative_base=self._relative_data_file_bases or None,
-                )
-                dataset_payload["resolved_file_count"] = len(resolved_files)
-                dataset_payload["resolved_files"] = [
-                    str(path) for path in resolved_files[:max_resolved_files]
-                ]
-
-            token_records: list[dict[str, Any]] = []
-            for record_index, tokens in enumerate(self._iter_token_records(state)):
-                if record_index >= max_token_records:
-                    break
-                token_records.append(
-                    self._summarize_token_sequence(
-                        tokens,
-                        preview_token_count=preview_token_count,
-                        record_index=record_index,
-                    )
-                )
-            dataset_payload["token_records"] = token_records
-            payload["datasets"].append(dataset_payload)
-
-        if max_windows > 0:
-            mixed_states = [
-                self._load_dataset(idx, spec, worker_info=None)
-                for idx, spec in enumerate(self.config.datasets)
-            ]
-            mixed_iter = self._interleave(mixed_states, self.config.mixing)
-            for window_index, (inputs, targets) in enumerate(self._pack_tokens(mixed_iter)):
-                if window_index >= max_windows:
-                    break
-                payload["packed_windows"].append(
-                    {
-                        "window_index": window_index,
-                        "input": self._summarize_token_sequence(
-                            inputs.tolist(),
-                            preview_token_count=preview_token_count,
-                        ),
-                        "target": self._summarize_token_sequence(
-                            targets.tolist(),
-                            preview_token_count=preview_token_count,
-                        ),
-                    }
-                )
-
-        return payload
-
     def _resolve_token_id(self, token: Optional[str], label: str) -> Optional[int]:
         if token is None:
             return None
@@ -303,46 +211,6 @@ class TrainingTokenDataset(IterableDataset):
         if token_id is None:
             raise ValueError(f"{label} '{token}' not found in tokenizer vocab")
         return int(token_id)
-
-    def _summarize_token_sequence(
-        self,
-        token_ids: Sequence[int],
-        *,
-        preview_token_count: int,
-        record_index: int | None = None,
-    ) -> dict[str, Any]:
-        resolved = [int(token_id) for token_id in token_ids]
-        head_ids = resolved[:preview_token_count]
-        tail_ids = resolved[-preview_token_count:] if len(resolved) > preview_token_count else resolved[:]
-        summary: dict[str, Any] = {
-            "token_count": len(resolved),
-            "unique_token_count": len(set(resolved)),
-            "bos_count": resolved.count(self._bos_id) if self._bos_id is not None else 0,
-            "eos_count": resolved.count(self._eos_id) if self._eos_id is not None else 0,
-            "head_token_ids": head_ids,
-            "tail_token_ids": tail_ids,
-            "decoded_head": self._decode_tokens(head_ids),
-            "decoded_tail": self._decode_tokens(tail_ids),
-        }
-        if record_index is not None:
-            summary["record_index"] = record_index
-        return summary
-
-    def _decode_tokens(self, token_ids: Sequence[int]) -> Optional[str]:
-        decode = getattr(self.tokenizer, "decode", None)
-        if not callable(decode):
-            return None
-        resolved = [int(token_id) for token_id in token_ids]
-        try:
-            text = decode(resolved, skip_special_tokens=False)
-        except TypeError:
-            try:
-                text = decode(resolved)
-            except Exception:
-                return None
-        except Exception:
-            return None
-        return text if isinstance(text, str) else str(text)
 
     def _resolve_shuffle_config(self, spec: DatasetSpec) -> Optional[ShuffleConfig]:
         if spec.shuffle is False:

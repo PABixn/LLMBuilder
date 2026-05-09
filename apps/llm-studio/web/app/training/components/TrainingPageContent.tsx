@@ -54,7 +54,6 @@ import {
   asNumber,
   asRecord,
   asRecordArray,
-  asString,
   cloneRecord,
   deleteAtPath,
   readStoredJson,
@@ -62,7 +61,6 @@ import {
   writeStoredJson,
 } from "../lib/object";
 import {
-  compactWorkflowMessage,
   formatLearningRate,
   replaceRunInOrder,
 } from "../lib/run";
@@ -133,7 +131,6 @@ export function TrainingPageContent() {
   const {
     activeRun,
     checkpoints,
-    dataPreview,
     logs,
     metrics,
     recentRuns,
@@ -151,6 +148,7 @@ export function TrainingPageContent() {
     preflight,
     preflightError,
     preflightLoading,
+    refreshPreflight,
     selectedRecommendationOptionKey,
     setSelectedRecommendationOptionKey,
   } = useTrainingPreflight({
@@ -540,22 +538,11 @@ export function TrainingPageContent() {
   const stoppingActiveRun = activeRunCanBeStopped && stoppingRunId === activeRun.id;
   const batchAndLrRecommendation = preflight?.batch_and_lr_recommendation ?? null;
   const trainingCompleted = activeRun?.status === "completed";
-  const sequenceLength = trainingConfig ? asNumber(trainingConfig.seq_len, 0) : 0;
-  const maxSteps = trainingConfig ? asNumber(trainingConfig.max_steps, 0) : 0;
-  const datasetSummary =
-    datasetSourceMode === "local_file"
-      ? `${localTrainFiles.length} local file${localTrainFiles.length === 1 ? "" : "s"}`
-      : `${streamingDatasets.length} streaming dataset${
-          streamingDatasets.length === 1 ? "" : "s"
-        }`;
   const workflowSteps: TrainingWorkflowStep[] = [
     {
       title: "Step 1 - Choose saved model",
       state: selectedProject ? "ready" : "waiting",
       status: selectedProject ? "Ready" : "Waiting for configuration",
-      body: selectedProject
-        ? selectedProject.name ?? selectedProject.id
-        : "Pick a saved model config from the home workspace or query parameters.",
       actionLabel: "Open model selection",
       onAction: () => openWorkflowTarget("model"),
     },
@@ -569,10 +556,6 @@ export function TrainingPageContent() {
         selectedTokenizer && selectedTokenizer.status === "completed"
           ? "Ready"
           : "Waiting for configuration",
-      body:
-        selectedTokenizer && selectedTokenizer.status === "completed"
-          ? asString(selectedTokenizer.tokenizer_config.name, selectedTokenizer.id)
-          : "Select a completed tokenizer artifact to ensure vocabulary compatibility.",
       actionLabel: "Open tokenizer selection",
       onAction: () => openWorkflowTarget("tokenizer"),
     },
@@ -580,11 +563,6 @@ export function TrainingPageContent() {
       title: "Step 3 - Configure training run",
       state: trainingRuntimeReady ? "ready" : "waiting",
       status: trainingRuntimeReady ? "Ready" : "Waiting for configuration",
-      body: trainingRuntimeReady
-        ? `Sequence length ${formatInteger(sequenceLength)}, maximum training steps ${formatInteger(
-            maxSteps
-          )}, ${datasetSummary} configured.`
-        : "Tune sequence length, batch size, save cadence, prompts, and dataset sources.",
       actionLabel: "Open training settings",
       onAction: () => openWorkflowTarget("training"),
     },
@@ -596,15 +574,6 @@ export function TrainingPageContent() {
         : preflightLoading
           ? "In progress"
           : "Waiting for configuration",
-      body: preflight?.valid
-        ? "Preflight passed for compatibility, runtime math, and memory checks."
-        : preflightLoading
-          ? "Validating the latest training and dataset configuration changes..."
-          : compactWorkflowMessage(
-              preflightError ??
-                preflight?.errors[0]?.message ??
-                "Complete steps 1-3 first. Preflight runs automatically."
-            ),
       actionLabel: "Review preflight",
       onAction: () => openWorkflowTarget("preflight"),
     },
@@ -620,15 +589,6 @@ export function TrainingPageContent() {
         : hasTrainingInProgress
           ? "In progress"
           : "Not ready",
-      body: trainingCompleted
-        ? "Latest training run completed. Artifacts and telemetry are ready."
-        : hasTrainingInProgress
-          ? `Current run is ${activeRun?.status ?? "running"}.`
-          : startReady
-            ? "Preflight passed. Start training to complete this step."
-            : preflightLoading
-              ? "Waiting for automatic preflight to finish."
-              : "A passing preflight is required before launch.",
     },
   ];
 
@@ -683,7 +643,6 @@ export function TrainingPageContent() {
         <ActiveRunPanel
           activeRun={activeRun}
           checkpoints={checkpoints}
-          dataPreview={dataPreview}
           logs={logs}
           metrics={metrics}
           onClose={() => setIsActiveRunOpen(false)}
@@ -770,6 +729,7 @@ export function TrainingPageContent() {
               handleTrainingField={handleTrainingField}
               highlighted={highlightedWorkflowTarget === "training"}
               onApplyRecommendation={applyRecommendationOption}
+              onRefreshRecommendation={refreshPreflight}
               preflightError={preflightError}
               preflightLoading={preflightLoading}
               recommendation={batchAndLrRecommendation}

@@ -266,20 +266,6 @@ def get_training_logs(job_id: str, request: Request, lines: int | None = None) -
         raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
 
 
-@training_api.get("/jobs/{job_id}/data-preview")
-def get_training_data_preview(job_id: str, request: Request) -> dict[str, object]:
-    manager = request.app.state.training_jobs
-    try:
-        return manager.get_data_preview(job_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
-    except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Training data preview is not available yet for job {job_id}.",
-        ) from exc
-
-
 @training_api.get("/jobs/{job_id}/checkpoints", response_model=TrainingCheckpointsResponse)
 def get_training_checkpoints(job_id: str, request: Request) -> TrainingCheckpointsResponse:
     manager = request.app.state.training_jobs

@@ -69,9 +69,6 @@ export function ExecutionTargetPanel({
         <div className="settingsGroup">
           <div className="settingsGroupHeader">
             <h3>Where this run trains</h3>
-            <p className="settingsGroupHint">
-              Local runs keep using this machine. RunPod runs create a managed GPU pod, stream telemetry back here, then apply the selected cleanup policy.
-            </p>
           </div>
           <div className="modeSwitch">
             <button

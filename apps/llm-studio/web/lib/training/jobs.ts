@@ -3,7 +3,6 @@ import type {
   TrainingCheckpointEntry,
   TrainingConfigSchemas,
   TrainingConfigTemplates,
-  TrainingDataPreview,
   TrainingExecutionTarget,
   TrainingJob,
   TrainingLogsResponse,
@@ -117,10 +116,6 @@ export async function fetchTrainingLogs(jobId: string, lines?: number): Promise<
   }
   const query = params.toString();
   return request<TrainingLogsResponse>(`/jobs/${jobId}/logs${query ? `?${query}` : ""}`);
-}
-
-export async function fetchTrainingDataPreview(jobId: string): Promise<TrainingDataPreview> {
-  return request<TrainingDataPreview>(`/jobs/${jobId}/data-preview`);
 }
 
 export async function fetchTrainingCheckpoints(jobId: string): Promise<TrainingCheckpointEntry[]> {

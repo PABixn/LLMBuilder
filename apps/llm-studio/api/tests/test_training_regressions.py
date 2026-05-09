@@ -157,55 +157,6 @@ def test_training_local_text_dataset_adds_eos_once_per_file(tmp_path: Path) -> N
     assert token_stream[-1] == eos_id
 
 
-def test_training_debug_preview_shows_local_text_record_and_windows(tmp_path: Path) -> None:
-    local_dataset = tmp_path / "shake.txt"
-    local_dataset.write_text("a\nb\nc", encoding="utf-8")
-    tokenizer = _CharTokenizer()
-
-    dataset = build_training_dataset(
-        {
-            "datasets": [
-                {
-                    "name": "text",
-                    "data_files": {"train": str(local_dataset)},
-                    "split": "train",
-                    "text_columns": ["text"],
-                    "weight": 1.0,
-                    "streaming": True,
-                }
-            ],
-            "add_eos": True,
-            "eos_token": "<|endoftext|>",
-            "drop_last": True,
-            "mixing": {"seed": 42, "exhausted_policy": "stop"},
-            "normalization": {
-                "normalize_newlines": True,
-                "collapse_whitespace": False,
-                "strip": False,
-                "lowercase": False,
-                "drop_empty": True,
-            },
-            "record_separator": "",
-        },
-        tokenizer,
-        seq_len=2,
-    )
-
-    preview = dataset.debug_preview(max_token_records=2, max_windows=2, preview_token_count=8)
-
-    assert preview["eos_token_id"] == 0
-    assert len(preview["datasets"]) == 1
-    dataset_preview = preview["datasets"][0]
-    assert dataset_preview["is_local_text"] is True
-    assert dataset_preview["resolved_file_count"] == 1
-    assert len(dataset_preview["token_records"]) == 1
-    first_record = dataset_preview["token_records"][0]
-    assert first_record["eos_count"] == 1
-    assert first_record["decoded_head"] == "a\nb\nc<|endoftext|>"
-    assert len(preview["packed_windows"]) == 2
-    assert preview["packed_windows"][0]["input"]["decoded_head"] == "a\n"
-
-
 def test_training_local_text_paths_loaded_from_runpod_bundle_resolve_under_job_root(tmp_path: Path) -> None:
     job_root = tmp_path / "jobs" / "job-123"
     inputs_dir = job_root / "inputs"
@@ -236,13 +187,16 @@ def test_training_local_text_paths_loaded_from_runpod_bundle_resolve_under_job_r
     )
 
     config = load_training_dataloader_config(dataloader_config_path)
-    dataset = build_training_dataset(config, _CharTokenizer(), seq_len=4)
+    tokenizer = _CharTokenizer()
+    dataset = build_training_dataset(config, tokenizer, seq_len=1)
 
-    preview = dataset.debug_preview(max_token_records=1, max_windows=1, preview_token_count=32)
+    windows = list(dataset)
+    assert windows
+    token_stream = [int(windows[0][0].item())]
+    for _, targets in windows:
+        token_stream.append(int(targets.item()))
 
-    dataset_preview = preview["datasets"][0]
-    assert dataset_preview["resolved_files"] == [str(local_dataset.resolve())]
-    assert dataset_preview["token_records"][0]["decoded_head"] == "remote bundle text<|endoftext|>"
+    assert tokenizer.decode(token_stream) == "remote bundle text<|endoftext|>"
 
 
 def test_model_generate_stops_before_emitting_stop_token() -> None:

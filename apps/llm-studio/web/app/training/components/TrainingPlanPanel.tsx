@@ -25,6 +25,7 @@ type TrainingPlanPanelProps = {
   handleTrainingField: (path: string[], value: unknown) => void;
   highlighted: boolean;
   onApplyRecommendation: (option: TrainingBatchLrRecommendationOption) => void;
+  onRefreshRecommendation: () => void;
   preflightError: string | null;
   preflightLoading: boolean;
   recommendation: TrainingBatchLrRecommendation | null;
@@ -45,6 +46,7 @@ export const TrainingPlanPanel = forwardRef<HTMLDetailsElement, TrainingPlanPane
       handleTrainingField,
       highlighted,
       onApplyRecommendation,
+      onRefreshRecommendation,
       preflightError,
       preflightLoading,
       recommendation,
@@ -150,6 +152,7 @@ export const TrainingPlanPanel = forwardRef<HTMLDetailsElement, TrainingPlanPane
 
             <BatchLrAdvisor
               onApplyRecommendation={onApplyRecommendation}
+              onRefreshRecommendation={onRefreshRecommendation}
               preflightError={preflightError}
               preflightLoading={preflightLoading}
               recommendation={recommendation}

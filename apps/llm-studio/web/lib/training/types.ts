@@ -167,8 +167,6 @@ export interface TrainingLogsResponse {
   stderr_lines: string[];
 }
 
-export type TrainingDataPreview = Record<string, unknown>;
-
 export interface TrainingJob {
   id: string;
   name: string;

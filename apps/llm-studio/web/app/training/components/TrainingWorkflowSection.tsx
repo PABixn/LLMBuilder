@@ -4,7 +4,6 @@ export type TrainingWorkflowStep = {
   title: string;
   state: "ready" | "inProgress" | "waiting";
   status: string;
-  body: string;
   actionLabel?: string;
   onAction?: () => void;
 };
@@ -30,9 +29,6 @@ export function TrainingWorkflowSection({
         <div>
           <p className="panelEyebrow">Top Workflow</p>
           <h2>Steps to train the model</h2>
-          <p className="panelCopy">
-            Complete each step in order. A step turns green only when it is ready.
-          </p>
         </div>
       </div>
       <div className="workflowStepGrid" role="list" aria-label="Training launch steps">
@@ -50,7 +46,6 @@ export function TrainingWorkflowSection({
           >
             <p className="workflowStepTitle">{step.title}</p>
             <strong>{formatStatusLabel(step.status)}</strong>
-            <p className="fieldNote">{step.body}</p>
             {step.onAction && step.actionLabel ? (
               <button
                 type="button"
