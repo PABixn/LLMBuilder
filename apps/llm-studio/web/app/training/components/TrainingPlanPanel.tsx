@@ -58,7 +58,7 @@ export const TrainingPlanPanel = forwardRef<HTMLDetailsElement, TrainingPlanPane
     ref
   ) {
     return (
-      <details className="settingsPanel" open ref={ref}>
+      <details className="settingsPanel trainingPlanSettingsPanel" open ref={ref}>
         <summary>Training plan</summary>
         <div className="settingsGrid">
           <div

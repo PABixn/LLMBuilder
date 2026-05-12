@@ -181,6 +181,9 @@ class TrainingBatchLrRecommendationOption(BaseModel):
     grad_accum_steps: int
     learning_rate: float
     estimated_tokens_per_run: int
+    recommended_max_steps: int
+    estimated_tokens_per_recommended_run: int
+    estimated_local_passes_at_recommended_steps: float | None = None
     clear_manual_micro_batch: bool = True
 
 
@@ -205,12 +208,15 @@ class TrainingBatchLrRecommendationSignals(BaseModel):
     streaming_dataset_count: int
     local_file_count: int
     local_total_size_bytes: int | None = None
+    approx_local_tokens: int | None = None
     dominant_dataset_weight: float
     dataset_scale: str
     schedule_peak_factor: float
     warmup_fraction: float
     max_memory_micro_batch_size: int
     recommended_batch_target: int
+    recommended_run_token_budget: int
+    parameter_scaled_run_token_target: int
 
 
 class TrainingBatchLrRecommendation(BaseModel):

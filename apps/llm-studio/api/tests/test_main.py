@@ -245,11 +245,140 @@ def test_batch_and_lr_recommendation_preserves_canonical_learning_rates() -> Non
     )
 
 
+def test_batch_and_lr_recommendation_scales_local_batch_caps_with_model_size() -> None:
+    from app.training_recommendations import _local_dataset_batch_cap_tokens
+
+    small_model_cap = _local_dataset_batch_cap_tokens(
+        approx_local_tokens=262_144,
+        dataset_scale="small_local",
+        seq_len=128,
+        total_parameters=11_000_000,
+    )
+    gpt2_scale_cap = _local_dataset_batch_cap_tokens(
+        approx_local_tokens=262_144,
+        dataset_scale="small_local",
+        seq_len=128,
+        total_parameters=124_000_000,
+    )
+
+    assert gpt2_scale_cap > small_model_cap
+    assert gpt2_scale_cap % 128 == 0
+
+
+def test_batch_and_lr_recommendation_derives_local_run_length_from_pass_budget() -> None:
+    from app.training_recommendations import (
+        _DatasetSummary,
+        _ModelSummary,
+        _ScheduleSummary,
+        _recommend_run_budget,
+        _recommended_max_training_steps,
+    )
+
+    model_summary = _ModelSummary(
+        total_parameters=124_000_000,
+        parameter_memory_bytes_bf16=248_000_000,
+        estimated_kv_cache_bytes_for_context_fp16=0,
+        block_count=12,
+        attention_component_count=12,
+        max_mlp_multiplier=4.0,
+        activation_types=("gelu",),
+        norm_types=("layernorm",),
+        uses_gqa=False,
+        weight_tying=True,
+    )
+    dataset_summary = _DatasetSummary(
+        dataset_count=1,
+        local_dataset_count=1,
+        streaming_dataset_count=0,
+        local_file_count=1,
+        local_total_size_bytes=1_048_576,
+        dominant_dataset_weight=1.0,
+        dataset_scale="small_local",
+        approx_local_tokens=262_144,
+        step_budget_cap_tokens=9_984,
+        tokenizer_bytes_per_token_assumption=4.0,
+    )
+    schedule_summary = _ScheduleSummary(
+        peak_factor=1.0,
+        warmup_fraction=0.1,
+        label="Warmup + cosine decay",
+    )
+
+    budget = _recommend_run_budget(
+        balanced_total_batch_size=8_192,
+        model_summary=model_summary,
+        dataset_summary=dataset_summary,
+        schedule_summary=schedule_summary,
+    )
+
+    assert budget.target_local_passes == 4.0
+    assert budget.parameter_scaled_token_target == 2_480_000_000
+    assert budget.target_run_tokens == 1_048_576
+    assert (
+        _recommended_max_training_steps(
+            total_batch_size=8_192,
+            run_budget_summary=budget,
+        )
+        == 128
+    )
+
+
+def test_batch_and_lr_recommendation_uses_twenty_tokens_per_parameter_for_streaming_runs() -> None:
+    from app.training_recommendations import (
+        _DatasetSummary,
+        _ModelSummary,
+        _ScheduleSummary,
+        _recommend_run_budget,
+    )
+
+    model_summary = _ModelSummary(
+        total_parameters=124_000_000,
+        parameter_memory_bytes_bf16=248_000_000,
+        estimated_kv_cache_bytes_for_context_fp16=0,
+        block_count=12,
+        attention_component_count=12,
+        max_mlp_multiplier=4.0,
+        activation_types=("gelu",),
+        norm_types=("layernorm",),
+        uses_gqa=False,
+        weight_tying=True,
+    )
+    dataset_summary = _DatasetSummary(
+        dataset_count=1,
+        local_dataset_count=0,
+        streaming_dataset_count=1,
+        local_file_count=0,
+        local_total_size_bytes=None,
+        dominant_dataset_weight=1.0,
+        dataset_scale="streaming",
+        approx_local_tokens=None,
+        step_budget_cap_tokens=None,
+        tokenizer_bytes_per_token_assumption=4.0,
+    )
+    schedule_summary = _ScheduleSummary(
+        peak_factor=1.0,
+        warmup_fraction=0.1,
+        label="Warmup + cosine decay",
+    )
+
+    budget = _recommend_run_budget(
+        balanced_total_batch_size=524_288,
+        model_summary=model_summary,
+        dataset_summary=dataset_summary,
+        schedule_summary=schedule_summary,
+    )
+
+    assert budget.parameter_scaled_token_target == 2_480_000_000
+    assert budget.target_run_tokens == 2_480_000_000
+    assert budget.basis == "parameter_scaled"
+
+
 def test_batch_and_lr_recommendation_keeps_named_profiles_even_when_values_match() -> None:
     from app.training_recommendations import (
         _BatchCandidate,
         _DatasetSummary,
         _ModelSummary,
+        _RunBudgetSummary,
         _ScheduleSummary,
         _build_options,
     )
@@ -330,12 +459,19 @@ def test_batch_and_lr_recommendation_keeps_named_profiles_even_when_values_match
         micro_batch_size=32,
         grad_accum_steps=8,
     )
+    run_budget_summary = _RunBudgetSummary(
+        target_run_tokens=1_572_864,
+        parameter_scaled_token_target=1_572_864,
+        target_local_passes=None,
+        basis="parameter_scaled",
+    )
 
     options = _build_options(
         training_config=training_config,
         model_summary=model_summary,
         dataset_summary=dataset_summary,
         schedule_summary=schedule_summary,
+        run_budget_summary=run_budget_summary,
         current_micro_batch_size=None,
         balanced_candidate=candidate,
         stability_candidate=candidate,
@@ -562,8 +698,13 @@ def test_training_endpoints_validate_and_preflight(monkeypatch, tmp_path: Path) 
         assert recommended_option["micro_batch_size"] > 0
         assert recommended_option["grad_accum_steps"] > 0
         assert recommended_option["learning_rate"] > 0
+        assert recommended_option["recommended_max_steps"] > 0
+        assert recommended_option["estimated_tokens_per_recommended_run"] > 0
         assert recommendation["signals"]["max_memory_micro_batch_size"] > 0
         assert recommendation["signals"]["local_file_count"] == 1
+        assert recommendation["signals"]["recommended_run_token_budget"] > 0
+        assert recommendation["signals"]["parameter_scaled_run_token_target"] > 0
+        assert "training_length" in {factor["code"] for factor in recommendation["factors"]}
         assert {issue["code"] for issue in preflight_body["warnings"]} == {"save_every_sparse"}
         fix_codes = {fix["code"] for fix in preflight_body["recommended_fixes"]}
         save_fix = next(

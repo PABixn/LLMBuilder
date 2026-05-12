@@ -1,5 +1,6 @@
 import type {
   TrainingBatchLrRecommendation,
+  TrainingBatchLrRecommendationFactor,
   TrainingBatchLrRecommendationOption,
 } from "../../../lib/training/types";
 import { formatDatasetScaleLabel } from "./display";
@@ -14,6 +15,7 @@ type AdvisorTooltipItem = {
 export type BatchLrAdvisorViewModel = {
   recommendationConfidenceLabel: string | null;
   recommendationConfidenceTone: string;
+  highlightedRecommendationFactors: TrainingBatchLrRecommendationFactor[];
   recommendedRecommendationOption: TrainingBatchLrRecommendationOption | null;
   selectedBatchTooltipItems: AdvisorTooltipItem[];
   selectedBatchTooltipSummary: string;
@@ -22,6 +24,8 @@ export type BatchLrAdvisorViewModel = {
   selectedPeakLearningRate: number | null;
   selectedRecommendationIsRecommended: boolean;
   selectedRecommendationOption: TrainingBatchLrRecommendationOption | null;
+  selectedStepTooltipItems: AdvisorTooltipItem[];
+  selectedStepTooltipSummary: string;
 };
 
 function formatRelativeDeltaPercent(value: number, baseline: number): string {
@@ -84,6 +88,30 @@ function describeLearningRateProfileShift(
   return `This profile lands on the same canonical LR as ${baselineLabel}, so the main change comes from batch layout rather than LR.`;
 }
 
+function describeStepProfileShift(
+  selectedMaxSteps: number,
+  baselineMaxSteps: number,
+  baselineLabel: string,
+  isRecommended: boolean
+): string {
+  if (isRecommended) {
+    return "This max-step cap matches the advisor's recommended run-token budget for the selected optimizer-step size.";
+  }
+  if (selectedMaxSteps < baselineMaxSteps) {
+    return `This profile shortens the run by ${formatRelativeDeltaPercent(
+      selectedMaxSteps,
+      baselineMaxSteps
+    )} versus ${baselineLabel} because each optimizer step covers more tokens.`;
+  }
+  if (selectedMaxSteps > baselineMaxSteps) {
+    return `This profile extends the run by ${formatRelativeDeltaPercent(
+      selectedMaxSteps,
+      baselineMaxSteps
+    )} versus ${baselineLabel} so the smaller optimizer step still reaches a comparable token budget.`;
+  }
+  return `This profile keeps the same maximum training-step cap as ${baselineLabel}.`;
+}
+
 function describeBatchHardwareContext(
   deviceType: string,
   maxMemoryMicroBatchSize: number,
@@ -139,6 +167,42 @@ function describeLearningRateDatasetContext(datasetScale: string): string {
   )} data supports a measured LR that still respects repeated passes over the local corpus.`;
 }
 
+function describeStepBudgetContext(
+  estimatedTokensPerRecommendedRun: number,
+  recommendedRunTokenBudget: number,
+  parameterScaledRunTokenTarget: number
+): string {
+  if (recommendedRunTokenBudget < parameterScaledRunTokenTarget) {
+    return `This profile lands near ${formatInteger(
+      estimatedTokensPerRecommendedRun
+    )} recommended run tokens. The unconstrained parameter-scaled anchor is ${formatInteger(
+      parameterScaledRunTokenTarget
+    )} tokens, but the active data regime reduces the practical recommendation to ${formatInteger(
+      recommendedRunTokenBudget
+    )}.`;
+  }
+  return `This profile lands near ${formatInteger(
+    estimatedTokensPerRecommendedRun
+  )} recommended run tokens, matching the parameter-scaled advisor budget of ${formatInteger(
+    parameterScaledRunTokenTarget
+  )} tokens.`;
+}
+
+function describeStepDatasetContext(
+  datasetScale: string,
+  estimatedLocalPassesAtRecommendedSteps: number | null
+): string {
+  if (estimatedLocalPassesAtRecommendedSteps !== null) {
+    return `That works out to about ${estimatedLocalPassesAtRecommendedSteps.toFixed(
+      1
+    )} estimated passes over the current local corpus.`;
+  }
+  if (datasetScale === "mixed") {
+    return "Mixed local and streaming data keeps the run cap more measured than an open-ended streaming-only launch.";
+  }
+  return "Streaming-scale data lets the advisor spend the run budget on model-scale optimization instead of strict corpus reuse limits.";
+}
+
 export function buildBatchLrAdvisorViewModel(
   recommendation: TrainingBatchLrRecommendation | null,
   selectedRecommendationOptionKey: string | null
@@ -188,6 +252,15 @@ export function buildBatchLrAdvisorViewModel(
           selectedPeakLearningRate
         )
       : "";
+  const selectedStepTooltipSummary =
+    selectedRecommendationOption && recommendedRecommendationOption
+      ? describeStepProfileShift(
+          selectedRecommendationOption.recommended_max_steps,
+          recommendedRecommendationOption.recommended_max_steps,
+          recommendedRecommendationOption.label,
+          selectedRecommendationOption.key === recommendedRecommendationOption.key
+        )
+      : "";
   const selectedBatchTooltipItems =
     recommendation && selectedRecommendationOption
       ? [
@@ -222,10 +295,38 @@ export function buildBatchLrAdvisorViewModel(
           },
         ]
       : [];
+  const selectedStepTooltipItems =
+    recommendation && selectedRecommendationOption
+      ? [
+          {
+            label: "Run-token budget",
+            detail: describeStepBudgetContext(
+              selectedRecommendationOption.estimated_tokens_per_recommended_run,
+              recommendation.signals.recommended_run_token_budget,
+              recommendation.signals.parameter_scaled_run_token_target
+            ),
+          },
+          {
+            label: "Data regime",
+            detail: describeStepDatasetContext(
+              recommendation.signals.dataset_scale,
+              selectedRecommendationOption.estimated_local_passes_at_recommended_steps
+            ),
+          },
+        ]
+      : [];
+  const highlightedRecommendationFactors =
+    recommendation?.factors.filter((factor) =>
+      factor.code === "pretraining_anchor" ||
+      factor.code === "dataset_scale" ||
+      factor.code === "memory_fit" ||
+      factor.code === "training_length"
+    ) ?? [];
 
   return {
     recommendationConfidenceLabel,
     recommendationConfidenceTone,
+    highlightedRecommendationFactors,
     recommendedRecommendationOption,
     selectedBatchTooltipItems,
     selectedBatchTooltipSummary,
@@ -234,5 +335,7 @@ export function buildBatchLrAdvisorViewModel(
     selectedPeakLearningRate,
     selectedRecommendationIsRecommended,
     selectedRecommendationOption,
+    selectedStepTooltipItems,
+    selectedStepTooltipSummary,
   };
 }

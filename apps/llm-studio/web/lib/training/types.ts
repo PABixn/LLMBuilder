@@ -72,6 +72,9 @@ export interface TrainingBatchLrRecommendationOption {
   grad_accum_steps: number;
   learning_rate: number;
   estimated_tokens_per_run: number;
+  recommended_max_steps: number;
+  estimated_tokens_per_recommended_run: number;
+  estimated_local_passes_at_recommended_steps: number | null;
   clear_manual_micro_batch: boolean;
 }
 
@@ -96,12 +99,15 @@ export interface TrainingBatchLrRecommendationSignals {
   streaming_dataset_count: number;
   local_file_count: number;
   local_total_size_bytes: number | null;
+  approx_local_tokens: number | null;
   dominant_dataset_weight: number;
   dataset_scale: string;
   schedule_peak_factor: number;
   warmup_fraction: number;
   max_memory_micro_batch_size: number;
   recommended_batch_target: number;
+  recommended_run_token_budget: number;
+  parameter_scaled_run_token_target: number;
 }
 
 export interface TrainingBatchLrRecommendation {

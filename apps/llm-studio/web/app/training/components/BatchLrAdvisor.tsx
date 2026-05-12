@@ -13,9 +13,14 @@ import { compactWorkflowMessage, formatLearningRate } from "../lib/run";
 type TrainingAdvisorInfoProps = {
   label: string;
   children: ReactNode;
+  tooltipClassName?: string;
 };
 
-function TrainingAdvisorInfo({ label, children }: TrainingAdvisorInfoProps) {
+function TrainingAdvisorInfo({
+  label,
+  children,
+  tooltipClassName = "",
+}: TrainingAdvisorInfoProps) {
   return (
     <span className="trainingAdvisorInfo">
       <button
@@ -26,7 +31,7 @@ function TrainingAdvisorInfo({ label, children }: TrainingAdvisorInfoProps) {
       >
         <span aria-hidden="true">i</span>
       </button>
-      <span className="trainingAdvisorTooltip" role="tooltip">
+      <span className={`trainingAdvisorTooltip ${tooltipClassName}`.trim()} role="tooltip">
         {children}
       </span>
     </span>
@@ -55,6 +60,7 @@ export function BatchLrAdvisor({
   onRefreshRecommendation,
 }: BatchLrAdvisorProps) {
   const {
+    highlightedRecommendationFactors,
     recommendationConfidenceLabel,
     recommendationConfidenceTone,
     selectedBatchTooltipItems,
@@ -63,14 +69,16 @@ export function BatchLrAdvisor({
     selectedLearningRateTooltipSummary,
     selectedRecommendationIsRecommended,
     selectedRecommendationOption,
+    selectedStepTooltipItems,
+    selectedStepTooltipSummary,
   } = buildBatchLrAdvisorViewModel(recommendation, selectedRecommendationOptionKey);
 
   return (
     <details className="trainingAdvisorCard" open>
       <summary className="trainingAdvisorSummary">
         <span>
-          <span className="panelEyebrow">Batch And LR Advisor</span>
-          <span className="trainingAdvisorSummaryTitle">Recommended optimizer step sizing</span>
+          <span className="panelEyebrow">Training Plan Advisor</span>
+          <span className="trainingAdvisorSummaryTitle">Recommended optimizer and run sizing</span>
         </span>
         <span className="trainingAdvisorSummaryActions">
           {recommendation ? (
@@ -94,17 +102,17 @@ export function BatchLrAdvisor({
           </button>
         </span>
       </summary>
-      <div className="trainingAdvisorHead">
-        <div>
-          <p className="trainingAdvisorCopy">
-            {recommendation
-              ? recommendation.summary
-              : preflightLoading
+      {!recommendation ? (
+        <div className="trainingAdvisorHead">
+          <div>
+            <p className="trainingAdvisorCopy">
+              {preflightLoading
                 ? "Preflight is recalculating the recommendation from the current model, dataset, runtime, and scheduler settings."
                 : "Select a model and tokenizer and let preflight run to see the recommended optimizer-step token batch and learning rate."}
-          </p>
+            </p>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {recommendation && selectedRecommendationOption ? (
         <>
@@ -208,17 +216,74 @@ export function BatchLrAdvisor({
                   : ""}
               </small>
             </article>
+
+            <article className="trainingAdvisorKeyStat">
+              <div className="trainingAdvisorStatLabel">
+                <span>Maximum training steps</span>
+                <TrainingAdvisorInfo label="Training-step recommendation details">
+                  <strong>{selectedRecommendationOption.label}</strong>
+                  <p>{selectedStepTooltipSummary}</p>
+                  <div className="trainingAdvisorTooltipList">
+                    {selectedStepTooltipItems.map((item) => (
+                      <div key={item.label} className="trainingAdvisorTooltipItem">
+                        <span>{item.label}</span>
+                        <strong>{item.detail}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </TrainingAdvisorInfo>
+              </div>
+              <strong>{formatInteger(selectedRecommendationOption.recommended_max_steps)}</strong>
+              <small>
+                Current {formatInteger(asNumber(trainingConfig.max_steps, 0))}
+                {numbersRoughlyEqual(
+                  selectedRecommendationOption.recommended_max_steps,
+                  asNumber(trainingConfig.max_steps, 0)
+                )
+                  ? " • already set"
+                  : ""}
+              </small>
+            </article>
           </div>
+
+          {highlightedRecommendationFactors.length > 0 ? (
+            <div className="trainingAdvisorReasonControl">
+              <span className="trainingAdvisorToolbarLabel">Why this size</span>
+              <TrainingAdvisorInfo
+                label="Why this optimizer-step size"
+                tooltipClassName="trainingAdvisorTooltip-wide"
+              >
+                <strong>Optimizer-step rationale</strong>
+                <p>
+                  The advisor reconciles model scale with the active data and memory constraints.
+                </p>
+                <div className="trainingAdvisorTooltipList">
+                  {highlightedRecommendationFactors.map((factor) => (
+                    <div
+                      key={factor.code}
+                      className={`trainingAdvisorTooltipItem tone-${factor.tone}`}
+                    >
+                      <span>{factor.label}</span>
+                      <strong>{factor.detail}</strong>
+                    </div>
+                  ))}
+                </div>
+              </TrainingAdvisorInfo>
+            </div>
+          ) : null}
 
           <div className="trainingAdvisorFoot">
             <p className="trainingAdvisorNote">
               {selectedRecommendationOption.clear_manual_micro_batch
-                ? "Applying this clears the manual micro batch so preflight can auto-size the step."
-                : "Applying this keeps the current micro-step behavior compatible with the selected profile."}
+                ? "Applying this updates total batch size, learning rate, maximum training steps, refits the scheduler, and clears the manual micro batch so preflight can auto-size the step."
+                : "Applying this updates total batch size, learning rate, and maximum training steps while refitting the scheduler for the selected profile."}
             </p>
             <div className="trainingAdvisorMeta">
               <span className="pillBadge tone-neutral">
-                {formatInteger(selectedRecommendationOption.estimated_tokens_per_run)} run tokens
+                {formatInteger(
+                  selectedRecommendationOption.estimated_tokens_per_recommended_run
+                )}{" "}
+                recommended run tokens
               </span>
             </div>
           </div>

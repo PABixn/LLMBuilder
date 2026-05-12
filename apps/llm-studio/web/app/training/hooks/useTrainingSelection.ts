@@ -42,6 +42,13 @@ interface UseTrainingSelectionOptions {
   notify: NotifyTrainingSelection;
 }
 
+export function shouldRefreshSelectedProject(
+  currentProjectId: string | null,
+  nextProjectId: string | null
+): boolean {
+  return nextProjectId !== null && nextProjectId === currentProjectId;
+}
+
 export function readInitialTrainingSelection(
   searchParams: SearchParamReader
 ): InitialTrainingSelection {
@@ -69,12 +76,20 @@ export function useTrainingSelection({ notify }: UseTrainingSelectionOptions) {
   const [selectedProject, setSelectedProject] = useState<ProjectDetail | null>(null);
   const [selectedTokenizer, setSelectedTokenizer] = useState<TokenizerTrainingJob | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [selectedProjectRefreshId, setSelectedProjectRefreshId] = useState(0);
 
   const initializeTrainingSelection = useCallback((selection: InitialTrainingSelection) => {
     setActiveRunId(selection.activeRunId);
     setSelectedProjectId(selection.projectId);
     setSelectedTokenizerJobId(selection.tokenizerJobId);
   }, []);
+
+  const selectProjectId = useCallback((projectId: string | null) => {
+    if (shouldRefreshSelectedProject(selectedProjectId, projectId)) {
+      setSelectedProjectRefreshId((current) => current + 1);
+    }
+    setSelectedProjectId(projectId);
+  }, [selectedProjectId]);
 
   useEffect(() => {
     writeStoredJson(TRAINING_SELECTION_STORAGE_KEY, {
@@ -105,7 +120,7 @@ export function useTrainingSelection({ notify }: UseTrainingSelectionOptions) {
         }
       });
     return () => controller.abort();
-  }, [notify, selectedProjectId]);
+  }, [notify, selectedProjectId, selectedProjectRefreshId]);
 
   useEffect(() => {
     if (!selectedTokenizerJobId) {
@@ -137,10 +152,11 @@ export function useTrainingSelection({ notify }: UseTrainingSelectionOptions) {
     initializeTrainingSelection,
     selectedProject,
     selectedProjectId,
+    selectedProjectRefreshId,
     selectedTokenizer,
     selectedTokenizerJobId,
     setActiveRunId,
-    setSelectedProjectId,
+    setSelectedProjectId: selectProjectId,
     setSelectedTokenizerJobId,
   };
 }

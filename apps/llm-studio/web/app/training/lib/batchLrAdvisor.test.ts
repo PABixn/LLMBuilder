@@ -23,6 +23,9 @@ const recommendation: TrainingBatchLrRecommendation = {
       grad_accum_steps: 8,
       learning_rate: 0.0002,
       estimated_tokens_per_run: 102400,
+      recommended_max_steps: 240,
+      estimated_tokens_per_recommended_run: 245760,
+      estimated_local_passes_at_recommended_steps: 1.8,
       clear_manual_micro_batch: true,
     },
     {
@@ -35,10 +38,44 @@ const recommendation: TrainingBatchLrRecommendation = {
       grad_accum_steps: 8,
       learning_rate: 0.0003,
       estimated_tokens_per_run: 204800,
+      recommended_max_steps: 120,
+      estimated_tokens_per_recommended_run: 245760,
+      estimated_local_passes_at_recommended_steps: 1.8,
       clear_manual_micro_batch: false,
     },
   ],
-  factors: [],
+  factors: [
+    {
+      code: "memory_fit",
+      label: "Memory headroom and accumulation",
+      detail: "Hardware fit details.",
+      tone: "good",
+    },
+    {
+      code: "dataset_scale",
+      label: "Local corpus size",
+      detail: "Dataset caps the optimizer step.",
+      tone: "warning",
+    },
+    {
+      code: "pretraining_anchor",
+      label: "Reference pretraining target",
+      detail: "The unconstrained model target is larger.",
+      tone: "warning",
+    },
+    {
+      code: "training_length",
+      label: "Maximum training steps",
+      detail: "Run-length guidance.",
+      tone: "neutral",
+    },
+    {
+      code: "current_lr_gap",
+      label: "Current learning rate",
+      detail: "LR differs.",
+      tone: "warning",
+    },
+  ],
   signals: {
     device: "NVIDIA A100",
     device_type: "A100",
@@ -53,12 +90,15 @@ const recommendation: TrainingBatchLrRecommendation = {
     streaming_dataset_count: 0,
     local_file_count: 2,
     local_total_size_bytes: 1000000,
+    approx_local_tokens: 136533,
     dominant_dataset_weight: 1,
     dataset_scale: "small_local",
     schedule_peak_factor: 1.5,
     warmup_fraction: 0.1,
     max_memory_micro_batch_size: 3,
     recommended_batch_target: 2048,
+    recommended_run_token_budget: 245760,
+    parameter_scaled_run_token_target: 2480000,
   },
 };
 
@@ -69,6 +109,15 @@ test("batch LR advisor falls back to the recommended option", () => {
   assert.equal(viewModel.selectedRecommendationIsRecommended, true);
   assert.equal(viewModel.recommendationConfidenceTone, "tone-good");
   assert.match(viewModel.selectedBatchTooltipSummary, /default step size/);
+  assert.match(viewModel.selectedStepTooltipSummary, /run-token budget/);
+  assert.match(
+    viewModel.selectedStepTooltipItems[0]?.detail ?? "",
+    /unconstrained parameter-scaled anchor/
+  );
+  assert.deepEqual(
+    viewModel.highlightedRecommendationFactors.map((factor) => factor.code),
+    ["memory_fit", "dataset_scale", "pretraining_anchor", "training_length"]
+  );
 });
 
 test("batch LR advisor explains alternate LR and batch profiles", () => {
@@ -78,6 +127,8 @@ test("batch LR advisor explains alternate LR and batch profiles", () => {
   assert.equal(viewModel.selectedRecommendationIsRecommended, false);
   assert.match(viewModel.selectedBatchTooltipSummary, /smaller than Balanced/);
   assert.match(viewModel.selectedLearningRateTooltipSummary, /lowers the base LR/);
+  assert.match(viewModel.selectedStepTooltipSummary, /extends the run/);
   assert.equal(viewModel.selectedBatchTooltipItems.length, 2);
   assert.equal(viewModel.selectedLearningRateTooltipItems.length, 2);
+  assert.equal(viewModel.selectedStepTooltipItems.length, 2);
 });

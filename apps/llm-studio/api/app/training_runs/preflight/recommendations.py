@@ -38,6 +38,7 @@ from ..schemas import (
 _REFERENCE_PARAMETER_COUNT = 124_000_000
 _REFERENCE_TOTAL_BATCH_SIZE = 524_288
 _REFERENCE_LEARNING_RATE = 3e-4
+_REFERENCE_TOKENS_PER_PARAMETER = 20.0
 _DEFAULT_BYTES_PER_TOKEN = 4.0
 _STABILITY_PROFILE_LR_MULTIPLIER = 0.68
 _THROUGHPUT_PROFILE_LR_MULTIPLIER = 1.28
@@ -86,6 +87,14 @@ class _BatchCandidate:
     grad_accum_steps: int
 
 
+@dataclass(frozen=True, slots=True)
+class _RunBudgetSummary:
+    target_run_tokens: int
+    parameter_scaled_token_target: int
+    target_local_passes: float | None
+    basis: str
+
+
 def build_batch_and_lr_recommendation(
     *,
     model_config: LLMConfig,
@@ -102,8 +111,8 @@ def build_batch_and_lr_recommendation(
     model_summary = _summarize_model(model_config, model)
     dataset_summary = _summarize_dataset(
         config=dataloader_config,
-        max_steps=training_config.max_steps,
         seq_len=training_config.seq_len,
+        total_parameters=model_summary.total_parameters,
         tokenizer_stats=tokenizer_stats,
     )
     schedule_summary = _summarize_schedule(training_config)
@@ -159,12 +168,19 @@ def build_batch_and_lr_recommendation(
         dataset_cap_tokens=dataset_summary.step_budget_cap_tokens,
         variant="throughput",
     )
+    run_budget_summary = _recommend_run_budget(
+        balanced_total_batch_size=balanced_candidate.total_batch_size,
+        model_summary=model_summary,
+        dataset_summary=dataset_summary,
+        schedule_summary=schedule_summary,
+    )
 
     options = _build_options(
         training_config=training_config,
         model_summary=model_summary,
         dataset_summary=dataset_summary,
         schedule_summary=schedule_summary,
+        run_budget_summary=run_budget_summary,
         current_micro_batch_size=training_config.micro_batch_size,
         balanced_candidate=balanced_candidate,
         stability_candidate=stability_candidate,
@@ -183,6 +199,7 @@ def build_batch_and_lr_recommendation(
         model_summary=model_summary,
         dataset_summary=dataset_summary,
         schedule_summary=schedule_summary,
+        run_budget_summary=run_budget_summary,
         memory_estimate=memory_estimate,
     )
 
@@ -206,18 +223,22 @@ def build_batch_and_lr_recommendation(
         streaming_dataset_count=dataset_summary.streaming_dataset_count,
         local_file_count=dataset_summary.local_file_count,
         local_total_size_bytes=dataset_summary.local_total_size_bytes,
+        approx_local_tokens=dataset_summary.approx_local_tokens,
         dominant_dataset_weight=round(dataset_summary.dominant_dataset_weight, 6),
         dataset_scale=dataset_summary.dataset_scale,
         schedule_peak_factor=round(schedule_summary.peak_factor, 4),
         warmup_fraction=round(schedule_summary.warmup_fraction, 4),
         max_memory_micro_batch_size=memory_estimate.max_batch_size,
         recommended_batch_target=model_target_batch,
+        recommended_run_token_budget=run_budget_summary.target_run_tokens,
+        parameter_scaled_run_token_target=run_budget_summary.parameter_scaled_token_target,
     )
 
     return TrainingBatchLrRecommendation(
         headline=(
             f"Recommended training plan: total batch {recommended_option.total_batch_size:,} tokens "
-            f"and base LR {recommended_option.learning_rate:.3e}."
+            f"and base LR {recommended_option.learning_rate:.3e}, capped near "
+            f"{recommended_option.recommended_max_steps:,} training steps."
         ),
         summary=_build_summary(
             recommended_option=recommended_option,
@@ -290,8 +311,8 @@ def _summarize_model(model_config: LLMConfig, model: ConfigurableGPT) -> _ModelS
 def _summarize_dataset(
     *,
     config: TrainingDataloaderConfig,
-    max_steps: int,
     seq_len: int,
+    total_parameters: int,
     tokenizer_stats: dict[str, Any] | None,
 ) -> _DatasetSummary:
     local_dataset_count = 0
@@ -319,12 +340,13 @@ def _summarize_dataset(
 
     if local_dataset_count > 0 and streaming_dataset_count == 0:
         approx_local_tokens = max(0, int(local_total_size_bytes / max(bytes_per_token, 1e-9)))
-        updates_per_pass_target = max(8, min(max_steps, 64))
-        step_budget_cap_tokens = _round_down_to_multiple(
-            max(seq_len, approx_local_tokens // max(updates_per_pass_target, 1)),
-            seq_len,
-        )
         dataset_scale = _local_dataset_scale_label(local_total_size_bytes)
+        step_budget_cap_tokens = _local_dataset_batch_cap_tokens(
+            approx_local_tokens=approx_local_tokens,
+            dataset_scale=dataset_scale,
+            seq_len=seq_len,
+            total_parameters=total_parameters,
+        )
     elif local_dataset_count > 0 and streaming_dataset_count > 0:
         dataset_scale = "mixed"
 
@@ -359,6 +381,45 @@ def _local_dataset_scale_label(total_size_bytes: int) -> str:
     if total_size_bytes < 500 * 1024 * 1024:
         return "medium_local"
     return "large_local"
+
+
+def _local_dataset_batch_cap_tokens(
+    *,
+    approx_local_tokens: int,
+    dataset_scale: str,
+    seq_len: int,
+    total_parameters: int,
+) -> int:
+    updates_per_pass_target = _local_updates_per_pass_target(
+        dataset_scale=dataset_scale,
+        total_parameters=total_parameters,
+    )
+    return _round_down_to_multiple(
+        max(seq_len, approx_local_tokens // max(updates_per_pass_target, 1)),
+        seq_len,
+    )
+
+
+def _local_updates_per_pass_target(*, dataset_scale: str, total_parameters: int) -> int:
+    base_target = {
+        "tiny_local": 24,
+        "small_local": 32,
+        "medium_local": 48,
+        "large_local": 64,
+    }.get(dataset_scale, 48)
+
+    if total_parameters >= 1_000_000_000:
+        scale_factor = 0.5
+    elif total_parameters >= 300_000_000:
+        scale_factor = 0.65
+    elif total_parameters >= _REFERENCE_PARAMETER_COUNT:
+        scale_factor = 0.8
+    elif total_parameters < 30_000_000:
+        scale_factor = 1.15
+    else:
+        scale_factor = 1.0
+
+    return max(8, min(96, int(round(base_target * scale_factor))))
 
 
 def _summarize_schedule(training_config: TrainingConfig) -> _ScheduleSummary:
@@ -454,6 +515,81 @@ def _max_grad_accum_steps(*, total_parameters: int, device_type: str) -> int:
     if device_type == "mps":
         return 32
     return 24
+
+
+def _recommend_run_budget(
+    *,
+    balanced_total_batch_size: int,
+    model_summary: _ModelSummary,
+    dataset_summary: _DatasetSummary,
+    schedule_summary: _ScheduleSummary,
+) -> _RunBudgetSummary:
+    parameter_scaled_token_target = _parameter_scaled_run_token_target(
+        total_parameters=model_summary.total_parameters,
+    )
+    if dataset_summary.streaming_dataset_count == 0 and dataset_summary.approx_local_tokens is not None:
+        target_local_passes = _local_training_pass_budget(
+            dataset_scale=dataset_summary.dataset_scale,
+            total_parameters=model_summary.total_parameters,
+        )
+        local_repeat_cap = int(round(dataset_summary.approx_local_tokens * target_local_passes))
+        target_run_tokens = max(
+            balanced_total_batch_size,
+            min(parameter_scaled_token_target, max(local_repeat_cap, balanced_total_batch_size)),
+        )
+        return _RunBudgetSummary(
+            target_run_tokens=target_run_tokens,
+            parameter_scaled_token_target=parameter_scaled_token_target,
+            target_local_passes=target_local_passes,
+            basis="local_cap" if target_run_tokens < parameter_scaled_token_target else "parameter_scaled",
+        )
+
+    return _RunBudgetSummary(
+        target_run_tokens=max(balanced_total_batch_size, parameter_scaled_token_target),
+        parameter_scaled_token_target=parameter_scaled_token_target,
+        target_local_passes=None,
+        basis="parameter_scaled",
+    )
+
+
+def _parameter_scaled_run_token_target(*, total_parameters: int) -> int:
+    return max(1, int(round(max(total_parameters, 1) * _REFERENCE_TOKENS_PER_PARAMETER)))
+
+
+def _local_training_pass_budget(*, dataset_scale: str, total_parameters: int) -> float:
+    passes = {
+        "tiny_local": 3.0,
+        "small_local": 4.0,
+        "medium_local": 6.0,
+        "large_local": 8.0,
+    }.get(dataset_scale, 5.0)
+
+    if total_parameters >= 1_000_000_000:
+        passes = max(2.0, passes - 2.0)
+    elif total_parameters >= 300_000_000:
+        passes = max(2.0, passes - 1.0)
+    elif total_parameters < 30_000_000:
+        passes += 1.0
+    return passes
+
+
+def _recommended_max_training_steps(
+    *,
+    total_batch_size: int,
+    run_budget_summary: _RunBudgetSummary,
+) -> int:
+    return max(1, run_budget_summary.target_run_tokens // max(total_batch_size, 1))
+
+
+def _estimated_local_passes_at_steps(
+    *,
+    total_batch_size: int,
+    max_steps: int,
+    dataset_summary: _DatasetSummary,
+) -> float | None:
+    if dataset_summary.approx_local_tokens is None or dataset_summary.approx_local_tokens <= 0:
+        return None
+    return round((total_batch_size * max_steps) / dataset_summary.approx_local_tokens, 4)
 
 
 def _model_target_total_batch_size(
@@ -600,6 +736,7 @@ def _build_options(
     model_summary: _ModelSummary,
     dataset_summary: _DatasetSummary,
     schedule_summary: _ScheduleSummary,
+    run_budget_summary: _RunBudgetSummary,
     current_micro_batch_size: int | None,
     balanced_candidate: _BatchCandidate,
     stability_candidate: _BatchCandidate,
@@ -642,6 +779,10 @@ def _build_options(
             schedule_summary=schedule_summary,
             variant_multiplier=lr_multiplier,
         )
+        recommended_max_steps = _recommended_max_training_steps(
+            total_batch_size=candidate.total_batch_size,
+            run_budget_summary=run_budget_summary,
+        )
         options.append(
             TrainingBatchLrRecommendationOption(
                 key=key,
@@ -653,6 +794,13 @@ def _build_options(
                 grad_accum_steps=candidate.grad_accum_steps,
                 learning_rate=learning_rate,
                 estimated_tokens_per_run=candidate.total_batch_size * training_config.max_steps,
+                recommended_max_steps=recommended_max_steps,
+                estimated_tokens_per_recommended_run=candidate.total_batch_size * recommended_max_steps,
+                estimated_local_passes_at_recommended_steps=_estimated_local_passes_at_steps(
+                    total_batch_size=candidate.total_batch_size,
+                    max_steps=recommended_max_steps,
+                    dataset_summary=dataset_summary,
+                ),
                 clear_manual_micro_batch=(
                     current_micro_batch_size is not None
                     and current_micro_batch_size != candidate.micro_batch_size
@@ -669,6 +817,10 @@ def _build_options(
             schedule_summary=schedule_summary,
             variant_multiplier=1.0,
         )
+        recommended_max_steps = _recommended_max_training_steps(
+            total_batch_size=balanced_candidate.total_batch_size,
+            run_budget_summary=run_budget_summary,
+        )
         options.append(
             TrainingBatchLrRecommendationOption(
                 key="balanced",
@@ -680,6 +832,13 @@ def _build_options(
                 grad_accum_steps=balanced_candidate.grad_accum_steps,
                 learning_rate=learning_rate,
                 estimated_tokens_per_run=balanced_candidate.total_batch_size * training_config.max_steps,
+                recommended_max_steps=recommended_max_steps,
+                estimated_tokens_per_recommended_run=balanced_candidate.total_batch_size * recommended_max_steps,
+                estimated_local_passes_at_recommended_steps=_estimated_local_passes_at_steps(
+                    total_batch_size=balanced_candidate.total_batch_size,
+                    max_steps=recommended_max_steps,
+                    dataset_summary=dataset_summary,
+                ),
                 clear_manual_micro_batch=False,
             )
         )
@@ -849,6 +1008,7 @@ def _build_summary(
         f"{recommended_option.grad_accum_steps:,} accumulation step"
         f"{'' if recommended_option.grad_accum_steps == 1 else 's'} on {memory_estimate.device.type}, "
         f"targets a {model_scale}-parameter model, respects the current {schedule_summary.label.lower()}, "
+        f"caps the run near {recommended_option.recommended_max_steps:,} training steps, "
         f"and keeps the recommendation grounded in {data_note}."
     )
 
@@ -861,6 +1021,7 @@ def _build_factors(
     model_summary: _ModelSummary,
     dataset_summary: _DatasetSummary,
     schedule_summary: _ScheduleSummary,
+    run_budget_summary: _RunBudgetSummary,
     memory_estimate: StepSizeEstimate,
 ) -> list[TrainingBatchLrRecommendationFactor]:
     factors = [
@@ -901,9 +1062,26 @@ def _build_factors(
             ),
             tone="neutral" if schedule_summary.warmup_fraction > 0 else "warning",
         ),
+        TrainingBatchLrRecommendationFactor(
+            code="training_length",
+            label="Maximum training steps",
+            detail=_training_length_factor_detail(
+                recommended_option=recommended_option,
+                dataset_summary=dataset_summary,
+                schedule_summary=schedule_summary,
+                run_budget_summary=run_budget_summary,
+            ),
+            tone=(
+                "warning"
+                if abs(training_config.max_steps - recommended_option.recommended_max_steps)
+                / max(recommended_option.recommended_max_steps, 1)
+                >= 0.25
+                else "neutral"
+            ),
+        ),
     ]
 
-    dataset_detail = _dataset_factor_detail(dataset_summary, training_config.max_steps)
+    dataset_detail = _dataset_factor_detail(dataset_summary, recommended_option)
     if dataset_detail is not None:
         factors.append(dataset_detail)
 
@@ -981,12 +1159,30 @@ def _build_factors(
             )
         )
 
+    if (
+        abs(training_config.max_steps - recommended_option.recommended_max_steps)
+        / max(recommended_option.recommended_max_steps, 1)
+        >= 0.25
+    ):
+        factors.append(
+            TrainingBatchLrRecommendationFactor(
+                code="current_step_gap",
+                label="Current training length",
+                detail=(
+                    f"The current max_steps is {training_config.max_steps:,}. "
+                    f"The selected profile recommends {recommended_option.recommended_max_steps:,} "
+                    f"so the run budget better matches the chosen optimizer-step size and data regime."
+                ),
+                tone="warning",
+            )
+        )
+
     return factors
 
 
 def _dataset_factor_detail(
     dataset_summary: _DatasetSummary,
-    max_steps: int,
+    recommended_option: TrainingBatchLrRecommendationOption,
 ) -> TrainingBatchLrRecommendationFactor | None:
     if dataset_summary.dataset_scale == "streaming":
         return TrainingBatchLrRecommendationFactor(
@@ -1018,10 +1214,7 @@ def _dataset_factor_detail(
     if dataset_summary.local_total_size_bytes is None or dataset_summary.approx_local_tokens is None:
         return None
 
-    epochs_over_run = (
-        max_steps * max(dataset_summary.step_budget_cap_tokens or 0, 1)
-        / max(dataset_summary.approx_local_tokens, 1)
-    )
+    estimated_passes = recommended_option.estimated_local_passes_at_recommended_steps or 0.0
     return TrainingBatchLrRecommendationFactor(
         code="dataset_scale",
         label="Local corpus size",
@@ -1030,9 +1223,49 @@ def _dataset_factor_detail(
             f"{'' if dataset_summary.local_file_count == 1 else 's'} and roughly "
             f"{_format_bytes(dataset_summary.local_total_size_bytes)}. "
             f"That is treated as {dataset_summary.dataset_scale.replace('_', ' ')}, so the batch target is capped to avoid consuming too much of the corpus in a single update. "
-            f"At the cap, a {max_steps:,}-step run would still cover about {_format_decimal(epochs_over_run, digits=1)} estimated passes over the local data."
+            f"At the recommended {recommended_option.recommended_max_steps:,}-step cap, this profile covers about "
+            f"{_format_decimal(estimated_passes, digits=1)} estimated passes over the local data."
         ),
         tone="warning" if dataset_summary.dataset_scale in {"tiny_local", "small_local"} else "neutral",
+    )
+
+
+def _training_length_factor_detail(
+    *,
+    recommended_option: TrainingBatchLrRecommendationOption,
+    dataset_summary: _DatasetSummary,
+    schedule_summary: _ScheduleSummary,
+    run_budget_summary: _RunBudgetSummary,
+) -> str:
+    if recommended_option.estimated_local_passes_at_recommended_steps is not None:
+        if run_budget_summary.target_run_tokens < run_budget_summary.parameter_scaled_token_target:
+            return (
+                f"This profile recommends at most {recommended_option.recommended_max_steps:,} training steps, "
+                f"or about {recommended_option.estimated_tokens_per_recommended_run:,} tokens end to end. "
+                f"The unconstrained pretraining anchor is about "
+                f"{run_budget_summary.parameter_scaled_token_target:,} tokens "
+                f"({_format_decimal(_REFERENCE_TOKENS_PER_PARAMETER, digits=0)} tokens per parameter), "
+                f"but the current local corpus keeps this plan nearer "
+                f"{_format_decimal(recommended_option.estimated_local_passes_at_recommended_steps, digits=1)} "
+                f"estimated passes over available data."
+            )
+        return (
+            f"This profile recommends at most {recommended_option.recommended_max_steps:,} training steps, "
+            f"or about {recommended_option.estimated_tokens_per_recommended_run:,} tokens end to end. "
+            f"That reaches the parameter-scaled pretraining anchor of about "
+            f"{run_budget_summary.parameter_scaled_token_target:,} tokens while covering roughly "
+            f"{_format_decimal(recommended_option.estimated_local_passes_at_recommended_steps, digits=1)} "
+            f"estimated passes over the current local corpus."
+        )
+
+    data_phrase = "mixed local and streaming data" if dataset_summary.dataset_scale == "mixed" else "streaming-scale data"
+    return (
+        f"This profile recommends at most {recommended_option.recommended_max_steps:,} training steps, "
+        f"or about {recommended_option.estimated_tokens_per_recommended_run:,} tokens end to end. "
+        f"That follows the compute-optimal pretraining anchor of about "
+        f"{run_budget_summary.parameter_scaled_token_target:,} tokens "
+        f"({_format_decimal(_REFERENCE_TOKENS_PER_PARAMETER, digits=0)} tokens per parameter) "
+        f"while still respecting the current {schedule_summary.label.lower()} on {data_phrase}."
     )
 
 

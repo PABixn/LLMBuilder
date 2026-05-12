@@ -122,6 +122,7 @@ export function TrainingPageContent() {
     initializeTrainingSelection,
     selectedProject,
     selectedProjectId,
+    selectedProjectRefreshId,
     selectedTokenizer,
     selectedTokenizerJobId,
     setActiveRunId,
@@ -153,6 +154,7 @@ export function TrainingPageContent() {
     setSelectedRecommendationOptionKey,
   } = useTrainingPreflight({
     dataloaderConfig,
+    selectedProjectRefreshId,
     selectedProjectId,
     selectedTokenizerJobId,
     trainingConfig,
@@ -438,18 +440,25 @@ export function TrainingPageContent() {
     if (scope !== "batch") {
       handleTrainingField(["optimizer", "lr"], option.learning_rate);
     }
+    if (scope === "both") {
+      handleMaxStepsChange(option.recommended_max_steps);
+    }
 
     const summary =
       scope === "batch"
         ? `Set total batch size to ${formatInteger(option.total_batch_size)} tokens.`
         : scope === "lr"
           ? `Set learning rate to ${formatLearningRate(option.learning_rate)}.`
-          : `Set total batch size to ${formatInteger(option.total_batch_size)} tokens and learning rate to ${formatLearningRate(option.learning_rate)}.`;
+          : `Set total batch size to ${formatInteger(option.total_batch_size)} tokens, learning rate to ${formatLearningRate(option.learning_rate)}, and max training steps to ${formatInteger(option.recommended_max_steps)}.`;
     const microNote =
       scope !== "lr" && option.clear_manual_micro_batch
         ? " Cleared manual micro batch size so preflight can auto-select the best micro step."
         : "";
-    notify("success", `${option.label} recommendation applied`, `${summary}${microNote}`);
+    const schedulerNote =
+      scope === "both"
+        ? " Refit the scheduler phases to match the recommended training length."
+        : "";
+    notify("success", `${option.label} recommendation applied`, `${summary}${microNote}${schedulerNote}`);
   };
 
   const handleStartTraining = async () => {

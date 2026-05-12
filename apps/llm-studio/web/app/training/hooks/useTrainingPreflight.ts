@@ -16,6 +16,7 @@ import type {
 
 interface UseTrainingPreflightOptions {
   dataloaderConfig: Record<string, unknown> | null;
+  selectedProjectRefreshId?: number;
   selectedProjectId: string | null;
   selectedTokenizerJobId: string | null;
   trainingConfig: Record<string, unknown> | null;
@@ -36,6 +37,7 @@ export function selectRecommendationOptionKey(
 
 export function useTrainingPreflight({
   dataloaderConfig,
+  selectedProjectRefreshId = 0,
   selectedProjectId,
   selectedTokenizerJobId,
   trainingConfig,
@@ -103,6 +105,7 @@ export function useTrainingPreflight({
     deferredTrainingConfig,
     manualPreflightRefreshId,
     selectedProjectId,
+    selectedProjectRefreshId,
     selectedTokenizerJobId,
   ]);
 

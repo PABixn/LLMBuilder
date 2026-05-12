@@ -5,7 +5,10 @@ import {
   ACTIVE_RUN_STORAGE_KEY,
   TRAINING_SELECTION_STORAGE_KEY,
 } from "../constants";
-import { readInitialTrainingSelection } from "./useTrainingSelection";
+import {
+  readInitialTrainingSelection,
+  shouldRefreshSelectedProject,
+} from "./useTrainingSelection";
 
 function searchParams(values: Record<string, string | null>) {
   return {
@@ -88,4 +91,10 @@ test("initial training selection uses stored IDs and selects the latest run when
       );
     }
   );
+});
+
+test("reselecting the same saved project requests a fresh project/preflight pass", () => {
+  assert.equal(shouldRefreshSelectedProject("project-a", "project-a"), true);
+  assert.equal(shouldRefreshSelectedProject("project-a", "project-b"), false);
+  assert.equal(shouldRefreshSelectedProject("project-a", null), false);
 });

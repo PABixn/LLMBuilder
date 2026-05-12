@@ -10,6 +10,10 @@
   overflow: hidden;
 }
 
+.trainingSettingsStudio .trainingPlanSettingsPanel {
+  overflow: visible;
+}
+
 .trainingSettingsStudio .settingsPanel > summary {
   cursor: pointer;
   list-style: none;
@@ -144,7 +148,7 @@
   background: linear-gradient(180deg, var(--surface), var(--surface-soft));
   display: block;
   width: min(100%, 720px);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .trainingAdvisorCard > :not(summary) {
@@ -245,6 +249,15 @@
   justify-content: flex-start;
 }
 
+.trainingAdvisorReasonControl {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .trainingAdvisorToolbar {
   align-items: flex-start;
 }
@@ -293,7 +306,7 @@
   width: fit-content;
   max-width: 100%;
   justify-content: start;
-  grid-template-columns: repeat(2, minmax(200px, 220px));
+  grid-template-columns: repeat(3, minmax(200px, 220px));
 }
 
 .trainingAdvisorKeyStat {
@@ -378,6 +391,10 @@
   transform: translateY(6px);
   transition: opacity 120ms ease, transform 120ms ease;
   z-index: 20;
+}
+
+.trainingAdvisorTooltip-wide {
+  width: min(520px, calc(100vw - 40px));
 }
 
 .trainingAdvisorTooltip::before {
