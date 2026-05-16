@@ -4,6 +4,7 @@ import {
 } from "react-icons/fi";
 
 import type {
+  RunPodProviderCatalog,
   RunPodProviderStatus,
   TrainingExecutionTarget,
 } from "../../../lib/training/types";
@@ -17,6 +18,7 @@ interface ExecutionTargetPanelProps {
   executionKind: TrainingExecutionTarget["kind"];
   onExecutionKindChange: (value: TrainingExecutionTarget["kind"]) => void;
   runPodApiKey: string;
+  runPodCatalog: RunPodProviderCatalog | null;
   runPodCleanupPod: RunPodCleanupPodAction;
   runPodCloudType: RunPodCloudType;
   runPodDataCenterId: string;
@@ -30,7 +32,6 @@ interface ExecutionTargetPanelProps {
   setRunPodApiKey: (value: string) => void;
   setRunPodCleanupPod: (value: RunPodCleanupPodAction) => void;
   setRunPodCloudType: (value: RunPodCloudType) => void;
-  setRunPodDataCenterId: (value: string) => void;
   setRunPodGpuCount: (value: number) => void;
   setRunPodGpuType: (value: string) => void;
   setRunPodInterruptible: (value: boolean) => void;
@@ -43,6 +44,7 @@ export function ExecutionTargetPanel({
   onExecutionKindChange,
   onValidateRunPodKey,
   runPodApiKey,
+  runPodCatalog,
   runPodCleanupPod,
   runPodCloudType,
   runPodDataCenterId,
@@ -56,7 +58,6 @@ export function ExecutionTargetPanel({
   setRunPodApiKey,
   setRunPodCleanupPod,
   setRunPodCloudType,
-  setRunPodDataCenterId,
   setRunPodGpuCount,
   setRunPodGpuType,
   setRunPodInterruptible,
@@ -92,6 +93,7 @@ export function ExecutionTargetPanel({
           {executionKind === "runpod_pod" ? (
             <RunPodSettingsPanel
               apiKey={runPodApiKey}
+              catalog={runPodCatalog}
               cleanupPod={runPodCleanupPod}
               cloudType={runPodCloudType}
               dataCenterId={runPodDataCenterId}
@@ -101,7 +103,6 @@ export function ExecutionTargetPanel({
               onApiKeyChange={setRunPodApiKey}
               onCleanupPodChange={setRunPodCleanupPod}
               onCloudTypeChange={setRunPodCloudType}
-              onDataCenterIdChange={setRunPodDataCenterId}
               onGpuCountChange={setRunPodGpuCount}
               onGpuTypeChange={setRunPodGpuType}
               onInterruptibleChange={setRunPodInterruptible}

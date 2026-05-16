@@ -25,6 +25,7 @@ def test_training_public_routes_are_registered() -> None:
         ("POST", "/api/v1/training/validate/preflight"),
         ("GET", "/api/v1/training/providers/runpod/defaults"),
         ("GET", "/api/v1/training/providers/runpod/status"),
+        ("GET", "/api/v1/training/providers/runpod/catalog"),
         ("POST", "/api/v1/training/providers/runpod/validate-key"),
         ("GET", "/api/v1/training/providers/runpod/pods"),
         ("GET", "/api/v1/training/providers/runpod/network-volumes"),
@@ -46,6 +47,20 @@ def test_training_public_routes_are_registered() -> None:
     }
 
     assert expected <= routes
+
+
+def test_runpod_catalog_exposes_selectable_gpu_choices() -> None:
+    client = TestClient(app)
+
+    response = client.get("/api/v1/training/providers/runpod/catalog")
+
+    assert response.status_code == 200
+    payload = response.json()
+    gpu_options = payload["gpu_options"]
+    assert gpu_options
+    ids = {option["id"] for option in gpu_options}
+    assert "NVIDIA GeForce RTX 4090" in ids
+    assert any(option["memory_gb"] for option in gpu_options)
 
 
 def make_training_response(job_id: str, *, executor_status: str = "running", remote_error: str | None = None) -> TrainingJobResponse:

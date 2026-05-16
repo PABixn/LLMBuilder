@@ -1,1 +1,54 @@
-/* RunPod-specific training styles currently reuse shared status, workflow, and settings primitives. */
+.runPodStatusGrid {
+  margin-top: 0;
+}
+
+.runPodSettingsSection {
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.runPodSettingsSection + .runPodSettingsSection {
+  padding-top: 12px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.runPodCredentialRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.runPodApiKeyField {
+  width: min(100%, 420px);
+}
+
+.runPodValidateButton {
+  min-width: 136px;
+}
+
+.runPodCredentialRow > .pillBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  min-height: 36px;
+}
+
+@media (max-width: 860px) {
+  .runPodCredentialRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .runPodApiKeyField,
+  .runPodValidateButton {
+    width: 100%;
+  }
+
+  .runPodCredentialRow > .pillBadge {
+    align-self: flex-start;
+    min-height: 24px;
+  }
+}

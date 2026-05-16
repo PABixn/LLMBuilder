@@ -90,6 +90,16 @@ class RunPodProviderStatus(BaseModel):
     defaults: RunPodProviderDefaults
 
 
+class RunPodGpuCatalogItem(BaseModel):
+    id: str
+    display_name: str
+    memory_gb: int | None = None
+
+
+class RunPodProviderCatalog(BaseModel):
+    gpu_options: list[RunPodGpuCatalogItem] = Field(default_factory=list)
+
+
 class RunPodValidateKeyRequest(StrictModel):
     api_key: str = Field(min_length=1)
 

@@ -151,9 +151,11 @@ function formatProgressPercent(fraction: number): string {
 export function deriveTrainingStepProgress(run: TrainingJob | null): TrainingStepProgressSnapshot {
   const maxSteps = Math.max(0, run?.max_steps ?? 0);
   const completedSteps =
-    maxSteps > 0
-      ? clamp(Math.max(0, run?.last_step ?? 0), 0, maxSteps)
-      : Math.max(0, run?.last_step ?? 0);
+    maxSteps > 0 && run?.status === "completed"
+      ? maxSteps
+      : maxSteps > 0
+        ? clamp(Math.max(0, run?.last_step ?? 0), 0, maxSteps)
+        : Math.max(0, run?.last_step ?? 0);
   const fraction =
     maxSteps > 0 ? clamp(completedSteps / maxSteps, 0, 1) : run?.status === "completed" ? 1 : 0;
   const elapsedSeconds = normalizeRuntimeSeconds(run?.elapsed_seconds);

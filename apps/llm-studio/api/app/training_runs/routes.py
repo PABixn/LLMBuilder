@@ -21,9 +21,11 @@ from ..config import (
 from ..models import HealthResponse
 from ..schemas import load_json
 from .executors.runpod.client import RunPodClient, RunPodClientError
+from .runpod_catalog import build_runpod_provider_catalog
 from .schemas import (
     CreateTrainingJobRequest,
     RunPodCleanupPolicy,
+    RunPodProviderCatalog,
     RunPodProviderDefaults,
     RunPodProviderStatus,
     RunPodResourceListResponse,
@@ -160,6 +162,11 @@ def get_runpod_status(request: Request) -> RunPodProviderStatus:
         source=source,  # type: ignore[arg-type]
         defaults=_runpod_defaults(),
     )
+
+
+@training_api.get("/providers/runpod/catalog", response_model=RunPodProviderCatalog)
+def get_runpod_catalog() -> RunPodProviderCatalog:
+    return build_runpod_provider_catalog(_runpod_defaults().gpu_type_id)
 
 
 @training_api.post("/providers/runpod/validate-key", response_model=RunPodValidateKeyResponse)

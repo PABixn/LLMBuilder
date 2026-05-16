@@ -1,5 +1,6 @@
 import { request } from "./client";
 import type {
+  RunPodProviderCatalog,
   RunPodProviderDefaults,
   RunPodProviderStatus,
   RunPodValidateKeyResponse,
@@ -11,6 +12,10 @@ export async function fetchRunPodStatus(): Promise<RunPodProviderStatus> {
 
 export async function fetchRunPodDefaults(): Promise<RunPodProviderDefaults> {
   return request<RunPodProviderDefaults>("/providers/runpod/defaults");
+}
+
+export async function fetchRunPodCatalog(): Promise<RunPodProviderCatalog> {
+  return request<RunPodProviderCatalog>("/providers/runpod/catalog");
 }
 
 export async function validateRunPodKey(apiKey: string): Promise<RunPodValidateKeyResponse> {

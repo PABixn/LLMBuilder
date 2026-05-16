@@ -1,18 +1,28 @@
 import {
   FiAlertTriangle,
   FiCheckCircle,
-  FiList,
+  FiCpu,
+  FiMapPin,
 } from "react-icons/fi";
 
-import type { RunPodProviderStatus } from "../../../lib/training/types";
+import type {
+  RunPodProviderCatalog,
+  RunPodProviderStatus,
+} from "../../../lib/training/types";
 import { ConfigNumberInput } from "../../shared/components/ConfigNumberInput";
 import type {
   RunPodCleanupPodAction,
   RunPodCloudType,
 } from "../lib/runPod";
+import {
+  RUNPOD_GPU_COUNT_OPTIONS,
+  findRunPodGpuOption,
+  getRunPodGpuOptions,
+} from "../lib/runPod";
 
 interface RunPodSettingsPanelProps {
   apiKey: string;
+  catalog: RunPodProviderCatalog | null;
   cleanupPod: RunPodCleanupPodAction;
   cloudType: RunPodCloudType;
   dataCenterId: string;
@@ -22,7 +32,6 @@ interface RunPodSettingsPanelProps {
   onApiKeyChange: (value: string) => void;
   onCleanupPodChange: (value: RunPodCleanupPodAction) => void;
   onCloudTypeChange: (value: RunPodCloudType) => void;
-  onDataCenterIdChange: (value: string) => void;
   onGpuCountChange: (value: number) => void;
   onGpuTypeChange: (value: string) => void;
   onInterruptibleChange: (value: boolean) => void;
@@ -36,6 +45,7 @@ interface RunPodSettingsPanelProps {
 
 export function RunPodSettingsPanel({
   apiKey,
+  catalog,
   cleanupPod,
   cloudType,
   dataCenterId,
@@ -45,7 +55,6 @@ export function RunPodSettingsPanel({
   onApiKeyChange,
   onCleanupPodChange,
   onCloudTypeChange,
-  onDataCenterIdChange,
   onGpuCountChange,
   onGpuTypeChange,
   onInterruptibleChange,
@@ -69,11 +78,34 @@ export function RunPodSettingsPanel({
       : cleanupPod === "stop_after_sync"
         ? "Stop pod after sync"
         : "Keep pod running";
+  const cloudLabel = cloudType === "SECURE" ? "Secure Cloud" : "Community Cloud";
   const datacenterLabel = dataCenterId.trim() || "Any available";
+  const capacityLabel = interruptible ? "Interruptible capacity" : "Standard capacity";
+  const gpuOptions = getRunPodGpuOptions(catalog, gpuType);
+  const selectedGpu = findRunPodGpuOption(catalog, gpuType);
+  const selectedGpuLabel = selectedGpu?.display_name ?? (gpuType.trim() || "Loading GPU target");
+  const selectedGpuMemory =
+    selectedGpu?.memory_gb != null ? `${selectedGpu.memory_gb} GB VRAM each` : "VRAM not catalogued";
+  const gpuCountOptions = Array.from(new Set<number>([...RUNPOD_GPU_COUNT_OPTIONS, gpuCount])).sort(
+    (left, right) => left - right
+  );
+  const groupedGpuOptions = Array.from(
+    gpuOptions.reduce((groups, option) => {
+      const label = option.memory_gb != null ? `${option.memory_gb} GB VRAM` : "Other supported GPUs";
+      const entries = groups.get(label) ?? [];
+      entries.push(option);
+      groups.set(label, entries);
+      return groups;
+    }, new Map<string, typeof gpuOptions>())
+  ).sort(([leftLabel], [rightLabel]) => {
+    const leftWeight = leftLabel === "Other supported GPUs" ? Number.POSITIVE_INFINITY : Number.parseInt(leftLabel, 10);
+    const rightWeight = rightLabel === "Other supported GPUs" ? Number.POSITIVE_INFINITY : Number.parseInt(rightLabel, 10);
+    return leftWeight - rightWeight;
+  });
 
   return (
     <div className="settingsStack">
-      <div className="statusGrid">
+      <div className="statusGrid runPodStatusGrid">
         <div className="statusCard">
           <div className="statusCardIcon"><FiCheckCircle /></div>
           <div>
@@ -83,89 +115,145 @@ export function RunPodSettingsPanel({
           </div>
         </div>
         <div className="statusCard">
-          <div className="statusCardIcon"><FiList /></div>
+          <div className="statusCardIcon"><FiCpu /></div>
           <div>
-            <div className="statusCardTitle">Selected pod</div>
-            <div className="statusCardValue">{gpuCount} x {gpuType}</div>
+            <div className="statusCardTitle">GPU target</div>
+            <div className="statusCardValue">{selectedGpuLabel}</div>
             <div className="statusCardDetail">
-              {cloudType} cloud · {datacenterLabel} · {volumeSizeGb} GB pod volume · TCP port
+              {gpuCount} GPU{gpuCount === 1 ? "" : "s"} · {selectedGpuMemory}
+            </div>
+          </div>
+        </div>
+        <div className="statusCard">
+          <div className="statusCardIcon"><FiMapPin /></div>
+          <div>
+            <div className="statusCardTitle">Provisioning</div>
+            <div className="statusCardValue">{cloudLabel}</div>
+            <div className="statusCardDetail">
+              {datacenterLabel} · {volumeSizeGb} GB workspace volume
             </div>
           </div>
         </div>
         <div className="statusCard">
           <div className="statusCardIcon"><FiAlertTriangle /></div>
           <div>
-            <div className="statusCardTitle">Cleanup</div>
+            <div className="statusCardTitle">Lifecycle</div>
             <div className="statusCardValue">{cleanupLabel}</div>
             <div className="statusCardDetail">
-              {cleanupPod === "keep"
-                ? "Keeping a pod can continue billing until you stop or delete it in RunPod."
-                : "Cleanup runs only after final outputs are synced back here."}
+              {capacityLabel}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="fieldGrid trainingSettingsCompactGrid">
-        <label className="fieldLabel">
-          <span>RunPod API key</span>
+      <div className="runPodSettingsSection">
+        <div className="settingsGroupHeader">
+          <h3>Access</h3>
+        </div>
+        <div className="runPodCredentialRow">
+          <label className="fieldLabel runPodApiKeyField">
+            <span>RunPod API key</span>
+            <input
+              className="textInput"
+              type="password"
+              value={apiKey}
+              placeholder={status?.source === "environment" ? "Using environment key" : "Paste RunPod API key"}
+              onChange={(event) => onApiKeyChange(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="secondaryButton runPodValidateButton"
+            onClick={onValidateKey}
+            disabled={validationLoading || apiKey.trim() === ""}
+          >
+            <FiCheckCircle aria-hidden="true" />
+            {validationLoading ? "Validating..." : "Validate key"}
+          </button>
+          <span className={`pillBadge ${status?.configured ? "tone-good" : "tone-neutral"}`}>
+            {status?.configured ? `Key ready (${status.source})` : "Key required"}
+          </span>
+        </div>
+      </div>
+
+      <div className="runPodSettingsSection">
+        <div className="settingsGroupHeader">
+          <h3>Pod configuration</h3>
+        </div>
+        <div className="fieldGrid trainingSettingsCompactGrid">
+          <label className="fieldLabel fullWidthField">
+            <span>GPU target</span>
+            <select
+              className="selectInput"
+              value={gpuType}
+              disabled={gpuOptions.length === 0}
+              onChange={(event) => onGpuTypeChange(event.target.value)}
+            >
+              {gpuOptions.length === 0 ? <option value="">Loading GPU choices</option> : null}
+              {groupedGpuOptions.map(([label, options]) => (
+                <optgroup key={label} label={label}>
+                  {options.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.display_name}
+                      {option.memory_gb != null ? ` · ${option.memory_gb} GB` : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <label className="fieldLabel">
+            <span>GPU count</span>
+            <select
+              className="selectInput"
+              value={gpuCount}
+              onChange={(event) => onGpuCountChange(Number(event.target.value))}
+            >
+              {gpuCountOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="fieldLabel">
+            <span>Cloud</span>
+            <select className="selectInput" value={cloudType} onChange={(event) => onCloudTypeChange(event.target.value as RunPodCloudType)}>
+              <option value="SECURE">Secure Cloud</option>
+              <option value="COMMUNITY">Community Cloud</option>
+            </select>
+          </label>
+          <label className="fieldLabel">
+            <span>Workspace volume GB</span>
+            <ConfigNumberInput value={volumeSizeGb} onCommit={onVolumeSizeGbChange} />
+          </label>
+        </div>
+      </div>
+
+      <div className="runPodSettingsSection">
+        <div className="settingsGroupHeader">
+          <h3>Lifecycle</h3>
+        </div>
+        <div className="fieldGrid trainingSettingsCompactGrid">
+          <label className="fieldLabel">
+            <span>Pod cleanup</span>
+            <select className="selectInput" value={cleanupPod} onChange={(event) => onCleanupPodChange(event.target.value as RunPodCleanupPodAction)}>
+              <option value="delete_after_sync">Delete after sync</option>
+              <option value="stop_after_sync">Stop after sync</option>
+              <option value="keep">Keep running</option>
+            </select>
+          </label>
+        </div>
+        <label className="trainingCheckboxLine">
           <input
-            className="textInput"
-            type="password"
-            value={apiKey}
-            placeholder={status?.source === "environment" ? "Using environment key" : "Paste RunPod API key"}
-            onChange={(event) => onApiKeyChange(event.target.value)}
+            type="checkbox"
+            checked={interruptible}
+            onChange={(event) => onInterruptibleChange(event.target.checked)}
           />
-        </label>
-        <label className="fieldLabel">
-          <span>GPU type</span>
-          <input
-            className="textInput"
-            value={gpuType}
-            onChange={(event) => onGpuTypeChange(event.target.value)}
-          />
-        </label>
-        <label className="fieldLabel">
-          <span>GPU count</span>
-          <ConfigNumberInput value={gpuCount} onCommit={onGpuCountChange} />
-        </label>
-        <label className="fieldLabel">
-          <span>Cloud</span>
-          <select className="selectInput" value={cloudType} onChange={(event) => onCloudTypeChange(event.target.value as RunPodCloudType)}>
-            <option value="SECURE">Secure Cloud</option>
-            <option value="COMMUNITY">Community Cloud</option>
-          </select>
-        </label>
-        <label className="fieldLabel">
-          <span>Datacenter</span>
-          <input
-            className="textInput"
-            value={dataCenterId}
-            placeholder="Any available"
-            onChange={(event) => onDataCenterIdChange(event.target.value)}
-          />
-        </label>
-        <label className="fieldLabel">
-          <span>Pod volume GB</span>
-          <ConfigNumberInput value={volumeSizeGb} onCommit={onVolumeSizeGbChange} />
-        </label>
-        <label className="fieldLabel">
-          <span>Pod cleanup</span>
-          <select className="selectInput" value={cleanupPod} onChange={(event) => onCleanupPodChange(event.target.value as RunPodCleanupPodAction)}>
-            <option value="delete_after_sync">Delete after sync</option>
-            <option value="stop_after_sync">Stop after sync</option>
-            <option value="keep">Keep running</option>
-          </select>
+          <span>Use interruptible capacity</span>
         </label>
       </div>
-      <label className="trainingCheckboxLine">
-        <input
-          type="checkbox"
-          checked={interruptible}
-          onChange={(event) => onInterruptibleChange(event.target.checked)}
-        />
-        <span>Use interruptible capacity</span>
-      </label>
+
       {interruptible ? (
         <p className="settingsGroupHint">
           Interruptible pods can be preempted by RunPod. Use them only when restarting the run is acceptable.
@@ -175,24 +263,6 @@ export function RunPodSettingsPanel({
         <p className="settingsGroupHint">
           Keep running is for debugging. The app will not automatically stop billing for that pod.
         </p>
-      ) : null}
-      <div className="trainingPromptToolbar">
-        <button
-          type="button"
-          className="buttonGhost iconOnly"
-          onClick={onValidateKey}
-          disabled={validationLoading || apiKey.trim() === ""}
-          aria-label={validationLoading ? "Validating RunPod key" : "Validate RunPod key"}
-          title={validationLoading ? "Validating RunPod key" : "Validate RunPod key"}
-        >
-          <FiCheckCircle aria-hidden="true" />
-        </button>
-        <span className={`pillBadge ${status?.configured ? "tone-good" : "tone-neutral"}`}>
-          {status?.configured ? `Key ready (${status.source})` : "Key required"}
-        </span>
-      </div>
-      {validationMessage ? (
-        <p className="settingsGroupHint">{validationMessage}</p>
       ) : null}
     </div>
   );

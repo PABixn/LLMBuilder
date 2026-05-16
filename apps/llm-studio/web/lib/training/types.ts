@@ -270,6 +270,16 @@ export interface RunPodProviderStatus {
   defaults: RunPodProviderDefaults;
 }
 
+export interface RunPodGpuCatalogItem {
+  id: string;
+  display_name: string;
+  memory_gb: number | null;
+}
+
+export interface RunPodProviderCatalog {
+  gpu_options: RunPodGpuCatalogItem[];
+}
+
 export interface RunPodValidateKeyResponse {
   valid: boolean;
   message: string;

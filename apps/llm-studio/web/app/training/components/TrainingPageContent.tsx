@@ -95,6 +95,7 @@ export function TrainingPageContent() {
     executionKind,
     handleValidateRunPodKey,
     runPodApiKey,
+    runPodCatalog,
     runPodCleanupPod,
     runPodCloudType,
     runPodDataCenterId,
@@ -110,7 +111,6 @@ export function TrainingPageContent() {
     setRunPodApiKey,
     setRunPodCleanupPod,
     setRunPodCloudType,
-    setRunPodDataCenterId,
     setRunPodGpuCount,
     setRunPodGpuType,
     setRunPodInterruptible,
@@ -708,6 +708,7 @@ export function TrainingPageContent() {
               onExecutionKindChange={setExecutionKind}
               onValidateRunPodKey={() => void handleValidateRunPodKey()}
               runPodApiKey={runPodApiKey}
+              runPodCatalog={runPodCatalog}
               runPodCleanupPod={runPodCleanupPod}
               runPodCloudType={runPodCloudType}
               runPodDataCenterId={runPodDataCenterId}
@@ -721,7 +722,6 @@ export function TrainingPageContent() {
               setRunPodApiKey={setRunPodApiKey}
               setRunPodCleanupPod={setRunPodCleanupPod}
               setRunPodCloudType={setRunPodCloudType}
-              setRunPodDataCenterId={setRunPodDataCenterId}
               setRunPodGpuCount={setRunPodGpuCount}
               setRunPodGpuType={setRunPodGpuType}
               setRunPodInterruptible={setRunPodInterruptible}

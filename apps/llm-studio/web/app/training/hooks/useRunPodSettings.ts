@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  fetchRunPodCatalog,
   fetchRunPodStatus,
   validateRunPodKey,
 } from "../../../lib/training/providers";
 import type {
+  RunPodProviderCatalog,
   RunPodProviderStatus,
   RunPodValidateKeyResponse,
   TrainingExecutionTarget,
@@ -21,18 +23,21 @@ import {
 } from "../lib/runPod";
 
 interface UseRunPodSettingsOptions {
+  fetchCatalog?: () => Promise<RunPodProviderCatalog>;
   fetchStatus?: () => Promise<RunPodProviderStatus>;
   validateKey?: (apiKey: string) => Promise<RunPodValidateKeyResponse>;
   confirm?: (message: string) => boolean;
 }
 
 export function useRunPodSettings({
+  fetchCatalog = fetchRunPodCatalog,
   fetchStatus = fetchRunPodStatus,
   validateKey = validateRunPodKey,
   confirm = (message) => window.confirm(message),
 }: UseRunPodSettingsOptions = {}) {
   const [executionKind, setExecutionKind] = useState<TrainingExecutionTarget["kind"]>("local");
   const [runPodApiKey, setRunPodApiKey] = useState("");
+  const [runPodCatalog, setRunPodCatalog] = useState<RunPodProviderCatalog | null>(null);
   const [runPodStatus, setRunPodStatus] = useState<RunPodProviderStatus | null>(null);
   const [runPodValidationMessage, setRunPodValidationMessage] = useState<string | null>(null);
   const [runPodValidationLoading, setRunPodValidationLoading] = useState(false);
@@ -47,11 +52,12 @@ export function useRunPodSettings({
 
   useEffect(() => {
     let cancelled = false;
-    fetchStatus()
-      .then((status) => {
-        if (cancelled) {
-          return;
-        }
+    void Promise.allSettled([fetchStatus(), fetchCatalog()]).then(([statusResult, catalogResult]) => {
+      if (cancelled) {
+        return;
+      }
+      if (statusResult.status === "fulfilled") {
+        const status = statusResult.value;
         setRunPodStatus(status);
         setRunPodGpuType(status.defaults.gpu_type_id);
         setRunPodGpuCount(status.defaults.gpu_count);
@@ -59,16 +65,18 @@ export function useRunPodSettings({
         setRunPodDataCenterId(status.defaults.data_center_id ?? "");
         setRunPodVolumeSizeGb(status.defaults.network_volume_size_gb);
         setRunPodCleanupPod(status.defaults.cleanup_policy.pod);
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setRunPodValidationMessage(error instanceof Error ? error.message : "RunPod settings unavailable.");
-        }
-      });
+      } else {
+        const error = statusResult.reason;
+        setRunPodValidationMessage(error instanceof Error ? error.message : "RunPod settings unavailable.");
+      }
+      if (catalogResult.status === "fulfilled") {
+        setRunPodCatalog(catalogResult.value);
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, [fetchStatus]);
+  }, [fetchCatalog, fetchStatus]);
 
   const runPodLaunchSettings = useMemo<RunPodLaunchSettings>(
     () => ({
@@ -130,6 +138,7 @@ export function useRunPodSettings({
     executionKind,
     handleValidateRunPodKey,
     runPodApiKey,
+    runPodCatalog,
     runPodCleanupPod,
     runPodCloudType,
     runPodDataCenterId,
@@ -145,7 +154,6 @@ export function useRunPodSettings({
     setRunPodApiKey,
     setRunPodCleanupPod,
     setRunPodCloudType,
-    setRunPodDataCenterId,
     setRunPodGpuCount,
     setRunPodGpuType,
     setRunPodInterruptible,

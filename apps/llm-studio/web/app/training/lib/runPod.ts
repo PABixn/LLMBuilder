@@ -1,4 +1,6 @@
 import type {
+  RunPodGpuCatalogItem,
+  RunPodProviderCatalog,
   RunPodProviderStatus,
   TrainingExecutionTarget,
 } from "../../../lib/training/types";
@@ -19,11 +21,40 @@ export interface RunPodLaunchSettings {
   cleanupPod: RunPodCleanupPodAction;
 }
 
+export const RUNPOD_GPU_COUNT_OPTIONS = [1, 2, 4, 8] as const;
+
 export const RUNPOD_INTERRUPTIBLE_CONFIRMATION =
   "Start an interruptible RunPod pod? It can be preempted while training is running.";
 
 export const RUNPOD_KEEP_POD_CONFIRMATION =
   "Keep the RunPod pod alive after training? This can continue billing until you stop it.";
+
+export function getRunPodGpuOptions(
+  catalog: RunPodProviderCatalog | null,
+  selectedGpuType: string
+): RunPodGpuCatalogItem[] {
+  const options = [...(catalog?.gpu_options ?? [])];
+  const selectedId = selectedGpuType.trim();
+  if (selectedId && !options.some((option) => option.id === selectedId)) {
+    options.push({
+      id: selectedId,
+      display_name: selectedId,
+      memory_gb: null,
+    });
+  }
+  return options;
+}
+
+export function findRunPodGpuOption(
+  catalog: RunPodProviderCatalog | null,
+  selectedGpuType: string
+): RunPodGpuCatalogItem | null {
+  const selectedId = selectedGpuType.trim();
+  if (!selectedId) {
+    return null;
+  }
+  return getRunPodGpuOptions(catalog, selectedId).find((option) => option.id === selectedId) ?? null;
+}
 
 export function buildRunPodExecutionTarget(
   settings: RunPodLaunchSettings

@@ -9,6 +9,8 @@ import {
   buildRunPodExecutionTarget,
   buildTrainingExecutionTarget,
   confirmRunPodLaunch,
+  findRunPodGpuOption,
+  getRunPodGpuOptions,
   getRunPodLaunchConfirmationMessages,
   isRunPodLaunchReady,
   type RunPodLaunchSettings,
@@ -27,6 +29,21 @@ const runPodSettings: RunPodLaunchSettings = {
   interruptible: false,
   volumeSizeGb: 120,
   cleanupPod: "delete_after_sync",
+};
+
+const runPodCatalog = {
+  gpu_options: [
+    {
+      id: "NVIDIA GeForce RTX 4090",
+      display_name: "RTX 4090",
+      memory_gb: 24,
+    },
+    {
+      id: "NVIDIA A100 80GB PCIe",
+      display_name: "A100 PCIe",
+      memory_gb: 80,
+    },
+  ],
 };
 
 test("training polling continues only for non-terminal statuses", () => {
@@ -82,6 +99,20 @@ test("runpod execution target sends null for blank optional strings", () => {
 test("training execution target keeps local launches minimal", () => {
   assert.deepEqual(buildTrainingExecutionTarget("local", runPodSettings), {
     kind: "local",
+  });
+});
+
+test("runpod GPU catalog helpers preserve selected configured defaults", () => {
+  const customOptions = getRunPodGpuOptions(runPodCatalog, "Configured Custom GPU");
+  assert.deepEqual(findRunPodGpuOption(runPodCatalog, "NVIDIA A100 80GB PCIe"), {
+    id: "NVIDIA A100 80GB PCIe",
+    display_name: "A100 PCIe",
+    memory_gb: 80,
+  });
+  assert.deepEqual(customOptions[customOptions.length - 1], {
+    id: "Configured Custom GPU",
+    display_name: "Configured Custom GPU",
+    memory_gb: null,
   });
 });
 
