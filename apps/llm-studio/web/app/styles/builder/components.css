@@ -31,7 +31,7 @@
   border-radius: 12px;
   border: 1px solid var(--line);
   background: var(--surface);
-  overflow: clip;
+  overflow: visible;
   min-width: 0;
 }
 
@@ -69,6 +69,7 @@
 
 .componentCardHead {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   padding: 8px;
@@ -102,7 +103,7 @@
 
 .componentMeta {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 130px;
   display: grid;
   gap: 1px;
 }
@@ -110,7 +111,16 @@
 .componentHeadActions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+}
+
+.componentHeadActions > .helpTooltip {
+  flex: 0 0 auto;
 }
 
 .componentHeadInlineFields {
@@ -118,6 +128,8 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
+  max-width: 100%;
+  flex: 1 1 112px;
   flex-wrap: wrap;
 }
 
@@ -126,11 +138,19 @@
   align-items: center;
   gap: 0;
   min-width: 0;
+  max-width: 100%;
+}
+
+.headerInlineField > .helpTooltip,
+.headerInlineToggle > .helpTooltip {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .headerInlineField select {
   min-width: 0;
-  max-width: 112px;
+  width: 100%;
+  max-width: min(112px, 100%);
   border: 1px solid var(--line-strong);
   border-radius: 7px;
   background: var(--surface);
@@ -150,6 +170,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
   min-height: 24px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -157,7 +179,7 @@
   padding: 4px 6px;
   font-size: 0.66rem;
   font-weight: 650;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .headerInlineToggle input {
@@ -194,7 +216,7 @@
   line-height: 1.18;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
   opacity: 0.9;
 }
 
@@ -330,6 +352,7 @@
 .mlpStepCard .componentCardHead {
   padding: 6px 7px;
   align-items: center;
+  flex-wrap: wrap;
   border-bottom: 0;
   background: transparent;
 }
@@ -390,9 +413,22 @@
   align-items: center;
 }
 
+.mlpStepCard.isInlineSimple .componentCardHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, auto) auto;
+  gap: 5px;
+  min-height: 0;
+}
+
 .componentCard.isInlineSimple .componentMeta,
 .mlpStepCard.isInlineSimple .componentMeta {
   gap: 0;
+}
+
+.mlpStepCard.isInlineSimple .componentMeta {
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .componentCard.isInlineSimple .componentSummary,
@@ -409,6 +445,28 @@
 .componentCard.isInlineSimple .componentHeadActions,
 .mlpStepCard.isInlineSimple .componentHeadActions {
   margin-left: auto;
+}
+
+.mlpStepCard.isInlineSimple .componentHeadInlineFields {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.mlpStepCard.isInlineSimple .headerInlineField select {
+  max-width: min(96px, 100%);
+  padding: 3px 5px;
+}
+
+.mlpStepCard.isInlineSimple .headerInlineToggle {
+  min-height: 22px;
+  padding: 3px 5px;
+  gap: 4px;
+}
+
+.mlpStepCard.isInlineSimple .componentHeadActions {
+  flex-wrap: nowrap;
+  gap: 3px;
 }
 
 .mlpStepInsertSlot {
@@ -560,6 +618,11 @@
 .mlpSequenceList > .mlpStepInsertSlot:first-child .dropSlotMark,
 .mlpSequenceList > .mlpStepInsertSlot:last-child .dropSlotMark {
   opacity: 0;
+}
+
+.mlpSequenceList > .mlpStepInsertSlot:first-child,
+.mlpSequenceList > .mlpStepInsertSlot:last-child {
+  min-height: 6px;
 }
 
 .componentLane > .dropSlot.isCompact:first-child:hover .dropSlotMark,

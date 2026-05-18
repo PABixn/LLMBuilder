@@ -17,6 +17,7 @@ import {
   issueTone,
 } from "../lib/display";
 import { formatInteger } from "../lib/metrics";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 interface PreflightPanelProps {
   highlighted: boolean;
@@ -45,7 +46,16 @@ export const PreflightPanel = forwardRef<HTMLElement, PreflightPanelProps>(
       >
         <div className="panelHead">
           <div>
-            <h2>Preflight</h2>
+            <h2>
+              Preflight
+              <InfoTooltip label="Preflight explanation" align="left" width="wide">
+                <strong>Preflight</strong>
+                <p>
+                  The app checks selected assets, vocabulary compatibility, sequence length,
+                  runtime memory estimates, dataset files, and fixable config issues before launch.
+                </p>
+              </InfoTooltip>
+            </h2>
             <p className="panelCopy">
               Checks assets, settings, files, and memory before training.
             </p>
@@ -66,7 +76,16 @@ export const PreflightPanel = forwardRef<HTMLElement, PreflightPanelProps>(
                 <FiArchive />
               </div>
               <div>
-                <div className="statusCardTitle">Tokenizer vocabulary</div>
+                <div className="statusCardTitle">
+                  Tokenizer vocabulary
+                  <InfoTooltip label="Tokenizer vocabulary check explanation" align="left" width="wide">
+                    <strong>Tokenizer vocabulary</strong>
+                    <p>
+                      The tokenizer&apos;s vocab size must match the model config. A mismatch
+                      means token IDs may point outside the model embedding table.
+                    </p>
+                  </InfoTooltip>
+                </div>
                 <div className="statusCardValue">{formatInteger(preflight.compatibility.tokenizer_vocab_size)}</div>
                 <div className="statusCardDetail">Model vocabulary size: {formatInteger(preflight.compatibility.model_vocab_size)}</div>
               </div>
@@ -76,7 +95,14 @@ export const PreflightPanel = forwardRef<HTMLElement, PreflightPanelProps>(
                 <FiLayers />
               </div>
               <div>
-                <div className="statusCardTitle">Sequence length</div>
+                <div className="statusCardTitle">
+                  Sequence length
+                  <InfoTooltip label="Sequence length check explanation" align="left">
+                    <p>
+                      Confirms the requested training sequence length fits within the model&apos;s context limit.
+                    </p>
+                  </InfoTooltip>
+                </div>
                 <div className="statusCardValue">{formatInteger(preflight.compatibility.seq_len)}</div>
                 <div className="statusCardDetail">Model context limit: {formatInteger(preflight.compatibility.model_context_length)}</div>
               </div>
@@ -86,7 +112,16 @@ export const PreflightPanel = forwardRef<HTMLElement, PreflightPanelProps>(
                 <FiBarChart2 />
               </div>
               <div>
-                <div className="statusCardTitle">Micro batch size</div>
+                <div className="statusCardTitle">
+                  Micro batch size
+                  <InfoTooltip label="Micro batch preflight explanation" align="left" width="wide">
+                    <strong>Micro batch size</strong>
+                    <p>
+                      The per-device batch that actually fits in memory. Gradient accumulation
+                      repeats micro batches until the configured total batch tokens are reached.
+                    </p>
+                  </InfoTooltip>
+                </div>
                 <div className="statusCardValue">
                   {formatInteger(preflight.derived_runtime?.micro_batch_size ?? null)}
                 </div>
@@ -100,7 +135,14 @@ export const PreflightPanel = forwardRef<HTMLElement, PreflightPanelProps>(
                 <FiCpu />
               </div>
               <div>
-                <div className="statusCardTitle">Device</div>
+                <div className="statusCardTitle">
+                  Device
+                  <InfoTooltip label="Device memory estimate explanation" align="left">
+                    <p>
+                      Shows the runtime device and the memory-estimated largest micro batch for the current config.
+                    </p>
+                  </InfoTooltip>
+                </div>
                 <div className="statusCardValue">{preflight.derived_runtime?.device_type ?? "N/A"}</div>
                 <div className="statusCardDetail">
                   Memory-estimated max batch size: {formatInteger((preflight.memory_estimate?.max_batch_size as number | undefined) ?? null)}
@@ -148,9 +190,11 @@ export const PreflightPanel = forwardRef<HTMLElement, PreflightPanelProps>(
                   <div className="trainingIssueTitle">{fix.label}</div>
                   <div className="trainingIssueMeta">{fix.description}</div>
                   <div className="trainingFixActions">
-                    <button type="button" className="buttonGhost buttonSmall" onClick={() => onApplyFix(fix)}>
-                      Apply
-                    </button>
+                    <HelpTooltip label={`Apply fix: ${fix.label}`} content={fix.description} align="right" width="wide">
+                      <button type="button" className="buttonGhost buttonSmall" onClick={() => onApplyFix(fix)}>
+                        Apply
+                      </button>
+                    </HelpTooltip>
                   </div>
                 </div>
               ))}

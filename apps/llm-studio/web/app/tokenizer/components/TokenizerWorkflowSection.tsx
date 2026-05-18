@@ -6,6 +6,7 @@ import type {
   TokenizerType,
 } from "../types";
 import { describeJobState } from "../lib/display";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 type TokenizerWorkflowSectionProps = {
   tokenizerReady: boolean;
@@ -69,7 +70,16 @@ export function TokenizerWorkflowSection({
       <div className="panelHead actionDeckHead">
         <div>
           <p className="panelEyebrow">Workflow</p>
-          <h2>Train tokenizer</h2>
+          <h2>
+            Train tokenizer
+            <InfoTooltip label="Tokenizer workflow explanation" align="left" width="wide">
+              <strong>Tokenizer workflow</strong>
+              <p>
+                Complete tokenizer settings, dataset source, and text budget, then validate.
+                Validation checks the generated tokenizer and dataloader JSON before the job starts.
+              </p>
+            </InfoTooltip>
+          </h2>
           <p className="panelCopy">
             Complete each step, then start training.
           </p>
@@ -89,13 +99,15 @@ export function TokenizerWorkflowSection({
             {tokenizerError ??
               `${tokenizerType.toUpperCase()} tokenizer configured.`}
           </p>
-          <button
-            type="button"
-            className="workflowStepLink workflowStepAction"
-            onClick={() => onNavigateSettings("tokenizer")}
-          >
-            Open settings
-          </button>
+          <HelpTooltip label="Open tokenizer settings" content="Jumps to tokenizer name, type, vocabulary size, special tokens, and unknown-token behavior.">
+            <button
+              type="button"
+              className="workflowStepLink workflowStepAction"
+              onClick={() => onNavigateSettings("tokenizer")}
+            >
+              Open settings
+            </button>
+          </HelpTooltip>
         </article>
 
         <article
@@ -114,13 +126,15 @@ export function TokenizerWorkflowSection({
                     streamingDatasetCount === 1 ? "" : "s"
                   } configured.`)}
           </p>
-          <button
-            type="button"
-            className="workflowStepLink workflowStepAction"
-            onClick={() => onNavigateSettings("dataset")}
-          >
-            Open dataset
-          </button>
+          <HelpTooltip label="Open tokenizer dataset" content="Jumps to local-file or streaming-dataset settings used to learn the tokenizer vocabulary.">
+            <button
+              type="button"
+              className="workflowStepLink workflowStepAction"
+              onClick={() => onNavigateSettings("dataset")}
+            >
+              Open dataset
+            </button>
+          </HelpTooltip>
         </article>
 
         <article
@@ -137,13 +151,15 @@ export function TokenizerWorkflowSection({
             {trainingRuntimeError ??
               `Budget: ${budgetLimit} ${budgetUnit}, thresholds: ${activeThresholds}.`}
           </p>
-          <button
-            type="button"
-            className="workflowStepLink workflowStepAction"
-            onClick={() => onNavigateSettings("training")}
-          >
-            Open budget
-          </button>
+          <HelpTooltip label="Open tokenizer budget" content="Jumps to text budget settings. The budget limits how much source text is read while training the tokenizer.">
+            <button
+              type="button"
+              className="workflowStepLink workflowStepAction"
+              onClick={() => onNavigateSettings("training")}
+            >
+              Open budget
+            </button>
+          </HelpTooltip>
         </article>
 
         <article
@@ -173,14 +189,16 @@ export function TokenizerWorkflowSection({
                   ? validationError ?? "Waiting to validate."
                   : "Complete steps 1-3 first."}
           </p>
-          <button
-            type="button"
-            className="secondaryButton workflowStepAction workflowStepButtonCompact"
-            onClick={onValidate}
-            disabled={controlsDisabled || !preflightReady || isValidating}
-          >
-            {isValidating ? "Validating..." : "Validate now"}
-          </button>
+          <HelpTooltip label="Validate tokenizer configuration" content="Sends the generated tokenizer and dataloader configs to the backend validators. A passing validation is required before training starts.">
+            <button
+              type="button"
+              className="secondaryButton workflowStepAction workflowStepButtonCompact"
+              onClick={onValidate}
+              disabled={controlsDisabled || !preflightReady || isValidating}
+            >
+              {isValidating ? "Validating..." : "Validate now"}
+            </button>
+          </HelpTooltip>
         </article>
 
         <article
@@ -212,18 +230,20 @@ export function TokenizerWorkflowSection({
                     ? "Waiting for validation."
                     : "Validate before training."}
           </p>
-          <button
-            type="button"
-            className="primaryButton workflowStepAction"
-            onClick={onTrain}
-            disabled={!canStartTraining}
-          >
-            {hasTrainingInProgress
-              ? "Training..."
-              : isSubmitting
-                ? "Starting..."
-                : "Start training"}
-          </button>
+          <HelpTooltip label="Start tokenizer training" content="Creates a tokenizer training job from the current validated config. The trained tokenizer appears in workspace and can be selected for model training.">
+            <button
+              type="button"
+              className="primaryButton workflowStepAction"
+              onClick={onTrain}
+              disabled={!canStartTraining}
+            >
+              {hasTrainingInProgress
+                ? "Training..."
+                : isSubmitting
+                  ? "Starting..."
+                  : "Start training"}
+            </button>
+          </HelpTooltip>
         </article>
       </div>
     </section>

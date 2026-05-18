@@ -6,6 +6,7 @@ import { FiX } from "react-icons/fi";
 
 import { formatCharCount } from "../lib/files";
 import type { LocalTrainFileFormState } from "../types";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 interface LocalFilesDatasetEditorProps {
   clearLocalTrainFiles: () => void;
@@ -45,33 +46,45 @@ export function LocalFilesDatasetEditor({
       >
         <div className="localFileManagerHeader">
           <div>
-            <strong>Local training files</strong>
+            <strong>
+              Local training files
+              <InfoTooltip label="Local training files explanation" align="left" width="wide">
+                <p>
+                  Files are uploaded to the backend and referenced by the dataloader. Training
+                  and evaluation read text from these files; duplicate file paths are skipped.
+                </p>
+              </InfoTooltip>
+            </strong>
             <p>Training and evaluation use these files.</p>
           </div>
           <div className="localFileHeaderActions">
             <div className="localFileHeaderButtons">
-              <label
-                className={`secondaryButton localFileUploadButton localFileHeaderButton ${
-                  isUploadingTrainFile ? "localFileUploadButton-disabled" : ""
-                }`}
-                aria-disabled={isUploadingTrainFile}
-              >
-                {isUploadingTrainFile ? "Uploading..." : "Add files"}
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleTrainFilesSelected}
-                  disabled={isUploadingTrainFile}
-                />
-              </label>
-              <button
-                type="button"
-                className="textButton localFileHeaderButton"
-                onClick={clearLocalTrainFiles}
-                disabled={localTrainFiles.length === 0}
-              >
-                Remove all
-              </button>
+              <HelpTooltip label="Add local training files" content="Select one or more text files. The app uploads them, records file size and character counts when available, and includes them in the next preflight check.">
+                <label
+                  className={`secondaryButton localFileUploadButton localFileHeaderButton ${
+                    isUploadingTrainFile ? "localFileUploadButton-disabled" : ""
+                  }`}
+                  aria-disabled={isUploadingTrainFile}
+                >
+                  {isUploadingTrainFile ? "Uploading..." : "Add files"}
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleTrainFilesSelected}
+                    disabled={isUploadingTrainFile}
+                  />
+                </label>
+              </HelpTooltip>
+              <HelpTooltip label="Remove all local files" content="Clears the file list from this configuration. It does not delete original files from your computer.">
+                <button
+                  type="button"
+                  className="textButton localFileHeaderButton"
+                  onClick={clearLocalTrainFiles}
+                  disabled={localTrainFiles.length === 0}
+                >
+                  Remove all
+                </button>
+              </HelpTooltip>
             </div>
             <span className="localFileCount">
               {localTrainFiles.length} file

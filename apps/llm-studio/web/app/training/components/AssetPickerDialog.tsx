@@ -18,6 +18,7 @@ import {
   asString,
 } from "../lib/object";
 import type { AssetPickerKind } from "../types";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 interface AssetPickerDialogProps {
   onClose: () => void;
@@ -72,6 +73,12 @@ export function AssetPickerDialog({
           <div>
             <h2 id="training-asset-picker-title">
               {pickerKind === "project" ? "Choose model" : "Choose tokenizer"}
+              <InfoTooltip label="Training asset picker explanation" align="left" width="wide">
+                <p>
+                  This picker only changes the asset selected for the training page. It does
+                  not edit the source model config or tokenizer job.
+                </p>
+              </InfoTooltip>
             </h2>
             <p className="panelCopy">
               {pickerKind === "project"
@@ -102,15 +109,17 @@ export function AssetPickerDialog({
               }
             />
           </label>
-          <button
-            type="button"
-            className="buttonGhost"
-            onClick={() => {
-              onOpenPicker(pickerKind);
-            }}
-          >
-            <FiRefreshCw /> Refresh
-          </button>
+          <HelpTooltip label="Refresh picker results" content="Reloads the workspace inventory for this picker while keeping the current search text.">
+            <button
+              type="button"
+              className="buttonGhost"
+              onClick={() => {
+                onOpenPicker(pickerKind);
+              }}
+            >
+              <FiRefreshCw /> Refresh
+            </button>
+          </HelpTooltip>
         </div>
 
         <div className="trainingAssetPickerResults">
@@ -126,9 +135,11 @@ export function AssetPickerDialog({
               <p className="panelCopy">
                 Save a model config first.
               </p>
-              <Link className="buttonGhost" href="/">
-                <FiLayers /> Open workspace
-              </Link>
+              <HelpTooltip label="Open workspace from picker" content="Go to the workspace to create or manage saved model configs.">
+                <Link className="buttonGhost" href="/">
+                  <FiLayers /> Open workspace
+                </Link>
+              </HelpTooltip>
             </div>
           ) : null}
 
@@ -138,9 +149,11 @@ export function AssetPickerDialog({
               <p className="panelCopy">
                 Finish tokenizer training first.
               </p>
-              <Link className="buttonGhost" href="/tokenizer">
-                <FiCpu /> Open tokenizer
-              </Link>
+              <HelpTooltip label="Open tokenizer from picker" content="Go to tokenizer training to create a completed tokenizer artifact.">
+                <Link className="buttonGhost" href="/tokenizer">
+                  <FiCpu /> Open tokenizer
+                </Link>
+              </HelpTooltip>
             </div>
           ) : null}
 

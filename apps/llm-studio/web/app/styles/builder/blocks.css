@@ -209,6 +209,7 @@
 
 .blockCardHead {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
@@ -218,6 +219,8 @@
   display: flex;
   gap: 8px;
   align-items: flex-start;
+  min-width: 0;
+  flex: 1 1 140px;
 }
 
 .blockCardTitleWrap h3 {
@@ -234,7 +237,16 @@
 
 .blockCardActions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+}
+
+.blockCardActions > .helpTooltip {
+  flex: 0 0 auto;
 }
 
 .blockQuickMap {

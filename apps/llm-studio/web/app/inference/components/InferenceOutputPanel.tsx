@@ -1,5 +1,6 @@
 import type { GenerateTrainingCompletionResponse } from "../../../lib/training/types";
 import { formatInteger } from "../lib/formatters";
+import { InfoTooltip } from "../../shared/components/HelpTooltip";
 
 type InferenceOutputPanelProps = {
   result: GenerateTrainingCompletionResponse | null;
@@ -10,7 +11,15 @@ export function InferenceOutputPanel({ result }: InferenceOutputPanelProps) {
     <section className="panelCard inferenceOutputPanel">
       <div className="panelHead">
         <div>
-          <h2>Continuation</h2>
+          <h2>
+            Continuation
+            <InfoTooltip label="Inference output explanation" align="left" width="wide">
+              <p>
+                Output is shown as the original prompt followed by the generated continuation.
+                The step label shows which checkpoint produced the text.
+              </p>
+            </InfoTooltip>
+          </h2>
           <p className="panelCopy">The model output appears here.</p>
         </div>
         {result ? (

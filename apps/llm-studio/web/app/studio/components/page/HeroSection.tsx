@@ -12,6 +12,7 @@ import type {
   NoticeState,
 } from "../../types";
 import { formatTimeAgo } from "../../utils/format";
+import { HelpTooltip, InfoTooltip } from "../../../shared/components/HelpTooltip";
 
 type HeroSectionProps = {
   fileInputRef: RefObject<HTMLInputElement | null>;
@@ -65,48 +66,61 @@ export function HeroSection({
     <section className="panelCard heroCard">
       <div className="panelHead heroHead">
         <div>
-          <h1>Design model configs.</h1>
+          <h1>
+            Design model configs.
+            <InfoTooltip label="Model Studio explanation" align="left" width="wide">
+              <strong>Model Studio</strong>
+              <p>
+                Build the architecture JSON used by training. Blocks hold components,
+                components define computation, and validation checks whether the final config is usable.
+              </p>
+            </InfoTooltip>
+          </h1>
           <p className="panelCopy">
             Add blocks, edit layers, validate, and export JSON.
           </p>
         </div>
         <div className="heroActions">
-          <button
-            type="button"
-            className="buttonGhost iconOnly"
-            onClick={addBlock}
-            aria-label="Add block"
-            title="Add block"
-          >
-            <FiPlus />
-          </button>
-          <button
-            type="button"
-            className="buttonGhost iconOnly"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Import file"
-            title="Import file"
-          >
-            <FiUpload />
-          </button>
-          <button
-            type="button"
-            className="buttonGhost iconOnly"
-            onClick={exportJson}
-            aria-label="Download model JSON"
-            title="Download model JSON"
-          >
-            <FiDownload />
-          </button>
-          <button
-            type="button"
-            className="buttonGhost iconOnly"
-            onClick={resetDefaults}
-            aria-label="Reset to defaults"
-            title="Reset to defaults"
-          >
-            <FiRefreshCw />
-          </button>
+          <HelpTooltip label="Add block explanation" content="Adds a transformer block to the visual designer. Blocks are the repeated columns of the model architecture.">
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={addBlock}
+              aria-label="Add block"
+            >
+              <FiPlus />
+            </button>
+          </HelpTooltip>
+          <HelpTooltip label="Import file explanation" content="Imports model JSON into the builder. Validation and auto-save run after the imported config is applied.">
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Import file"
+            >
+              <FiUpload />
+            </button>
+          </HelpTooltip>
+          <HelpTooltip label="Download model JSON explanation" content="Downloads the current validated model configuration as JSON for reuse outside the app.">
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={exportJson}
+              aria-label="Download model JSON"
+            >
+              <FiDownload />
+            </button>
+          </HelpTooltip>
+          <HelpTooltip label="Reset defaults explanation" content="Replaces the current builder state with the default model configuration. Auto-save will then save the new state.">
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={resetDefaults}
+              aria-label="Reset to defaults"
+            >
+              <FiRefreshCw />
+            </button>
+          </HelpTooltip>
         </div>
       </div>
 

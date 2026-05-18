@@ -73,6 +73,7 @@ import {
 import {
   sanitizePositiveIntegerInput,
 } from "../../shared/lib/configNumber";
+import { FieldLabelText, HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 import {
   getTauriInvoke,
   triggerBlobDownload,
@@ -1328,7 +1329,16 @@ export function TokenizerPageContent() {
         </div>
 
         <details className="settingsPanel" open ref={tokenizerAndTrainingPanelRef}>
-          <summary>Tokenizer and budget</summary>
+          <summary>
+            <span>Tokenizer and budget</span>
+            <InfoTooltip label="Tokenizer and budget explanation" align="right" width="wide">
+              <strong>Tokenizer and budget</strong>
+              <p>
+                Tokenizer settings define how text becomes token IDs. The training budget
+                limits how much source text is consumed when building the vocabulary.
+              </p>
+            </InfoTooltip>
+          </summary>
           <div className="settingsGrid">
             <div
               id="settings-tokenizer"
@@ -1348,7 +1358,9 @@ export function TokenizerPageContent() {
 
               <div className="fieldGrid">
                 <label>
-                  Name
+                  <FieldLabelText tooltipLabel="Tokenizer name explanation" tooltip="Human-readable name saved with the tokenizer job and shown later in workspace, training, and inference pickers.">
+                    Name
+                  </FieldLabelText>
                   <input
                     value={tokenizerForm.name}
                     onChange={(event) =>
@@ -1361,7 +1373,9 @@ export function TokenizerPageContent() {
                 </label>
 
                 <label>
-                  Type
+                  <FieldLabelText tooltipLabel="Tokenizer type explanation" tooltip="BPE learns byte-pair merges and is a strong default; WordPiece is common for BERT-style tokenizers; Unigram learns a probabilistic token inventory.">
+                    Type
+                  </FieldLabelText>
                   <select
                     value={tokenizerForm.tokenizerType}
                     onChange={(event) =>
@@ -1378,7 +1392,9 @@ export function TokenizerPageContent() {
                 </label>
 
                 <label>
-                  Vocab size
+                  <FieldLabelText tooltipLabel="Vocabulary size explanation" tooltip="Number of token IDs the tokenizer can emit. This must match the model config vocab size before model training can start.">
+                    Vocab size
+                  </FieldLabelText>
                   <input
                     inputMode="numeric"
                     pattern="[0-9]*"
@@ -1393,7 +1409,9 @@ export function TokenizerPageContent() {
                 </label>
 
                 <label>
-                  Min frequency
+                  <FieldLabelText tooltipLabel="Minimum frequency explanation" tooltip="Minimum number of times a candidate token must appear before it can enter the learned vocabulary. Higher values reduce rare tokens.">
+                    Min frequency
+                  </FieldLabelText>
                   <input
                     inputMode="numeric"
                     pattern="[0-9]*"
@@ -1408,7 +1426,9 @@ export function TokenizerPageContent() {
                 </label>
 
                 <label className="fullWidthField">
-                  Special tokens
+                  <FieldLabelText tooltipLabel="Special tokens explanation" tooltip="Reserved tokens such as padding, unknown, beginning-of-sequence, or end-of-sequence markers. Put one token per line or comma-separated, depending on the config format.">
+                    Special tokens
+                  </FieldLabelText>
                   <textarea
                     rows={2}
                     value={tokenizerForm.specialTokens}
@@ -1435,12 +1455,23 @@ export function TokenizerPageContent() {
                         }))
                       }
                     />
-                    Byte fallback
+                    <span className="fieldLabelText">
+                      <span>Byte fallback</span>
+                      <InfoTooltip label="Byte fallback explanation" width="wide">
+                        <strong>Byte fallback</strong>
+                        <p>
+                          Lets BPE represent unseen characters as bytes instead of relying on an
+                          unknown token. This is useful for mixed languages, symbols, and messy text.
+                        </p>
+                      </InfoTooltip>
+                    </span>
                   </label>
 
                   {!tokenizerForm.byteFallback ? (
                     <label className="inlineField">
-                      Unknown token
+                      <FieldLabelText tooltipLabel="Unknown token explanation" tooltip="Token emitted when text cannot be represented by the vocabulary. Byte fallback usually reduces the need for this token.">
+                        Unknown token
+                      </FieldLabelText>
                       <input
                         value={tokenizerForm.unkToken}
                         onChange={(event) =>
@@ -1457,7 +1488,9 @@ export function TokenizerPageContent() {
 
               {tokenizerForm.tokenizerType === "wordpiece" ? (
                 <label className="inlineField">
-                  Unknown token
+                  <FieldLabelText tooltipLabel="Unknown token explanation" tooltip="Token emitted when WordPiece cannot represent part of the input text. Common values are [UNK] or <unk>.">
+                    Unknown token
+                  </FieldLabelText>
                   <input
                     value={tokenizerForm.unkToken}
                     onChange={(event) =>
@@ -1492,7 +1525,9 @@ export function TokenizerPageContent() {
               </div>
               <div className="fieldGrid">
                 <label>
-                  Budget limit
+                  <FieldLabelText tooltipLabel="Training budget limit explanation" tooltip="Maximum amount of text used to train the tokenizer. Smaller budgets run faster; larger budgets better represent your corpus.">
+                    Budget limit
+                  </FieldLabelText>
                   <input
                     inputMode="numeric"
                     pattern="[0-9]*"
@@ -1507,7 +1542,9 @@ export function TokenizerPageContent() {
                 </label>
 
                 <label>
-                  Budget unit
+                  <FieldLabelText tooltipLabel="Training budget unit explanation" tooltip="Whether the budget limit is counted as characters or bytes. Characters are easier to reason about; bytes are closer to raw file size.">
+                    Budget unit
+                  </FieldLabelText>
                   <select
                     value={trainingForm.budgetUnit}
                     onChange={(event) =>
@@ -1523,7 +1560,9 @@ export function TokenizerPageContent() {
                 </label>
 
                 <label>
-                  Budget behavior
+                  <FieldLabelText tooltipLabel="Training budget behavior explanation" tooltip="Truncate cuts off the input at the limit. Stop ends reading once the limit is reached, preserving complete records where possible.">
+                    Budget behavior
+                  </FieldLabelText>
                   <select
                     value={trainingForm.budgetBehavior}
                     onChange={(event) =>
@@ -1543,7 +1582,15 @@ export function TokenizerPageContent() {
         </details>
 
         <details className="settingsPanel" open ref={datasetPanelRef}>
-          <summary>Dataset settings</summary>
+          <summary>
+            <span>Dataset settings</span>
+            <InfoTooltip label="Tokenizer dataset settings explanation" align="right" width="wide">
+              <p>
+                The tokenizer learns from these sources before model training. Use local files
+                for uploaded corpora or streaming datasets for Hugging Face sources.
+              </p>
+            </InfoTooltip>
+          </summary>
           <div className="settingsGrid">
             <div
               id="settings-dataset"
@@ -1555,45 +1602,57 @@ export function TokenizerPageContent() {
               }`}
             >
             <div className="sourceModeRow">
-              <span>Dataset source</span>
+              <span className="fieldLabelText">
+                <span>Dataset source</span>
+                <InfoTooltip label="Tokenizer dataset source explanation" width="wide">
+                  <p>
+                    Local files are uploaded into this app. Streaming datasets are pulled by
+                    name, split, weight, columns, and filters when the tokenizer job runs.
+                  </p>
+                </InfoTooltip>
+              </span>
               <div className="modeSwitch">
-                <button
-                  type="button"
-                  className={`modeSwitchButton ${
-                    datasetForm.sourceMode === "local_file"
-                      ? "modeSwitchButton-active"
-                      : ""
-                  }`}
-                  disabled={controlsDisabled}
-                  onClick={() =>
-                    setDatasetForm((previous) => ({
-                      ...previous,
-                      sourceMode: "local_file",
-                    }))
-                  }
-                >
-                  Local files
-                </button>
-                <button
-                  type="button"
-                  className={`modeSwitchButton ${
-                    datasetForm.sourceMode === "streaming_hf"
-                      ? "modeSwitchButton-active"
-                      : ""
-                  }`}
-                  disabled={controlsDisabled}
-                  onClick={() =>
-                    setDatasetForm((previous) => ({
-                      ...previous,
-                      sourceMode: "streaming_hf",
-                      streamingDatasets: normalizeStreamingDatasetWeights(
-                        previous.streamingDatasets
-                      ),
-                    }))
-                  }
-                >
-                  Streaming datasets
-                </button>
+                <HelpTooltip label="Local tokenizer files" content="Train the tokenizer from files uploaded into this workspace. Best for private corpora and quick experiments.">
+                  <button
+                    type="button"
+                    className={`modeSwitchButton ${
+                      datasetForm.sourceMode === "local_file"
+                        ? "modeSwitchButton-active"
+                        : ""
+                    }`}
+                    disabled={controlsDisabled}
+                    onClick={() =>
+                      setDatasetForm((previous) => ({
+                        ...previous,
+                        sourceMode: "local_file",
+                      }))
+                    }
+                  >
+                    Local files
+                  </button>
+                </HelpTooltip>
+                <HelpTooltip label="Streaming tokenizer datasets" content="Train the tokenizer from Hugging Face datasets by streaming text records according to the dataset list, weights, text columns, and filters.">
+                  <button
+                    type="button"
+                    className={`modeSwitchButton ${
+                      datasetForm.sourceMode === "streaming_hf"
+                        ? "modeSwitchButton-active"
+                        : ""
+                    }`}
+                    disabled={controlsDisabled}
+                    onClick={() =>
+                      setDatasetForm((previous) => ({
+                        ...previous,
+                        sourceMode: "streaming_hf",
+                        streamingDatasets: normalizeStreamingDatasetWeights(
+                          previous.streamingDatasets
+                        ),
+                      }))
+                    }
+                  >
+                    Streaming datasets
+                  </button>
+                </HelpTooltip>
               </div>
             </div>
 
@@ -1610,25 +1669,35 @@ export function TokenizerPageContent() {
                 >
                   <div className="localFileManagerHeader">
                     <div>
-                      <strong>Local training files</strong>
+                      <strong>
+                        Local training files
+                        <InfoTooltip label="Tokenizer local files explanation" align="left" width="wide">
+                          <p>
+                            These files are used to learn tokenizer vocabulary. Their text is
+                            also available for evaluation of token statistics after training.
+                          </p>
+                        </InfoTooltip>
+                      </strong>
                       <p>Training and evaluation use these files.</p>
                     </div>
                     <div className="localFileHeaderActions">
                       <div className="localFileHeaderButtons">
-                        <label
-                          className={`secondaryButton localFileUploadButton localFileHeaderButton ${
-                            controlsDisabled ? "localFileUploadButton-disabled" : ""
-                          }`}
-                          aria-disabled={controlsDisabled}
-                        >
-                          {isUploadingTrainFile ? "Uploading..." : "Add files"}
-                          <input
-                            type="file"
-                            multiple
-                            onChange={handleTrainFilesSelected}
-                            disabled={controlsDisabled}
-                          />
-                        </label>
+                        <HelpTooltip label="Add tokenizer training files" content="Uploads text files and adds them to this tokenizer job. The app tracks character counts when available.">
+                          <label
+                            className={`secondaryButton localFileUploadButton localFileHeaderButton ${
+                              controlsDisabled ? "localFileUploadButton-disabled" : ""
+                            }`}
+                            aria-disabled={controlsDisabled}
+                          >
+                            {isUploadingTrainFile ? "Uploading..." : "Add files"}
+                            <input
+                              type="file"
+                              multiple
+                              onChange={handleTrainFilesSelected}
+                              disabled={controlsDisabled}
+                            />
+                          </label>
+                        </HelpTooltip>
                         <button
                           type="button"
                           className="textButton localFileHeaderButton"
@@ -1686,7 +1755,9 @@ export function TokenizerPageContent() {
             ) : (
               <div className="datasetConfigurator">
                 <label className="fullWidthField">
-                  HF token (optional)
+                  <FieldLabelText tooltipLabel="HF token explanation" tooltip="Optional Hugging Face token for private or gated datasets. It is not needed for public datasets.">
+                    HF token (optional)
+                  </FieldLabelText>
                   <input
                     type="password"
                     value={datasetForm.hfToken}
@@ -1704,24 +1775,28 @@ export function TokenizerPageContent() {
                 </label>
 
                 <div className="actionRow">
-                  <button
-                    type="button"
-                    className="secondaryButton"
-                    onClick={addStreamingDataset}
-                    disabled={controlsDisabled}
-                  >
-                    Add dataset
-                  </button>
-                  <button
-                    type="button"
-                    className="secondaryButton"
-                    onClick={handleLoadStreamingTemplate}
-                    disabled={controlsDisabled}
-                  >
-                    {isLoadingTemplate
-                      ? "Loading template..."
-                      : "Load template"}
-                  </button>
+                  <HelpTooltip label="Add streaming tokenizer dataset" content="Adds another dataset to the tokenizer training mixture. Weights determine how often each dataset is sampled.">
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      onClick={addStreamingDataset}
+                      disabled={controlsDisabled}
+                    >
+                      Add dataset
+                    </button>
+                  </HelpTooltip>
+                  <HelpTooltip label="Load streaming tokenizer template" content="Loads the backend dataloader template and applies its dataset and budget defaults.">
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      onClick={handleLoadStreamingTemplate}
+                      disabled={controlsDisabled}
+                    >
+                      {isLoadingTemplate
+                        ? "Loading template..."
+                        : "Load template"}
+                    </button>
+                  </HelpTooltip>
                 </div>
 
                 <div className="datasetList">
@@ -1745,7 +1820,9 @@ export function TokenizerPageContent() {
 
                       <div className="fieldGrid">
                         <label>
-                          Dataset name
+                          <FieldLabelText tooltipLabel="Dataset name explanation" tooltip="Hugging Face dataset repository name, for example HuggingFaceFW/fineweb-edu.">
+                            Dataset name
+                          </FieldLabelText>
                           <input
                             value={entry.name}
                             onChange={(event) =>
@@ -1758,7 +1835,9 @@ export function TokenizerPageContent() {
                         </label>
 
                         <label>
-                          Split
+                          <FieldLabelText tooltipLabel="Split explanation" tooltip="Dataset split to read, commonly train. Use the exact split name provided by the dataset.">
+                            Split
+                          </FieldLabelText>
                           <input
                             value={entry.split}
                             onChange={(event) =>
@@ -1771,7 +1850,9 @@ export function TokenizerPageContent() {
                         </label>
 
                         <label>
-                          Weight
+                          <FieldLabelText tooltipLabel="Weight explanation" tooltip="Relative sampling share for this dataset. Higher weight means more records from this source in the training stream.">
+                            Weight
+                          </FieldLabelText>
                           <input
                             inputMode="decimal"
                             pattern="[0-9]*[.]?[0-9]*"
@@ -1787,7 +1868,9 @@ export function TokenizerPageContent() {
                         </label>
 
                         <label className="fullWidthField">
-                          Text columns
+                          <FieldLabelText tooltipLabel="Text columns explanation" tooltip="Column or comma-separated columns that contain text for tokenizer training.">
+                            Text columns
+                          </FieldLabelText>
                           <input
                             value={entry.textColumns}
                             onChange={(event) =>
@@ -1801,10 +1884,20 @@ export function TokenizerPageContent() {
                       </div>
 
                       <details className="subPanel">
-                        <summary>Advanced options</summary>
+                        <summary>
+                          <span>Advanced options</span>
+                          <InfoTooltip label="Advanced dataset options explanation" align="right" width="wide">
+                            <p>
+                              Use dataset configs for named Hugging Face subsets and filters
+                              for selecting records before they are tokenized.
+                            </p>
+                          </InfoTooltip>
+                        </summary>
                         <div className="fieldGrid">
                           <label>
-                            Config (optional)
+                            <FieldLabelText tooltipLabel="Config explanation" tooltip="Optional Hugging Face dataset config or subset name. Leave blank for datasets without named configs.">
+                              Config (optional)
+                            </FieldLabelText>
                             <input
                               value={entry.config}
                               onChange={(event) =>
@@ -1817,7 +1910,15 @@ export function TokenizerPageContent() {
 
                           <div className="fullWidthField filterBuilder">
                             <div className="filterBuilderHeader">
-                              <span className="filterBuilderTitle">Filters (optional)</span>
+                              <span className="filterBuilderTitle">
+                                Filters (optional)
+                                <InfoTooltip label="Filter explanation" align="left" width="wide">
+                                  <p>
+                                    Filters keep matching records before training. Values are parsed
+                                    automatically as numbers, booleans, JSON, or comma-separated lists.
+                                  </p>
+                                </InfoTooltip>
+                              </span>
                               <button
                                 type="button"
                                 className="secondaryButton"
@@ -1835,7 +1936,9 @@ export function TokenizerPageContent() {
                                 {entry.filters.map((filter) => (
                                   <div key={filter.id} className="filterRow">
                                     <label>
-                                      Column
+                                      <FieldLabelText tooltipLabel="Filter column explanation" tooltip="Dataset field to inspect, such as language, language_score, or quality_score.">
+                                        Column
+                                      </FieldLabelText>
                                       <input
                                         value={filter.column}
                                         onChange={(event) =>
@@ -1848,7 +1951,9 @@ export function TokenizerPageContent() {
                                     </label>
 
                                     <label>
-                                      Operator
+                                      <FieldLabelText tooltipLabel="Filter operator explanation" tooltip="Comparison used to decide whether a record remains in the stream.">
+                                        Operator
+                                      </FieldLabelText>
                                       <select
                                         value={filter.operator}
                                         onChange={(event) =>
@@ -1866,7 +1971,9 @@ export function TokenizerPageContent() {
                                     </label>
 
                                     <label>
-                                      Value
+                                      <FieldLabelText tooltipLabel="Filter value explanation" tooltip="Comparison value. For in/not in you can use JSON arrays or comma-separated values.">
+                                        Value
+                                      </FieldLabelText>
                                       <input
                                         value={filter.value}
                                         onChange={(event) =>
@@ -1917,11 +2024,21 @@ export function TokenizerPageContent() {
         </details>
 
         <details className="settingsPanel">
-          <summary>Advanced tokenizer</summary>
+          <summary>
+            <span>Advanced tokenizer</span>
+            <InfoTooltip label="Advanced tokenizer explanation" align="right" width="wide">
+              <p>
+                Pre-tokenizer controls how raw text is split before training; decoder controls
+                how token IDs are turned back into readable text during preview and inference.
+              </p>
+            </InfoTooltip>
+          </summary>
           <div className="settingsGrid">
             <div className="fieldGrid">
               <label>
-                Pre-tokenizer
+                <FieldLabelText tooltipLabel="Pre-tokenizer explanation" tooltip="Initial text splitting strategy before tokenizer training. Byte level is robust for arbitrary text; whitespace is simpler; metaspace marks spaces explicitly.">
+                  Pre-tokenizer
+                </FieldLabelText>
                 <select
                   value={tokenizerForm.preTokenizer}
                   onChange={(event) =>
@@ -1938,7 +2055,9 @@ export function TokenizerPageContent() {
               </label>
 
               <label>
-                Decoder
+                <FieldLabelText tooltipLabel="Decoder explanation" tooltip="How token IDs are converted back into text. It should usually match the tokenizer/pre-tokenizer family.">
+                  Decoder
+                </FieldLabelText>
                 <select
                   value={tokenizerForm.decoder}
                   onChange={(event) =>

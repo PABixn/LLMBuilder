@@ -8,6 +8,7 @@ import {
   formatCheckpointName,
   formatJobMeta,
 } from "../lib/formatters";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 type TrainingArtifactPanelProps = {
   selectedJob: TrainingJob | null;
@@ -42,15 +43,25 @@ export function TrainingArtifactPanel({
     <div className="panelCard heroCard inferenceArtifactPanel">
       <div className="panelHead">
         <div>
-          <h2>Model</h2>
+          <h2>
+            Model
+            <InfoTooltip label="Inference model panel explanation" align="left" width="wide">
+              <p>
+                Inference uses a completed training run and one checkpoint. The model config,
+                tokenizer, and checkpoint weights are loaded together by the backend.
+              </p>
+            </InfoTooltip>
+          </h2>
           <p className="panelCopy">
             Choose a trained model and checkpoint.
           </p>
         </div>
         <div className="actionCluster">
-          <button type="button" className="buttonGhost" onClick={onRefreshJobs} disabled={loading}>
-            <FiRefreshCw /> Refresh
-          </button>
+          <HelpTooltip label="Refresh trained models" content="Reloads the completed training runs and checkpoint metadata from the backend.">
+            <button type="button" className="buttonGhost" onClick={onRefreshJobs} disabled={loading}>
+              <FiRefreshCw /> Refresh
+            </button>
+          </HelpTooltip>
           <Link className="buttonGhost" href="/training">
             <FiActivity /> Training
           </Link>
@@ -60,7 +71,12 @@ export function TrainingArtifactPanel({
       <div className="inferenceAssetStack">
         {selectedJob ? (
           <div className="trainingAssetCard inferenceModelCard">
-            <span className="trainingAssetLabel">Model</span>
+            <span className="trainingAssetLabel">
+              Model
+              <InfoTooltip label="Selected inference model explanation" align="left">
+                <p>Completed training run whose artifact bundle will be used for generation.</p>
+              </InfoTooltip>
+            </span>
             <span className="trainingAssetName">{completedArtifactName(selectedJob)}</span>
             <span className="trainingAssetMeta">{formatJobMeta(selectedJob)}</span>
             <span className="trainingAssetMeta">Tokenizer: {selectedJob.tokenizer_name}</span>
@@ -68,15 +84,17 @@ export function TrainingArtifactPanel({
               <span className="trainingAssetMeta">{selectedJob.artifact_bundle_file}</span>
             ) : null}
             <div className="trainingAssetActions">
-              <button
-                type="button"
-                className="buttonGhost buttonSmall"
-                aria-haspopup="dialog"
-                aria-expanded={pickerOpen}
-                onClick={onOpenModelPicker}
-              >
-                <FiSearch /> Change model
-              </button>
+              <HelpTooltip label="Change inference model" content="Opens completed training runs that can be loaded for generation.">
+                <button
+                  type="button"
+                  className="buttonGhost buttonSmall"
+                  aria-haspopup="dialog"
+                  aria-expanded={pickerOpen}
+                  onClick={onOpenModelPicker}
+                >
+                  <FiSearch /> Change model
+                </button>
+              </HelpTooltip>
             </div>
           </div>
         ) : (
@@ -87,22 +105,32 @@ export function TrainingArtifactPanel({
               Train a model first, then select it here.
             </span>
             <div className="trainingAssetActions">
-              <button
-                type="button"
-                className="buttonGhost buttonSmall"
-                aria-haspopup="dialog"
-                aria-expanded={pickerOpen}
-                disabled={loading}
-                onClick={onOpenModelPicker}
-              >
-                <FiSearch /> Choose model
-              </button>
+              <HelpTooltip label="Choose inference model" content="Select a completed training run. Inference is unavailable until at least one completed run with artifacts exists.">
+                <button
+                  type="button"
+                  className="buttonGhost buttonSmall"
+                  aria-haspopup="dialog"
+                  aria-expanded={pickerOpen}
+                  disabled={loading}
+                  onClick={onOpenModelPicker}
+                >
+                  <FiSearch /> Choose model
+                </button>
+              </HelpTooltip>
             </div>
           </div>
         )}
 
         <div className="trainingAssetCard inferenceCheckpointCard">
-          <span className="trainingAssetLabel">Checkpoint</span>
+          <span className="trainingAssetLabel">
+            Checkpoint
+            <InfoTooltip label="Checkpoint explanation" align="left" width="wide">
+              <p>
+                A saved set of model weights from a training step. Latest checkpoint follows
+                the newest saved step, while a specific checkpoint stays pinned.
+              </p>
+            </InfoTooltip>
+          </span>
           <span className="trainingAssetName">
             {checkpointValue === latestCheckpointValue
               ? "Latest checkpoint"
@@ -130,16 +158,18 @@ export function TrainingArtifactPanel({
             <span className="trainingAssetMeta">{selectedCheckpoint.files.join(", ")}</span>
           ) : null}
           <div className="trainingAssetActions">
-            <button
-              type="button"
-              className="buttonGhost buttonSmall"
-              aria-haspopup="dialog"
-              aria-expanded={checkpointPickerOpen}
-              disabled={!selectedJob || checkpointsLoading}
-              onClick={onOpenCheckpointPicker}
-            >
-              <FiSearch /> Choose checkpoint
-            </button>
+            <HelpTooltip label="Choose checkpoint" content="Pick the exact saved step to use for generation, or use Latest so generation follows the newest checkpoint available.">
+              <button
+                type="button"
+                className="buttonGhost buttonSmall"
+                aria-haspopup="dialog"
+                aria-expanded={checkpointPickerOpen}
+                disabled={!selectedJob || checkpointsLoading}
+                onClick={onOpenCheckpointPicker}
+              >
+                <FiSearch /> Choose checkpoint
+              </button>
+            </HelpTooltip>
           </div>
         </div>
       </div>

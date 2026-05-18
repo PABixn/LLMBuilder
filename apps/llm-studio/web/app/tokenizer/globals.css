@@ -407,6 +407,15 @@
   align-self: flex-start;
 }
 
+.tokenizerPage .workflowStepTile > .helpTooltip{
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+.tokenizerPage .workflowStepTile > .helpTooltip .workflowStepAction{
+  margin-top: 0;
+}
+
 .tokenizerPage .workflowStepButtonCompact{
   padding: 6px 8px;
   font-size: 0.76rem;
@@ -749,6 +758,31 @@
   outline-offset: 2px;
 }
 
+.tokenizerPage .helpTooltipIcon{
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-color: var(--line-strong);
+  border-radius: 999px;
+  padding: 0;
+  margin: 0;
+  font-size: 0;
+  line-height: 1;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: help;
+  flex: 0 0 auto;
+}
+
+.tokenizerPage .helpTooltipIcon svg{
+  width: 12px;
+  height: 12px;
+}
+
 .tokenizerPage .primaryButton{
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
   color: #ffffff;
@@ -1020,7 +1054,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--surface-soft);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .tokenizerPage .settingsPanel > summary{
@@ -1031,6 +1065,20 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.tokenizerPage .settingsPanel > summary .helpTooltipBubble,
+.tokenizerPage .subPanel > summary .helpTooltipBubble{
+  left: 0;
+  right: auto;
+  transform: translateY(4px);
+}
+
+.tokenizerPage .settingsPanel > summary .helpTooltip:hover .helpTooltipBubble,
+.tokenizerPage .settingsPanel > summary .helpTooltip:focus-within .helpTooltipBubble,
+.tokenizerPage .subPanel > summary .helpTooltip:hover .helpTooltipBubble,
+.tokenizerPage .subPanel > summary .helpTooltip:focus-within .helpTooltipBubble{
+  transform: translateY(0);
 }
 
 .tokenizerPage .settingsPanel > summary::-webkit-details-marker{
@@ -1389,7 +1437,7 @@
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
   background: var(--surface-raised);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .tokenizerPage .subPanel > summary{
@@ -1683,7 +1731,7 @@
     width: 100%;
   }
 
-  .tokenizerPage button:not(.themeToggle),
+  .tokenizerPage button:not(.themeToggle):not(.helpTooltipIcon),
 .tokenizerPage .downloadLink{
     width: 100%;
     justify-content: center;

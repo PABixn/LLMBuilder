@@ -64,7 +64,7 @@ export function StatusCard({
   tone,
   icon,
   tooltipContent,
-  tooltipLabel,
+  tooltipLabel: _tooltipLabel,
 }: {
   title: string;
   value: string;
@@ -82,7 +82,6 @@ export function StatusCard({
       className={`statusCard${tone ? ` tone-${tone}` : ""}${hasTooltip ? " hasTooltip" : ""}`}
       tabIndex={hasTooltip ? 0 : undefined}
       aria-describedby={hasTooltip ? tooltipId : undefined}
-      title={hasTooltip ? tooltipLabel : undefined}
     >
       <div className="statusCardIcon" aria-hidden>
         {icon}

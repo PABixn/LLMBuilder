@@ -4,6 +4,7 @@ import {
   asRecord,
   asString,
 } from "../lib/object";
+import { FieldLabelText, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 interface AdvancedRuntimePanelProps {
   dataloaderConfig: Record<string, unknown>;
@@ -20,7 +21,16 @@ export function AdvancedRuntimePanel({
 }: AdvancedRuntimePanelProps) {
   return (
     <details className="settingsPanel">
-      <summary>Advanced runtime controls</summary>
+      <summary>
+        <span>Advanced runtime controls</span>
+        <InfoTooltip label="Advanced runtime controls explanation" align="right" width="wide">
+          <strong>Advanced runtime controls</strong>
+          <p>
+            These values map directly to tokenizer/dataloader and optimizer internals. Most
+            users should keep defaults unless matching an existing training recipe.
+          </p>
+        </InfoTooltip>
+      </summary>
       <div className="settingsGrid">
         <div className="settingsGroup">
           <div className="settingsGroupHeader">
@@ -32,7 +42,9 @@ export function AdvancedRuntimePanel({
           </div>
           <div className="fieldGrid trainingSettingsCompactGrid">
             <label className="fieldLabel">
-              <span>Beginning-of-sequence token</span>
+              <FieldLabelText tooltipLabel="BOS token explanation" tooltip="Token inserted at the beginning of sequences when the dataloader prepares text. It must exist in the selected tokenizer vocabulary.">
+                Beginning-of-sequence token
+              </FieldLabelText>
               <input
                 value={asString(dataloaderConfig.bos_token)}
                 onChange={(event) =>
@@ -41,7 +53,9 @@ export function AdvancedRuntimePanel({
               />
             </label>
             <label className="fieldLabel">
-              <span>End-of-sequence token</span>
+              <FieldLabelText tooltipLabel="EOS token explanation" tooltip="Token used to mark the end of a sequence. It helps the model learn where documents or samples finish.">
+                End-of-sequence token
+              </FieldLabelText>
               <input
                 value={asString(dataloaderConfig.eos_token)}
                 onChange={(event) =>
@@ -50,7 +64,9 @@ export function AdvancedRuntimePanel({
               />
             </label>
             <label className="fieldLabel">
-              <span>Padding token</span>
+              <FieldLabelText tooltipLabel="Padding token explanation" tooltip="Token used when examples need padding to the same length. It must be a token the tokenizer can encode.">
+                Padding token
+              </FieldLabelText>
               <input
                 value={asString(dataloaderConfig.pad_token)}
                 onChange={(event) =>
@@ -59,7 +75,9 @@ export function AdvancedRuntimePanel({
               />
             </label>
             <label className="fieldLabel">
-              <span>Token data type</span>
+              <FieldLabelText tooltipLabel="Token data type explanation" tooltip="Numeric type used to store token IDs. int64 is safest; smaller types save memory only when vocabulary IDs fit inside the type range.">
+                Token data type
+              </FieldLabelText>
               <select
                 value={asString(dataloaderConfig.token_dtype, "int64")}
                 onChange={(event) =>
@@ -73,7 +91,9 @@ export function AdvancedRuntimePanel({
               </select>
             </label>
             <label className="fieldLabel">
-              <span>Pretokenize batch size</span>
+              <FieldLabelText tooltipLabel="Pretokenize batch size explanation" tooltip="How many records the dataloader tokenizes at a time before training. Larger batches can improve throughput but use more memory.">
+                Pretokenize batch size
+              </FieldLabelText>
               <ConfigNumberInput
                 value={asNumber(dataloaderConfig.pretokenize_batch_size, 1000)}
                 onCommit={(value) =>
@@ -85,7 +105,9 @@ export function AdvancedRuntimePanel({
               />
             </label>
             <label className="fieldLabel">
-              <span>Cache directory</span>
+              <FieldLabelText tooltipLabel="Cache directory explanation" tooltip="Optional directory for cached tokenized data or dataset artifacts. Leave blank to let the backend choose its default cache location.">
+                Cache directory
+              </FieldLabelText>
               <input
                 value={asString(dataloaderConfig.cache_dir)}
                 onChange={(event) =>
@@ -94,7 +116,9 @@ export function AdvancedRuntimePanel({
               />
             </label>
             <label className="fieldLabel">
-              <span>Optimizer betas</span>
+              <FieldLabelText tooltipLabel="Optimizer betas explanation" tooltip="AdamW momentum coefficients as two comma-separated numbers. The first smooths gradients; the second smooths squared gradients.">
+                Optimizer betas
+              </FieldLabelText>
               <input
                 value={
                   Array.isArray(asRecord(trainingConfig.optimizer).betas)
@@ -115,7 +139,9 @@ export function AdvancedRuntimePanel({
               />
             </label>
             <label className="fieldLabel">
-              <span>Optimizer epsilon</span>
+              <FieldLabelText tooltipLabel="Optimizer epsilon explanation" tooltip="Small stabilizing value used by AdamW to avoid division by zero. Changing it is rarely needed.">
+                Optimizer epsilon
+              </FieldLabelText>
               <ConfigNumberInput
                 mode="decimal"
                 step="0.00000001"
@@ -124,7 +150,9 @@ export function AdvancedRuntimePanel({
               />
             </label>
             <label className="fieldLabel">
-              <span>Distributed node split</span>
+              <FieldLabelText tooltipLabel="Distributed node split explanation" tooltip="Splits dataset records by node rank for multi-node training so each node reads a different shard. Keep disabled for local or single-pod runs.">
+                Distributed node split
+              </FieldLabelText>
               <select
                 value={String(Boolean(dataloaderConfig.node_split))}
                 onChange={(event) =>
@@ -139,14 +167,18 @@ export function AdvancedRuntimePanel({
               </select>
             </label>
             <label className="fieldLabel">
-              <span>Distributed node rank</span>
+              <FieldLabelText tooltipLabel="Distributed node rank explanation" tooltip="Zero-based index of this node in a multi-node run. It is ignored unless distributed node split is enabled.">
+                Distributed node rank
+              </FieldLabelText>
               <ConfigNumberInput
                 value={asNumber(dataloaderConfig.node_rank, 0)}
                 onCommit={(value) => handleDataloaderField(["node_rank"], value)}
               />
             </label>
             <label className="fieldLabel">
-              <span>Distributed node world size</span>
+              <FieldLabelText tooltipLabel="Distributed node world size explanation" tooltip="Total number of nodes participating in a distributed run. It is used with node rank to split records.">
+                Distributed node world size
+              </FieldLabelText>
               <ConfigNumberInput
                 value={asNumber(dataloaderConfig.node_world_size, 1)}
                 onCommit={(value) => handleDataloaderField(["node_world_size"], value)}

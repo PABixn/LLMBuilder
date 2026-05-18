@@ -3,6 +3,7 @@ import { FiActivity, FiLayers, FiRefreshCw, FiSearch, FiXCircle } from "react-ic
 
 import type { TrainingJob } from "../../../lib/training/types";
 import { completedArtifactName, formatJobMeta } from "../lib/formatters";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 type InferenceModelPickerDialogProps = {
   open: boolean;
@@ -51,7 +52,15 @@ export function InferenceModelPickerDialog({
       >
         <div className="trainingAssetPickerHeader">
           <div>
-            <h2 id="inference-model-picker-title">Choose model</h2>
+            <h2 id="inference-model-picker-title">
+              Choose model
+              <InfoTooltip label="Inference model picker explanation" align="left" width="wide">
+                <p>
+                  Only completed training runs that can be loaded for generation appear here.
+                  Selecting one also refreshes checkpoint options for that run.
+                </p>
+              </InfoTooltip>
+            </h2>
             <p className="panelCopy">
               Only completed runs with checkpoints are shown.
             </p>
@@ -71,9 +80,11 @@ export function InferenceModelPickerDialog({
             <FiSearch />
             <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={searchPlaceholder} />
           </label>
-          <button type="button" className="buttonGhost" onClick={onRefresh} disabled={loading}>
-            <FiRefreshCw /> Refresh
-          </button>
+          <HelpTooltip label="Refresh inference models" content="Reloads completed training runs from the backend.">
+            <button type="button" className="buttonGhost" onClick={onRefresh} disabled={loading}>
+              <FiRefreshCw /> Refresh
+            </button>
+          </HelpTooltip>
         </div>
 
         <div className="trainingAssetPickerResults">
@@ -87,9 +98,11 @@ export function InferenceModelPickerDialog({
               <p className="panelCopy">
                 Finish a training run with a checkpoint first.
               </p>
-              <Link className="buttonGhost" href="/training">
-                <FiActivity /> Open training
-              </Link>
+              <HelpTooltip label="Open training" content="Go to the training page to create a completed run with checkpoints.">
+                <Link className="buttonGhost" href="/training">
+                  <FiActivity /> Open training
+                </Link>
+              </HelpTooltip>
             </div>
           ) : null}
 
@@ -99,9 +112,11 @@ export function InferenceModelPickerDialog({
               <p className="panelCopy">
                 Clear search or refresh the list.
               </p>
-              <button type="button" className="buttonGhost" onClick={onClearSearch}>
-                <FiLayers /> Clear search
-              </button>
+              <HelpTooltip label="Clear model search" content="Clears the model picker search text so all available completed runs are visible again.">
+                <button type="button" className="buttonGhost" onClick={onClearSearch}>
+                  <FiLayers /> Clear search
+                </button>
+              </HelpTooltip>
             </div>
           ) : null}
 

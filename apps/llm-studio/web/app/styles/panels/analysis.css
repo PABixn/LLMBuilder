@@ -176,37 +176,43 @@
 
 .parameterBreakdownTooltip {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .parameterBreakdownHeaderRow {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .parameterBreakdownHeader {
   display: grid;
-  gap: 2px;
+  gap: 3px;
 }
 
 .parameterBreakdownHeader strong {
   font-size: 0.76rem;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .parameterBreakdownHeader span {
   font-size: 0.68rem;
   color: var(--text-muted);
   font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .parameterBreakdownSubhead {
   font-size: 0.67rem;
   color: var(--text-muted);
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .parameterBreakdownToggleGroup {

@@ -9,6 +9,7 @@ import { buildBatchLrAdvisorViewModel } from "../lib/batchLrAdvisor";
 import { formatInteger } from "../lib/metrics";
 import { asNumber, asRecord } from "../lib/object";
 import { compactWorkflowMessage, formatLearningRate } from "../lib/run";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 type TrainingAdvisorInfoProps = {
   label: string;
@@ -22,18 +23,13 @@ function TrainingAdvisorInfo({
   tooltipClassName = "",
 }: TrainingAdvisorInfoProps) {
   return (
-    <span className="trainingAdvisorInfo">
-      <button
-        type="button"
-        className="trainingAdvisorInfoTrigger"
-        aria-label={label}
-        title={label}
+    <span className={`trainingAdvisorInfo ${tooltipClassName}`.trim()}>
+      <InfoTooltip
+        label={label}
+        width={tooltipClassName.includes("wide") ? "wide" : "default"}
       >
-        <span aria-hidden="true">i</span>
-      </button>
-      <span className={`trainingAdvisorTooltip ${tooltipClassName}`.trim()} role="tooltip">
         {children}
-      </span>
+      </InfoTooltip>
     </span>
   );
 }
@@ -86,20 +82,25 @@ export function BatchLrAdvisor({
               {recommendationConfidenceLabel}
             </span>
           ) : null}
-          <button
-            type="button"
-            className="buttonGhost iconOnly"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onRefreshRecommendation();
-            }}
-            disabled={preflightLoading}
-            aria-label={preflightLoading ? "Refreshing recommendation" : "Refresh recommendation"}
-            title={preflightLoading ? "Refreshing recommendation" : "Refresh recommendation"}
+          <HelpTooltip
+            label="Refresh recommendation"
+            content="Runs the recommendation calculation again from the latest preflight data, model size, sequence length, target batch tokens, and device estimate."
+            align="right"
           >
-            <FiRefreshCw aria-hidden="true" />
-          </button>
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onRefreshRecommendation();
+              }}
+              disabled={preflightLoading}
+              aria-label={preflightLoading ? "Refreshing recommendation" : "Refresh recommendation"}
+            >
+              <FiRefreshCw aria-hidden="true" />
+            </button>
+          </HelpTooltip>
         </span>
       </summary>
       {!recommendation ? (
@@ -127,18 +128,28 @@ export function BatchLrAdvisor({
                 {recommendation.options.map((option) => {
                   const isSelected = option.key === selectedRecommendationOption.key;
                   return (
-                    <button
+                    <HelpTooltip
                       key={option.key}
+                      label={`${option.label} profile explanation`}
+                      content={
+                        <>
+                          <strong>{option.label}</strong>
+                          <p>{option.description}</p>
+                        </>
+                      }
+                      width="wide"
+                    >
+                    <button
                       type="button"
                       className={`modeSwitchButton ${
                         isSelected ? "modeSwitchButton-active" : ""
                       }`}
                       onClick={() => setSelectedRecommendationOptionKey(option.key)}
                       aria-pressed={isSelected}
-                      title={option.description}
                     >
                       {option.label}
                     </button>
+                    </HelpTooltip>
                   );
                 })}
               </div>
@@ -150,13 +161,28 @@ export function BatchLrAdvisor({
                 {selectedRecommendationIsRecommended ? "Recommended" : "Alternate"}
               </span>
             </div>
-            <button
-              type="button"
-              className="buttonPrimary"
-              onClick={() => onApplyRecommendation(selectedRecommendationOption)}
+            <HelpTooltip
+              label="What applying the recommendation changes"
+              align="right"
+              width="wide"
+              content={
+                <>
+                <strong>Apply recommendation</strong>
+                <p>
+                  Updates this run&apos;s total batch tokens, learning rate, max steps, and
+                  scheduler fit. It does not start training; it only edits the config.
+                </p>
+                </>
+              }
             >
-              Apply recommendation
-            </button>
+              <button
+                type="button"
+                className="buttonPrimary"
+                onClick={() => onApplyRecommendation(selectedRecommendationOption)}
+              >
+                Apply recommendation
+              </button>
+            </HelpTooltip>
           </div>
 
           <div className="trainingAdvisorCompactGrid">

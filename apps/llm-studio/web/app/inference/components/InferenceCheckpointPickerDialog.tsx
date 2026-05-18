@@ -7,6 +7,7 @@ import {
   formatCheckpointMeta,
   formatCheckpointName,
 } from "../lib/formatters";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 type InferenceCheckpointPickerDialogProps = {
   open: boolean;
@@ -63,7 +64,15 @@ export function InferenceCheckpointPickerDialog({
       >
         <div className="trainingAssetPickerHeader">
           <div>
-            <h2 id="inference-checkpoint-picker-title">Choose checkpoint</h2>
+            <h2 id="inference-checkpoint-picker-title">
+              Choose checkpoint
+              <InfoTooltip label="Inference checkpoint picker explanation" align="left" width="wide">
+                <p>
+                  A checkpoint is a saved weight snapshot from a training step. Latest follows
+                  the newest saved checkpoint; a specific checkpoint stays pinned.
+                </p>
+              </InfoTooltip>
+            </h2>
             <p className="panelCopy">
               Use the latest checkpoint or choose a saved step.
             </p>
@@ -83,14 +92,16 @@ export function InferenceCheckpointPickerDialog({
             <FiSearch />
             <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={searchPlaceholder} />
           </label>
-          <button
-            type="button"
-            className="buttonGhost"
-            disabled={!selectedJob || checkpointsLoading}
-            onClick={onRefresh}
-          >
-            <FiRefreshCw /> Refresh
-          </button>
+          <HelpTooltip label="Refresh checkpoints" content="Reloads checkpoint folders and metadata for the selected training run.">
+            <button
+              type="button"
+              className="buttonGhost"
+              disabled={!selectedJob || checkpointsLoading}
+              onClick={onRefresh}
+            >
+              <FiRefreshCw /> Refresh
+            </button>
+          </HelpTooltip>
         </div>
 
         <div className="trainingAssetPickerResults">
@@ -106,9 +117,11 @@ export function InferenceCheckpointPickerDialog({
               <p className="panelCopy">
                 Choose a run that saved checkpoints.
               </p>
-              <Link className="buttonGhost" href="/training">
-                <FiActivity /> Open training
-              </Link>
+              <HelpTooltip label="Open training" content="Go to training to inspect runs and checkpoint saving settings.">
+                <Link className="buttonGhost" href="/training">
+                  <FiActivity /> Open training
+                </Link>
+              </HelpTooltip>
             </div>
           ) : null}
 
@@ -152,9 +165,11 @@ export function InferenceCheckpointPickerDialog({
                   <p className="panelCopy">
                     Clear search to see all checkpoints.
                   </p>
-                  <button type="button" className="buttonGhost" onClick={onClearSearch}>
-                    <FiLayers /> Clear search
-                  </button>
+                  <HelpTooltip label="Clear checkpoint search" content="Clears the checkpoint search text so all saved checkpoints for this run are visible.">
+                    <button type="button" className="buttonGhost" onClick={onClearSearch}>
+                      <FiLayers /> Clear search
+                    </button>
+                  </HelpTooltip>
                 </div>
               ) : null}
 

@@ -13,6 +13,7 @@ import type {
 } from "../types";
 import { LocalFilesDatasetEditor } from "./LocalFilesDatasetEditor";
 import { StreamingDatasetEditor } from "./StreamingDatasetEditor";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 interface DatasetSettingsPanelProps {
   addStreamingDataset: () => void;
@@ -86,7 +87,16 @@ export const DatasetSettingsPanel = forwardRef<HTMLDetailsElement, DatasetSettin
   ) {
     return (
       <details className="settingsPanel" open ref={ref}>
-        <summary>Dataset settings</summary>
+        <summary>
+          <span>Dataset settings</span>
+          <InfoTooltip label="Dataset settings explanation" align="right" width="wide">
+            <strong>Dataset settings</strong>
+            <p>
+              Pick the text source for training. Local files are uploaded into this
+              workspace; streaming datasets are read from Hugging Face when the run starts.
+            </p>
+          </InfoTooltip>
+        </summary>
         <div className="settingsGrid">
           <div
             id="settings-dataset"
@@ -103,26 +113,39 @@ export const DatasetSettingsPanel = forwardRef<HTMLDetailsElement, DatasetSettin
             </div>
 
             <div className="sourceModeRow trainingTokenizerDatasetSection">
-              <span>Dataset source</span>
+              <span className="fieldLabelText">
+                <span>Dataset source</span>
+                <InfoTooltip label="Dataset source explanation" width="wide">
+                  <strong>Dataset source</strong>
+                  <p>
+                    Use local files for small or private text you upload here. Use streaming
+                    datasets for large Hugging Face datasets that should be sampled during training.
+                  </p>
+                </InfoTooltip>
+              </span>
               <div className="modeSwitch">
-                <button
-                  type="button"
-                  className={`modeSwitchButton ${
-                    datasetSourceMode === "local_file" ? "modeSwitchButton-active" : ""
-                  }`}
-                  onClick={selectLocalDatasetSource}
-                >
-                  Local files
-                </button>
-                <button
-                  type="button"
-                  className={`modeSwitchButton ${
-                    datasetSourceMode === "streaming_hf" ? "modeSwitchButton-active" : ""
-                  }`}
-                  onClick={selectStreamingDatasetSource}
-                >
-                  Streaming datasets
-                </button>
+                <HelpTooltip label="Local files dataset mode" content="Train from text files uploaded into this app. The app stores the uploaded file references in the dataloader config and ignores duplicate paths.">
+                  <button
+                    type="button"
+                    className={`modeSwitchButton ${
+                      datasetSourceMode === "local_file" ? "modeSwitchButton-active" : ""
+                    }`}
+                    onClick={selectLocalDatasetSource}
+                  >
+                    Local files
+                  </button>
+                </HelpTooltip>
+                <HelpTooltip label="Streaming datasets mode" content="Train from Hugging Face datasets without uploading the whole dataset first. Weights, splits, text columns, and optional filters decide what text enters training.">
+                  <button
+                    type="button"
+                    className={`modeSwitchButton ${
+                      datasetSourceMode === "streaming_hf" ? "modeSwitchButton-active" : ""
+                    }`}
+                    onClick={selectStreamingDatasetSource}
+                  >
+                    Streaming datasets
+                  </button>
+                </HelpTooltip>
               </div>
             </div>
 

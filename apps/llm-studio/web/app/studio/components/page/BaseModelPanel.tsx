@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 import type { StudioDocument, StudioDocumentNumericField } from "../../types";
 import { integerInputValue, parseIntegerInput } from "../../utils/format";
+import { FieldLabelText, HelpTooltip, InfoTooltip } from "../../../shared/components/HelpTooltip";
 
 type BaseModelPanelProps = {
   documentState: StudioDocument;
@@ -46,7 +47,16 @@ export function BaseModelPanel({
       <div className="panelHead">
         <div>
           <p className="panelEyebrow">Base model</p>
-          <h2>Core config</h2>
+          <h2>
+            Core config
+            <InfoTooltip label="Core model config explanation" align="left" width="wide">
+              <strong>Core config</strong>
+              <p>
+                These dimensions define the model&apos;s shape. Training and tokenizer
+                compatibility depend on vocabulary size and context length.
+              </p>
+            </InfoTooltip>
+          </h2>
           <p className="panelCopy">
             Set the main model dimensions.
           </p>
@@ -55,7 +65,9 @@ export function BaseModelPanel({
       <div className="fieldGrid">
         <div className="fieldInlineRow coreConfigProjectRow">
           <label className="fieldLabel inlineField" htmlFor="model_project_name">
-            <span>Config name</span>
+            <FieldLabelText tooltipLabel="Config name explanation" tooltip="Name used to auto-save this model config in the workspace. Existing configs continue saving to their current project ID.">
+              Config name
+            </FieldLabelText>
             <input
               id="model_project_name"
               type="text"
@@ -66,22 +78,26 @@ export function BaseModelPanel({
               autoComplete="off"
             />
           </label>
-          <button
-            type="button"
-            className="buttonGhost"
-            onClick={() => {
-              void createNewProject();
-            }}
-            disabled={actionButtonDisabled}
-          >
-            {actionButtonLabel}
-          </button>
+          <HelpTooltip label="New config explanation" content="Creates a separate saved model config using the current form values and name. It does not reset fields by itself.">
+            <button
+              type="button"
+              className="buttonGhost"
+              onClick={() => {
+                void createNewProject();
+              }}
+              disabled={actionButtonDisabled}
+            >
+              {actionButtonLabel}
+            </button>
+          </HelpTooltip>
         </div>
         <p className="fieldNote fullWidthField coreConfigProjectNote" aria-live="polite">
           {projectStatusCopy}
         </p>
         <label className="fieldLabel" htmlFor="context_length">
-          <span>Context length</span>
+          <FieldLabelText tooltipLabel="Context length explanation" tooltip="Maximum tokens the model can attend to at once. Training sequence length must be less than or equal to this value.">
+            Context length
+          </FieldLabelText>
           <input
             id="context_length"
             type="number"
@@ -97,7 +113,9 @@ export function BaseModelPanel({
           />
         </label>
         <label className="fieldLabel" htmlFor="vocab_size">
-          <span>Vocab size</span>
+          <FieldLabelText tooltipLabel="Vocab size explanation" tooltip="Number of token IDs supported by the model embedding table. It must match the tokenizer vocabulary size before training.">
+            Vocab size
+          </FieldLabelText>
           <input
             id="vocab_size"
             type="number"
@@ -113,7 +131,9 @@ export function BaseModelPanel({
           />
         </label>
         <label className="fieldLabel" htmlFor="n_embd">
-          <span>Embedding size</span>
+          <FieldLabelText tooltipLabel="Embedding size explanation" tooltip="Width of token embeddings and hidden states. Larger values increase model capacity and memory use.">
+            Embedding size
+          </FieldLabelText>
           <input
             id="n_embd"
             type="number"
@@ -134,7 +154,15 @@ export function BaseModelPanel({
               setDocumentState((current) => ({ ...current, weight_tying: event.target.checked }))
             }
           />
-          <span>Weight tying</span>
+          <span className="fieldLabelText">
+            <span>Weight tying</span>
+            <InfoTooltip label="Weight tying explanation" width="wide">
+              <p>
+                Shares weights between token embeddings and output projection. This reduces
+                parameter count and is common for GPT-style language models.
+              </p>
+            </InfoTooltip>
+          </span>
         </label>
       </div>
     </section>

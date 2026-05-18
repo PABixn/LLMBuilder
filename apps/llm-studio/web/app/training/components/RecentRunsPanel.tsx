@@ -12,6 +12,7 @@ import {
 import {
   formatStatusLabel,
 } from "../lib/run";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 interface RecentRunsPanelProps {
   activeRunId: string | null;
@@ -36,14 +37,24 @@ export function RecentRunsPanel({
     <section className="panelCard trainingRecentRunsPanel">
       <div className="panelHead">
         <div>
-          <h2>Recent runs</h2>
+          <h2>
+            Recent runs
+            <InfoTooltip label="Recent training runs explanation" align="left" width="wide">
+              <p>
+                Recent runs are fetched from the backend. Selecting a run opens its metrics,
+                logs, checkpoints, samples, and RunPod lifecycle if available.
+              </p>
+            </InfoTooltip>
+          </h2>
           <p className="panelCopy trainingRecentPanelCopy">
             Select a run to view its progress.
           </p>
         </div>
-        <button type="button" className="buttonGhost buttonSmall" onClick={onRefresh}>
-          Refresh
-        </button>
+        <HelpTooltip label="Refresh recent runs" content="Reloads the recent training run list from the backend.">
+          <button type="button" className="buttonGhost buttonSmall" onClick={onRefresh}>
+            Refresh
+          </button>
+        </HelpTooltip>
       </div>
       <div className="trainingRecentList">
         {recentRuns.length ? (
@@ -65,27 +76,29 @@ export function RecentRunsPanel({
               </button>
               <div className="trainingRecentIconActions">
                 {canStopTrainingRun(job) ? (
+                  <HelpTooltip label={`Stop ${job.name}`} content="Requests the backend to stop this running or pending training job.">
+                    <button
+                      type="button"
+                      className="trainingRecentIconButton trainingRecentIconButton-danger"
+                      onClick={() => onStopRun(job.id)}
+                      disabled={stoppingRunId === job.id}
+                      aria-label={`Stop ${job.name}`}
+                    >
+                      <FiXCircle aria-hidden="true" />
+                    </button>
+                  </HelpTooltip>
+                ) : null}
+                <HelpTooltip label={`Delete ${job.name}`} content={job.status === "running" || job.status === "pending" ? "Running and pending jobs must be stopped or finish before they can be deleted." : "Deletes this training run record and its associated workspace entry when confirmed."}>
                   <button
                     type="button"
                     className="trainingRecentIconButton trainingRecentIconButton-danger"
-                    onClick={() => onStopRun(job.id)}
-                    disabled={stoppingRunId === job.id}
-                    aria-label={`Stop ${job.name}`}
-                    title={stoppingRunId === job.id ? "Stopping run" : "Stop run"}
+                    onClick={() => onDeleteRun(job.id)}
+                    disabled={job.status === "running" || job.status === "pending"}
+                    aria-label={`Delete ${job.name}`}
                   >
-                    <FiXCircle aria-hidden="true" />
+                    <FiTrash2 aria-hidden="true" />
                   </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="trainingRecentIconButton trainingRecentIconButton-danger"
-                  onClick={() => onDeleteRun(job.id)}
-                  disabled={job.status === "running" || job.status === "pending"}
-                  aria-label={`Delete ${job.name}`}
-                  title="Delete run"
-                >
-                  <FiTrash2 aria-hidden="true" />
-                </button>
+                </HelpTooltip>
               </div>
             </div>
           ))

@@ -207,7 +207,7 @@
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
   background: var(--surface-raised);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .subPanel > summary {
@@ -219,6 +219,17 @@
   font-weight: 650;
   color: var(--text-muted);
   padding: 10px;
+}
+
+.subPanel > summary .helpTooltipBubble {
+  left: 0;
+  right: auto;
+  transform: translateY(4px);
+}
+
+.subPanel > summary .helpTooltip:hover .helpTooltipBubble,
+.subPanel > summary .helpTooltip:focus-within .helpTooltipBubble {
+  transform: translateY(0);
 }
 
 .subPanel > summary::-webkit-details-marker {
@@ -315,4 +326,3 @@
   height: 14px;
   display: block;
 }
-

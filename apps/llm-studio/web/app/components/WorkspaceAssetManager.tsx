@@ -22,6 +22,7 @@ import {
   type WorkspaceAsset,
   type WorkspaceAssetInventory,
 } from "../../lib/workspaceAssets";
+import { HelpTooltip, InfoTooltip } from "../shared/components/HelpTooltip";
 import styles from "../workspace-home.module.css";
 
 interface WorkspaceAssetManagerProps {
@@ -138,20 +139,31 @@ export function WorkspaceAssetManager({
       <div className={styles.sectionHeader}>
         <div className={styles.controlsRow} style={{ marginBottom: "12px", justifyContent: "space-between" }}>
           <div className={styles.sectionLead}>
-            <h2 className={styles.sectionTitle}>{title}</h2>
+            <h2 className={styles.sectionTitle}>
+              {title}
+              <InfoTooltip label="Workspace explanation" align="left" width="wide">
+                <strong>Workspace</strong>
+                <p>
+                  This list combines saved model configs, tokenizer jobs, and training runs.
+                  Selecting a card opens the page that owns that asset.
+                </p>
+              </InfoTooltip>
+            </h2>
             {description ? <p className={styles.sectionCopy}>{description}</p> : null}
           </div>
           {hasAssets && (
-            <button 
-              className={styles.removeAllButton}
-              onClick={handleRemoveAll}
-              disabled={inventory.refreshing}
-            >
-              <FiTrash2 /> Delete all
-            </button>
+            <HelpTooltip label="Delete all workspace items" content="Deletes every workspace item shown by the backend inventory. This cannot be undone.">
+              <button
+                className={styles.removeAllButton}
+                onClick={handleRemoveAll}
+                disabled={inventory.refreshing}
+              >
+                <FiTrash2 /> Delete all
+              </button>
+            </HelpTooltip>
           )}
         </div>
-        
+
         {hasAssets && (
           <div className={styles.controlsRow}>
             <div className={styles.searchWrapper}>
@@ -161,37 +173,44 @@ export function WorkspaceAssetManager({
                 placeholder="Search workspace"
                 className={styles.searchInput}
                 value={searchQuery}
+                aria-label="Search workspace assets"
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </div>
             <div className={styles.filterControls}>
               <div className={styles.selectWrapper}>
                 <FiLayers className={styles.controlIcon} />
-                <select 
-                  value={filterType} 
-                  onChange={(e) => setFilterType(e.target.value as FilterType)}
-                  className={styles.controlSelect}
-                >
-                  <option value="all">All items</option>
-                  <option value="model">Models</option>
-                  <option value="tokenizer">Tokenizers</option>
-                  <option value="training_run">Training runs</option>
-                </select>
+                <HelpTooltip label="Workspace type filter" content="Filters the inventory by asset type: model configs, tokenizer artifacts, or training runs.">
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value as FilterType)}
+                    className={styles.controlSelect}
+                    aria-label="Filter workspace assets"
+                  >
+                    <option value="all">All items</option>
+                    <option value="model">Models</option>
+                    <option value="tokenizer">Tokenizers</option>
+                    <option value="training_run">Training runs</option>
+                  </select>
+                </HelpTooltip>
                 <FiChevronDown className={styles.chevronIcon} />
               </div>
               <div className={styles.selectWrapper}>
                 <FiFilter className={styles.controlIcon} />
-                <select 
-                  value={sortBy} 
-                  onChange={(e) => setSortBy(e.target.value as SortBy)}
-                  className={styles.controlSelect}
-                >
-                  <option value="date-desc">Newest</option>
-                  <option value="date-asc">Oldest</option>
-                  <option value="name-asc">Name A-Z</option>
-                  <option value="name-desc">Name Z-A</option>
-                  <option value="size-desc">Largest</option>
-                </select>
+                <HelpTooltip label="Workspace sort order" content="Changes how matching assets are ordered. Largest uses known artifact size when available.">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortBy)}
+                    className={styles.controlSelect}
+                    aria-label="Sort workspace assets"
+                  >
+                    <option value="date-desc">Newest</option>
+                    <option value="date-asc">Oldest</option>
+                    <option value="name-asc">Name A-Z</option>
+                    <option value="name-desc">Name Z-A</option>
+                    <option value="size-desc">Largest</option>
+                  </select>
+                </HelpTooltip>
                 <FiChevronDown className={styles.chevronIcon} />
               </div>
             </div>
@@ -258,44 +277,52 @@ export function WorkspaceAssetManager({
 
                     <div className={styles.assetActions} onClick={(e) => e.stopPropagation()}>
                       {asset.type === "model" && onUseAsModel ? (
-                        <button
-                          type="button"
-                          className={`${styles.assetSelectButton} ${selectedModelId === asset.id ? styles.assetSelectButtonActive : ""}`}
-                          onClick={() => onUseAsModel(asset)}
-                        >
-                          {selectedModelId === asset.id ? "Selected" : "Use model"}
-                        </button>
+                        <HelpTooltip label="Use model asset" content="Selects this saved model config for the current workflow without opening the asset card.">
+                          <button
+                            type="button"
+                            className={`${styles.assetSelectButton} ${selectedModelId === asset.id ? styles.assetSelectButtonActive : ""}`}
+                            onClick={() => onUseAsModel(asset)}
+                          >
+                            {selectedModelId === asset.id ? "Selected" : "Use model"}
+                          </button>
+                        </HelpTooltip>
                       ) : null}
 
                       {asset.type === "tokenizer" && onUseAsTokenizer ? (
-                        <button
-                          type="button"
-                          className={`${styles.assetSelectButton} ${selectedTokenizerId === asset.id ? styles.assetSelectButtonActive : ""}`}
-                          onClick={() => onUseAsTokenizer(asset)}
-                          disabled={asset.status !== "COMPLETED"}
-                        >
-                          {selectedTokenizerId === asset.id ? "Selected" : "Use tokenizer"}
-                        </button>
+                        <HelpTooltip label="Use tokenizer asset" content="Selects this completed tokenizer for the current workflow. Incomplete tokenizer jobs cannot be used for model training.">
+                          <button
+                            type="button"
+                            className={`${styles.assetSelectButton} ${selectedTokenizerId === asset.id ? styles.assetSelectButtonActive : ""}`}
+                            onClick={() => onUseAsTokenizer(asset)}
+                            disabled={asset.status !== "COMPLETED"}
+                          >
+                            {selectedTokenizerId === asset.id ? "Selected" : "Use tokenizer"}
+                          </button>
+                        </HelpTooltip>
                       ) : null}
 
                       {asset.downloadUrl ? (
-                        <a
-                          href={asset.downloadUrl}
-                          download={asset.fileName ?? undefined}
-                          className={styles.actionButton}
-                          title="Download"
-                        >
-                          <FiDownload />
-                        </a>
+                        <HelpTooltip label="Download asset" content="Downloads this asset bundle or file from the backend when a download URL is available.">
+                          <a
+                            href={asset.downloadUrl}
+                            download={asset.fileName ?? undefined}
+                            className={styles.actionButton}
+                            aria-label={`Download ${asset.name}`}
+                          >
+                            <FiDownload />
+                          </a>
+                        </HelpTooltip>
                       ) : null}
 
-                      <button 
-                        onClick={(e) => handleDelete(asset, e)} 
-                        className={`${styles.actionButton} ${styles.actionButtonDanger}`}
-                        title="Delete"
-                      >
-                        <FiTrash2 />
-                      </button>
+                      <HelpTooltip label="Delete asset" content="Deletes this workspace item after confirmation. The action cannot be undone.">
+                        <button
+                          onClick={(e) => handleDelete(asset, e)}
+                          className={`${styles.actionButton} ${styles.actionButtonDanger}`}
+                          aria-label={`Delete ${asset.name}`}
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </HelpTooltip>
                     </div>
                   </div>
                 ))

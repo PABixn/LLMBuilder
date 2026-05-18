@@ -8,6 +8,7 @@ import type {
   StreamingDatasetFormState,
   StreamingFilterFormState,
 } from "../types";
+import { FieldLabelText, HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 interface StreamingDatasetEditorProps {
   addStreamingDataset: () => void;
@@ -48,7 +49,9 @@ export function StreamingDatasetEditor({
   return (
     <div className="datasetConfigurator trainingTokenizerDatasetSection">
       <label className="fieldLabel fullWidthField">
-        <span>HF token <small>optional</small></span>
+        <FieldLabelText tooltipLabel="HF token explanation" tooltip="Optional Hugging Face access token. Use it only when a private or gated dataset needs authentication; public datasets do not need it.">
+          HF token <small>optional</small>
+        </FieldLabelText>
         <input
           type="password"
           value={hfToken}
@@ -60,23 +63,27 @@ export function StreamingDatasetEditor({
       </label>
 
       <div className="actionRow">
-        <button
-          type="button"
-          className="secondaryButton"
-          onClick={addStreamingDataset}
-        >
-          Add dataset
-        </button>
-        <button
-          type="button"
-          className="secondaryButton"
-          onClick={handleLoadStreamingTemplate}
-          disabled={isLoadingDatasetTemplate}
-        >
-          {isLoadingDatasetTemplate
-            ? "Loading template..."
-            : "Load template"}
-        </button>
+        <HelpTooltip label="Add streaming dataset" content="Adds another dataset entry to the mixture. Dataset weights are normalized so the combined stream samples from each source in proportion to its weight.">
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={addStreamingDataset}
+          >
+            Add dataset
+          </button>
+        </HelpTooltip>
+        <HelpTooltip label="Load streaming dataset template" content="Loads the backend dataloader template for streaming datasets and switches this panel to the template defaults.">
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={handleLoadStreamingTemplate}
+            disabled={isLoadingDatasetTemplate}
+          >
+            {isLoadingDatasetTemplate
+              ? "Loading template..."
+              : "Load template"}
+          </button>
+        </HelpTooltip>
       </div>
 
       <div className="datasetList">
@@ -98,7 +105,9 @@ export function StreamingDatasetEditor({
 
             <div className="fieldGrid">
               <label className="fieldLabel">
-                <span>Dataset name</span>
+                <FieldLabelText tooltipLabel="Dataset name explanation" tooltip="Hugging Face dataset repository name, for example owner/dataset. This is passed to the streaming dataset loader.">
+                  Dataset name
+                </FieldLabelText>
                 <input
                   value={entry.name}
                   onChange={(event) =>
@@ -111,7 +120,9 @@ export function StreamingDatasetEditor({
               </label>
 
               <label className="fieldLabel">
-                <span>Split</span>
+                <FieldLabelText tooltipLabel="Dataset split explanation" tooltip="The dataset split to stream, usually train. Use the exact split name exposed by the Hugging Face dataset.">
+                  Split
+                </FieldLabelText>
                 <input
                   value={entry.split}
                   onChange={(event) =>
@@ -124,7 +135,9 @@ export function StreamingDatasetEditor({
               </label>
 
               <label className="fieldLabel">
-                <span>Weight</span>
+                <FieldLabelText tooltipLabel="Dataset weight explanation" tooltip="Relative share of this dataset in the mixture. A dataset with weight 2 is sampled about twice as often as one with weight 1.">
+                  Weight
+                </FieldLabelText>
                 <input
                   inputMode="decimal"
                   pattern="[0-9]*[.]?[0-9]*"
@@ -140,7 +153,9 @@ export function StreamingDatasetEditor({
               </label>
 
               <label className="fieldLabel fullWidthField">
-                <span>Text columns</span>
+                <FieldLabelText tooltipLabel="Text columns explanation" tooltip="Column names that contain text to train on. Use commas for multiple text columns; the app passes these to the dataloader.">
+                  Text columns
+                </FieldLabelText>
                 <input
                   value={entry.textColumns}
                   onChange={(event) =>
@@ -154,10 +169,20 @@ export function StreamingDatasetEditor({
             </div>
 
             <details className="subPanel">
-              <summary>Advanced options</summary>
+              <summary>
+                <span>Advanced options</span>
+                <InfoTooltip label="Streaming advanced options explanation" align="right" width="wide">
+                  <p>
+                    Use dataset configs and filters when a Hugging Face dataset has named
+                    subsets or when only some records should enter training.
+                  </p>
+                </InfoTooltip>
+              </summary>
               <div className="fieldGrid">
                 <label className="fieldLabel">
-                  <span>Dataset config <small>optional</small></span>
+                  <FieldLabelText tooltipLabel="Dataset config explanation" tooltip="Optional Hugging Face config/subset name, such as a language or corpus variant. Leave blank when the dataset has no named config.">
+                    Dataset config <small>optional</small>
+                  </FieldLabelText>
                   <input
                     value={entry.config}
                     onChange={(event) =>
@@ -170,7 +195,15 @@ export function StreamingDatasetEditor({
 
                 <div className="fullWidthField filterBuilder">
                   <div className="filterBuilderHeader">
-                    <span className="filterBuilderTitle">Filters (optional)</span>
+                    <span className="filterBuilderTitle">
+                      Filters (optional)
+                      <InfoTooltip label="Streaming filters explanation" align="left" width="wide">
+                        <p>
+                          Filters keep or remove records before text is used. Column, operator,
+                          and value become dataloader filter rules for each streamed record.
+                        </p>
+                      </InfoTooltip>
+                    </span>
                     <button
                       type="button"
                       className="secondaryButton"
@@ -187,7 +220,9 @@ export function StreamingDatasetEditor({
                       {entry.filters.map((filter) => (
                         <div key={filter.id} className="filterRow">
                           <label className="fieldLabel">
-                            <span>Column</span>
+                            <FieldLabelText tooltipLabel="Filter column explanation" tooltip="Dataset column to inspect for this filter, such as language, language_score, or quality_score.">
+                              Column
+                            </FieldLabelText>
                             <input
                               value={filter.column}
                               onChange={(event) =>
@@ -200,7 +235,9 @@ export function StreamingDatasetEditor({
                           </label>
 
                           <label className="fieldLabel">
-                            <span>Operator</span>
+                            <FieldLabelText tooltipLabel="Filter operator explanation" tooltip="Comparison used by the dataloader. For in and not in, the value can be JSON array syntax or comma-separated values.">
+                              Operator
+                            </FieldLabelText>
                             <select
                               value={filter.operator}
                               onChange={(event) =>
@@ -219,7 +256,9 @@ export function StreamingDatasetEditor({
                           </label>
 
                           <label className="fieldLabel">
-                            <span>Value</span>
+                            <FieldLabelText tooltipLabel="Filter value explanation" tooltip="The value to compare against. The app detects booleans, numbers, JSON objects, JSON arrays, and comma-separated lists.">
+                              Value
+                            </FieldLabelText>
                             <input
                               value={filter.value}
                               onChange={(event) =>

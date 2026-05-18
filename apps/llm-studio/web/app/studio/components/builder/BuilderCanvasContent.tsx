@@ -45,6 +45,7 @@ import {
   MlpStepInsertSlot,
 } from "./BuilderInsertSlots";
 import type { BuilderPanelProps, OpenInsertMenu } from "./types";
+import { FieldLabelText, HelpTooltip, InfoTooltip } from "../../../shared/components/HelpTooltip";
 
 type BuilderCanvasContentProps = BuilderPanelProps & {
   openInsertMenu: OpenInsertMenu | null;
@@ -174,43 +175,46 @@ export function BuilderCanvasContent({
             </div>
           </div>
           <div className="blockCardActions">
-            <button
-              type="button"
-              className="iconButton"
-              aria-label={`Add component to block ${blockIndex + 1}`}
-              aria-haspopup="menu"
-              aria-expanded={openInsertMenu?.key === `component:${block.id}:${block.components.length}`}
-              title="Add component"
-              onClick={(event) =>
-                openInsertMenuFromEvent(event, {
-                  key: `component:${block.id}:${block.components.length}`,
-                  title: "Add component",
-                  variant: "inline",
-                  items: insertMenuItems,
-                })
-              }
-            >
-              <FiPlus />
-            </button>
-            <button
-              type="button"
-              className="iconButton"
-              onClick={() => duplicateBlock(block.id)}
-              title="Duplicate block"
-              aria-label={`Duplicate block ${blockIndex + 1}`}
-            >
-              <FiCopy />
-            </button>
-            <button
-              type="button"
-              className="iconButton danger"
-              onClick={() => deleteBlock(block.id)}
-              title={documentState.blocks.length <= 1 ? "Keep at least one block" : "Delete block"}
-              aria-label={`Delete block ${blockIndex + 1}`}
-              disabled={documentState.blocks.length <= 1}
-            >
-              <FiTrash2 />
-            </button>
+            <HelpTooltip label={`Add component to block ${blockIndex + 1}`} content="Opens the insert menu for attention, MLP, norm, activation, or saved prefab components inside this block.">
+              <button
+                type="button"
+                className="iconButton"
+                aria-label={`Add component to block ${blockIndex + 1}`}
+                aria-haspopup="menu"
+                aria-expanded={openInsertMenu?.key === `component:${block.id}:${block.components.length}`}
+                onClick={(event) =>
+                  openInsertMenuFromEvent(event, {
+                    key: `component:${block.id}:${block.components.length}`,
+                    title: "Add component",
+                    variant: "inline",
+                    items: insertMenuItems,
+                  })
+                }
+              >
+                <FiPlus />
+              </button>
+            </HelpTooltip>
+            <HelpTooltip label={`Duplicate block ${blockIndex + 1}`} content="Copies this entire block, including component order and settings, and inserts the copy beside it.">
+              <button
+                type="button"
+                className="iconButton"
+                onClick={() => duplicateBlock(block.id)}
+                aria-label={`Duplicate block ${blockIndex + 1}`}
+              >
+                <FiCopy />
+              </button>
+            </HelpTooltip>
+            <HelpTooltip label={`Delete block ${blockIndex + 1}`} content={documentState.blocks.length <= 1 ? "At least one block must remain in the model config." : "Removes this block and its components from the model config."}>
+              <button
+                type="button"
+                className="iconButton danger"
+                onClick={() => deleteBlock(block.id)}
+                aria-label={`Delete block ${blockIndex + 1}`}
+                disabled={documentState.blocks.length <= 1}
+              >
+                <FiTrash2 />
+              </button>
+            </HelpTooltip>
           </div>
         </div>
         <div className="blockQuickMap" aria-label={`Block ${blockIndex + 1} sequence`}>
@@ -308,30 +312,32 @@ export function BuilderCanvasContent({
                           {componentIsExpanded ? <FiChevronDown /> : <FiChevronRight />}
                         </span>
                       ) : null}
-                      <button
-                        type="button"
-                        className="iconButton"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          saveComponentAsPrefab(component);
-                        }}
-                        aria-label="Save component as prefab"
-                        title="Save as prefab"
-                      >
-                        <FiBookmark />
-                      </button>
-                      <button
-                        type="button"
-                        className="iconButton danger"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          removeComponent(block.id, component.id);
-                        }}
-                        aria-label="Remove component"
-                        title="Remove component"
-                      >
-                        <FiTrash2 />
-                      </button>
+                      <HelpTooltip label="Save component as prefab" content="Stores this component's current settings in the prefab shelf so it can be reused in other blocks.">
+                        <button
+                          type="button"
+                          className="iconButton"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            saveComponentAsPrefab(component);
+                          }}
+                          aria-label="Save component as prefab"
+                        >
+                          <FiBookmark />
+                        </button>
+                      </HelpTooltip>
+                      <HelpTooltip label="Remove component" content="Deletes this component from the block. The surrounding component order updates immediately.">
+                        <button
+                          type="button"
+                          className="iconButton danger"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeComponent(block.id, component.id);
+                          }}
+                          aria-label="Remove component"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </HelpTooltip>
                     </div>
                   </div>
 
@@ -357,7 +363,9 @@ export function BuilderCanvasContent({
                             className="fieldLabel"
                             htmlFor={`${componentDomIdPrefix(blockIndex, componentIndex)}-n-head`}
                           >
-                            <span>Heads</span>
+                            <FieldLabelText tooltipLabel="Attention heads explanation" tooltip="Number of attention heads. More heads split the embedding into more parallel attention patterns; head size depends on embedding size divided by heads.">
+                              Heads
+                            </FieldLabelText>
                             <input
                               id={`${componentDomIdPrefix(blockIndex, componentIndex)}-n-head`}
                               type="number"
@@ -386,7 +394,9 @@ export function BuilderCanvasContent({
                             className="fieldLabel"
                             htmlFor={`${componentDomIdPrefix(blockIndex, componentIndex)}-n-kv-head`}
                           >
-                            <span>KV Heads</span>
+                            <FieldLabelText tooltipLabel="KV heads explanation" tooltip="Number of key/value heads. Lower than Heads creates grouped-query attention, reducing KV cache memory during inference.">
+                              KV Heads
+                            </FieldLabelText>
                             <input
                               id={`${componentDomIdPrefix(blockIndex, componentIndex)}-n-kv-head`}
                               type="number"
@@ -432,7 +442,9 @@ export function BuilderCanvasContent({
                             className="fieldLabel"
                             htmlFor={`${componentDomIdPrefix(blockIndex, componentIndex)}-activation-type`}
                           >
-                            <span>Activation</span>
+                            <FieldLabelText tooltipLabel="Activation explanation" tooltip="Nonlinear function used by this activation component. It affects how the model transforms hidden states.">
+                              Activation
+                            </FieldLabelText>
                             <select
                               id={`${componentDomIdPrefix(blockIndex, componentIndex)}-activation-type`}
                               value={component.activation.type}
@@ -466,7 +478,9 @@ export function BuilderCanvasContent({
                               className="fieldLabel mlpMultiplierField"
                               htmlFor={`${componentDomIdPrefix(blockIndex, componentIndex)}-multiplier`}
                             >
-                              <span>Multiplier</span>
+                              <FieldLabelText tooltipLabel="MLP multiplier explanation" tooltip="Width multiplier for the MLP hidden layer relative to embedding size. Larger values increase capacity and parameter count.">
+                                Multiplier
+                              </FieldLabelText>
                               <input
                                 id={`${componentDomIdPrefix(blockIndex, componentIndex)}-multiplier`}
                                 type="number"
@@ -502,36 +516,38 @@ export function BuilderCanvasContent({
                                   {component.mlp.sequence.length === 1 ? "" : "s"}
                                 </span>
                               </div>
-                              <button
-                                type="button"
-                                className="mlpSequenceAddButton"
-                                aria-label="Add MLP step at end"
-                                aria-haspopup="menu"
-                                aria-expanded={
-                                  openInsertMenu?.key ===
-                                  `mlp-step:${block.id}:${component.id}:${component.mlp.sequence.length}`
-                                }
-                                onClick={(event) =>
-                                  openInsertMenuFromEvent(event, {
-                                    key: `mlp-step:${block.id}:${component.id}:${component.mlp.sequence.length}`,
-                                    title: "Add MLP step",
-                                    variant: "inline",
-                                    items: (["linear", "norm", "activation"] as const).map((kind) => ({
-                                      id: kind,
-                                      label: labelForMlpStepKind(kind),
-                                      onSelect: () =>
-                                        insertMlpStepAt(
-                                          block.id,
-                                          component.id,
-                                          component.mlp.sequence.length,
-                                          kind
-                                        ),
-                                    })),
-                                  })
-                                }
-                              >
-                                <FiPlus />
-                              </button>
+                              <HelpTooltip label="Add MLP step" content="Opens the insert menu for a linear, norm, or activation step at the end of this MLP sequence.">
+                                <button
+                                  type="button"
+                                  className="mlpSequenceAddButton"
+                                  aria-label="Add MLP step at end"
+                                  aria-haspopup="menu"
+                                  aria-expanded={
+                                    openInsertMenu?.key ===
+                                    `mlp-step:${block.id}:${component.id}:${component.mlp.sequence.length}`
+                                  }
+                                  onClick={(event) =>
+                                    openInsertMenuFromEvent(event, {
+                                      key: `mlp-step:${block.id}:${component.id}:${component.mlp.sequence.length}`,
+                                      title: "Add MLP step",
+                                      variant: "inline",
+                                      items: (["linear", "norm", "activation"] as const).map((kind) => ({
+                                        id: kind,
+                                        label: labelForMlpStepKind(kind),
+                                        onSelect: () =>
+                                          insertMlpStepAt(
+                                            block.id,
+                                            component.id,
+                                            component.mlp.sequence.length,
+                                            kind
+                                          ),
+                                      })),
+                                    })
+                                  }
+                                >
+                                  <FiPlus />
+                                </button>
+                              </HelpTooltip>
                             </div>
                             <div className="mlpSequenceList" role="list" aria-label="MLP step sequence">
                               {component.mlp.sequence.length === 0 ? (
@@ -654,18 +670,19 @@ export function BuilderCanvasContent({
                                               {stepIsExpanded ? <FiChevronDown /> : <FiChevronRight />}
                                             </span>
                                           ) : null}
-                                          <button
-                                            type="button"
-                                            className="iconButton danger"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              removeMlpStep(block.id, component.id, step.id);
-                                            }}
-                                            aria-label="Remove MLP step"
-                                            title="Remove MLP step"
-                                          >
-                                            <FiTrash2 />
-                                          </button>
+                                          <HelpTooltip label="Remove MLP step" content="Deletes this step from the MLP sequence and connects the remaining steps in order.">
+                                            <button
+                                              type="button"
+                                              className="iconButton danger"
+                                              onClick={(event) => {
+                                                event.stopPropagation();
+                                                removeMlpStep(block.id, component.id, step.id);
+                                              }}
+                                              aria-label="Remove MLP step"
+                                            >
+                                              <FiTrash2 />
+                                            </button>
+                                          </HelpTooltip>
                                         </div>
                                       </div>
                                       {stepIsExpanded && !stepIsInlineSimple ? (
@@ -696,7 +713,15 @@ export function BuilderCanvasContent({
                                                   )
                                                 }
                                               />
-                                              <span>Bias</span>
+                                              <span className="fieldLabelText">
+                                                <span>Bias</span>
+                                                <InfoTooltip label="Linear bias explanation">
+                                                  <p>
+                                                    Adds a learned bias vector to this linear projection.
+                                                    Bias increases parameters slightly and shifts outputs independently of inputs.
+                                                  </p>
+                                                </InfoTooltip>
+                                              </span>
                                             </label>
                                           ) : null}
 
@@ -724,7 +749,9 @@ export function BuilderCanvasContent({
                                                 className="fieldLabel"
                                                 htmlFor={`${mlpStepDomIdPrefix(blockIndex, componentIndex, stepIndex)}-activation-type`}
                                               >
-                                                <span>Activation</span>
+                                                <FieldLabelText tooltipLabel="MLP activation explanation" tooltip="Nonlinear function applied inside this MLP step. Common choices like GELU or SiLU change how the layer gates information.">
+                                                  Activation
+                                                </FieldLabelText>
                                                 <select
                                                   id={`${mlpStepDomIdPrefix(blockIndex, componentIndex, stepIndex)}-activation-type`}
                                                   value={step.activation.type}
@@ -842,18 +869,19 @@ export function BuilderCanvasContent({
                     className="blockGroupCard blockGroupCollapsedPreview"
                     aria-label={`Collapsed identical block group spanning blocks ${group.startIndex + 1} through ${group.endIndex + 1}`}
                   >
-                    <button
-                      type="button"
-                      className="blockGroupCollapsedExpand"
-                      aria-expanded={false}
-                      aria-label={`Expand identical block group (${group.count} blocks)`}
-                      title={`Expand ${group.count} identical blocks`}
-                      onClick={() => toggleExpandedBlockGroup(group.key)}
-                    >
-                      <span className="blockGroupCountBadge">×{group.count}</span>
-                      <span className="blockGroupCollapsedExpandLabel">Expand Group</span>
-                      <FiChevronRight aria-hidden />
-                    </button>
+                    <HelpTooltip label="Expand identical block group" content="Identical neighboring blocks are collapsed for readability. Expanding shows every block in the group for editing.">
+                      <button
+                        type="button"
+                        className="blockGroupCollapsedExpand"
+                        aria-expanded={false}
+                        aria-label={`Expand identical block group (${group.count} blocks)`}
+                        onClick={() => toggleExpandedBlockGroup(group.key)}
+                      >
+                        <span className="blockGroupCountBadge">×{group.count}</span>
+                        <span className="blockGroupCollapsedExpandLabel">Expand Group</span>
+                        <FiChevronRight aria-hidden />
+                      </button>
+                    </HelpTooltip>
                     {renderBlockCard(representativeBlock, group.startIndex)}
                   </section>
                 )

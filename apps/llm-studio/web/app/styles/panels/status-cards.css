@@ -80,7 +80,34 @@
   background: linear-gradient(180deg, var(--surface), var(--surface-soft));
   box-shadow: 0 16px 30px rgba(8, 18, 30, 0.16);
   padding: 10px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-transform: none;
   transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.statusCardTooltip > * {
+  margin-block: 0;
+}
+
+.statusCardTooltip > * + * {
+  margin-top: 6px;
+}
+
+.statusCardTooltip :is(strong, p, span, div, li) {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.statusCardTooltip p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.statusCardTooltip strong {
+  margin: 0;
+  color: var(--text);
 }
 
 .statusCardTooltip::after {

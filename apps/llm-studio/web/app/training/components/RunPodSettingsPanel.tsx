@@ -19,6 +19,7 @@ import {
   findRunPodGpuOption,
   getRunPodGpuOptions,
 } from "../lib/runPod";
+import { FieldLabelText, HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 interface RunPodSettingsPanelProps {
   apiKey: string;
@@ -148,11 +149,22 @@ export function RunPodSettingsPanel({
 
       <div className="runPodSettingsSection">
         <div className="settingsGroupHeader">
-          <h3>Access</h3>
+          <h3>
+            Access
+            <InfoTooltip label="RunPod access explanation" align="left" width="wide">
+              <strong>RunPod access</strong>
+              <p>
+                The API key is sent only to the backend endpoints that validate or create
+                RunPod resources. If an environment key is configured, you can leave this blank.
+              </p>
+            </InfoTooltip>
+          </h3>
         </div>
         <div className="runPodCredentialRow">
           <label className="fieldLabel runPodApiKeyField">
-            <span>RunPod API key</span>
+            <FieldLabelText tooltipLabel="RunPod API key explanation" tooltip="A RunPod API key lets this app create and inspect pods for your training runs. Validate it before launch so the app can verify access without starting training.">
+              RunPod API key
+            </FieldLabelText>
             <input
               className="textInput"
               type="password"
@@ -161,15 +173,17 @@ export function RunPodSettingsPanel({
               onChange={(event) => onApiKeyChange(event.target.value)}
             />
           </label>
-          <button
-            type="button"
-            className="secondaryButton runPodValidateButton"
-            onClick={onValidateKey}
-            disabled={validationLoading || apiKey.trim() === ""}
-          >
-            <FiCheckCircle aria-hidden="true" />
-            {validationLoading ? "Validating..." : "Validate key"}
-          </button>
+          <HelpTooltip label="Validate RunPod key" content="Checks that the key can reach RunPod and updates the access status. This does not create a pod or start billing.">
+            <button
+              type="button"
+              className="secondaryButton runPodValidateButton"
+              onClick={onValidateKey}
+              disabled={validationLoading || apiKey.trim() === ""}
+            >
+              <FiCheckCircle aria-hidden="true" />
+              {validationLoading ? "Validating..." : "Validate key"}
+            </button>
+          </HelpTooltip>
           <span className={`pillBadge ${status?.configured ? "tone-good" : "tone-neutral"}`}>
             {status?.configured ? `Key ready (${status.source})` : "Key required"}
           </span>
@@ -182,7 +196,9 @@ export function RunPodSettingsPanel({
         </div>
         <div className="fieldGrid trainingSettingsCompactGrid">
           <label className="fieldLabel fullWidthField">
-            <span>GPU target</span>
+            <FieldLabelText tooltipLabel="GPU target explanation" tooltip="The RunPod GPU model used for the training pod. More VRAM supports larger micro batches, longer sequences, or larger models.">
+              GPU target
+            </FieldLabelText>
             <select
               className="selectInput"
               value={gpuType}
@@ -203,7 +219,9 @@ export function RunPodSettingsPanel({
             </select>
           </label>
           <label className="fieldLabel">
-            <span>GPU count</span>
+            <FieldLabelText tooltipLabel="GPU count explanation" tooltip="Number of GPUs requested for the pod. The trainer can use multiple GPUs, but availability and cost increase with this number.">
+              GPU count
+            </FieldLabelText>
             <select
               className="selectInput"
               value={gpuCount}
@@ -217,14 +235,18 @@ export function RunPodSettingsPanel({
             </select>
           </label>
           <label className="fieldLabel">
-            <span>Cloud</span>
+            <FieldLabelText tooltipLabel="RunPod cloud explanation" tooltip="Secure Cloud uses RunPod-vetted infrastructure. Community Cloud can be cheaper or more available, but capacity and reliability vary by host.">
+              Cloud
+            </FieldLabelText>
             <select className="selectInput" value={cloudType} onChange={(event) => onCloudTypeChange(event.target.value as RunPodCloudType)}>
               <option value="SECURE">Secure Cloud</option>
               <option value="COMMUNITY">Community Cloud</option>
             </select>
           </label>
           <label className="fieldLabel">
-            <span>Volume GB</span>
+            <FieldLabelText tooltipLabel="Volume size explanation" tooltip="Disk space attached to the pod for datasets, checkpoints, logs, and synced artifacts. Increase it when checkpoints or datasets are large.">
+              Volume GB
+            </FieldLabelText>
             <ConfigNumberInput value={volumeSizeGb} onCommit={onVolumeSizeGbChange} />
           </label>
         </div>
@@ -236,7 +258,9 @@ export function RunPodSettingsPanel({
         </div>
         <div className="fieldGrid trainingSettingsCompactGrid">
           <label className="fieldLabel">
-            <span>Pod cleanup</span>
+            <FieldLabelText tooltipLabel="Pod cleanup explanation" tooltip="What the app does after artifacts sync. Delete minimizes cost, stop keeps the pod image available but stopped, and keep running leaves billing active.">
+              Pod cleanup
+            </FieldLabelText>
             <select className="selectInput" value={cleanupPod} onChange={(event) => onCleanupPodChange(event.target.value as RunPodCleanupPodAction)}>
               <option value="delete_after_sync">Delete after sync</option>
               <option value="stop_after_sync">Stop after sync</option>
@@ -250,7 +274,16 @@ export function RunPodSettingsPanel({
             checked={interruptible}
             onChange={(event) => onInterruptibleChange(event.target.checked)}
           />
-          <span>Use interruptible capacity</span>
+          <span className="fieldLabelText">
+            <span>Use interruptible capacity</span>
+            <InfoTooltip label="Interruptible capacity explanation" width="wide">
+              <strong>Interruptible capacity</strong>
+              <p>
+                Requests cheaper capacity that RunPod may reclaim. Use it for experiments
+                that can restart from checkpoints; avoid it for runs that must finish uninterrupted.
+              </p>
+            </InfoTooltip>
+          </span>
         </label>
       </div>
 

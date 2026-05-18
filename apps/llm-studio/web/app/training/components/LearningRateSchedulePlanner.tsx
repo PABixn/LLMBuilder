@@ -55,6 +55,7 @@ import {
   type LearningRateSchedulerType,
   type ProjectionPoint,
 } from "../lib/learningRateSchedule";
+import { FieldLabelText, HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 export { fitSchedulersToMaxSteps } from "../lib/learningRateSchedule";
 
@@ -164,7 +165,9 @@ function SchedulerFields({
     return (
       <>
         <label className="fieldLabel">
-          <span>Start factor</span>
+          <FieldLabelText tooltipLabel="Start factor explanation" tooltip="Multiplier applied to the base learning rate at the start of this linear phase. Example: 0.1 starts at 10% of base LR.">
+            Start factor
+          </FieldLabelText>
           <PlannerNumberInput
             mode="decimal"
             min={0.000001}
@@ -174,7 +177,9 @@ function SchedulerFields({
           />
         </label>
         <label className="fieldLabel">
-          <span>End factor</span>
+          <FieldLabelText tooltipLabel="End factor explanation" tooltip="Multiplier applied to the base learning rate at the end of this linear phase. Example: 1 reaches the base LR.">
+            End factor
+          </FieldLabelText>
           <PlannerNumberInput
             mode="decimal"
             min={0.000001}
@@ -190,7 +195,9 @@ function SchedulerFields({
   if (scheduler.type === "cosine_annealing") {
     return (
       <label className="fieldLabel">
-        <span>Minimum LR</span>
+        <FieldLabelText tooltipLabel="Minimum LR explanation" tooltip="Lowest learning rate the cosine schedule decays toward. Use 0 for full decay or a small value to keep updates alive.">
+          Minimum LR
+        </FieldLabelText>
         <PlannerNumberInput
           mode="scientific"
           min={0}
@@ -206,7 +213,9 @@ function SchedulerFields({
     return (
       <>
         <label className="fieldLabel">
-          <span>Step size</span>
+          <FieldLabelText tooltipLabel="Step size explanation" tooltip="Number of steps between each learning-rate drop inside this phase. Smaller values drop more often.">
+            Step size
+          </FieldLabelText>
           <PlannerNumberInput
             min={1}
             max={scheduler.steps}
@@ -215,7 +224,9 @@ function SchedulerFields({
           />
         </label>
         <label className="fieldLabel">
-          <span>Gamma</span>
+          <FieldLabelText tooltipLabel="Gamma explanation" tooltip="Multiplier used when the schedule drops the learning rate. For example, gamma 0.5 halves the LR at each drop.">
+            Gamma
+          </FieldLabelText>
           <PlannerNumberInput
             mode="decimal"
             min={0.000001}
@@ -235,7 +246,9 @@ function SchedulerFields({
     return (
       <>
         <label className="fieldLabel fullWidthField">
-          <span>Milestones</span>
+          <FieldLabelText tooltipLabel="Milestones explanation" tooltip="Comma-separated step numbers inside this phase where the learning rate should drop. They must be in ascending order.">
+            Milestones
+          </FieldLabelText>
           <input
             key={milestones}
             defaultValue={milestones}
@@ -260,7 +273,9 @@ function SchedulerFields({
           <span className="fieldNote">Use ascending steps inside this phase.</span>
         </label>
         <label className="fieldLabel">
-          <span>Gamma</span>
+          <FieldLabelText tooltipLabel="Gamma explanation" tooltip="Multiplier applied at every milestone. For example, gamma 0.5 halves the LR each time a milestone is reached.">
+            Gamma
+          </FieldLabelText>
           <PlannerNumberInput
             mode="decimal"
             min={0.000001}
@@ -276,7 +291,9 @@ function SchedulerFields({
   if (scheduler.type === "exponential") {
     return (
       <label className="fieldLabel">
-        <span>Gamma</span>
+        <FieldLabelText tooltipLabel="Exponential gamma explanation" tooltip="Multiplier applied repeatedly during exponential decay. Values close to 1 decay slowly; smaller values decay faster.">
+          Gamma
+        </FieldLabelText>
         <PlannerNumberInput
           mode="decimal"
           min={0.000001}
@@ -292,7 +309,9 @@ function SchedulerFields({
     return (
       <>
         <label className="fieldLabel">
-          <span>First restart length</span>
+          <FieldLabelText tooltipLabel="First restart length explanation" tooltip="Length of the first cosine restart cycle in steps. The LR resets at the end of each cycle.">
+            First restart length
+          </FieldLabelText>
           <PlannerNumberInput
             min={1}
             value={asPositiveInteger(scheduler.t_0, 1)}
@@ -300,7 +319,9 @@ function SchedulerFields({
           />
         </label>
         <label className="fieldLabel">
-          <span>Cycle multiplier</span>
+          <FieldLabelText tooltipLabel="Cycle multiplier explanation" tooltip="How much each restart cycle length grows. A value of 1 keeps cycles equal; 2 doubles each cycle length.">
+            Cycle multiplier
+          </FieldLabelText>
           <PlannerNumberInput
             min={1}
             value={asPositiveInteger(scheduler.t_mult, 1)}
@@ -308,7 +329,9 @@ function SchedulerFields({
           />
         </label>
         <label className="fieldLabel">
-          <span>Minimum LR</span>
+          <FieldLabelText tooltipLabel="Minimum LR explanation" tooltip="Lowest LR reached before each warm restart. The LR then jumps back up for the next cycle.">
+            Minimum LR
+          </FieldLabelText>
           <PlannerNumberInput
             mode="scientific"
             min={0}
@@ -323,7 +346,9 @@ function SchedulerFields({
 
   return (
     <label className="fieldLabel">
-      <span>LR factor</span>
+      <FieldLabelText tooltipLabel="LR factor explanation" tooltip="Multiplier applied to the base learning rate for this phase. A factor of 1 uses the base LR unchanged.">
+        LR factor
+      </FieldLabelText>
       <PlannerNumberInput
         mode="decimal"
         min={0.000001}
@@ -411,7 +436,16 @@ export function LearningRateSchedulePlanner({
     <details className="lrPlanner" open aria-labelledby="lr-planner-title">
       <summary className="lrPlannerSummary">
         <div>
-          <h3 id="lr-planner-title">Advanced learning-rate schedule</h3>
+          <h3 id="lr-planner-title">
+            Advanced learning-rate schedule
+            <InfoTooltip label="Learning-rate schedule explanation" align="left" width="wide">
+              <strong>Learning-rate schedule</strong>
+              <p>
+                Schedulers change the optimizer learning rate over training. The app sends
+                these phases sequentially to the backend, and their steps must add up to max training steps.
+              </p>
+            </InfoTooltip>
+          </h3>
           <p className="settingsGroupHint">
             Compose backend scheduler phases, keep their step math aligned with the run, and preview
             the predicted learning rate before launch.
@@ -445,40 +479,48 @@ export function LearningRateSchedulePlanner({
         </div>
 
         <div className="lrPlannerPresetRow" aria-label="Learning-rate schedule presets">
-          <button
-            type="button"
-            className="secondaryButton"
-            onClick={() =>
-              applySerializedSchedulers(makeWarmupCosineSchedule(maxSteps, baseLearningRate))
-            }
-          >
-            Warmup + cosine
-          </button>
-          <button
-            type="button"
-            className="secondaryButton"
-            onClick={() => applySerializedSchedulers(makeWarmupHoldSchedule(maxSteps))}
-          >
-            Warmup + hold
-          </button>
-          <button
-            type="button"
-            className="secondaryButton"
-            onClick={() => applySerializedSchedulers(makeStepDecaySchedule(maxSteps))}
-          >
-            Step decay
-          </button>
-          <button
-            type="button"
-            className="secondaryButton"
-            onClick={() =>
-              applySerializedSchedulers([
-                { type: "constant", steps: Math.max(1, Math.trunc(maxSteps || 1)), factor: 1 },
-              ])
-            }
-          >
-            Constant LR
-          </button>
+          <HelpTooltip label="Warmup and cosine schedule" content="Starts with a short warmup to reach the base learning rate, then gradually decays with a cosine curve. Good default for most training runs.">
+            <button
+              type="button"
+              className="secondaryButton"
+              onClick={() =>
+                applySerializedSchedulers(makeWarmupCosineSchedule(maxSteps, baseLearningRate))
+              }
+            >
+              Warmup + cosine
+            </button>
+          </HelpTooltip>
+          <HelpTooltip label="Warmup and hold schedule" content="Warms up to the base learning rate and then keeps it steady. Useful when you want minimal scheduler behavior.">
+            <button
+              type="button"
+              className="secondaryButton"
+              onClick={() => applySerializedSchedulers(makeWarmupHoldSchedule(maxSteps))}
+            >
+              Warmup + hold
+            </button>
+          </HelpTooltip>
+          <HelpTooltip label="Step decay schedule" content="Keeps the learning rate steady for chunks of training and drops it at scheduled steps. Useful for controlled late-training refinement.">
+            <button
+              type="button"
+              className="secondaryButton"
+              onClick={() => applySerializedSchedulers(makeStepDecaySchedule(maxSteps))}
+            >
+              Step decay
+            </button>
+          </HelpTooltip>
+          <HelpTooltip label="Constant LR schedule" content="Uses the same learning rate for every step. This is simplest, but usually less forgiving than a warmup schedule.">
+            <button
+              type="button"
+              className="secondaryButton"
+              onClick={() =>
+                applySerializedSchedulers([
+                  { type: "constant", steps: Math.max(1, Math.trunc(maxSteps || 1)), factor: 1 },
+                ])
+              }
+            >
+              Constant LR
+            </button>
+          </HelpTooltip>
         </div>
 
         <div className="lrPlannerBodyGrid">
@@ -495,21 +537,23 @@ export function LearningRateSchedulePlanner({
                 <span>{schedulers.length} phase{schedulers.length === 1 ? "" : "s"}</span>
               </div>
               <div className="lrPlannerSectionActions">
-                <button
-                  type="button"
-                  className="secondaryButton"
-                  onClick={() =>
-                    applySerializedSchedulers(
-                      fitSchedulersToMaxSteps(
-                        schedulers.map(serializeScheduler),
-                        maxSteps,
-                        baseLearningRate
+                <HelpTooltip label="Fit schedulers to max steps" content="Resizes scheduler phase lengths so their total equals max training steps, which is required before the backend can launch the run.">
+                  <button
+                    type="button"
+                    className="secondaryButton"
+                    onClick={() =>
+                      applySerializedSchedulers(
+                        fitSchedulersToMaxSteps(
+                          schedulers.map(serializeScheduler),
+                          maxSteps,
+                          baseLearningRate
+                        )
                       )
-                    )
-                  }
-                >
-                  Fit to max steps
-                </button>
+                    }
+                  >
+                    Fit to max steps
+                  </button>
+                </HelpTooltip>
                 <button type="button" className="secondaryButton" onClick={addPhase}>
                   <FiPlus aria-hidden="true" /> Add phase
                 </button>
@@ -627,7 +671,9 @@ export function LearningRateSchedulePlanner({
 
                   <div className="fieldGrid lrPlannerFieldGrid">
                     <label className="fieldLabel">
-                      <span>Scheduler type</span>
+                      <FieldLabelText tooltipLabel="Scheduler type explanation" tooltip="The mathematical rule used for this phase, such as constant, linear warmup, cosine decay, step decay, or exponential decay.">
+                        Scheduler type
+                      </FieldLabelText>
                       <select
                         value={scheduler.type}
                         onChange={(event) => {
@@ -645,7 +691,9 @@ export function LearningRateSchedulePlanner({
                       </select>
                     </label>
                     <label className="fieldLabel">
-                      <span>Phase steps</span>
+                      <FieldLabelText tooltipLabel="Phase steps explanation" tooltip="Number of training steps this phase occupies. All phase steps together must equal max training steps.">
+                        Phase steps
+                      </FieldLabelText>
                       <PlannerNumberInput
                         min={scheduler.type === "multistep" ? 2 : 1}
                         value={scheduler.steps}
@@ -676,7 +724,15 @@ export function LearningRateSchedulePlanner({
           <div className="lrPlannerChartPanel">
             <div className="lrPlannerSectionHead">
               <div>
-                <strong>Predicted LR curve</strong>
+                <strong>
+                  Predicted LR curve
+                  <InfoTooltip label="Predicted LR curve explanation" align="left" width="wide">
+                    <p>
+                      Preview of the exact scheduler sequence and current base learning rate.
+                      It is a planning view; logged training metrics may differ if you edit settings later.
+                    </p>
+                  </InfoTooltip>
+                </strong>
                 <span>
                   {formatInteger(projection.length)} chart point
                   {projection.length === 1 ? "" : "s"}

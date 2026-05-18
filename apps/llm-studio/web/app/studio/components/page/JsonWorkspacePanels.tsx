@@ -2,6 +2,7 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import { FiCopy, FiDownload, FiRefreshCw, FiUpload } from "react-icons/fi";
 
 import type { ModelConfig } from "../../../../lib/defaults";
+import { FieldLabelText, HelpTooltip, InfoTooltip } from "../../../shared/components/HelpTooltip";
 
 type JsonWorkspacePanelsProps = {
   fileInputRef: RefObject<HTMLInputElement | null>;
@@ -30,30 +31,40 @@ export function JsonWorkspacePanels({
         <div className="panelHead">
           <div>
             <p className="panelEyebrow">JSON</p>
-            <h2>JSON preview</h2>
+            <h2>
+              JSON preview
+              <InfoTooltip label="JSON preview explanation" align="left" width="wide">
+                <p>
+                  This is the exact model configuration generated from the visual builder.
+                  Training uses the same fields after validation.
+                </p>
+              </InfoTooltip>
+            </h2>
             <p className="panelCopy">
               JSON for the current config.
             </p>
           </div>
           <div className="actionCluster">
-            <button
-              type="button"
-              className="buttonGhost iconOnly"
-              onClick={copyJson}
-              aria-label="Copy JSON"
-              title="Copy JSON"
-            >
-              <FiCopy />
-            </button>
-            <button
-              type="button"
-              className="buttonGhost iconOnly"
-              onClick={exportJson}
-              aria-label="Export JSON"
-              title="Export JSON"
-            >
-              <FiDownload />
-            </button>
+            <HelpTooltip label="Copy JSON" content="Copies the current model JSON to the clipboard.">
+              <button
+                type="button"
+                className="buttonGhost iconOnly"
+                onClick={copyJson}
+                aria-label="Copy JSON"
+              >
+                <FiCopy />
+              </button>
+            </HelpTooltip>
+            <HelpTooltip label="Export JSON" content="Downloads the current model JSON as a file.">
+              <button
+                type="button"
+                className="buttonGhost iconOnly"
+                onClick={exportJson}
+                aria-label="Export JSON"
+              >
+                <FiDownload />
+              </button>
+            </HelpTooltip>
           </div>
         </div>
         <pre className="jsonPreview">
@@ -65,7 +76,15 @@ export function JsonWorkspacePanels({
         <div className="panelHead">
           <div>
             <p className="panelEyebrow">Import</p>
-            <h2>Import JSON</h2>
+            <h2>
+              Import JSON
+              <InfoTooltip label="Import JSON explanation" align="left" width="wide">
+                <p>
+                  Paste or load a model config to replace the builder state after validation.
+                  Use this for configs produced outside the visual editor.
+                </p>
+              </InfoTooltip>
+            </h2>
             <p className="panelCopy">
               Paste or load model JSON.
             </p>
@@ -73,37 +92,42 @@ export function JsonWorkspacePanels({
         </div>
 
         <div className="actionRowWrap">
-          <button
-            type="button"
-            className="buttonGhost iconOnly"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Choose JSON file"
-            title="Choose JSON file"
-          >
-            <FiUpload />
-          </button>
-          <button
-            type="button"
-            className="buttonGhost iconOnly"
-            onClick={() => applyImportText(importDraft)}
-            aria-label="Apply import"
-            title="Apply import"
-          >
-            <FiRefreshCw />
-          </button>
-          <button
-            type="button"
-            className="buttonGhost iconOnly"
-            onClick={() => setImportDraft(JSON.stringify(modelConfig, null, 2))}
-            aria-label="Use current config"
-            title="Use current config"
-          >
-            <FiCopy />
-          </button>
+          <HelpTooltip label="Choose JSON file" content="Opens a file picker for a local model JSON file and loads it into the import draft.">
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Choose JSON file"
+            >
+              <FiUpload />
+            </button>
+          </HelpTooltip>
+          <HelpTooltip label="Apply import" content="Parses the import draft and applies it to the builder if it is a valid model config.">
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={() => applyImportText(importDraft)}
+              aria-label="Apply import"
+            >
+              <FiRefreshCw />
+            </button>
+          </HelpTooltip>
+          <HelpTooltip label="Use current config" content="Copies the current builder config into the import editor so you can modify and reapply it.">
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={() => setImportDraft(JSON.stringify(modelConfig, null, 2))}
+              aria-label="Use current config"
+            >
+              <FiCopy />
+            </button>
+          </HelpTooltip>
         </div>
 
         <label className="fieldLabel" htmlFor="import-draft">
-          <span>Import JSON</span>
+          <FieldLabelText tooltipLabel="Import JSON editor explanation" tooltip="Editable JSON draft. Applying it replaces the builder state only if parsing and model validation succeed.">
+            Import JSON
+          </FieldLabelText>
           <textarea
             id="import-draft"
             value={importDraft}

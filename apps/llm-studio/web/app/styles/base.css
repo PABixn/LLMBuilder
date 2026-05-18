@@ -36,3 +36,191 @@ button {
 code {
   font-family: var(--font-mono), "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
 }
+
+:root {
+  --tooltip-trigger-gap: 7px;
+  --tooltip-content-gap: 6px;
+}
+
+.helpTooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tooltip-trigger-gap);
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.helpTooltip > :first-child {
+  min-width: 0;
+}
+
+.helpTooltipIcon {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  font-size: 0;
+  line-height: 1;
+  cursor: help;
+  flex: 0 0 auto;
+}
+
+.helpTooltipIcon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.helpTooltipIcon:hover,
+.helpTooltipIcon:focus-visible,
+.helpTooltip:focus-within .helpTooltipIcon {
+  color: var(--brand);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--focus);
+  outline: none;
+}
+
+.helpTooltipBubble {
+  position: absolute;
+  z-index: 5000;
+  bottom: calc(100% + 9px);
+  width: min(280px, calc(100vw - 32px));
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 16px 38px rgba(9, 25, 49, 0.18);
+  padding: 10px 11px;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  font-weight: 520;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  white-space: normal;
+  text-align: left;
+}
+
+.helpTooltipBubblePortal {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  z-index: 5000;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.helpTooltipBubblePortal.helpTooltipBubble-above {
+  transform: translateY(0);
+}
+
+.helpTooltipBubblePortal.helpTooltipBubble-below {
+  transform: translateY(0);
+}
+
+.helpTooltipBubble > * {
+  margin-block: 0;
+}
+
+.helpTooltipBubble > * + * {
+  margin-top: var(--tooltip-content-gap);
+}
+
+.helpTooltip-wide .helpTooltipBubble {
+  width: min(380px, calc(100vw - 32px));
+}
+
+.helpTooltip-wide .helpTooltipBubblePortal,
+.helpTooltip .helpTooltipBubblePortal {
+  width: auto;
+}
+
+.helpTooltip-center .helpTooltipBubble {
+  left: 50%;
+  transform: translate(-50%, 4px);
+}
+
+.helpTooltip-left .helpTooltipBubble {
+  left: 0;
+}
+
+.helpTooltip-right .helpTooltipBubble {
+  right: 0;
+}
+
+.helpTooltip:hover .helpTooltipBubble,
+.helpTooltip:focus-within .helpTooltipBubble {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.helpTooltip-center:hover .helpTooltipBubble,
+.helpTooltip-center:focus-within .helpTooltipBubble {
+  transform: translate(-50%, 0);
+}
+
+.helpTooltipBubble strong {
+  display: block;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.helpTooltipBubble p {
+  margin: 0;
+  color: var(--text-muted);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.helpTooltipBubble ul {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--text-muted);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.helpTooltipBubble li {
+  margin: 0;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+:is(h1, h2, h3, h4, h5, h6) > .helpTooltip {
+  margin-left: var(--tooltip-trigger-gap);
+}
+
+summary > .helpTooltip {
+  margin-left: var(--tooltip-trigger-gap);
+  margin-right: auto;
+}
+
+.fieldLabelText {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tooltip-trigger-gap);
+  min-width: 0;
+  line-height: 1.25;
+  vertical-align: middle;
+}
+
+.fieldLabelText > .helpTooltip {
+  margin-left: 0;
+}

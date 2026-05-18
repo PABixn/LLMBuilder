@@ -7,10 +7,6 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface-soft);
-  overflow: hidden;
-}
-
-.trainingSettingsStudio .trainingPlanSettingsPanel {
   overflow: visible;
 }
 
@@ -22,6 +18,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.trainingSettingsStudio .settingsPanel > summary .helpTooltipBubble {
+  left: 0;
+  right: auto;
+  transform: translateY(4px);
+}
+
+.trainingSettingsStudio .settingsPanel > summary .helpTooltip:hover .helpTooltipBubble,
+.trainingSettingsStudio .settingsPanel > summary .helpTooltip:focus-within .helpTooltipBubble {
+  transform: translateY(0);
 }
 
 .trainingSettingsStudio .settingsPanel > summary::-webkit-details-marker {
@@ -385,12 +392,23 @@
   padding: 10px;
   display: grid;
   gap: 6px;
+  letter-spacing: 0;
+  text-transform: none;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transform: translateY(6px);
   transition: opacity 120ms ease, transform 120ms ease;
-  z-index: 20;
+  z-index: 5000;
+}
+
+.trainingAdvisorTooltip > * {
+  margin-block: 0;
+}
+
+.trainingAdvisorTooltip :is(strong, p, span, div, li) {
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .trainingAdvisorTooltip-wide {
@@ -424,7 +442,7 @@
 
 .trainingAdvisorTooltipItem {
   display: grid;
-  gap: 2px;
+  gap: 3px;
   padding-top: 6px;
   border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
 }

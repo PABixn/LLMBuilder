@@ -30,6 +30,7 @@ import { MetricsPanel } from "./MetricsPanel";
 import { RunDetailsPanel } from "./RunDetailsPanel";
 import { RunPodLifecyclePanel } from "./RunPodLifecyclePanel";
 import { SamplesPanel } from "./SamplesPanel";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 interface ActiveRunPanelProps {
   activeRun: TrainingJob | null;
@@ -65,7 +66,15 @@ export function ActiveRunPanel({
     <section className="panelCard trainingActiveRunPanel">
       <div className="panelHead">
         <div>
-          <h2>Active run</h2>
+          <h2>
+            Active run
+            <InfoTooltip label="Active run panel explanation" align="left" width="wide">
+              <p>
+                This panel follows the selected training run and polls metrics, checkpoints,
+                samples, logs, and lifecycle data while the backend reports updates.
+              </p>
+            </InfoTooltip>
+          </h2>
           <p className="panelCopy">
             Updates every {pollIntervalSeconds} seconds.
           </p>
@@ -75,25 +84,28 @@ export function ActiveRunPanel({
             <span className={`pillBadge ${statusTone(activeRun.status)}`}>{formatStatusLabel(activeRun.status)}</span>
           ) : null}
           {activeRunCanBeStopped && activeRun ? (
+            <HelpTooltip label="Stop active run" content="Requests cancellation for this run. Synced artifacts and checkpoints depend on what the backend has already produced.">
+              <button
+                type="button"
+                className="buttonDanger buttonSmall"
+                onClick={() => onStopRun(activeRun.id)}
+                disabled={stoppingActiveRun}
+              >
+                <FiXCircle aria-hidden="true" />
+                {stoppingActiveRun ? "Stopping..." : "Stop run"}
+              </button>
+            </HelpTooltip>
+          ) : null}
+          <HelpTooltip label="Close active run panel" content="Hides the active run panel without stopping or deleting the run.">
             <button
               type="button"
-              className="buttonDanger buttonSmall"
-              onClick={() => onStopRun(activeRun.id)}
-              disabled={stoppingActiveRun}
+              className="trainingActiveRunCloseButton"
+              onClick={onClose}
+              aria-label="Close active run"
             >
-              <FiXCircle aria-hidden="true" />
-              {stoppingActiveRun ? "Stopping..." : "Stop run"}
+              <FiX aria-hidden="true" />
             </button>
-          ) : null}
-          <button
-            type="button"
-            className="trainingActiveRunCloseButton"
-            onClick={onClose}
-            aria-label="Close active run"
-            title="Close active run"
-          >
-            <FiX aria-hidden="true" />
-          </button>
+          </HelpTooltip>
         </div>
       </div>
 

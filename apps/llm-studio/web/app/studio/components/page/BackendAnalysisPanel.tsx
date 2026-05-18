@@ -10,6 +10,7 @@ import {
 import { StatusCard } from "../primitives";
 import type { BackendAnalysisState } from "../../types";
 import { formatBytes, formatCompactCount, formatTimeAgo } from "../../utils/format";
+import { HelpTooltip, InfoTooltip } from "../../../shared/components/HelpTooltip";
 
 type BackendAnalysisPanelProps = {
   backendAnalysis: BackendAnalysisState;
@@ -115,24 +116,33 @@ export function BackendAnalysisPanel({
       <div className="panelHead">
         <div>
           <p className="panelEyebrow">Analysis</p>
-          <h2>Runtime analysis</h2>
+          <h2>
+            Runtime analysis
+            <InfoTooltip label="Runtime analysis explanation" align="left" width="wide">
+              <p>
+                Backend analysis instantiates the current config, counts parameters and modules,
+                and estimates memory-sensitive values such as KV cache size.
+              </p>
+            </InfoTooltip>
+          </h2>
           <p className="panelCopy">
             Check the config and estimate runtime memory.
           </p>
         </div>
         <div className="actionCluster">
-          <button
-            type="button"
-            className="buttonGhost iconOnly"
-            onClick={() => {
-              void runBackendAnalysis();
-            }}
-            disabled={backendAnalysis.phase === "running" || localErrorCount > 0}
-            aria-label={backendAnalysis.phase === "running" ? "Analysis running" : "Run analysis"}
-            title={backendAnalysis.phase === "running" ? "Analysis running" : "Run analysis"}
-          >
-            <FiServer />
-          </button>
+          <HelpTooltip label="Run backend analysis" content={localErrorCount > 0 ? "Fix local validation errors first. Backend analysis needs a locally valid model config." : "Sends the current model config to the backend for parameter counts, memory estimates, and instantiation checks."}>
+            <button
+              type="button"
+              className="buttonGhost iconOnly"
+              onClick={() => {
+                void runBackendAnalysis();
+              }}
+              disabled={backendAnalysis.phase === "running" || localErrorCount > 0}
+              aria-label={backendAnalysis.phase === "running" ? "Analysis running" : "Run analysis"}
+            >
+              <FiServer />
+            </button>
+          </HelpTooltip>
         </div>
       </div>
 
@@ -258,6 +268,16 @@ export function BackendAnalysisPanel({
               detail={`${formatBytes(backendAnalysis.summary.estimated_kv_cache_bytes_for_context_fp16)} at context length`}
               tone="neutral"
               icon={<FiHardDrive />}
+              tooltipLabel="KV cache memory explanation"
+              tooltipContent={
+                <>
+                  <strong>KV cache/token</strong>
+                  <p>
+                    Estimated fp16 memory needed to store attention keys and values for one token.
+                    The context-length estimate multiplies this by the configured context window.
+                  </p>
+                </>
+              }
             />
             <StatusCard
               title="Head size"
@@ -272,6 +292,16 @@ export function BackendAnalysisPanel({
               detail={`${backendAnalysis.summary.attention_component_count} attention components`}
               tone="neutral"
               icon={<FiServer />}
+              tooltipLabel="Attention head size explanation"
+              tooltipContent={
+                <>
+                  <strong>Head size</strong>
+                  <p>
+                    Embedding width divided across attention heads. Very small or uneven head sizes
+                    can signal a weak attention configuration.
+                  </p>
+                </>
+              }
             />
             <StatusCard
               title="Instantiation"
@@ -279,6 +309,16 @@ export function BackendAnalysisPanel({
               detail={`${formatCompactCount(backendAnalysis.summary.trainable_parameters)} trainable`}
               tone="neutral"
               icon={<FiRefreshCw />}
+              tooltipLabel="Instantiation time explanation"
+              tooltipContent={
+                <>
+                  <strong>Instantiation</strong>
+                  <p>
+                    Time the backend took to construct the model object from this config. It is a
+                    smoke test that the architecture can be loaded.
+                  </p>
+                </>
+              }
             />
           </div>
 

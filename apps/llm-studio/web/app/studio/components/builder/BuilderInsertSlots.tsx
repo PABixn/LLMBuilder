@@ -3,6 +3,7 @@ import type { DragEvent, MouseEvent } from "react";
 import {
   labelForMlpStepKind,
 } from "../../utils/document";
+import { HelpTooltip } from "../../../shared/components/HelpTooltip";
 import type {
   OpenInsertMenu,
   InsertMenuVariant,
@@ -79,31 +80,32 @@ export function BlockInsertSlot({
       data-insert-slot
     >
       <span className="dropSlotMark" aria-hidden />
-      <button
-        type="button"
-        className="blockInsertTrigger"
-        aria-label={`Add block at position ${insertIndex + 1}`}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        title="Add block"
-        onClick={(event) =>
-          openInsertMenuFromEvent(
-            event,
-            menuConfig(menuKey, "Add block", "rail", [
-              {
-                id: "default",
-                label: "Default transformer block",
-                onSelect: () => insertBlockAt(insertIndex, "default"),
-              },
-              {
-                id: "empty",
-                label: "Empty block",
-                onSelect: () => insertBlockAt(insertIndex, "empty"),
-              },
-            ])
-          )
-        }
-      />
+      <HelpTooltip label="Add transformer block" content="Inserts a new transformer block at this position. Use a default block for the app's standard attention/MLP layout, or an empty block when you want to assemble every component manually.">
+        <button
+          type="button"
+          className="blockInsertTrigger"
+          aria-label={`Add block at position ${insertIndex + 1}`}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={(event) =>
+            openInsertMenuFromEvent(
+              event,
+              menuConfig(menuKey, "Add block", "rail", [
+                {
+                  id: "default",
+                  label: "Default transformer block",
+                  onSelect: () => insertBlockAt(insertIndex, "default"),
+                },
+                {
+                  id: "empty",
+                  label: "Empty block",
+                  onSelect: () => insertBlockAt(insertIndex, "empty"),
+                },
+              ])
+            )
+          }
+        />
+      </HelpTooltip>
     </div>
   );
 }
@@ -129,29 +131,30 @@ export function ComponentInsertSlot({
       onDragOver={(event) => markDropTarget(event, slotKey)}
       onDrop={(event) => handleDropComponent(event, blockId, insertIndex)}
       aria-label="Insert component"
-      title="Insert component"
     >
       <span className="dropSlotMark" aria-hidden />
-      <button
-        type="button"
-        className="inlineInsertTrigger"
-        aria-label={`Add component at position ${insertIndex + 1}`}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        onDragOver={(event) => markDropTarget(event, slotKey)}
-        onDrop={(event) => handleDropComponent(event, blockId, insertIndex)}
-        onClick={(event) =>
-          openInsertMenuFromEvent(
-            event,
-            menuConfig(
-              menuKey,
-              "Add component",
-              "inline",
-              menuItems
+      <HelpTooltip label="Insert model component" content="Adds a component at this exact point in the block. Component order matters because each component transforms the hidden state before the next one runs.">
+        <button
+          type="button"
+          className="inlineInsertTrigger"
+          aria-label={`Add component at position ${insertIndex + 1}`}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onDragOver={(event) => markDropTarget(event, slotKey)}
+          onDrop={(event) => handleDropComponent(event, blockId, insertIndex)}
+          onClick={(event) =>
+            openInsertMenuFromEvent(
+              event,
+              menuConfig(
+                menuKey,
+                "Add component",
+                "inline",
+                menuItems
+              )
             )
-          )
-        }
-      />
+          }
+        />
+      </HelpTooltip>
     </div>
   );
 }
@@ -178,33 +181,34 @@ export function MlpStepInsertSlot({
       onDragOver={(event) => markDropTarget(event, slotKey)}
       onDrop={(event) => handleDropMlpStep(event, blockId, componentId, insertIndex)}
       aria-label="Insert MLP step"
-      title="Insert MLP step"
     >
       <span className="dropSlotMark" aria-hidden />
-      <button
-        type="button"
-        className="inlineInsertTrigger"
-        aria-label={`Add MLP step at position ${insertIndex + 1}`}
-        aria-haspopup="menu"
-        aria-expanded={isOpen}
-        onDragOver={(event) => markDropTarget(event, slotKey)}
-        onDrop={(event) => handleDropMlpStep(event, blockId, componentId, insertIndex)}
-        onClick={(event) =>
-          openInsertMenuFromEvent(
-            event,
-            menuConfig(
-              menuKey,
-              "Add MLP step",
-              "inline",
-              (["linear", "norm", "activation"] as const).map((kind) => ({
-                id: kind,
-                label: labelForMlpStepKind(kind),
-                onSelect: () => insertMlpStepAt(blockId, componentId, insertIndex, kind),
-              }))
+      <HelpTooltip label="Insert MLP step" content="Adds a linear, normalization, or activation step inside this MLP sequence. The sequence is executed in order, so placement changes the resulting layer behavior.">
+        <button
+          type="button"
+          className="inlineInsertTrigger"
+          aria-label={`Add MLP step at position ${insertIndex + 1}`}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onDragOver={(event) => markDropTarget(event, slotKey)}
+          onDrop={(event) => handleDropMlpStep(event, blockId, componentId, insertIndex)}
+          onClick={(event) =>
+            openInsertMenuFromEvent(
+              event,
+              menuConfig(
+                menuKey,
+                "Add MLP step",
+                "inline",
+                (["linear", "norm", "activation"] as const).map((kind) => ({
+                  id: kind,
+                  label: labelForMlpStepKind(kind),
+                  onSelect: () => insertMlpStepAt(blockId, componentId, insertIndex, kind),
+                }))
+              )
             )
-          )
-        }
-      />
+          }
+        />
+      </HelpTooltip>
     </div>
   );
 }

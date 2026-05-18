@@ -84,18 +84,24 @@
   box-shadow: var(--shadow);
   color: var(--text);
   display: grid;
-  gap: 3px;
+  gap: 6px;
   padding: 8px 10px;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .trainingChartTooltip span {
   color: var(--text-muted);
   font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .trainingChartTooltip strong {
   font-family: var(--font-mono), "IBM Plex Mono", monospace;
   font-size: 0.78rem;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .trainingChartRange {
@@ -220,4 +226,3 @@
 .trainingChartRange.isDragging .trainingChartBrush {
   cursor: grabbing;
 }
-

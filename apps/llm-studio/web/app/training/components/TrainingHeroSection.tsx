@@ -18,6 +18,7 @@ import {
 } from "../lib/display";
 import { asString } from "../lib/object";
 import type { AssetPickerKind, WorkflowTarget } from "../types";
+import { FieldLabelText, HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 type TrainingHeroSectionProps = {
   selectedProject: ProjectDetail | null;
@@ -76,22 +77,26 @@ export function TrainingHeroSection({
           </p>
         </div>
         <div className="actionCluster trainingHeroActions">
-          <button
-            type="button"
-            className="buttonPrimary"
-            onClick={onStartTraining}
-            disabled={!startReady}
-          >
-            <FiPlay /> {launching ? "Starting..." : "Start training"}
-          </button>
-          <button
-            type="button"
-            className="buttonDanger"
-            onClick={onStopTraining}
-            disabled={!activeRunCanBeStopped || stoppingActiveRun}
-          >
-            <FiXCircle /> {stoppingActiveRun ? "Stopping..." : "Stop training"}
-          </button>
+          <HelpTooltip label="Start training explanation" align="right" width="wide" content="Starts a training job only after a model config, completed tokenizer, valid dataset, and passing preflight are available. The job uses the current settings shown on this page.">
+            <button
+              type="button"
+              className="buttonPrimary"
+              onClick={onStartTraining}
+              disabled={!startReady}
+            >
+              <FiPlay /> {launching ? "Starting..." : "Start training"}
+            </button>
+          </HelpTooltip>
+          <HelpTooltip label="Stop training explanation" align="right" content="Requests cancellation for the active run when the backend says it can be stopped. Completed, failed, or already stopping runs cannot be stopped again.">
+            <button
+              type="button"
+              className="buttonDanger"
+              onClick={onStopTraining}
+              disabled={!activeRunCanBeStopped || stoppingActiveRun}
+            >
+              <FiXCircle /> {stoppingActiveRun ? "Stopping..." : "Stop training"}
+            </button>
+          </HelpTooltip>
           <Link className="buttonGhost" href="/">
             <FiLayers /> Open workspace
           </Link>
@@ -143,7 +148,16 @@ export function TrainingHeroSection({
                 : ""
             }`}
           >
-            <span className="trainingAssetLabel">Model config</span>
+            <span className="trainingAssetLabel">
+              Model config
+              <InfoTooltip label="Model config explanation" align="left" width="wide">
+                <strong>Model config</strong>
+                <p>
+                  The architecture JSON from Model Studio. Training uses its vocabulary size,
+                  context length, embedding size, blocks, and component layout.
+                </p>
+              </InfoTooltip>
+            </span>
             <span className="trainingAssetName">
               {selectedProject?.name ?? (selectedProjectId ? selectedProjectId : "No model selected")}
             </span>
@@ -158,15 +172,17 @@ export function TrainingHeroSection({
               </span>
             ) : null}
             <div className="trainingAssetActions">
-              <button
-                type="button"
-                className="buttonGhost buttonSmall"
-                aria-haspopup="dialog"
-                aria-expanded={pickerKind === "project"}
-                onClick={() => onOpenPicker("project")}
-              >
-                <FiSearch /> {selectedProject ? "Change model" : "Choose model"}
-              </button>
+              <HelpTooltip label="Choose model explanation" content="Opens saved Model Studio configs from the workspace. Pick the architecture you want this training run to update." align="right">
+                <button
+                  type="button"
+                  className="buttonGhost buttonSmall"
+                  aria-haspopup="dialog"
+                  aria-expanded={pickerKind === "project"}
+                  onClick={() => onOpenPicker("project")}
+                >
+                  <FiSearch /> {selectedProject ? "Change model" : "Choose model"}
+                </button>
+              </HelpTooltip>
             </div>
           </div>
           <div
@@ -178,7 +194,16 @@ export function TrainingHeroSection({
                 : ""
             }`}
           >
-            <span className="trainingAssetLabel">Tokenizer</span>
+            <span className="trainingAssetLabel">
+              Tokenizer
+              <InfoTooltip label="Tokenizer explanation" align="left" width="wide">
+                <strong>Tokenizer</strong>
+                <p>
+                  Converts text to token IDs for training. It must be completed and its vocabulary
+                  size must match the selected model config.
+                </p>
+              </InfoTooltip>
+            </span>
             <span className="trainingAssetName">
               {selectedTokenizer
                 ? asString(selectedTokenizer.tokenizer_config.name, selectedTokenizer.id)
@@ -197,22 +222,26 @@ export function TrainingHeroSection({
               </span>
             ) : null}
             <div className="trainingAssetActions">
-              <button
-                type="button"
-                className="buttonGhost buttonSmall"
-                aria-haspopup="dialog"
-                aria-expanded={pickerKind === "tokenizer"}
-                onClick={() => onOpenPicker("tokenizer")}
-              >
-                <FiSearch /> {selectedTokenizer ? "Change tokenizer" : "Choose tokenizer"}
-              </button>
+              <HelpTooltip label="Choose tokenizer explanation" content="Opens completed tokenizer jobs from the workspace. Training can only start with a tokenizer artifact that exists and passes compatibility checks." align="right">
+                <button
+                  type="button"
+                  className="buttonGhost buttonSmall"
+                  aria-haspopup="dialog"
+                  aria-expanded={pickerKind === "tokenizer"}
+                  onClick={() => onOpenPicker("tokenizer")}
+                >
+                  <FiSearch /> {selectedTokenizer ? "Change tokenizer" : "Choose tokenizer"}
+                </button>
+              </HelpTooltip>
             </div>
           </div>
         </div>
 
         <div className="fieldGrid compact">
           <label className="fieldLabel trainingRunNameField">
-            <span>Run name</span>
+            <FieldLabelText tooltipLabel="Run name explanation" tooltip="Optional human-readable name saved with the run. If left blank, the app generates a default name from the selected model and tokenizer.">
+              Run name
+            </FieldLabelText>
             <input
               value={runName}
               onChange={(event) => onRunNameChange(event.target.value)}

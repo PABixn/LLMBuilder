@@ -13,6 +13,7 @@ import type {
   RunPodCloudType,
 } from "../lib/runPod";
 import { RunPodSettingsPanel } from "./RunPodSettingsPanel";
+import { HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
 
 interface ExecutionTargetPanelProps {
   executionKind: TrainingExecutionTarget["kind"];
@@ -65,29 +66,42 @@ export function ExecutionTargetPanel({
 }: ExecutionTargetPanelProps) {
   return (
     <details className="settingsPanel" open>
-      <summary>Execution target</summary>
+      <summary>
+        <span>Execution target</span>
+        <InfoTooltip label="Execution target explanation" align="right" width="wide">
+          <strong>Execution target</strong>
+          <p>
+            Choose where the training process runs. Local uses this machine; RunPod
+            provisions a remote GPU pod and syncs the final artifacts back.
+          </p>
+        </InfoTooltip>
+      </summary>
       <div className="settingsGrid">
         <div className="settingsGroup">
           <div className="settingsGroupHeader">
             <h3>Training location</h3>
           </div>
           <div className="modeSwitch">
-            <button
-              type="button"
-              className={`modeSwitchButton ${executionKind === "local" ? "modeSwitchButton-active" : ""}`}
-              onClick={() => onExecutionKindChange("local")}
-            >
-              <FiCpu aria-hidden="true" />
-              Local machine
-            </button>
-            <button
-              type="button"
-              className={`modeSwitchButton ${executionKind === "runpod_pod" ? "modeSwitchButton-active" : ""}`}
-              onClick={() => onExecutionKindChange("runpod_pod")}
-            >
-              <FiServer aria-hidden="true" />
-              RunPod
-            </button>
+            <HelpTooltip label="Local machine training" content="Runs the trainer on this computer using the local Python environment and available device. Use it for small tests or when you already have enough local GPU/CPU memory.">
+              <button
+                type="button"
+                className={`modeSwitchButton ${executionKind === "local" ? "modeSwitchButton-active" : ""}`}
+                onClick={() => onExecutionKindChange("local")}
+              >
+                <FiCpu aria-hidden="true" />
+                Local machine
+              </button>
+            </HelpTooltip>
+            <HelpTooltip label="RunPod training" content="Creates a remote RunPod GPU pod, uploads the run bundle, monitors the agent, downloads artifacts, then applies the cleanup policy you choose below.">
+              <button
+                type="button"
+                className={`modeSwitchButton ${executionKind === "runpod_pod" ? "modeSwitchButton-active" : ""}`}
+                onClick={() => onExecutionKindChange("runpod_pod")}
+              >
+                <FiServer aria-hidden="true" />
+                RunPod
+              </button>
+            </HelpTooltip>
           </div>
 
           {executionKind === "runpod_pod" ? (
