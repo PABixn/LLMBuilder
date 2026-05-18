@@ -29,10 +29,10 @@ export function JsonWorkspacePanels({
       <section className="panelCard previewPanel">
         <div className="panelHead">
           <div>
-            <p className="panelEyebrow">JSON Preview</p>
+            <p className="panelEyebrow">JSON</p>
             <h2>JSON preview</h2>
             <p className="panelCopy">
-              Live JSON generated from the current visual config.
+              JSON for the current config.
             </p>
           </div>
           <div className="actionCluster">
@@ -64,10 +64,10 @@ export function JsonWorkspacePanels({
       <section className="panelCard importPanel">
         <div className="panelHead">
           <div>
-            <p className="panelEyebrow">Import / Workflow</p>
-            <h2>JSON Import</h2>
+            <p className="panelEyebrow">Import</p>
+            <h2>Import JSON</h2>
             <p className="panelCopy">
-              Paste or load a `/model` JSON document to rebuild the visual editor.
+              Paste or load model JSON.
             </p>
           </div>
         </div>
@@ -86,8 +86,8 @@ export function JsonWorkspacePanels({
             type="button"
             className="buttonGhost iconOnly"
             onClick={() => applyImportText(importDraft)}
-            aria-label="Apply Import Text"
-            title="Apply Import Text"
+            aria-label="Apply import"
+            title="Apply import"
           >
             <FiRefreshCw />
           </button>
@@ -95,20 +95,20 @@ export function JsonWorkspacePanels({
             type="button"
             className="buttonGhost iconOnly"
             onClick={() => setImportDraft(JSON.stringify(modelConfig, null, 2))}
-            aria-label="Load Current Config into Import Editor"
-            title="Load Current Config into Import Editor"
+            aria-label="Use current config"
+            title="Use current config"
           >
             <FiCopy />
           </button>
         </div>
 
         <label className="fieldLabel" htmlFor="import-draft">
-          <span>JSON Import</span>
+          <span>Import JSON</span>
           <textarea
             id="import-draft"
             value={importDraft}
             onChange={(event) => setImportDraft(event.target.value)}
-            placeholder="Paste /model JSON here..."
+            placeholder="Paste model JSON..."
             rows={16}
           />
         </label>

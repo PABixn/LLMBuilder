@@ -11,7 +11,7 @@ export function GeneratedConfigPanel({
 }: GeneratedConfigPanelProps) {
   return (
     <details className="settingsPanel">
-      <summary>Generated configuration JSON</summary>
+      <summary>Generated JSON</summary>
       <div className="settingsGrid">
         <div className="trainingJsonGrid">
           <pre className="trainingCodeBlock">{prettyJson(trainingConfig)}</pre>

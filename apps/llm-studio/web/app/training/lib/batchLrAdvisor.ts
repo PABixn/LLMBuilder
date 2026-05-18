@@ -42,21 +42,21 @@ function describeBatchProfileShift(
   isRecommended: boolean
 ): string {
   if (isRecommended) {
-    return "This is the default step size because it best balances stability, accumulation depth, and throughput for the current run.";
+    return "Default step size for this run.";
   }
   if (selectedBatchSize < baselineBatchSize) {
     return `This profile keeps the optimizer step ${formatRelativeDeltaPercent(
       selectedBatchSize,
       baselineBatchSize
-    )} smaller than ${baselineLabel} so each update is less aggressive and easier to stabilize.`;
+    )} smaller than ${baselineLabel}.`;
   }
   if (selectedBatchSize > baselineBatchSize) {
     return `This profile makes the optimizer step ${formatRelativeDeltaPercent(
       selectedBatchSize,
       baselineBatchSize
-    )} larger than ${baselineLabel} to push more tokens through each optimizer update.`;
+    )} larger than ${baselineLabel}.`;
   }
-  return `This profile keeps the same optimizer-step size as ${baselineLabel}; the main difference is how aggressively it uses that step.`;
+  return `Same step size as ${baselineLabel}.`;
 }
 
 function describeLearningRateProfileShift(
@@ -67,7 +67,7 @@ function describeLearningRateProfileShift(
   peakLearningRate: number | null
 ): string {
   if (isRecommended) {
-    return "This is the default base LR because it is the best fit for the current model scale, data regime, and scheduler.";
+    return "Default base LR for this run.";
   }
   if (selectedLearningRate < baselineLearningRate) {
     return `This profile lowers the base LR by ${formatRelativeDeltaPercent(
@@ -85,7 +85,7 @@ function describeLearningRateProfileShift(
       peakLearningRate ? `, letting the schedule top out near ${formatLearningRate(peakLearningRate)}` : ""
     }.`;
   }
-  return `This profile lands on the same canonical LR as ${baselineLabel}, so the main change comes from batch layout rather than LR.`;
+  return `Same base LR as ${baselineLabel}.`;
 }
 
 function describeStepProfileShift(
@@ -95,7 +95,7 @@ function describeStepProfileShift(
   isRecommended: boolean
 ): string {
   if (isRecommended) {
-    return "This max-step cap matches the advisor's recommended run-token budget for the selected optimizer-step size.";
+    return "Matches the recommended token budget.";
   }
   if (selectedMaxSteps < baselineMaxSteps) {
     return `This profile shortens the run by ${formatRelativeDeltaPercent(
@@ -109,7 +109,7 @@ function describeStepProfileShift(
       baselineMaxSteps
     )} versus ${baselineLabel} so the smaller optimizer step still reaches a comparable token budget.`;
   }
-  return `This profile keeps the same maximum training-step cap as ${baselineLabel}.`;
+  return `Same max steps as ${baselineLabel}.`;
 }
 
 function describeBatchHardwareContext(
@@ -118,26 +118,26 @@ function describeBatchHardwareContext(
   microBatchSize: number,
   gradAccumSteps: number
 ): string {
-  return `Preflight fits up to ${formatInteger(
+  return `Preflight fits ${formatInteger(
     maxMemoryMicroBatchSize
-  )} sequences per micro-step on ${deviceType}; this profile uses micro batch ${formatInteger(
+  )} sequences per micro-step on ${deviceType}. Uses micro batch ${formatInteger(
     microBatchSize
   )} with ${formatInteger(gradAccumSteps)} accumulation step${gradAccumSteps === 1 ? "" : "s"}.`;
 }
 
 function describeBatchDatasetContext(datasetScale: string): string {
   if (datasetScale === "streaming") {
-    return "Streaming-scale data lets the advisor lean more on hardware fit and model scale than on corpus-size caps.";
+    return "Streaming data favors hardware and model fit.";
   }
   if (datasetScale === "mixed") {
-    return "Mixed local and streaming data keeps batch sizing more conservative so the local portion is not washed out in each update.";
+    return "Mixed data keeps batch size conservative.";
   }
   if (datasetScale === "tiny_local" || datasetScale === "small_local") {
-    return "A small local corpus favors smaller optimizer steps so repeated passes over the same data do not get too sharp.";
+    return "Small local data favors smaller steps.";
   }
   return `${formatDatasetScaleLabel(
     datasetScale
-  )} data still benefits from measured step sizing so each update covers a useful slice of the corpus without overreaching.`;
+  )} data benefits from measured step size.`;
 }
 
 function describeLearningRateScheduleContext(
@@ -149,22 +149,22 @@ function describeLearningRateScheduleContext(
       peakLearningRate
     )}.`;
   }
-  return "The current scheduler keeps the effective LR close to the base value, so the chosen base LR needs to be safe on its own.";
+  return "The schedule stays close to the base LR.";
 }
 
 function describeLearningRateDatasetContext(datasetScale: string): string {
   if (datasetScale === "streaming") {
-    return "With streaming-scale data, LR can stay anchored more to model scale and schedule shape than to corpus-size limits.";
+    return "Streaming data can use LR based on model scale.";
   }
   if (datasetScale === "mixed") {
-    return "A mixed data regime usually benefits from a moderate LR so the local data is not overfit while streaming data still moves quickly.";
+    return "Mixed data usually works best with a moderate LR.";
   }
   if (datasetScale === "tiny_local" || datasetScale === "small_local") {
-    return "Smaller local corpora generally favor a lower LR so repeated exposure to the same samples stays stable.";
+    return "Small local data usually favors a lower LR.";
   }
   return `${formatDatasetScaleLabel(
     datasetScale
-  )} data supports a measured LR that still respects repeated passes over the local corpus.`;
+  )} data supports a measured LR.`;
 }
 
 function describeStepBudgetContext(
@@ -175,15 +175,15 @@ function describeStepBudgetContext(
   if (recommendedRunTokenBudget < parameterScaledRunTokenTarget) {
     return `This profile lands near ${formatInteger(
       estimatedTokensPerRecommendedRun
-    )} recommended run tokens. The unconstrained parameter-scaled anchor is ${formatInteger(
+    )} recommended run tokens. Full model-scale target is ${formatInteger(
       parameterScaledRunTokenTarget
-    )} tokens, but the active data regime reduces the practical recommendation to ${formatInteger(
+    )} tokens, reduced to ${formatInteger(
       recommendedRunTokenBudget
     )}.`;
   }
-  return `This profile lands near ${formatInteger(
+  return `Lands near ${formatInteger(
     estimatedTokensPerRecommendedRun
-  )} recommended run tokens, matching the parameter-scaled advisor budget of ${formatInteger(
+  )} recommended run tokens, matching the ${formatInteger(
     parameterScaledRunTokenTarget
   )} tokens.`;
 }
@@ -198,9 +198,9 @@ function describeStepDatasetContext(
     )} estimated passes over the current local corpus.`;
   }
   if (datasetScale === "mixed") {
-    return "Mixed local and streaming data keeps the run cap more measured than an open-ended streaming-only launch.";
+    return "Mixed data keeps the run cap measured.";
   }
-  return "Streaming-scale data lets the advisor spend the run budget on model-scale optimization instead of strict corpus reuse limits.";
+  return "Streaming data can use a larger run budget.";
 }
 
 export function buildBatchLrAdvisorViewModel(

@@ -69,10 +69,9 @@ export const TrainingPlanPanel = forwardRef<HTMLDetailsElement, TrainingPlanPane
             }`}
           >
             <div className="settingsGroupHeader">
-              <h3>Core launch knobs</h3>
+              <h3>Core settings</h3>
               <p className="settingsGroupHint">
-                Tune the values you are most likely to touch between runs before opening the
-                deeper runtime controls.
+                Set the main values for this run.
               </p>
             </div>
             <div className="fieldGrid trainingSettingsCompactGrid">
@@ -84,14 +83,14 @@ export const TrainingPlanPanel = forwardRef<HTMLDetailsElement, TrainingPlanPane
                 />
               </label>
               <label className="fieldLabel">
-                <span>Maximum training steps</span>
+                <span>Max training steps</span>
                 <ConfigNumberInput
                   value={asNumber(trainingConfig.max_steps, 0)}
                   onCommit={handleMaxStepsChange}
                 />
               </label>
               <label className="fieldLabel">
-                <span>Total batch size (tokens)</span>
+                <span>Total batch tokens</span>
                 <ConfigNumberInput
                   value={asNumber(trainingConfig.total_batch_size, 0)}
                   onCommit={(value) => handleTrainingField(["total_batch_size"], value)}

@@ -41,6 +41,20 @@ export function describeJobState(state: TrainingJob["state"]): string {
   }
 }
 
+export function formatJobStage(stage: string): string {
+  const normalized = stage.trim();
+  if (!normalized) {
+    return "Waiting";
+  }
+  return normalized
+    .split("_")
+    .map((part) => {
+      const lower = part.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
+}
+
 export function jobBadgeTone(state: TrainingJob["state"]): JobBadgeTone {
   switch (state) {
     case "queued":

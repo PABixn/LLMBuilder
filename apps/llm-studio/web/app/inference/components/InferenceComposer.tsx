@@ -47,23 +47,22 @@ export function InferenceComposer({
     >
       <div className="panelHead">
         <div>
-          <h2>Autocompletion</h2>
+          <h2>Prompt</h2>
           <p className="panelCopy">
-            The backend encodes the prefix, loads the selected checkpoint, and calls
-            `ConfigurableGPT.generate`.
+            Enter text for the model to continue.
           </p>
         </div>
         <button type="submit" className="buttonPrimary" disabled={!canGenerate}>
-          <FiPlay /> {generating ? "Generating" : "Generate"}
+          <FiPlay /> {generating ? "Generating..." : "Generate"}
         </button>
       </div>
 
       <label className="fieldLabel fullWidthField">
-        <span>Prefix text</span>
+        <span>Prompt text</span>
         <textarea
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
-          placeholder="Start a sentence and let the model continue it."
+          placeholder="Start a sentence..."
         />
       </label>
 
@@ -84,7 +83,7 @@ export function InferenceComposer({
           />
         </label>
         <label className="fieldLabel">
-          <span>Top K</span>
+          <span>Top K choices</span>
           <ConfigNumberInput min={1} max={50000} value={topK} onCommit={onTopKChange} />
         </label>
         <label className="fieldLabel">

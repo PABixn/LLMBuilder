@@ -51,7 +51,7 @@ export function formatCompactCount(value: number): string {
 
 export function formatBytes(value: number): string {
   if (!Number.isFinite(value) || value < 0) {
-    return "n/a";
+    return "N/A";
   }
   const units = ["B", "KB", "MB", "GB", "TB"];
   let amount = value;

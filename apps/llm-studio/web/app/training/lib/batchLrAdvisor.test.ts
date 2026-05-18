@@ -108,11 +108,11 @@ test("batch LR advisor falls back to the recommended option", () => {
   assert.equal(viewModel.selectedRecommendationOption?.key, "balanced");
   assert.equal(viewModel.selectedRecommendationIsRecommended, true);
   assert.equal(viewModel.recommendationConfidenceTone, "tone-good");
-  assert.match(viewModel.selectedBatchTooltipSummary, /default step size/);
-  assert.match(viewModel.selectedStepTooltipSummary, /run-token budget/);
+  assert.match(viewModel.selectedBatchTooltipSummary, /Default step size/);
+  assert.match(viewModel.selectedStepTooltipSummary, /recommended token budget/);
   assert.match(
     viewModel.selectedStepTooltipItems[0]?.detail ?? "",
-    /unconstrained parameter-scaled anchor/
+    /Full model-scale target/
   );
   assert.deepEqual(
     viewModel.highlightedRecommendationFactors.map((factor) => factor.code),

@@ -27,35 +27,35 @@ export function BaseModelPanel({
   createNewProject,
 }: BaseModelPanelProps) {
   const normalizedProjectName = projectName.trim();
-  const actionButtonLabel = isProjectSaving ? "Working..." : "New config";
+  const actionButtonLabel = isProjectSaving ? "Saving..." : "New config";
   const actionButtonDisabled = isProjectLoading || isProjectSaving;
   const projectStatusCopy = isProjectLoading
-    ? "Loading saved model config..."
+    ? "Loading config..."
     : isProjectSaving
       ? currentProjectId
-        ? "Auto-saving changes..."
-        : "Creating saved model config..."
+        ? "Saving changes..."
+        : "Creating config..."
       : currentProjectId
-        ? `Changes auto-save to saved config ${currentProjectId.slice(0, 8)}. Click New config to create another one.`
+        ? `Changes save automatically to ${currentProjectId.slice(0, 8)}.`
         : normalizedProjectName === ""
-          ? "Enter a config name to create a saved model config. Nothing is saved to the workspace while the name is empty."
-          : "A new saved model config will be created automatically.";
+          ? "Enter a name to save this config."
+          : "This config will save automatically.";
 
   return (
     <section id="base-model" className="panelCard">
       <div className="panelHead">
         <div>
-          <p className="panelEyebrow">Base Model</p>
+          <p className="panelEyebrow">Base model</p>
           <h2>Core config</h2>
           <p className="panelCopy">
-            Shared dimensions used by the builder and validation checks.
+            Set the main model dimensions.
           </p>
         </div>
       </div>
       <div className="fieldGrid">
         <div className="fieldInlineRow coreConfigProjectRow">
           <label className="fieldLabel inlineField" htmlFor="model_project_name">
-            <span>Config Name</span>
+            <span>Config name</span>
             <input
               id="model_project_name"
               type="text"
@@ -81,7 +81,7 @@ export function BaseModelPanel({
           {projectStatusCopy}
         </p>
         <label className="fieldLabel" htmlFor="context_length">
-          <span>Context Length</span>
+          <span>Context length</span>
           <input
             id="context_length"
             type="number"
@@ -97,7 +97,7 @@ export function BaseModelPanel({
           />
         </label>
         <label className="fieldLabel" htmlFor="vocab_size">
-          <span>Vocab Size</span>
+          <span>Vocab size</span>
           <input
             id="vocab_size"
             type="number"
@@ -113,7 +113,7 @@ export function BaseModelPanel({
           />
         </label>
         <label className="fieldLabel" htmlFor="n_embd">
-          <span>Embedding Dimension</span>
+          <span>Embedding size</span>
           <input
             id="n_embd"
             type="number"
@@ -134,7 +134,7 @@ export function BaseModelPanel({
               setDocumentState((current) => ({ ...current, weight_tying: event.target.checked }))
             }
           />
-          <span>Weight Tying</span>
+          <span>Weight tying</span>
         </label>
       </div>
     </section>

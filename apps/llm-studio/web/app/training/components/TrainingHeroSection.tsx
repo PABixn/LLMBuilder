@@ -70,10 +70,9 @@ export function TrainingHeroSection({
     <section className="panelCard heroCard trainingHero">
       <div className="panelHead heroHead">
         <div>
-          <h1>Launch training with asset pairing, preflight, and live telemetry.</h1>
+          <h1>Train a model.</h1>
           <p className="panelCopy">
-            Pair a saved model config with a completed tokenizer, validate the full runtime before launch,
-            and monitor loss, learning rate, throughput, samples, checkpoints, and logs from one workspace.
+            Choose a model and tokenizer, validate the run, then track progress.
           </p>
         </div>
         <div className="actionCluster trainingHeroActions">
@@ -83,7 +82,7 @@ export function TrainingHeroSection({
             onClick={onStartTraining}
             disabled={!startReady}
           >
-            <FiPlay /> {launching ? "Launching…" : "Start Training"}
+            <FiPlay /> {launching ? "Starting..." : "Start training"}
           </button>
           <button
             type="button"
@@ -91,14 +90,14 @@ export function TrainingHeroSection({
             onClick={onStopTraining}
             disabled={!activeRunCanBeStopped || stoppingActiveRun}
           >
-            <FiXCircle /> {stoppingActiveRun ? "Stopping..." : "Stop Training"}
+            <FiXCircle /> {stoppingActiveRun ? "Stopping..." : "Stop training"}
           </button>
           <Link className="buttonGhost" href="/">
-            <FiLayers /> Open Workspace Assets
+            <FiLayers /> Open workspace
           </Link>
           {activeRunId ? (
             <a className="buttonGhost" href={trainingArtifactDownloadUrl(activeRunId)}>
-              <FiDownload /> Download Run Bundle
+              <FiDownload /> Download bundle
             </a>
           ) : null}
         </div>
@@ -113,7 +112,7 @@ export function TrainingHeroSection({
             {selectedTokenizer?.status === "completed" ? "Tokenizer ready" : "Tokenizer needed"}
           </span>
           <span className={`pillBadge ${preflightValid ? "tone-good" : preflightLoading ? "tone-neutral" : "tone-warn"}`}>
-            {preflightLoading ? "Running preflight" : preflightValid ? "Preflight passing" : "Preflight blocked"}
+            {preflightLoading ? "Checking run" : preflightValid ? "Run is valid" : "Run blocked"}
           </span>
         </div>
         <div className="heroMetaLine">
@@ -129,7 +128,7 @@ export function TrainingHeroSection({
           <span className="heroMetaSeparator" aria-hidden>
             •
           </span>
-          <span>{activeRun ? `Tracking ${activeRun.name}` : "Ready to stage a new run"}</span>
+          <span>{activeRun ? `Tracking ${activeRun.name}` : "Ready for a new run"}</span>
         </div>
       </div>
 
@@ -144,18 +143,18 @@ export function TrainingHeroSection({
                 : ""
             }`}
           >
-            <span className="trainingAssetLabel">Model Config</span>
+            <span className="trainingAssetLabel">Model config</span>
             <span className="trainingAssetName">
               {selectedProject?.name ?? (selectedProjectId ? selectedProjectId : "No model selected")}
             </span>
             <span className="trainingAssetMeta">
               {selectedProject
                 ? formatModelConfigMeta(selectedProject.model_config)
-                : "Choose a saved model config from Home or pass ?project=..."}
+                : "Choose a saved model config."}
             </span>
             {selectedProject ? (
               <span className="trainingAssetMeta">
-                {selectedProject.artifact_file || "Saved model config artifact"}
+                {selectedProject.artifact_file || "Saved model config"}
               </span>
             ) : null}
             <div className="trainingAssetActions">
@@ -166,7 +165,7 @@ export function TrainingHeroSection({
                 aria-expanded={pickerKind === "project"}
                 onClick={() => onOpenPicker("project")}
               >
-                <FiSearch /> {selectedProject ? "Change model config" : "Choose model config"}
+                <FiSearch /> {selectedProject ? "Change model" : "Choose model"}
               </button>
             </div>
           </div>
@@ -179,7 +178,7 @@ export function TrainingHeroSection({
                 : ""
             }`}
           >
-            <span className="trainingAssetLabel">Tokenizer Artifact</span>
+            <span className="trainingAssetLabel">Tokenizer</span>
             <span className="trainingAssetName">
               {selectedTokenizer
                 ? asString(selectedTokenizer.tokenizer_config.name, selectedTokenizer.id)
@@ -188,13 +187,13 @@ export function TrainingHeroSection({
             <span className="trainingAssetMeta">
               {selectedTokenizer
                 ? formatTokenizerMeta(selectedTokenizer)
-                : "Choose a completed tokenizer artifact from Home or pass ?tokenizerJob=..."}
+                : "Choose a completed tokenizer."}
             </span>
             {selectedTokenizer ? (
               <span className="trainingAssetMeta">
                 {selectedTokenizer.artifact_file ??
                   selectedTokenizer.artifact_path ??
-                  "Tokenizer artifact path unavailable"}
+                  "Tokenizer path unavailable"}
               </span>
             ) : null}
             <div className="trainingAssetActions">
@@ -217,7 +216,7 @@ export function TrainingHeroSection({
             <input
               value={runName}
               onChange={(event) => onRunNameChange(event.target.value)}
-              placeholder="optional training run name"
+              placeholder="Optional run name"
             />
           </label>
         </div>

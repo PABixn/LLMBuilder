@@ -71,7 +71,7 @@ export function InferencePageView({ controller }: InferencePageViewProps) {
         onToggleTheme={() => setTheme((previous) => (previous === "dark" ? "white" : "dark"))}
       />
 
-      {error ? <div className="inlineNotice tone-error">Inference issue: {error}</div> : null}
+      {error ? <div className="inlineNotice tone-error">Inference problem: {error}</div> : null}
 
       <section className="inferenceLayout">
         <TrainingArtifactPanel

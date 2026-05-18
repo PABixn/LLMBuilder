@@ -65,7 +65,7 @@ export function InferenceCheckpointPickerDialog({
           <div>
             <h2 id="inference-checkpoint-picker-title">Choose checkpoint</h2>
             <p className="panelCopy">
-              Use the latest checkpoint automatically, or pin inference to a specific saved step from this run.
+              Use the latest checkpoint or choose a saved step.
             </p>
           </div>
           <button
@@ -102,12 +102,12 @@ export function InferenceCheckpointPickerDialog({
 
           {!checkpointsLoading && !checkpointError && checkpoints.length === 0 ? (
             <div className="trainingAssetPickerEmpty">
-              <h3>No checkpoints found for this run.</h3>
+              <h3>No checkpoints found</h3>
               <p className="panelCopy">
-                Select a completed training run that saved checkpoint files during training.
+                Choose a run that saved checkpoints.
               </p>
               <Link className="buttonGhost" href="/training">
-                <FiActivity /> Open Training
+                <FiActivity /> Open training
               </Link>
             </div>
           ) : null}
@@ -135,11 +135,11 @@ export function InferenceCheckpointPickerDialog({
                     </span>
                   </div>
                   <div className="trainingAssetPickerOptionMeta">
-                    Automatically resolves to the highest saved step when generation starts.
+                    Uses the newest saved step when you generate.
                   </div>
                   {latestCheckpoint ? (
                     <div className="trainingAssetPickerOptionMeta">
-                      Current latest: {formatCheckpointName(latestCheckpoint)} |{" "}
+                      Latest now: {formatCheckpointName(latestCheckpoint)} |{" "}
                       {formatCheckpointMeta(latestCheckpoint)}
                     </div>
                   ) : null}
@@ -148,9 +148,9 @@ export function InferenceCheckpointPickerDialog({
 
               {!showLatestCheckpointOption && visibleCheckpointOptions.length === 0 ? (
                 <div className="trainingAssetPickerEmpty">
-                  <h3>No matching checkpoints.</h3>
+                  <h3>No matching checkpoints</h3>
                   <p className="panelCopy">
-                    Clear the search to view every saved checkpoint for this run.
+                    Clear search to see all checkpoints.
                   </p>
                   <button type="button" className="buttonGhost" onClick={onClearSearch}>
                     <FiLayers /> Clear search

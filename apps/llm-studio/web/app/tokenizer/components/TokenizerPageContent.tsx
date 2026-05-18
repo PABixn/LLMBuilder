@@ -60,6 +60,7 @@ import {
   describeJobState,
   evaluationSourceLabel,
   formatDate,
+  formatJobStage,
   formatPercent,
   jobBadgeTone,
 } from "../lib/display";
@@ -211,9 +212,9 @@ export function TokenizerPageContent() {
           setTrainingForm(trainingFormFromConfig(datConfig));
         }
         
-        notify("info", `Loaded tokenizer job ${job.id.slice(0, 8)}`);
+      notify("info", `Loaded job ${job.id.slice(0, 8)}`);
       } catch (err) {
-        notify("error", `Failed to load job: ${err instanceof Error ? err.message : "Unknown error"}`);
+        notify("error", `Could not load job: ${err instanceof Error ? err.message : "Unknown error"}`);
       }
     }
 
@@ -500,7 +501,7 @@ export function TokenizerPageContent() {
         return;
       }
       const message =
-        error instanceof Error ? error.message : "Failed to preview tokenizer output";
+          error instanceof Error ? error.message : "Could not preview tokens";
       setPreviewResult(null);
       setPreviewError(message);
     } finally {
@@ -548,7 +549,7 @@ export function TokenizerPageContent() {
         notify("success", `Downloaded ${fileName}`, 4500);
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Failed to download tokenizer";
+          error instanceof Error ? error.message : "Could not download tokenizer";
         notify("error", message, 6500);
       } finally {
         setIsDownloadingArtifact(false);
@@ -684,7 +685,7 @@ export function TokenizerPageContent() {
             if (!suppressTerminalToast) {
               notify(
                 "success",
-                `Training job ${job.id.slice(0, 8)} completed. Artifact is ready.`,
+              `Job ${job.id.slice(0, 8)} finished. Tokenizer is ready.`,
                 6000
               );
             }
@@ -697,7 +698,7 @@ export function TokenizerPageContent() {
           if (!jobNotificationKeysRef.current.has(failedKey)) {
             jobNotificationKeysRef.current.add(failedKey);
             if (!suppressTerminalToast) {
-              notify("error", job.error ?? "Training job failed", 7000);
+              notify("error", job.error ?? "Training failed", 7000);
             }
           }
           void refreshJobs();
@@ -705,7 +706,7 @@ export function TokenizerPageContent() {
       } catch (error) {
         if (!cancelled) {
           const message =
-            error instanceof Error ? error.message : "Failed to poll job status";
+            error instanceof Error ? error.message : "Could not update job status";
           notify("error", message, 7000);
         }
       } finally {
@@ -733,8 +734,8 @@ export function TokenizerPageContent() {
       notify(
         "info",
         selectedFiles.length === 1
-          ? `Uploading local train file: ${selectedFiles[0].name}`
-          : `Uploading ${selectedFiles.length} local train files...`,
+          ? `Uploading ${selectedFiles[0].name}...`
+          : `Uploading ${selectedFiles.length} files...`,
         2500
       );
       setIsUploadingTrainFile(true);
@@ -775,7 +776,7 @@ export function TokenizerPageContent() {
             "success",
             successfulUploads.length === 1
               ? `Added ${stripGeneratedUploadPrefix(successfulUploads[0].file_name)}.`
-              : `Added ${successfulUploads.length} local train files.`,
+              : `Added ${successfulUploads.length} files.`,
             4500
           );
         }
@@ -791,14 +792,14 @@ export function TokenizerPageContent() {
               : "Upload failed";
           notify(
             "error",
-            `Failed to upload ${failedUploads.length} file(s). ${firstFailureMessage}`,
+            `Could not upload ${failedUploads.length} file(s). ${firstFailureMessage}`,
             8000
           );
         }
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Failed to upload local train files";
-        notify("error", `Could not upload local train files. ${message}`, 7000);
+          error instanceof Error ? error.message : "Could not upload files";
+        notify("error", `Could not upload files. ${message}`, 7000);
       } finally {
         setIsUploadingTrainFile(false);
       }
@@ -875,7 +876,7 @@ export function TokenizerPageContent() {
   );
 
   const handleLoadStreamingTemplate = async () => {
-    notify("info", "Loading streaming dataset template...", 2500);
+    notify("info", "Loading template...", 2500);
     setIsLoadingTemplate(true);
 
     try {
@@ -897,25 +898,25 @@ export function TokenizerPageContent() {
         budgetUnit: templateTrainingForm.budgetUnit,
         budgetBehavior: templateTrainingForm.budgetBehavior,
       }));
-      notify("success", "Loaded streaming template datasets.");
+      notify("success", "Loaded template.");
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Failed to load streaming template";
-      notify("error", `Could not load streaming template. ${message}`, 7000);
+          : "Could not load template";
+      notify("error", `Could not load template. ${message}`, 7000);
     } finally {
       setIsLoadingTemplate(false);
     }
   };
 
   const handleTrain = async () => {
-    notify("info", "Submitting training job...", 2500);
+    notify("info", "Starting training...", 2500);
     setIsSubmitting(true);
 
     try {
       if (!hasValidationPassed) {
-        throw new Error("Automatic validation must pass before starting training");
+        throw new Error("Validate before starting training");
       }
       if (!tokenizerBuild.value) {
         throw new Error(tokenizerBuild.error ?? "Tokenizer config is invalid");
@@ -935,11 +936,11 @@ export function TokenizerPageContent() {
       locallyStartedJobIdsRef.current.add(job.id);
       setActiveJobId(job.id);
       setActiveJob(job);
-      notify("success", `Training job ${job.id.slice(0, 8)} started.`);
+      notify("success", `Training started: ${job.id.slice(0, 8)}.`);
       await refreshJobs();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to create training job";
+        error instanceof Error ? error.message : "Could not create training job";
       notify("error", `Could not start training. ${message}`, 7000);
     } finally {
       setIsSubmitting(false);
@@ -955,7 +956,7 @@ export function TokenizerPageContent() {
     localTrainKnownCharCount > 0 ? formatCharCount(localTrainKnownCharCount) : null;
   const localTrainFilesHint =
     localTrainFileCount === 0
-      ? "Add one or more local files, or switch to streaming datasets in settings."
+      ? "Add files or switch to streaming datasets."
       : datasetForm.sourceMode === "local_file"
         ? `${localTrainFileCount} file${localTrainFileCount === 1 ? "" : "s"} ready${
             localTrainKnownCharLabel ? ` (${localTrainKnownCharLabel} chars)` : ""
@@ -964,7 +965,7 @@ export function TokenizerPageContent() {
             localTrainFileCount === 1 ? "" : "s"
           } stored${
             localTrainKnownCharLabel ? ` (${localTrainKnownCharLabel} chars)` : ""
-          }. Switch dataset source to Local files to use them.`;
+          }. Switch to local files to use them.`;
   const tokenizerReady = tokenizerBuild.error === null;
   const datasetReady = datasetBuild.error === null;
   const trainingRuntimeReady = trainingRuntimeBuild.error === null;
@@ -1030,7 +1031,7 @@ export function TokenizerPageContent() {
       <section id="results" className="workspaceGrid">
         <article className="panelCard activeJobCard">
           <div className="sectionHeader">
-            <h2>Active Job and Evaluation</h2>
+            <h2>Active job</h2>
             {activeJob ? <JobBadge job={activeJob} /> : null}
           </div>
 
@@ -1047,7 +1048,7 @@ export function TokenizerPageContent() {
                 </div>
                 <div className="metaItem">
                   <span className="metaLabel">Stage</span>
-                  <span className="metaValue">{activeJob.stage}</span>
+                  <span className="metaValue">{formatJobStage(activeJob.stage)}</span>
                 </div>
                 <div className="metaItem">
                   <span className="metaLabel">Progress</span>
@@ -1086,11 +1087,11 @@ export function TokenizerPageContent() {
                 <>
                   <div className="statsGrid">
                     <div>
-                      <span>Tokens / Char</span>
+                      <span>Tokens/char</span>
                       <strong>{activeJob.stats.token_per_char.toFixed(4)}</strong>
                     </div>
                     <div>
-                      <span>Chars / Token</span>
+                      <span>Chars/token</span>
                       <strong>{activeJob.stats.chars_per_token.toFixed(4)}</strong>
                     </div>
                     <div>
@@ -1098,11 +1099,11 @@ export function TokenizerPageContent() {
                       <strong>{activeJob.stats.num_records}</strong>
                     </div>
                     <div>
-                      <span>Avg chars / record</span>
+                      <span>Avg chars/record</span>
                       <strong>{activeJob.stats.avg_chars_per_record.toFixed(2)}</strong>
                     </div>
                     <div>
-                      <span>Avg tokens / record</span>
+                      <span>Avg tokens/record</span>
                       <strong>{activeJob.stats.avg_tokens_per_record.toFixed(2)}</strong>
                     </div>
                     <div>
@@ -1120,7 +1121,7 @@ export function TokenizerPageContent() {
                   </div>
 
                   <div className="rareTokenCard">
-                    <h3>Rare Token Coverage</h3>
+                    <h3>Rare tokens</h3>
                     <div className="rareTokenTable">
                       {Object.entries(activeJob.stats.rare_tokens)
                         .sort(([left], [right]) => Number(left) - Number(right))
@@ -1146,7 +1147,7 @@ export function TokenizerPageContent() {
               {activeJob.status === "completed" && activeJob.artifact_file ? (
                 <section className="tokenizerPreview">
                   <div className="sectionHeader tokenizerPreviewHeader">
-                    <h3>Tokenizer Test Bench</h3>
+                    <h3>Token preview</h3>
                     <p className="metaLine">
                       {isPreviewing
                         ? "Tokenizing..."
@@ -1164,7 +1165,7 @@ export function TokenizerPageContent() {
                       className="previewInput"
                       value={previewText}
                       onChange={(event) => setPreviewText(event.target.value)}
-                      placeholder="Type text to preview tokenization..."
+                      placeholder="Type text to tokenize..."
                       rows={4}
                     />
                   </label>
@@ -1232,7 +1233,7 @@ export function TokenizerPageContent() {
                       </div>
                     </>
                   ) : previewText.trim() === "" ? (
-                    <p className="metaLine">Enter text above to preview tokenization.</p>
+                    <p className="metaLine">Enter text to preview tokens.</p>
                   ) : null}
                 </section>
               ) : null}
@@ -1255,13 +1256,13 @@ export function TokenizerPageContent() {
               {activeJob.error ? <p className="hint hint-error">{activeJob.error}</p> : null}
             </>
           ) : (
-            <p className="metaLine">No job selected yet.</p>
+            <p className="metaLine">No job selected.</p>
           )}
         </article>
 
         <article className="panelCard recentJobsCard">
           <div className="sectionHeader">
-            <h2>Recent Jobs</h2>
+            <h2>Recent jobs</h2>
             <button type="button" className="textButton" onClick={() => void refreshJobs()}>
               Refresh
             </button>
@@ -1289,7 +1290,7 @@ export function TokenizerPageContent() {
                       <div>
                         <strong>{jobName}</strong>
                         <p>{job.id.slice(0, 8)}</p>
-                        <p>{job.stage}</p>
+                        <p>{formatJobStage(job.stage)}</p>
                       </div>
                       <div className="jobRowMeta">
                         <JobBadge job={job} />
@@ -1319,16 +1320,15 @@ export function TokenizerPageContent() {
         <div className="panelHead">
           <div>
             <p className="panelEyebrow">Settings</p>
-            <h2>Configuration Studio</h2>
+            <h2>Settings</h2>
             <p className="panelCopy">
-              Core fields stay visible. Advanced options are collapsed so most
-              users can train and test quickly.
+              Set tokenizer, dataset, and training options.
             </p>
           </div>
         </div>
 
         <details className="settingsPanel" open ref={tokenizerAndTrainingPanelRef}>
-          <summary>Tokenizer and training budget</summary>
+          <summary>Tokenizer and budget</summary>
           <div className="settingsGrid">
             <div
               id="settings-tokenizer"
@@ -1342,7 +1342,7 @@ export function TokenizerPageContent() {
               <div className="settingsGroupHeader">
                 <h3>Tokenizer core</h3>
                 <p className="settingsGroupHint">
-                  Set tokenizer identity, model type, and vocabulary behavior.
+                  Set the tokenizer name, type, and vocabulary.
                 </p>
               </div>
 
@@ -1408,7 +1408,7 @@ export function TokenizerPageContent() {
                 </label>
 
                 <label className="fullWidthField">
-                  Special tokens (comma or new line)
+                  Special tokens
                   <textarea
                     rows={2}
                     value={tokenizerForm.specialTokens}
@@ -1471,7 +1471,7 @@ export function TokenizerPageContent() {
               ) : null}
 
               <p className={`hint ${tokenizerBuild.error ? "hint-error" : "hint-ok"}`}>
-                {tokenizerBuild.error ?? "Tokenizer config looks valid."}
+                {tokenizerBuild.error ?? "Tokenizer settings are valid."}
               </p>
             </div>
 
@@ -1487,7 +1487,7 @@ export function TokenizerPageContent() {
               <div className="settingsGroupHeader">
                 <h3>Training budget</h3>
                 <p className="settingsGroupHint">
-                  Control how much dataset text is consumed during tokenizer training.
+                  Limit how much text is used for training.
                 </p>
               </div>
               <div className="fieldGrid">
@@ -1517,8 +1517,8 @@ export function TokenizerPageContent() {
                       }))
                     }
                   >
-                    <option value="chars">chars</option>
-                    <option value="bytes">bytes</option>
+                    <option value="chars">Chars</option>
+                    <option value="bytes">Bytes</option>
                   </select>
                 </label>
 
@@ -1533,8 +1533,8 @@ export function TokenizerPageContent() {
                       }))
                     }
                   >
-                    <option value="truncate">truncate</option>
-                    <option value="stop">stop</option>
+                    <option value="truncate">Truncate</option>
+                    <option value="stop">Stop</option>
                   </select>
                 </label>
               </div>
@@ -1543,7 +1543,7 @@ export function TokenizerPageContent() {
         </details>
 
         <details className="settingsPanel" open ref={datasetPanelRef}>
-          <summary>Core dataset settings</summary>
+          <summary>Dataset settings</summary>
           <div className="settingsGrid">
             <div
               id="settings-dataset"
@@ -1592,7 +1592,7 @@ export function TokenizerPageContent() {
                     }))
                   }
                 >
-                  Streaming HF datasets
+                  Streaming datasets
                 </button>
               </div>
             </div>
@@ -1611,7 +1611,7 @@ export function TokenizerPageContent() {
                   <div className="localFileManagerHeader">
                     <div>
                       <strong>Local training files</strong>
-                      <p>Training and evaluation use this same file set.</p>
+                      <p>Training and evaluation use these files.</p>
                     </div>
                     <div className="localFileHeaderActions">
                       <div className="localFileHeaderButtons">
@@ -1646,7 +1646,7 @@ export function TokenizerPageContent() {
 
                   {localTrainFileCount === 0 ? (
                     <p className="filterEmpty">
-                      No local files added yet. Add one or more files to train.
+                      No files added yet.
                     </p>
                   ) : (
                     <ul className="localFileList">
@@ -1659,7 +1659,7 @@ export function TokenizerPageContent() {
                             </strong>
                             <div className="localFileActions">
                               <span className="localFileStat">
-                                {fileCharLabel ? `${fileCharLabel} chars` : "char count pending"}
+                                {fileCharLabel ? `${fileCharLabel} chars` : "Char count pending"}
                               </span>
                               <button
                                 type="button"
@@ -1679,14 +1679,14 @@ export function TokenizerPageContent() {
                   )}
 
                   <span className="fieldNote">
-                    Files are deduplicated by stored path.
+                    Duplicate file paths are ignored.
                   </span>
                 </div>
               </div>
             ) : (
               <div className="datasetConfigurator">
                 <label className="fullWidthField">
-                  HF access token (optional)
+                  HF token (optional)
                   <input
                     type="password"
                     value={datasetForm.hfToken}
@@ -1700,7 +1700,7 @@ export function TokenizerPageContent() {
                     autoComplete="off"
                     placeholder="hf_..."
                   />
-                  <span className="fieldNote">Required for gated/private datasets.</span>
+                  <span className="fieldNote">Needed for private datasets.</span>
                 </label>
 
                 <div className="actionRow">
@@ -1720,7 +1720,7 @@ export function TokenizerPageContent() {
                   >
                     {isLoadingTemplate
                       ? "Loading template..."
-                      : "Load streaming template"}
+                      : "Load template"}
                   </button>
                 </div>
 
@@ -1728,7 +1728,7 @@ export function TokenizerPageContent() {
                   {datasetForm.streamingDatasets.map((entry, index) => (
                     <div key={entry.id} className="datasetCard">
                       <div className="datasetCardHeader">
-                        <strong>Streaming dataset {index + 1}</strong>
+                        <strong>Dataset {index + 1}</strong>
                         <button
                           type="button"
                           className="textButton datasetRemoveButton"
@@ -1745,7 +1745,7 @@ export function TokenizerPageContent() {
 
                       <div className="fieldGrid">
                         <label>
-                          HF dataset name
+                          Dataset name
                           <input
                             value={entry.name}
                             onChange={(event) =>
@@ -1801,7 +1801,7 @@ export function TokenizerPageContent() {
                       </div>
 
                       <details className="subPanel">
-                        <summary>Advanced source options</summary>
+                        <summary>Advanced options</summary>
                         <div className="fieldGrid">
                           <label>
                             Config (optional)
@@ -1898,8 +1898,7 @@ export function TokenizerPageContent() {
                               </div>
                             )}
                             <p className="fieldNote">
-                              Values are inferred automatically. For `in`/`not in`, use
-                              a JSON array or comma-separated values.
+                              Values are detected automatically. For `in`/`not in`, use JSON or comma-separated values.
                             </p>
                           </div>
                         </div>
@@ -1911,14 +1910,14 @@ export function TokenizerPageContent() {
             )}
 
             <p className={`hint ${dataloaderBuild.error ? "hint-error" : "hint-ok"}`}>
-              {dataloaderBuild.error ?? "Dataloader config looks valid."}
+              {dataloaderBuild.error ?? "Dataset settings are valid."}
             </p>
             </div>
           </div>
         </details>
 
         <details className="settingsPanel">
-          <summary>Advanced tokenizer settings</summary>
+          <summary>Advanced tokenizer</summary>
           <div className="settingsGrid">
             <div className="fieldGrid">
               <label>
@@ -1932,9 +1931,9 @@ export function TokenizerPageContent() {
                     }))
                   }
                 >
-                  <option value="byte_level">byte_level</option>
-                  <option value="whitespace">whitespace</option>
-                  <option value="metaspace">metaspace</option>
+                  <option value="byte_level">Byte level</option>
+                  <option value="whitespace">Whitespace</option>
+                  <option value="metaspace">Metaspace</option>
                 </select>
               </label>
 
@@ -1949,9 +1948,9 @@ export function TokenizerPageContent() {
                     }))
                   }
                 >
-                  <option value="byte_level">byte_level</option>
-                  <option value="wordpiece">wordpiece</option>
-                  <option value="metaspace">metaspace</option>
+                  <option value="byte_level">Byte level</option>
+                  <option value="wordpiece">WordPiece</option>
+                  <option value="metaspace">Metaspace</option>
                 </select>
               </label>
             </div>
@@ -1959,7 +1958,7 @@ export function TokenizerPageContent() {
         </details>
 
         <details className="settingsPanel">
-          <summary>Generated config JSON</summary>
+          <summary>Generated JSON</summary>
           <div className="settingsGrid">
             <div className="jsonGrid">
               <label>
@@ -1967,7 +1966,7 @@ export function TokenizerPageContent() {
                 <pre>
                   {tokenizerBuild.value
                     ? prettyJson(tokenizerBuild.value)
-                    : "Invalid config"}
+                    : "Invalid settings"}
                 </pre>
               </label>
 
@@ -1976,7 +1975,7 @@ export function TokenizerPageContent() {
                 <pre>
                   {dataloaderBuild.value
                     ? prettyJson(dataloaderBuild.value)
-                    : "Invalid config"}
+                    : "Invalid settings"}
                 </pre>
               </label>
             </div>

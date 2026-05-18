@@ -94,21 +94,21 @@ export function WorkspaceAssetManager({
 
   const handleDelete = async (asset: WorkspaceAsset, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(`Are you sure you want to delete "${asset.name}"? This action cannot be undone.`)) {
+    if (confirm(`Delete "${asset.name}"? This cannot be undone.`)) {
       try {
         await inventory.deleteAsset(asset);
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to delete asset");
+        alert(err instanceof Error ? err.message : "Could not delete this item.");
       }
     }
   };
 
   const handleRemoveAll = async () => {
-    if (confirm("Are you sure you want to remove ALL assets from this workspace? This cannot be undone.")) {
+    if (confirm("Delete all workspace items? This cannot be undone.")) {
       try {
         await inventory.deleteAllAssets();
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to remove all assets");
+        alert(err instanceof Error ? err.message : "Could not delete all items.");
       }
     }
   };
@@ -147,7 +147,7 @@ export function WorkspaceAssetManager({
               onClick={handleRemoveAll}
               disabled={inventory.refreshing}
             >
-              <FiTrash2 /> Remove All Artifacts
+              <FiTrash2 /> Delete all
             </button>
           )}
         </div>
@@ -158,7 +158,7 @@ export function WorkspaceAssetManager({
               <FiSearch className={styles.searchIcon} />
               <input
                 type="text"
-                placeholder="Search assets..."
+                placeholder="Search workspace"
                 className={styles.searchInput}
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
@@ -172,10 +172,10 @@ export function WorkspaceAssetManager({
                   onChange={(e) => setFilterType(e.target.value as FilterType)}
                   className={styles.controlSelect}
                 >
-                  <option value="all">All Assets</option>
+                  <option value="all">All items</option>
                   <option value="model">Models</option>
                   <option value="tokenizer">Tokenizers</option>
-                  <option value="training_run">Training Runs</option>
+                  <option value="training_run">Training runs</option>
                 </select>
                 <FiChevronDown className={styles.chevronIcon} />
               </div>
@@ -236,10 +236,10 @@ export function WorkspaceAssetManager({
                           <span>
                             {asset.subtitle ??
                               (asset.type === "model"
-                                ? "Model Architecture"
+                                ? "Model config"
                                 : asset.type === "tokenizer"
-                                  ? "Tokenizer Artifact"
-                                  : "Training Run")}
+                                  ? "Tokenizer"
+                                  : "Training run")}
                           </span>
                         </div>
                       </div>
@@ -263,7 +263,7 @@ export function WorkspaceAssetManager({
                           className={`${styles.assetSelectButton} ${selectedModelId === asset.id ? styles.assetSelectButtonActive : ""}`}
                           onClick={() => onUseAsModel(asset)}
                         >
-                          {selectedModelId === asset.id ? "Model selected" : "Use as model"}
+                          {selectedModelId === asset.id ? "Selected" : "Use model"}
                         </button>
                       ) : null}
 
@@ -274,7 +274,7 @@ export function WorkspaceAssetManager({
                           onClick={() => onUseAsTokenizer(asset)}
                           disabled={asset.status !== "COMPLETED"}
                         >
-                          {selectedTokenizerId === asset.id ? "Tokenizer selected" : "Use as tokenizer"}
+                          {selectedTokenizerId === asset.id ? "Selected" : "Use tokenizer"}
                         </button>
                       ) : null}
 
@@ -283,7 +283,7 @@ export function WorkspaceAssetManager({
                           href={asset.downloadUrl}
                           download={asset.fileName ?? undefined}
                           className={styles.actionButton}
-                          title="Download Artifact"
+                          title="Download"
                         >
                           <FiDownload />
                         </a>
@@ -292,7 +292,7 @@ export function WorkspaceAssetManager({
                       <button 
                         onClick={(e) => handleDelete(asset, e)} 
                         className={`${styles.actionButton} ${styles.actionButtonDanger}`}
-                        title="Delete Asset"
+                        title="Delete"
                       >
                         <FiTrash2 />
                       </button>
@@ -302,17 +302,17 @@ export function WorkspaceAssetManager({
               ) : (
                 <div className={styles.emptyState}>
                   <FiSearch style={{ fontSize: "3.5rem", color: "var(--text-muted)", opacity: 0.2, marginBottom: "8px" }} />
-                  <h3 className={styles.emptyStateTitle}>No matches found</h3>
+                  <h3 className={styles.emptyStateTitle}>No matches</h3>
                   <p className={styles.heroSubtitle}>
-                    We couldn't find any assets matching "{searchQuery}".
+                    No items match "{searchQuery}".
                   </p>
                 </div>
               )
             ) : (
               <div className={styles.emptyState}>
-                <h3 className={styles.emptyStateTitle}>Your workspace is ready</h3>
+                <h3 className={styles.emptyStateTitle}>Your workspace is empty</h3>
                 <p className={styles.heroSubtitle}>
-                  Start building your first LLM component by choosing a path below.
+                  Create a model, tokenizer, or training run to get started.
                 </p>
                 <div className={styles.emptyStateGrid}>
                   <Link href="/studio" className={styles.emptyActionCard}>
@@ -320,9 +320,9 @@ export function WorkspaceAssetManager({
                       <FiBox />
                     </div>
                     <div className={styles.emptyActionContent}>
-                      <h4 className={styles.emptyActionTitle}>Design Model</h4>
+                      <h4 className={styles.emptyActionTitle}>Design model</h4>
                       <p className={styles.emptyActionText}>
-                        Configure architecture, layers, and hyperparameters.
+                        Set layers and model settings.
                       </p>
                     </div>
                     <FiArrowRight style={{ marginTop: "auto", fontSize: "1.2rem", opacity: 0.4 }} />
@@ -332,9 +332,9 @@ export function WorkspaceAssetManager({
                       <FiCpu />
                     </div>
                     <div className={styles.emptyActionContent}>
-                      <h4 className={styles.emptyActionTitle}>Train Tokenizer</h4>
+                      <h4 className={styles.emptyActionTitle}>Train tokenizer</h4>
                       <p className={styles.emptyActionText}>
-                        Build a custom vocabulary for your training data.
+                        Build a vocabulary from your data.
                       </p>
                     </div>
                     <FiArrowRight style={{ marginTop: "auto", fontSize: "1.2rem", opacity: 0.4 }} />
@@ -344,9 +344,9 @@ export function WorkspaceAssetManager({
                       <FiActivity />
                     </div>
                     <div className={styles.emptyActionContent}>
-                      <h4 className={styles.emptyActionTitle}>Launch Training</h4>
+                      <h4 className={styles.emptyActionTitle}>Start training</h4>
                       <p className={styles.emptyActionText}>
-                        Validate a full run and monitor live metrics, logs, and checkpoints.
+                        Run training and track progress.
                       </p>
                     </div>
                     <FiArrowRight style={{ marginTop: "auto", fontSize: "1.2rem", opacity: 0.4 }} />

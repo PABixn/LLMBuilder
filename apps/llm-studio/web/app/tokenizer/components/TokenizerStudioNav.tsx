@@ -23,10 +23,10 @@ export function TokenizerStudioNav({
           Home
         </Link>
         <Link className="studioNavLink" href="/studio">
-          LLM Studio
+          Model Studio
         </Link>
         <Link className="studioNavLink" href="/tokenizer" aria-current="page">
-          Tokenizer Studio
+          Tokenizer
         </Link>
         <Link className="studioNavLink" href="/training">
           Training
@@ -41,12 +41,12 @@ export function TokenizerStudioNav({
         onClick={onToggleTheme}
         aria-label={
           themeMode === "dark"
-            ? "Switch to white theme"
+            ? "Switch to light theme"
             : "Switch to dark theme"
         }
         title={
           themeMode === "dark"
-            ? "Switch to white theme"
+            ? "Switch to light theme"
             : "Switch to dark theme"
         }
       >

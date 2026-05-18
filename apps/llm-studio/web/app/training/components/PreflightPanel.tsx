@@ -47,12 +47,12 @@ export const PreflightPanel = forwardRef<HTMLElement, PreflightPanelProps>(
           <div>
             <h2>Preflight</h2>
             <p className="panelCopy">
-              Compatibility, scheduler math, local dataset paths, special tokens, and runtime memory are validated here.
+              Checks assets, settings, files, and memory before training.
             </p>
           </div>
           {preflight ? (
             <span className={`pillBadge ${preflight.valid ? "tone-good" : "tone-error"}`}>
-              {preflight.valid ? "Ready to launch" : `${preflight.errors.length} blocking issues`}
+              {preflight.valid ? "Ready to train" : `${preflight.errors.length} blocking issue${preflight.errors.length === 1 ? "" : "s"}`}
             </span>
           ) : null}
         </div>
@@ -101,7 +101,7 @@ export const PreflightPanel = forwardRef<HTMLElement, PreflightPanelProps>(
               </div>
               <div>
                 <div className="statusCardTitle">Device</div>
-                <div className="statusCardValue">{preflight.derived_runtime?.device_type ?? "n/a"}</div>
+                <div className="statusCardValue">{preflight.derived_runtime?.device_type ?? "N/A"}</div>
                 <div className="statusCardDetail">
                   Memory-estimated max batch size: {formatInteger((preflight.memory_estimate?.max_batch_size as number | undefined) ?? null)}
                 </div>
@@ -110,7 +110,7 @@ export const PreflightPanel = forwardRef<HTMLElement, PreflightPanelProps>(
           </div>
         ) : (
           <div className="trainingEmpty">
-            Select both assets and finish the configuration fields to run preflight.
+            Choose a model and tokenizer, then finish settings.
           </div>
         )}
 

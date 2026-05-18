@@ -27,8 +27,8 @@ export function TrainingWorkflowSection({
     <section id="workflow" className="panelCard actionDeck">
       <div className="panelHead">
         <div>
-          <p className="panelEyebrow">Top Workflow</p>
-          <h2>Steps to train the model</h2>
+          <p className="panelEyebrow">Workflow</p>
+          <h2>Training steps</h2>
         </div>
       </div>
       <div className="workflowStepGrid" role="list" aria-label="Training launch steps">
@@ -69,7 +69,7 @@ export function TrainingWorkflowSection({
                   ? "Training..."
                   : launching
                     ? "Starting..."
-                    : "Start Training"}
+                    : "Start training"}
               </button>
             )}
           </article>

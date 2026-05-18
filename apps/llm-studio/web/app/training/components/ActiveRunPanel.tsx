@@ -65,9 +65,9 @@ export function ActiveRunPanel({
     <section className="panelCard trainingActiveRunPanel">
       <div className="panelHead">
         <div>
-          <h2>Active Run</h2>
+          <h2>Active run</h2>
           <p className="panelCopy">
-            The monitor updates every {pollIntervalSeconds} seconds with summary, metrics, samples, checkpoints, and logs.
+            Updates every {pollIntervalSeconds} seconds.
           </p>
         </div>
         <div className="trainingActiveRunHeaderActions">
@@ -107,12 +107,12 @@ export function ActiveRunPanel({
               <span style={{ width: `${activeRunStepProgress.fraction * 100}%` }} />
             </div>
             <div className="trainingInlineMeta">
-              <span>Run identifier: {activeRun.id.slice(0, 8)}</span>
-              <span>Executor: {activeRun.executor_kind === "runpod_pod" ? "RunPod Pod" : "Local machine"}</span>
+              <span>Run ID: {activeRun.id.slice(0, 8)}</span>
+              <span>Runs on: {activeRun.executor_kind === "runpod_pod" ? "RunPod" : "Local machine"}</span>
               <span>Created {formatDate(activeRun.created_at)}</span>
-              <span>Started {activeRun.started_at ? formatDate(activeRun.started_at) : "waiting"}</span>
-              <span>Elapsed training time: {formatTrainingElapsed(activeRunStepProgress, activeRun.status)}</span>
-              <span>Estimated time remaining: {formatTrainingEta(activeRunStepProgress, activeRun.status)}</span>
+              <span>Started {activeRun.started_at ? formatDate(activeRun.started_at) : "Waiting"}</span>
+              <span>Elapsed: {formatTrainingElapsed(activeRunStepProgress, activeRun.status)}</span>
+              <span>ETA: {formatTrainingEta(activeRunStepProgress, activeRun.status)}</span>
             </div>
           </div>
 
@@ -125,7 +125,7 @@ export function ActiveRunPanel({
           <RunDetailsPanel activeRun={activeRun} />
         </>
       ) : (
-        <div className="trainingEmpty">No active run selected. Launch a new run or choose one from the recent runs column.</div>
+        <div className="trainingEmpty">No active run selected.</div>
       )}
     </section>
   );

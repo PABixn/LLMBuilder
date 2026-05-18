@@ -50,12 +50,12 @@ export function usePromptSettings({
         next.sampler = sampler;
         return next;
       });
-      notify("success", "Prompts reset", "Loaded the template sampling prompts.");
+      notify("success", "Prompts reset", "Loaded template prompts.");
     } catch (error) {
       notify(
         "error",
         "Prompt template unavailable",
-        error instanceof Error ? error.message : "Failed to load the template sampling prompts."
+        error instanceof Error ? error.message : "Could not load template prompts."
       );
     } finally {
       setIsResettingPrompts(false);

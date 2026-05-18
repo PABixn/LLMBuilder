@@ -42,7 +42,7 @@ export function WorkspaceHomePageView({ controller }: WorkspaceHomePageViewProps
             fontWeight: 600,
           }}
         >
-          Sync issue: {inventory.error}
+          Sync problem: {inventory.error}
         </div>
       ) : null}
 
@@ -60,8 +60,8 @@ export function WorkspaceHomePageView({ controller }: WorkspaceHomePageViewProps
 
       <WorkspaceAssetManager
         inventory={inventory}
-        title="Workspace Assets"
-        description="A unified manager for model configs, tokenizers, and model-training runs across your workspace."
+        title="Workspace"
+        description="Your models, tokenizers, and training runs."
       />
 
       {(showInitialWorkspaceLoading || inventory.lastRefreshedAt) && (

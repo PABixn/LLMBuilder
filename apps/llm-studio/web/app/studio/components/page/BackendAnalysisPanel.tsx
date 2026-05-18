@@ -114,10 +114,10 @@ export function BackendAnalysisPanel({
     <section id="model-analysis" className="panelCard analysisPanel">
       <div className="panelHead">
         <div>
-          <p className="panelEyebrow">Backend Model Analysis</p>
+          <p className="panelEyebrow">Analysis</p>
           <h2>Runtime analysis</h2>
           <p className="panelCopy">
-            Instantiates the model on the backend to verify the config and estimate runtime memory.
+            Check the config and estimate runtime memory.
           </p>
         </div>
         <div className="actionCluster">
@@ -142,13 +142,13 @@ export function BackendAnalysisPanel({
           <strong className="analysisMetaValue">{backendAnalysisPhaseLabel}</strong>
         </div>
         <div className="analysisMetaItem tone-neutral">
-          <span className="analysisMetaLabel">Last Run</span>
+          <span className="analysisMetaLabel">Last run</span>
           <strong className="analysisMetaValue">
             {formatTimeAgo(backendAnalysis.lastAnalyzedAt)}
           </strong>
         </div>
         {backendAnalysisStale ? (
-          <div className="analysisMetaFlag tone-warn">Stale vs Current Draft</div>
+          <div className="analysisMetaFlag tone-warn">Out of date</div>
         ) : null}
       </div>
 
@@ -251,16 +251,16 @@ export function BackendAnalysisPanel({
               }
             />
             <StatusCard
-              title="KV Cache / Token"
+              title="KV cache/token"
               value={formatBytes(
                 backendAnalysis.summary.estimated_kv_cache_bytes_per_token_fp16
               )}
-              detail={`${formatBytes(backendAnalysis.summary.estimated_kv_cache_bytes_for_context_fp16)} @ Context Length`}
+              detail={`${formatBytes(backendAnalysis.summary.estimated_kv_cache_bytes_for_context_fp16)} at context length`}
               tone="neutral"
               icon={<FiHardDrive />}
             />
             <StatusCard
-              title="Head Dim"
+              title="Head size"
               value={
                 backendAnalysis.summary.min_head_dim === null
                   ? "N/A"
@@ -286,12 +286,12 @@ export function BackendAnalysisPanel({
             <div className="workflowItem">
               <div className="workflowTitle">Component counts</div>
               <div className="analysisChipRow">
-                <span>{backendAnalysis.summary.block_count} Blocks</span>
-                <span>{backendAnalysis.summary.component_count} Components</span>
-                <span>{backendAnalysis.summary.attention_component_count} Attention</span>
+                <span>{backendAnalysis.summary.block_count} blocks</span>
+                <span>{backendAnalysis.summary.component_count} components</span>
+                <span>{backendAnalysis.summary.attention_component_count} attention</span>
                 <span>{backendAnalysis.summary.mlp_component_count} MLP</span>
-                <span>{backendAnalysis.summary.norm_component_count} Norm</span>
-                <span>{backendActivationTotal} Activations</span>
+                <span>{backendAnalysis.summary.norm_component_count} norm</span>
+                <span>{backendActivationTotal} activations</span>
               </div>
             </div>
 
@@ -328,7 +328,7 @@ export function BackendAnalysisPanel({
               <FiXCircle />
             </div>
             <div>
-              <div className="diagnosticTitle">Model instantiation failed</div>
+              <div className="diagnosticTitle">Could not load model</div>
               <div className="diagnosticMeta">{backendAnalysis.instantiationError}</div>
             </div>
           </div>

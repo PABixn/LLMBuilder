@@ -46,7 +46,7 @@ export function LocalFilesDatasetEditor({
         <div className="localFileManagerHeader">
           <div>
             <strong>Local training files</strong>
-            <p>Training and evaluation use this same file set.</p>
+            <p>Training and evaluation use these files.</p>
           </div>
           <div className="localFileHeaderActions">
             <div className="localFileHeaderButtons">
@@ -82,7 +82,7 @@ export function LocalFilesDatasetEditor({
 
         {localTrainFiles.length === 0 ? (
           <p className="filterEmpty">
-            No local files added yet. Add one or more files to train.
+            No files added yet.
           </p>
         ) : (
           <ul className="localFileList">
@@ -96,8 +96,8 @@ export function LocalFilesDatasetEditor({
                   <div className="localFileActions">
                     <span className="localFileStat">
                       {fileCharLabel
-                        ? `${fileCharLabel} characters`
-                        : "Character count pending"}
+                        ? `${fileCharLabel} chars`
+                        : "Char count pending"}
                     </span>
                     <button
                       type="button"
@@ -115,7 +115,7 @@ export function LocalFilesDatasetEditor({
           </ul>
         )}
 
-        <span className="fieldNote">Files are deduplicated by stored path.</span>
+        <span className="fieldNote">Duplicate file paths are ignored.</span>
       </div>
     </div>
   );

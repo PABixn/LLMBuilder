@@ -38,10 +38,10 @@ export function BuilderPanel(props: BuilderPanelProps) {
       <section id="block-builder" className="panelCard builderPanel">
         <div className="panelHead">
           <div>
-            <p className="panelEyebrow">Visual Builder</p>
+            <p className="panelEyebrow">Builder</p>
             <h2>Visual designer</h2>
             <p className="panelCopy">
-              Build depth horizontally. Use insert slots to add blocks/components/MLP steps, then drag to reorder.
+              Add blocks, components, and MLP steps. Drag to reorder.
             </p>
           </div>
           <div className="actionCluster">
@@ -98,7 +98,7 @@ export function BuilderPanel(props: BuilderPanelProps) {
         <div className="builderCanvasToolbar">
           <div className="builderCanvasHint">
             <span className="builderCanvasHintDot" aria-hidden />
-            Two-axis canvas: blocks are columns, components stay nested inside each block.
+            Blocks are columns. Components stay inside each block.
           </div>
           <div className="builderCanvasStats" aria-label="Builder canvas statistics">
             <span>{metrics.blockCount} blocks</span>

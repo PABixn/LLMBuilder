@@ -30,13 +30,16 @@ export function splitGeneratedSampleText(
 export function formatStatusLabel(value: string): string {
   return value
     .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part) => {
+      const normalized = part.toLowerCase();
+      return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    })
     .join(" ");
 }
 
 export function formatLearningRate(value: number | null | undefined): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    return "n/a";
+    return "N/A";
   }
   return formatExponentialValue(value, 3);
 }

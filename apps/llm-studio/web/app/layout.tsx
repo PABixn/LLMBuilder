@@ -17,8 +17,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "LLM Builder",
-  description:
-    "Unified workspace for model configuration design and tokenizer training.",
+  description: "Build, train, and test local models.",
   icons: {
     icon: [
       { url: "/icons/icon-48x48.png", sizes: "48x48", type: "image/png" },

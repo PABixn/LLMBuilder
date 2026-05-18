@@ -8,9 +8,16 @@ export function formatInteger(value: number | null | undefined): string {
   return Math.round(value).toLocaleString();
 }
 
+export function formatCompletedTrainingStep(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "0";
+  }
+  return formatInteger(value + 1);
+}
+
 export function formatDate(value: string | null): string {
   if (!value) {
-    return "not finished";
+    return "Not finished";
   }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -32,9 +39,9 @@ export function completedArtifactName(job: TrainingJob): string {
 
 export function formatJobMeta(job: TrainingJob): string {
   const pieces = [
-    `step ${formatInteger(job.last_step)}`,
+    `Step ${formatCompletedTrainingStep(job.last_step)}`,
     `${formatInteger(job.checkpoint_count)} checkpoints`,
-    `finished ${formatDate(job.finished_at)}`,
+    `Finished ${formatDate(job.finished_at)}`,
   ];
   return pieces.join(" | ");
 }
@@ -67,7 +74,7 @@ export function formatCheckpointName(checkpoint: TrainingCheckpointEntry): strin
 
 export function formatCheckpointMeta(checkpoint: TrainingCheckpointEntry): string {
   const pieces = [
-    checkpoint.created_at ? `saved ${formatDate(checkpoint.created_at)}` : "saved time unavailable",
+    checkpoint.created_at ? `Saved ${formatDate(checkpoint.created_at)}` : "Save time unavailable",
     formatBytes(checkpoint.size_bytes),
     `${formatInteger(checkpoint.files.length)} files`,
   ];

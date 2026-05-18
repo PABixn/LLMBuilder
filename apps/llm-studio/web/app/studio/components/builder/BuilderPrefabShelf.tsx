@@ -165,7 +165,7 @@ export function BuilderPrefabShelf({
       </div>
 
       {componentPrefabs.length === 0 ? (
-        <p className="prefabShelfEmpty">No prefabs yet. Save one from a component card.</p>
+        <p className="prefabShelfEmpty">No prefabs yet. Save one from a component.</p>
       ) : (
         <div className="prefabChipList" role="list" aria-label="Saved component prefabs">
           {componentPrefabs.map((prefab) => {

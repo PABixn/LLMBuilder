@@ -112,11 +112,11 @@ export function DiagnosticsPanel({
     totalErrors > 0
       ? "Blocked"
       : totalWarnings > 0
-        ? "Needs Review"
+        ? "Needs review"
         : backendValidation.phase === "validating"
           ? "Validating"
           : backendValidation.phase === "fallback"
-            ? "Local Only"
+            ? "Local only"
             : "Healthy";
   const backendValidationPhaseTone =
     backendValidation.phase === "fallback"
@@ -133,7 +133,7 @@ export function DiagnosticsPanel({
   const backendValidationPhaseLabel =
     backendValidation.phase === "success"
       ? backendValidation.errors.length > 0
-        ? "Issues Found"
+        ? "Issues found"
         : backendValidation.warnings.length > 0
           ? "Warnings"
           : "Passed"
@@ -142,7 +142,7 @@ export function DiagnosticsPanel({
         : backendValidation.phase === "validating"
           ? "Running"
           : backendValidation.phase === "skipped"
-            ? "Blocked by Local Errors"
+            ? "Fix local errors first"
             : "Idle";
 
   const designSuggestions = buildDesignSuggestions({
@@ -254,7 +254,7 @@ export function DiagnosticsPanel({
       <div className="panelHead">
         <div>
           <p className="panelEyebrow">Diagnostics</p>
-          <h2>Validation & Design Guidance</h2>
+          <h2>Checks and tips</h2>
         </div>
       </div>
 
@@ -267,7 +267,7 @@ export function DiagnosticsPanel({
           aria-label="Unified validation summary"
         >
           <div className="diagnosticOverviewTopRow">
-            <div className="diagnosticOverviewLabel">Unified Validation</div>
+            <div className="diagnosticOverviewLabel">Validation</div>
             <div className="diagnosticOverviewState">{unifiedValidationStateLabel}</div>
           </div>
           <div className="diagnosticOverviewCounts" aria-label="Validation counts">
@@ -352,7 +352,7 @@ export function DiagnosticsPanel({
         </>
       ) : (
         <div className="designSuggestionEmpty">
-          Tips will appear here as you edit the model and run backend analysis.
+          Tips appear as you edit and run analysis.
         </div>
       )}
 

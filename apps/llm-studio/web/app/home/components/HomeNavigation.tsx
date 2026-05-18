@@ -20,10 +20,10 @@ export function HomeNavigation({ theme, onToggleTheme }: HomeNavigationProps) {
           Home
         </Link>
         <Link className="studioNavLink" href="/studio">
-          LLM Studio
+          Model Studio
         </Link>
         <Link className="studioNavLink" href="/tokenizer">
-          Tokenizer Studio
+          Tokenizer
         </Link>
         <Link className="studioNavLink" href="/training">
           Training

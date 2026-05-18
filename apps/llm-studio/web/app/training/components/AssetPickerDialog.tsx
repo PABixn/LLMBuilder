@@ -71,12 +71,12 @@ export function AssetPickerDialog({
         <div className="trainingAssetPickerHeader">
           <div>
             <h2 id="training-asset-picker-title">
-              {pickerKind === "project" ? "Choose model config" : "Choose tokenizer artifact"}
+              {pickerKind === "project" ? "Choose model" : "Choose tokenizer"}
             </h2>
             <p className="panelCopy">
               {pickerKind === "project"
-                ? "Select a saved model project from the workspace to pair with this run."
-                : "Select a completed tokenizer artifact. Only completed tokenizer jobs are shown here."}
+                ? "Select a saved model config."
+                : "Only completed tokenizers are shown."}
             </p>
           </div>
           <button
@@ -97,8 +97,8 @@ export function AssetPickerDialog({
               onChange={(event) => onQueryChange(event.target.value)}
               placeholder={
                 pickerKind === "project"
-                  ? "Search model configurations by name, identifier, or file"
-                  : "Search tokenizers by name, identifier, or artifact"
+                  ? "Search models"
+                  : "Search tokenizers"
               }
             />
           </label>
@@ -114,7 +114,7 @@ export function AssetPickerDialog({
         </div>
 
         <div className="trainingAssetPickerResults">
-          {pickerLoading ? <div className="trainingEmpty">Loading workspace assets…</div> : null}
+          {pickerLoading ? <div className="trainingEmpty">Loading workspace...</div> : null}
 
           {!pickerLoading && pickerError ? (
             <div className="inlineNotice tone-info">{pickerError}</div>
@@ -122,24 +122,24 @@ export function AssetPickerDialog({
 
           {!pickerLoading && !pickerError && pickerKind === "project" && visiblePickerProjects.length === 0 ? (
             <div className="trainingAssetPickerEmpty">
-              <h3>No saved model configurations found.</h3>
+              <h3>No models found</h3>
               <p className="panelCopy">
-                Create or save a model config from the Home workspace, then reopen the picker.
+                Save a model config first.
               </p>
               <Link className="buttonGhost" href="/">
-                <FiLayers /> Open Workspace Assets
+                <FiLayers /> Open workspace
               </Link>
             </div>
           ) : null}
 
           {!pickerLoading && !pickerError && pickerKind === "tokenizer" && visiblePickerTokenizerJobs.length === 0 ? (
             <div className="trainingAssetPickerEmpty">
-              <h3>No completed tokenizer artifacts found.</h3>
+              <h3>No tokenizers found</h3>
               <p className="panelCopy">
-                Finish a tokenizer training job first, then reopen the picker to pair it with this run.
+                Finish tokenizer training first.
               </p>
               <Link className="buttonGhost" href="/tokenizer">
-                <FiCpu /> Open Tokenizer Studio
+                <FiCpu /> Open tokenizer
               </Link>
             </div>
           ) : null}
@@ -208,10 +208,10 @@ export function AssetPickerDialog({
                   </div>
                   <div className="trainingAssetPickerOptionMeta">
                     {formatDate(job.created_at)}
-                    {job.stats?.vocab_size ? ` • vocabulary size ${formatInteger(job.stats.vocab_size)}` : ""}
+                    {job.stats?.vocab_size ? ` • vocab ${formatInteger(job.stats.vocab_size)}` : ""}
                   </div>
                   <div className="trainingAssetPickerOptionMeta">
-                    {job.artifact_file ?? job.artifact_path ?? "Tokenizer artifact path unavailable"}
+                    {job.artifact_file ?? job.artifact_path ?? "Tokenizer path unavailable"}
                   </div>
                 </button>
               ))

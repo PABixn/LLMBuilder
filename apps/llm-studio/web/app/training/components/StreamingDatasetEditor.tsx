@@ -48,7 +48,7 @@ export function StreamingDatasetEditor({
   return (
     <div className="datasetConfigurator trainingTokenizerDatasetSection">
       <label className="fieldLabel fullWidthField">
-        <span>Hugging Face access token <small>optional</small></span>
+        <span>HF token <small>optional</small></span>
         <input
           type="password"
           value={hfToken}
@@ -56,7 +56,7 @@ export function StreamingDatasetEditor({
           autoComplete="off"
           placeholder="hf_..."
         />
-        <span className="fieldNote">Required for gated/private datasets.</span>
+        <span className="fieldNote">Needed for private datasets.</span>
       </label>
 
       <div className="actionRow">
@@ -75,7 +75,7 @@ export function StreamingDatasetEditor({
         >
           {isLoadingDatasetTemplate
             ? "Loading template..."
-            : "Load streaming template"}
+            : "Load template"}
         </button>
       </div>
 
@@ -83,7 +83,7 @@ export function StreamingDatasetEditor({
         {streamingDatasets.map((entry, index) => (
           <div key={entry.id} className="datasetCard">
             <div className="datasetCardHeader">
-              <strong>Streaming dataset {index + 1}</strong>
+              <strong>Dataset {index + 1}</strong>
               <button
                 type="button"
                 className="textButton datasetRemoveButton"
@@ -98,7 +98,7 @@ export function StreamingDatasetEditor({
 
             <div className="fieldGrid">
               <label className="fieldLabel">
-                <span>Hugging Face dataset name</span>
+                <span>Dataset name</span>
                 <input
                   value={entry.name}
                   onChange={(event) =>
@@ -154,7 +154,7 @@ export function StreamingDatasetEditor({
             </div>
 
             <details className="subPanel">
-              <summary>Advanced source options</summary>
+              <summary>Advanced options</summary>
               <div className="fieldGrid">
                 <label className="fieldLabel">
                   <span>Dataset config <small>optional</small></span>
@@ -250,8 +250,7 @@ export function StreamingDatasetEditor({
                     </div>
                   )}
                   <p className="fieldNote">
-                    Values are inferred automatically. For `in`/`not in`, use a
-                    JSON array or comma-separated values.
+                    Values are detected automatically. For `in`/`not in`, use JSON or comma-separated values.
                   </p>
                 </div>
               </div>

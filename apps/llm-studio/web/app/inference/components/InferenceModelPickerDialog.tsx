@@ -51,16 +51,16 @@ export function InferenceModelPickerDialog({
       >
         <div className="trainingAssetPickerHeader">
           <div>
-            <h2 id="inference-model-picker-title">Choose model artifact</h2>
+            <h2 id="inference-model-picker-title">Choose model</h2>
             <p className="panelCopy">
-              Select a completed model-training run. Only runs with saved checkpoints are shown here.
+              Only completed runs with checkpoints are shown.
             </p>
           </div>
           <button
             type="button"
             className="buttonGhost iconOnly"
             onClick={onClose}
-            aria-label="Close model artifact picker"
+            aria-label="Close model picker"
           >
             <FiXCircle />
           </button>
@@ -77,27 +77,27 @@ export function InferenceModelPickerDialog({
         </div>
 
         <div className="trainingAssetPickerResults">
-          {loading ? <div className="trainingEmpty">Loading training artifacts...</div> : null}
+          {loading ? <div className="trainingEmpty">Loading models...</div> : null}
 
           {!loading && error ? <div className="inlineNotice tone-info">{error}</div> : null}
 
           {!loading && !error && completedJobs.length === 0 ? (
             <div className="trainingAssetPickerEmpty">
-              <h3>No completed model artifacts found.</h3>
+              <h3>No models found</h3>
               <p className="panelCopy">
-                Finish a training run with at least one saved checkpoint, then reopen the picker.
+                Finish a training run with a checkpoint first.
               </p>
               <Link className="buttonGhost" href="/training">
-                <FiActivity /> Open Training
+                <FiActivity /> Open training
               </Link>
             </div>
           ) : null}
 
           {!loading && !error && completedJobs.length > 0 && visibleJobs.length === 0 ? (
             <div className="trainingAssetPickerEmpty">
-              <h3>No matching model artifacts.</h3>
+              <h3>No matching models</h3>
               <p className="panelCopy">
-                Clear the search or refresh the list to check for newly completed runs.
+                Clear search or refresh the list.
               </p>
               <button type="button" className="buttonGhost" onClick={onClearSearch}>
                 <FiLayers /> Clear search

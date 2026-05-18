@@ -33,7 +33,7 @@ export function SamplesPanel({ samples }: SamplesPanelProps) {
                     <span className="trainingSampleMeta">
                       {sampleCount} prompt{sampleCount === 1 ? "" : "s"} generated
                       {" - "}
-                      {formatInteger(totalChars)} characters
+                      {formatInteger(totalChars)} chars
                     </span>
                   </span>
                 </summary>
@@ -52,13 +52,13 @@ export function SamplesPanel({ samples }: SamplesPanelProps) {
                         <summary className="trainingSampleTextSummary">
                           <span className="trainingSamplePromptSummary">{promptSummary}</span>
                           <span className="trainingSampleMeta">
-                            {formatInteger(continuationLength)} continuation characters
+                            {formatInteger(continuationLength)} continuation chars
                           </span>
                         </summary>
                         <div className="trainingSampleGeneratedBlock">
                           <div className="trainingSampleGeneratedHead">
-                            <span>Generated sample</span>
-                            <span>{formatInteger(sample.text.length)} total characters</span>
+                            <span>Generated text</span>
+                            <span>{formatInteger(sample.text.length)} chars</span>
                           </div>
                           <pre className="trainingSampleGeneratedText">
                             {splitSample.prefix ? (
@@ -79,7 +79,7 @@ export function SamplesPanel({ samples }: SamplesPanelProps) {
             );
           })
         ) : (
-          <div className="trainingEmpty">No samples have been recorded yet.</div>
+          <div className="trainingEmpty">No samples yet.</div>
         )}
       </div>
     </details>

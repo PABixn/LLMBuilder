@@ -23,10 +23,10 @@ export function TrainingStudioNav({
           Home
         </Link>
         <Link className="studioNavLink" href="/studio">
-          LLM Studio
+          Model Studio
         </Link>
         <Link className="studioNavLink" href="/tokenizer">
-          Tokenizer Studio
+          Tokenizer
         </Link>
         <Link className="studioNavLink" href="/training" aria-current="page">
           Training

@@ -11,7 +11,7 @@ export function InferenceOutputPanel({ result }: InferenceOutputPanelProps) {
       <div className="panelHead">
         <div>
           <h2>Continuation</h2>
-          <p className="panelCopy">Generated text appears as a direct continuation of the prefix.</p>
+          <p className="panelCopy">The model output appears here.</p>
         </div>
         {result ? (
           <span className="trainingAssetMeta">
@@ -26,7 +26,7 @@ export function InferenceOutputPanel({ result }: InferenceOutputPanelProps) {
           <span className="inferenceCompletionText">{result.completion}</span>
         </div>
       ) : (
-        <div className="trainingEmpty">Run a completion to see model output.</div>
+        <div className="trainingEmpty">Generate text to see output.</div>
       )}
     </section>
   );

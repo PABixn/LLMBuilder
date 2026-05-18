@@ -25,7 +25,7 @@ export function useWorkspaceHomeController() {
     failedCount,
     syncLabel:
       showInitialWorkspaceLoading || inventory.lastRefreshedAt === null
-        ? "Scanning workspace assets..."
+        ? "Scanning workspace..."
         : `Synced ${formatAge(new Date(inventory.lastRefreshedAt).toISOString())}`,
   };
 }

@@ -115,7 +115,7 @@ export function formatTokenizerMeta(job: TokenizerTrainingJob): string {
 
 export function formatDuration(seconds: number | null | undefined): string {
   if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) {
-    return "n/a";
+    return "N/A";
   }
   const whole = Math.floor(seconds);
   const hrs = Math.floor(whole / 3600);
@@ -185,7 +185,7 @@ export function formatTrainingEta(
     return "0s";
   }
   if (status === "failed" || status === "cancelled" || snapshot.maxSteps <= 0) {
-    return "n/a";
+    return "N/A";
   }
   if (snapshot.completedSteps <= 0) {
     return "Waiting for first logged step";
@@ -206,7 +206,7 @@ export function formatTrainingElapsed(
   if (status === "running" || status === "pending") {
     return "Waiting for first logged step";
   }
-  return "n/a";
+  return "N/A";
 }
 
 export function recommendationFactorToneClass(tone: "good" | "neutral" | "warning"): string {

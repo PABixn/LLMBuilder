@@ -183,8 +183,8 @@ export function useStudioProjectManager({
       setNoticeMessage(
         "error",
         error instanceof Error
-          ? `Couldn't save model config: ${error.message}`
-          : "Couldn't save model config."
+          ? `Could not save config: ${error.message}`
+          : "Could not save config."
       );
     } finally {
       if (activeControllerRef.current === controller) {
@@ -237,7 +237,7 @@ export function useStudioProjectManager({
         replaceDocumentState(studioDocumentFromConfig(project.model_config));
         markSaved(project.id, project.name, project.model_config);
       } catch (err) {
-        setNoticeMessage("error", `Failed to load project: ${err instanceof Error ? err.message : "Unknown error"}`);
+        setNoticeMessage("error", `Could not load config: ${err instanceof Error ? err.message : "Unknown error"}`);
       } finally {
         setIsProjectLoading(false);
       }

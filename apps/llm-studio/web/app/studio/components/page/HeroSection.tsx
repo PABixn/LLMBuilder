@@ -51,12 +51,12 @@ export function HeroSection({
       ? `${totalErrors} error${totalErrors === 1 ? "" : "s"} · ${totalWarnings} warning${totalWarnings === 1 ? "" : "s"}`
       : totalWarnings > 0
         ? `${totalWarnings} warning${totalWarnings === 1 ? "" : "s"}`
-        : "No validation warnings";
+        : "No validation issues";
   const heroBackendHint =
     backendValidation.phase === "fallback"
-      ? "Backend unavailable (local checks only)"
+      ? "Server unavailable. Local checks only."
       : backendValidation.phase === "validating"
-        ? "Backend validation running"
+        ? "Checking with server..."
         : null;
   const heroValidationPillTone =
     heroValidationTone === "bad" ? "error" : heroValidationTone;
@@ -65,9 +65,9 @@ export function HeroSection({
     <section className="panelCard heroCard">
       <div className="panelHead heroHead">
         <div>
-          <h1>Design transformer configs visually.</h1>
+          <h1>Design model configs.</h1>
           <p className="panelCopy">
-            Build blocks, edit components, reorder, validate, and export JSON from one place.
+            Add blocks, edit layers, validate, and export JSON.
           </p>
         </div>
         <div className="heroActions">
@@ -93,8 +93,8 @@ export function HeroSection({
             type="button"
             className="buttonGhost iconOnly"
             onClick={exportJson}
-            aria-label="Save model JSON (download)"
-            title="Save model JSON (download)"
+            aria-label="Download model JSON"
+            title="Download model JSON"
           >
             <FiDownload />
           </button>
@@ -121,9 +121,9 @@ export function HeroSection({
           <div className={`pillBadge tone-${heroValidationPillTone}`}>
             Validation: {validationStatusLabel}
           </div>
-          <div className="pillBadge tone-neutral">{metrics.blockCount} Blocks</div>
-          <div className="pillBadge tone-neutral">{metrics.componentCount} Components</div>
-          <div className="pillBadge tone-neutral">{metrics.mlpStepCount} MLP Steps</div>
+          <div className="pillBadge tone-neutral">{metrics.blockCount} blocks</div>
+          <div className="pillBadge tone-neutral">{metrics.componentCount} components</div>
+          <div className="pillBadge tone-neutral">{metrics.mlpStepCount} MLP steps</div>
         </div>
         <div className="heroMetaLine">
           <span>{heroValidationSummary}</span>

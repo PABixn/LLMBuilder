@@ -36,7 +36,7 @@ export function SamplingPromptsPanel({
             <div className="settingsGroupHeader">
               <h3>Prompt presets</h3>
               <p className="settingsGroupHint">
-                Short prefixes for checking raw pretraining continuations during the run.
+                Prompts used for sample text during training.
               </p>
             </div>
             <div className="trainingPromptToolbar">
@@ -61,7 +61,7 @@ export function SamplingPromptsPanel({
             </div>
           </div>
           <p className="trainingPromptHintLine">
-            Use autocomplete-style starts, not chat instructions or evaluation tasks.
+            Use short text starts, not chat instructions.
           </p>
           <div className="trainingPromptGrid">
             {promptEntries.map((prompt, index) => (
@@ -70,7 +70,7 @@ export function SamplingPromptsPanel({
                   <div className="trainingPromptTitleGroup">
                     <div className="trainingPromptTitle">Prompt {index + 1}</div>
                     <p className="trainingPromptMeta">
-                      {Math.max(0, asString(prompt.prompt).trim().length)} characters
+                      {Math.max(0, asString(prompt.prompt).trim().length)} chars
                     </p>
                   </div>
                   <button

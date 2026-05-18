@@ -40,7 +40,7 @@ export function useStudioImportExport({
       startTransition(() => {
         setDocumentState(studioDocumentFromConfig(imported.config as ModelConfig));
       });
-      setNoticeMessage("success", "Imported model config JSON into visual builder.");
+      setNoticeMessage("success", "Imported model JSON.");
       return true;
     } catch (error) {
       setNoticeMessage(
@@ -62,7 +62,7 @@ export function useStudioImportExport({
       setImportDraft(text);
       return applyImportText(text);
     } catch {
-      setNoticeMessage("error", "Failed to read selected JSON file.");
+      setNoticeMessage("error", "Could not read the JSON file.");
       return false;
     }
   }
@@ -70,16 +70,16 @@ export function useStudioImportExport({
   function exportJson(): void {
     const modelConfig = studioDocumentToConfig(documentState);
     downloadTextFile("model_config.json", JSON.stringify(modelConfig, null, 2));
-    setNoticeMessage("success", "Exported model config JSON.");
+    setNoticeMessage("success", "Downloaded model JSON.");
   }
 
   async function copyJson(): Promise<void> {
     const modelConfig = studioDocumentToConfig(documentState);
     try {
       await navigator.clipboard.writeText(JSON.stringify(modelConfig, null, 2));
-      setNoticeMessage("success", "Copied JSON to clipboard.");
+      setNoticeMessage("success", "Copied JSON.");
     } catch {
-      setNoticeMessage("error", "Clipboard write failed in this environment.");
+      setNoticeMessage("error", "Could not copy JSON.");
     }
   }
 

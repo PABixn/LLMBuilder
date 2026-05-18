@@ -293,10 +293,10 @@ export function useDatasetSettings({
 
       notify(
         "info",
-        "Uploading dataset files",
+        "Uploading files",
         selectedFiles.length === 1
           ? `Uploading ${selectedFiles[0].name}.`
-          : `Uploading ${selectedFiles.length} local train files.`
+          : `Uploading ${selectedFiles.length} files.`
       );
       setIsUploadingTrainFile(true);
 
@@ -330,10 +330,10 @@ export function useDatasetSettings({
           );
           notify(
             "success",
-            "Dataset files added",
+            "Files added",
             successfulUploads.length === 1
               ? `Added ${stripGeneratedUploadPrefix(successfulUploads[0].file_name)}.`
-              : `Added ${successfulUploads.length} local train files.`
+              : `Added ${successfulUploads.length} files.`
           );
         }
 
@@ -346,15 +346,15 @@ export function useDatasetSettings({
             firstFailure.reason instanceof Error ? firstFailure.reason.message : "Upload failed";
           notify(
             "error",
-            "Dataset upload failed",
-            `Failed to upload ${failedUploads.length} file(s). ${firstFailureMessage}`
+            "Upload failed",
+            `Could not upload ${failedUploads.length} file(s). ${firstFailureMessage}`
           );
         }
       } catch (error) {
         notify(
           "error",
-          "Dataset upload failed",
-          error instanceof Error ? error.message : "Failed to upload local train files."
+          "Upload failed",
+          error instanceof Error ? error.message : "Could not upload files."
         );
       } finally {
         setIsUploadingTrainFile(false);
@@ -411,7 +411,7 @@ export function useDatasetSettings({
   );
 
   const handleLoadStreamingTemplate = useCallback(async () => {
-    notify("info", "Loading streaming template", "Refreshing dataset settings from the template.");
+    notify("info", "Loading template", "Refreshing dataset settings.");
     setIsLoadingDatasetTemplate(true);
     try {
       const templates = await fetchTrainingConfigTemplates();
@@ -423,12 +423,12 @@ export function useDatasetSettings({
       setHfToken(hydrated.hfToken);
       setStreamingDatasets(hydrated.streamingDatasets);
       setDataloaderConfig(templateDataloaderConfig);
-      notify("success", "Template loaded", "Loaded streaming dataset defaults.");
+      notify("success", "Template loaded", "Loaded dataset defaults.");
     } catch (error) {
       notify(
         "error",
         "Template unavailable",
-        error instanceof Error ? error.message : "Failed to load the streaming dataset template."
+        error instanceof Error ? error.message : "Could not load the dataset template."
       );
     } finally {
       setIsLoadingDatasetTemplate(false);

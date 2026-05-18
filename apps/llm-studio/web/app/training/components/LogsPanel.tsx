@@ -10,8 +10,8 @@ export function LogsPanel({ logs }: LogsPanelProps) {
     <details className="sectionDisclosure">
       <summary className="sectionDisclosureSummary">Logs</summary>
       <div className="trainingDualLog">
-        <div className="trainingLogBox">{logs.stdout.join("\n") || "stdout is quiet so far."}</div>
-        <div className="trainingLogBox">{logs.stderr.join("\n") || "stderr is clear."}</div>
+        <div className="trainingLogBox">{logs.stdout.join("\n") || "No output yet."}</div>
+        <div className="trainingLogBox">{logs.stderr.join("\n") || "No errors yet."}</div>
       </div>
     </details>
   );

@@ -86,7 +86,7 @@ export const DatasetSettingsPanel = forwardRef<HTMLDetailsElement, DatasetSettin
   ) {
     return (
       <details className="settingsPanel" open ref={ref}>
-        <summary>Core dataset settings</summary>
+        <summary>Dataset settings</summary>
         <div className="settingsGrid">
           <div
             id="settings-dataset"
@@ -98,8 +98,7 @@ export const DatasetSettingsPanel = forwardRef<HTMLDetailsElement, DatasetSettin
             <div className="settingsGroupHeader">
               <h3>Dataset sources</h3>
               <p className="settingsGroupHint">
-                Match the tokenizer trainer: choose one source mode and configure the full
-                dataset stack here.
+                Choose local files or streaming datasets.
               </p>
             </div>
 
@@ -122,7 +121,7 @@ export const DatasetSettingsPanel = forwardRef<HTMLDetailsElement, DatasetSettin
                   }`}
                   onClick={selectStreamingDatasetSource}
                 >
-                  Streaming Hugging Face datasets
+                  Streaming datasets
                 </button>
               </div>
             </div>

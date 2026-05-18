@@ -42,9 +42,9 @@ export function TrainingArtifactPanel({
     <div className="panelCard heroCard inferenceArtifactPanel">
       <div className="panelHead">
         <div>
-          <h2>Training Artifact</h2>
+          <h2>Model</h2>
           <p className="panelCopy">
-            Choose a completed training run and the checkpoint that inference should load.
+            Choose a trained model and checkpoint.
           </p>
         </div>
         <div className="actionCluster">
@@ -60,7 +60,7 @@ export function TrainingArtifactPanel({
       <div className="inferenceAssetStack">
         {selectedJob ? (
           <div className="trainingAssetCard inferenceModelCard">
-            <span className="trainingAssetLabel">Model Artifact</span>
+            <span className="trainingAssetLabel">Model</span>
             <span className="trainingAssetName">{completedArtifactName(selectedJob)}</span>
             <span className="trainingAssetMeta">{formatJobMeta(selectedJob)}</span>
             <span className="trainingAssetMeta">Tokenizer: {selectedJob.tokenizer_name}</span>
@@ -75,16 +75,16 @@ export function TrainingArtifactPanel({
                 aria-expanded={pickerOpen}
                 onClick={onOpenModelPicker}
               >
-                <FiSearch /> Change model artifact
+                <FiSearch /> Change model
               </button>
             </div>
           </div>
         ) : (
           <div className="trainingAssetCard inferenceModelCard">
-            <span className="trainingAssetLabel">Model Artifact</span>
+            <span className="trainingAssetLabel">Model</span>
             <span className="trainingAssetName">No model selected</span>
             <span className="trainingAssetMeta">
-              Finish a model-training run with checkpoints before using inference.
+              Train a model first, then select it here.
             </span>
             <div className="trainingAssetActions">
               <button
@@ -95,7 +95,7 @@ export function TrainingArtifactPanel({
                 disabled={loading}
                 onClick={onOpenModelPicker}
               >
-                <FiSearch /> Choose model artifact
+                <FiSearch /> Choose model
               </button>
             </div>
           </div>
@@ -118,12 +118,12 @@ export function TrainingArtifactPanel({
                 : selectedCheckpoint
                   ? formatCheckpointMeta(selectedCheckpoint)
                   : selectedJob
-                    ? "No checkpoints are available for this run."
-                    : "Choose a model artifact first."}
+                    ? "This run has no checkpoints."
+                    : "Choose a model first."}
           </span>
           {checkpointValue === latestCheckpointValue && selectedCheckpoint ? (
             <span className="trainingAssetMeta">
-              Currently resolves to {formatCheckpointName(selectedCheckpoint)}.
+              Uses {formatCheckpointName(selectedCheckpoint)} now.
             </span>
           ) : null}
           {selectedCheckpoint?.files.length ? (

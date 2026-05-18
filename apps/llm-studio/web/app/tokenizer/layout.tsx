@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Tokenizer Studio",
-  description:
-    "Train fully configurable tokenizers locally with a Next.js frontend and FastAPI backend.",
+  title: "Tokenizer",
+  description: "Train a tokenizer for your data.",
   icons: {
     icon: [
       { url: "/icons/icon-48x48.png", sizes: "48x48", type: "image/png" },

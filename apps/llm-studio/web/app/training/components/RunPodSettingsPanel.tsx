@@ -70,11 +70,11 @@ export function RunPodSettingsPanel({
       ? "Environment key"
       : "Validated key"
     : apiKey.trim()
-      ? "Typed key not validated"
+      ? "Key not validated"
       : "No key configured";
   const cleanupLabel =
     cleanupPod === "delete_after_sync"
-      ? "Delete pod after final sync"
+      ? "Delete after sync"
       : cleanupPod === "stop_after_sync"
         ? "Stop pod after sync"
         : "Keep pod running";
@@ -83,9 +83,9 @@ export function RunPodSettingsPanel({
   const capacityLabel = interruptible ? "Interruptible capacity" : "Standard capacity";
   const gpuOptions = getRunPodGpuOptions(catalog, gpuType);
   const selectedGpu = findRunPodGpuOption(catalog, gpuType);
-  const selectedGpuLabel = selectedGpu?.display_name ?? (gpuType.trim() || "Loading GPU target");
+  const selectedGpuLabel = selectedGpu?.display_name ?? (gpuType.trim() || "Loading GPU");
   const selectedGpuMemory =
-    selectedGpu?.memory_gb != null ? `${selectedGpu.memory_gb} GB VRAM each` : "VRAM not catalogued";
+    selectedGpu?.memory_gb != null ? `${selectedGpu.memory_gb} GB VRAM each` : "VRAM unknown";
   const gpuCountOptions = Array.from(new Set<number>([...RUNPOD_GPU_COUNT_OPTIONS, gpuCount])).sort(
     (left, right) => left - right
   );
@@ -111,7 +111,7 @@ export function RunPodSettingsPanel({
           <div>
             <div className="statusCardTitle">RunPod access</div>
             <div className="statusCardValue">{keySource}</div>
-            <div className="statusCardDetail">{validationMessage ?? "Keys are sent only with launch and validation requests."}</div>
+            <div className="statusCardDetail">{validationMessage ?? "Keys are used only for RunPod requests."}</div>
           </div>
         </div>
         <div className="statusCard">
@@ -130,7 +130,7 @@ export function RunPodSettingsPanel({
             <div className="statusCardTitle">Provisioning</div>
             <div className="statusCardValue">{cloudLabel}</div>
             <div className="statusCardDetail">
-              {datacenterLabel} · {volumeSizeGb} GB workspace volume
+              {datacenterLabel} · {volumeSizeGb} GB volume
             </div>
           </div>
         </div>
@@ -189,7 +189,7 @@ export function RunPodSettingsPanel({
               disabled={gpuOptions.length === 0}
               onChange={(event) => onGpuTypeChange(event.target.value)}
             >
-              {gpuOptions.length === 0 ? <option value="">Loading GPU choices</option> : null}
+              {gpuOptions.length === 0 ? <option value="">Loading GPUs</option> : null}
               {groupedGpuOptions.map(([label, options]) => (
                 <optgroup key={label} label={label}>
                   {options.map((option) => (
@@ -224,7 +224,7 @@ export function RunPodSettingsPanel({
             </select>
           </label>
           <label className="fieldLabel">
-            <span>Workspace volume GB</span>
+            <span>Volume GB</span>
             <ConfigNumberInput value={volumeSizeGb} onCommit={onVolumeSizeGbChange} />
           </label>
         </div>
@@ -256,12 +256,12 @@ export function RunPodSettingsPanel({
 
       {interruptible ? (
         <p className="settingsGroupHint">
-          Interruptible pods can be preempted by RunPod. Use them only when restarting the run is acceptable.
+          Interruptible pods can stop during training.
         </p>
       ) : null}
       {cleanupPod === "keep" ? (
         <p className="settingsGroupHint">
-          Keep running is for debugging. The app will not automatically stop billing for that pod.
+          Keeping the pod running can keep billing active.
         </p>
       ) : null}
     </div>

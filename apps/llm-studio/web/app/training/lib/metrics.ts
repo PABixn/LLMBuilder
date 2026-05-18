@@ -76,7 +76,7 @@ export function formatMetricValue(
   notation: MetricValueNotation = "standard"
 ): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    return "n/a";
+    return "N/A";
   }
   if (notation === "exponential") {
     return formatExponentialValue(value, digits);
@@ -125,14 +125,14 @@ export function chartBrushHandlePosition(percent: number): string {
 
 export function formatMetric(value: number | null | undefined, digits = 3): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    return "n/a";
+    return "N/A";
   }
   return value.toFixed(digits);
 }
 
 export function formatInteger(value: number | null | undefined): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    return "n/a";
+    return "N/A";
   }
   return value.toLocaleString();
 }

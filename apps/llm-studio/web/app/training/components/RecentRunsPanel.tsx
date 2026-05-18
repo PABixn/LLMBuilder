@@ -36,9 +36,9 @@ export function RecentRunsPanel({
     <section className="panelCard trainingRecentRunsPanel">
       <div className="panelHead">
         <div>
-          <h2>Recent Runs</h2>
+          <h2>Recent runs</h2>
           <p className="panelCopy trainingRecentPanelCopy">
-            Recent jobs stay navigable after refresh so you can jump between current and past runs quickly.
+            Select a run to view its progress.
           </p>
         </div>
         <button type="button" className="buttonGhost buttonSmall" onClick={onRefresh}>

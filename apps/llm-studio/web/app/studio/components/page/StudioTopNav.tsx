@@ -11,7 +11,7 @@ type StudioTopNavProps = {
 
 export function StudioTopNav({ theme, setTheme }: StudioTopNavProps) {
   return (
-    <nav className="studioNav" aria-label="LLM Studio navigation">
+    <nav className="studioNav" aria-label="Model Studio navigation">
       <div className="studioNavBrand">
         <span className="studioNavDot" />
         <span>LLM Builder</span>
@@ -21,10 +21,10 @@ export function StudioTopNav({ theme, setTheme }: StudioTopNavProps) {
           Home
         </Link>
         <Link className="studioNavLink" href="/studio" aria-current="page">
-          LLM Studio
+          Model Studio
         </Link>
         <Link className="studioNavLink" href="/tokenizer">
-          Tokenizer Studio
+          Tokenizer
         </Link>
         <Link className="studioNavLink" href="/training">
           Training

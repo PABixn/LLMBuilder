@@ -77,8 +77,8 @@ export function BatchLrAdvisor({
     <details className="trainingAdvisorCard" open>
       <summary className="trainingAdvisorSummary">
         <span>
-          <span className="panelEyebrow">Training Plan Advisor</span>
-          <span className="trainingAdvisorSummaryTitle">Recommended optimizer and run sizing</span>
+          <span className="panelEyebrow">Advisor</span>
+          <span className="trainingAdvisorSummaryTitle">Recommended batch and learning rate</span>
         </span>
         <span className="trainingAdvisorSummaryActions">
           {recommendation ? (
@@ -107,8 +107,8 @@ export function BatchLrAdvisor({
           <div>
             <p className="trainingAdvisorCopy">
               {preflightLoading
-                ? "Preflight is recalculating the recommendation from the current model, dataset, runtime, and scheduler settings."
-                : "Select a model and tokenizer and let preflight run to see the recommended optimizer-step token batch and learning rate."}
+                ? "Updating the recommendation..."
+                : "Run preflight to get a batch size and learning rate."}
             </p>
           </div>
         </div>

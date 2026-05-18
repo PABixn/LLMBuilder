@@ -68,10 +68,10 @@ export function TokenizerWorkflowSection({
     <section id="workflow" className="panelCard actionDeck">
       <div className="panelHead actionDeckHead">
         <div>
-          <p className="panelEyebrow">Top Workflow</p>
-          <h2>Steps to train the tokenizer</h2>
+          <p className="panelEyebrow">Workflow</p>
+          <h2>Train tokenizer</h2>
           <p className="panelCopy">
-            Complete each step in order. A step turns green only when it is ready.
+            Complete each step, then start training.
           </p>
         </div>
       </div>
@@ -83,8 +83,8 @@ export function TokenizerWorkflowSection({
           }`}
           role="listitem"
         >
-          <p className="workflowStepTitle">Step 1 - Choose tokenizer config</p>
-          <strong>{tokenizerReady ? "Ready" : "Waiting for configuration"}</strong>
+          <p className="workflowStepTitle">1. Tokenizer</p>
+          <strong>{tokenizerReady ? "Ready" : "Needs setup"}</strong>
           <p className="fieldNote">
             {tokenizerError ??
               `${tokenizerType.toUpperCase()} tokenizer configured.`}
@@ -94,7 +94,7 @@ export function TokenizerWorkflowSection({
             className="workflowStepLink workflowStepAction"
             onClick={() => onNavigateSettings("tokenizer")}
           >
-            Open tokenizer settings
+            Open settings
           </button>
         </article>
 
@@ -104,8 +104,8 @@ export function TokenizerWorkflowSection({
           }`}
           role="listitem"
         >
-          <p className="workflowStepTitle">Step 2 - Choose dataset</p>
-          <strong>{datasetReady ? "Ready" : "Waiting for configuration"}</strong>
+          <p className="workflowStepTitle">2. Dataset</p>
+          <strong>{datasetReady ? "Ready" : "Needs setup"}</strong>
           <p className="fieldNote">
             {datasetError ??
               (datasetSourceMode === "local_file"
@@ -119,7 +119,7 @@ export function TokenizerWorkflowSection({
             className="workflowStepLink workflowStepAction"
             onClick={() => onNavigateSettings("dataset")}
           >
-            Open dataset settings
+            Open dataset
           </button>
         </article>
 
@@ -131,8 +131,8 @@ export function TokenizerWorkflowSection({
           }`}
           role="listitem"
         >
-          <p className="workflowStepTitle">Step 3 - Configure training run</p>
-          <strong>{trainingRuntimeReady ? "Ready" : "Waiting for configuration"}</strong>
+          <p className="workflowStepTitle">3. Training budget</p>
+          <strong>{trainingRuntimeReady ? "Ready" : "Needs setup"}</strong>
           <p className="fieldNote">
             {trainingRuntimeError ??
               `Budget: ${budgetLimit} ${budgetUnit}, thresholds: ${activeThresholds}.`}
@@ -142,7 +142,7 @@ export function TokenizerWorkflowSection({
             className="workflowStepLink workflowStepAction"
             onClick={() => onNavigateSettings("training")}
           >
-            Open training settings
+            Open budget
           </button>
         </article>
 
@@ -156,22 +156,22 @@ export function TokenizerWorkflowSection({
           }`}
           role="listitem"
         >
-          <p className="workflowStepTitle">Step 4 - Validate configs</p>
+          <p className="workflowStepTitle">4. Validate</p>
           <strong>
             {hasValidationPassed
               ? "Ready"
               : isValidating
                 ? "In progress"
-                : "Waiting for configuration"}
+                : "Needs setup"}
           </strong>
           <p className="fieldNote">
             {hasValidationPassed
-              ? "Validation passed for tokenizer and dataloader configs."
+              ? "Configs are valid."
               : isValidating
-                ? "Validating latest configuration changes automatically..."
+                ? "Checking latest changes..."
                 : preflightReady
-                  ? validationError ?? "Waiting for the next validation cycle."
-                  : "Complete steps 1-3 first. Validation runs automatically."}
+                  ? validationError ?? "Waiting to validate."
+                  : "Complete steps 1-3 first."}
           </p>
           <button
             type="button"
@@ -193,24 +193,24 @@ export function TokenizerWorkflowSection({
           }`}
           role="listitem"
         >
-          <p className="workflowStepTitle">Step 5 - Start training</p>
+          <p className="workflowStepTitle">5. Train</p>
           <strong>
             {trainingCompleted
-              ? "Ready (trained)"
+              ? "Trained"
               : hasTrainingInProgress
                 ? "In progress"
                 : "Not ready"}
           </strong>
           <p className="fieldNote">
             {trainingCompleted
-              ? "Latest training job completed. Artifact is ready."
+              ? "Tokenizer is ready."
               : hasTrainingInProgress
                 ? `Current job is ${describeJobState(activeJobState ?? "running").toLowerCase()}.`
                 : hasValidationPassed
-                  ? "Validation passed. Start training to complete this step."
+                  ? "Ready to train."
                   : isValidating
-                    ? "Waiting for automatic validation to finish."
-                    : "Automatic validation must pass to unlock training."}
+                    ? "Waiting for validation."
+                    : "Validate before training."}
           </p>
           <button
             type="button"
@@ -222,7 +222,7 @@ export function TokenizerWorkflowSection({
               ? "Training..."
               : isSubmitting
                 ? "Starting..."
-                : "Start Training"}
+                : "Start training"}
           </button>
         </article>
       </div>

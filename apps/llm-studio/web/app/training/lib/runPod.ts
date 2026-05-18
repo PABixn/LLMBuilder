@@ -24,10 +24,10 @@ export interface RunPodLaunchSettings {
 export const RUNPOD_GPU_COUNT_OPTIONS = [1, 2, 4, 8] as const;
 
 export const RUNPOD_INTERRUPTIBLE_CONFIRMATION =
-  "Start an interruptible RunPod pod? It can be preempted while training is running.";
+  "Start an interruptible RunPod pod? It can stop during training.";
 
 export const RUNPOD_KEEP_POD_CONFIRMATION =
-  "Keep the RunPod pod alive after training? This can continue billing until you stop it.";
+  "Keep the RunPod pod running after training? Billing may continue.";
 
 export function getRunPodGpuOptions(
   catalog: RunPodProviderCatalog | null,

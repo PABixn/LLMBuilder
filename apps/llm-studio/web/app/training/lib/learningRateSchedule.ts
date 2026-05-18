@@ -136,14 +136,14 @@ export function clamp(value: number, min: number, max: number): number {
 
 export function formatInteger(value: number | null | undefined): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    return "n/a";
+    return "N/A";
   }
   return Math.trunc(value).toLocaleString();
 }
 
 export function formatExponentialValue(value: number, digits = 3): string {
   if (!Number.isFinite(value)) {
-    return "n/a";
+    return "N/A";
   }
   const [mantissa = "", exponent = "0"] = value.toExponential(digits).split("e");
   const trimmedMantissa = mantissa.replace(/\.?0+$/, "");
@@ -154,7 +154,7 @@ export function formatExponentialValue(value: number, digits = 3): string {
 
 export function formatLearningRate(value: number | null | undefined): string {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    return "n/a";
+    return "N/A";
   }
   return formatExponentialValue(value, 3);
 }

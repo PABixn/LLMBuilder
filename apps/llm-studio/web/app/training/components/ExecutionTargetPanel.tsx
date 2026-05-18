@@ -69,7 +69,7 @@ export function ExecutionTargetPanel({
       <div className="settingsGrid">
         <div className="settingsGroup">
           <div className="settingsGroupHeader">
-            <h3>Where this run trains</h3>
+            <h3>Training location</h3>
           </div>
           <div className="modeSwitch">
             <button
@@ -86,7 +86,7 @@ export function ExecutionTargetPanel({
               onClick={() => onExecutionKindChange("runpod_pod")}
             >
               <FiServer aria-hidden="true" />
-              RunPod Pod
+              RunPod
             </button>
           </div>
 

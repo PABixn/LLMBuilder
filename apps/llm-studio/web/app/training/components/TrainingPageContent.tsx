@@ -310,8 +310,8 @@ export function TrainingPageContent() {
       .catch((error) => {
         notify(
           "error",
-          "Training config unavailable",
-          error instanceof Error ? error.message : "Failed to load training defaults."
+          "Training settings unavailable",
+          error instanceof Error ? error.message : "Could not load training defaults."
         );
       });
   }, [initializeTrainingSelection, notify, searchParams, setActiveRunId]);
@@ -463,11 +463,11 @@ export function TrainingPageContent() {
 
   const handleStartTraining = async () => {
     if (!selectedProjectId || !selectedTokenizerJobId || !trainingConfig || !dataloaderConfig || !preflight?.valid) {
-      notify("error", "Training blocked", "Resolve the preflight issues before launching.");
+      notify("error", "Training blocked", "Fix preflight issues first.");
       return;
     }
     if (executionKind === "runpod_pod" && !runPodStatus?.configured && runPodApiKey.trim() === "") {
-      notify("error", "RunPod key required", "Paste and validate a RunPod API key before launching a pod.");
+      notify("error", "RunPod key required", "Add and validate a RunPod API key.");
       return;
     }
     if (!confirmRunPodLaunch()) {
@@ -490,9 +490,9 @@ export function TrainingPageContent() {
         setActiveRun(job);
         setRecentRuns((current) => [job, ...current.filter((item) => item.id !== job.id)]);
       });
-      notify("success", "Training launched", `Run ${job.name} is now being tracked live.`);
+      notify("success", "Training started", `Tracking ${job.name}.`);
     } catch (error) {
-      notify("error", "Launch failed", error instanceof Error ? error.message : "Failed to start training.");
+      notify("error", "Start failed", error instanceof Error ? error.message : "Could not start training.");
     } finally {
       setLaunching(false);
     }
@@ -516,9 +516,9 @@ export function TrainingPageContent() {
         }
         setRecentRuns((current) => replaceRunInOrder(current, job));
       });
-      notify("success", "Training stopped", `Run ${job.name} was cancelled.`);
+      notify("success", "Training stopped", `${job.name} was cancelled.`);
     } catch (error) {
-      notify("error", "Stop failed", error instanceof Error ? error.message : "Failed to stop the active run.");
+      notify("error", "Stop failed", error instanceof Error ? error.message : "Could not stop the active run.");
     } finally {
       setStoppingRunId((current) => (current === jobId ? null : current));
     }
@@ -533,9 +533,9 @@ export function TrainingPageContent() {
           setActiveRunId(null);
         }
       });
-      notify("success", "Run removed", "The training run was removed from the workspace.");
+      notify("success", "Run deleted", "The run was removed.");
     } catch (error) {
-      notify("error", "Delete failed", error instanceof Error ? error.message : "Failed to delete the training run.");
+      notify("error", "Delete failed", error instanceof Error ? error.message : "Could not delete the run.");
     }
   };
 
@@ -549,14 +549,14 @@ export function TrainingPageContent() {
   const trainingCompleted = activeRun?.status === "completed";
   const workflowSteps: TrainingWorkflowStep[] = [
     {
-      title: "Step 1 - Choose saved model",
+      title: "1. Model",
       state: selectedProject ? "ready" : "waiting",
-      status: selectedProject ? "Ready" : "Waiting for configuration",
-      actionLabel: "Open model selection",
+      status: selectedProject ? "Ready" : "Needs setup",
+      actionLabel: "Choose model",
       onAction: () => openWorkflowTarget("model"),
     },
     {
-      title: "Step 2 - Choose tokenizer artifact",
+      title: "2. Tokenizer",
       state:
         selectedTokenizer && selectedTokenizer.status === "completed"
           ? "ready"
@@ -564,37 +564,37 @@ export function TrainingPageContent() {
       status:
         selectedTokenizer && selectedTokenizer.status === "completed"
           ? "Ready"
-          : "Waiting for configuration",
-      actionLabel: "Open tokenizer selection",
+          : "Needs setup",
+      actionLabel: "Choose tokenizer",
       onAction: () => openWorkflowTarget("tokenizer"),
     },
     {
-      title: "Step 3 - Configure training run",
+      title: "3. Settings",
       state: trainingRuntimeReady ? "ready" : "waiting",
-      status: trainingRuntimeReady ? "Ready" : "Waiting for configuration",
-      actionLabel: "Open training settings",
+      status: trainingRuntimeReady ? "Ready" : "Needs setup",
+      actionLabel: "Open settings",
       onAction: () => openWorkflowTarget("training"),
     },
     {
-      title: "Step 4 - Validate configurations",
+      title: "4. Preflight",
       state: preflight?.valid ? "ready" : preflightLoading ? "inProgress" : "waiting",
       status: preflight?.valid
         ? "Ready"
         : preflightLoading
           ? "In progress"
-          : "Waiting for configuration",
+          : "Needs setup",
       actionLabel: "Review preflight",
       onAction: () => openWorkflowTarget("preflight"),
     },
     {
-      title: "Step 5 - Start training",
+      title: "5. Train",
       state: trainingCompleted
         ? "ready"
         : hasTrainingInProgress
           ? "inProgress"
           : "waiting",
       status: trainingCompleted
-        ? "Ready (trained)"
+        ? "Trained"
         : hasTrainingInProgress
           ? "In progress"
           : "Not ready",
@@ -689,10 +689,9 @@ export function TrainingPageContent() {
         <div className="panelHead">
           <div>
             <p className="panelEyebrow">Settings</p>
-            <h2>Configuration Studio</h2>
+            <h2>Settings</h2>
             <p className="panelCopy">
-              Core launch fields stay visible. Dataset, prompts, and runtime controls live in
-              foldable sections so the page stays compact like the tokenizer workflow.
+              Set training, dataset, prompt, and runtime options.
             </p>
           </div>
           <div className="heroMetaPills">

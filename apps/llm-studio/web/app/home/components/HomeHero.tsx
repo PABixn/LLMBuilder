@@ -6,20 +6,19 @@ import styles from "../../workspace-home.module.css";
 export function HomeHero() {
   return (
     <header className={styles.centeredHeader}>
-      <h1 className={styles.heroTitle}>Build better models, faster.</h1>
+      <h1 className={styles.heroTitle}>Build models faster.</h1>
       <p className={styles.heroSubtitle}>
-        The all-in-one workspace for designing LLM architectures, training custom tokenizers,
-        and managing your model configurations with ease.
+        Design models, train tokenizers, run training, and test outputs in one place.
       </p>
       <div className={styles.heroActions}>
         <Link href="/studio" className={styles.primaryButton}>
-          <FiZap /> LLM Studio
+          <FiZap /> Model Studio
         </Link>
         <Link href="/tokenizer" className={styles.secondaryButton}>
-          <FiCpu /> Tokenizer Studio
+          <FiCpu /> Tokenizer
         </Link>
         <Link href="/training" className={styles.secondaryButton}>
-          <FiActivity /> LLM Training
+          <FiActivity /> Training
         </Link>
         <Link href="/inference" className={styles.secondaryButton}>
           <FiPlay /> Inference
