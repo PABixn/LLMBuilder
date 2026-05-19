@@ -159,6 +159,49 @@
 .toneWarn .statIcon { background: var(--warn-soft); color: var(--warn); }
 .toneError .statIcon { background: var(--danger-soft); color: var(--danger); }
 
+.simpleGuideCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.simpleGuideCard span {
+  color: var(--brand);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.simpleGuideCard h2 {
+  margin: 6px 0 8px;
+  font-size: 1.55rem;
+  letter-spacing: 0;
+}
+
+.simpleGuideCard p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .simpleGuideCard {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .simpleGuideCard .primaryButton {
+    width: 100%;
+  }
+}
+
 /* Asset Manager Section */
 .assetManagerSection {
   display: flex;

@@ -29,6 +29,10 @@
     scrollbar-width: none;
   }
 
+  .studioNavControls {
+    margin-left: auto;
+  }
+
   .studioNavLinks::-webkit-scrollbar {
     display: none;
   }

@@ -123,8 +123,6 @@ export function useStudioPageController(): StudioPageViewProps {
   return {
     fileInputRef,
     importFromFile,
-    theme: workspace.theme,
-    setTheme: workspace.setTheme,
     addBlock: editor.addBlock,
     exportJson: io.exportJson,
     resetDefaults,

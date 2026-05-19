@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useThemeMode } from "../../../lib/theme";
+import { AppTopNav } from "../../shared/components/AppTopNav";
 import {
   createTrainingJob,
   deleteTrainingJob,
@@ -32,7 +32,6 @@ import { PreflightPanel } from "./PreflightPanel";
 import { TrainingHeroSection } from "./TrainingHeroSection";
 import { RecentRunsPanel } from "./RecentRunsPanel";
 import { SamplingPromptsPanel } from "./SamplingPromptsPanel";
-import { TrainingStudioNav } from "./TrainingStudioNav";
 import { TrainingPlanPanel } from "./TrainingPlanPanel";
 import { TrainingToastStack } from "./TrainingToastStack";
 import {
@@ -83,7 +82,6 @@ import type {
 
 export function TrainingPageContent() {
   const searchParams = useSearchParams();
-  const [theme, setTheme] = useThemeMode();
   const [trainingConfig, setTrainingConfig] = useState<Record<string, unknown> | null>(null);
   const [dataloaderConfig, setDataloaderConfig] = useState<Record<string, unknown> | null>(null);
   const [runName, setRunName] = useState("");
@@ -660,12 +658,7 @@ export function TrainingPageContent() {
 
   return (
     <main className="studioRoot trainingPage">
-      <TrainingStudioNav
-        theme={theme}
-        onToggleTheme={() =>
-          setTheme((current) => (current === "dark" ? "white" : "dark"))
-        }
-      />
+      <AppTopNav />
 
       <TrainingHeroSection
         selectedProject={selectedProject}

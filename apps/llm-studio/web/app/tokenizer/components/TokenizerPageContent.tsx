@@ -31,11 +31,8 @@ import {
   defaultDataloaderConfig,
   defaultTokenizerConfig,
 } from "../../../lib/tokenizerLegacyDefaults";
-import { useThemeMode } from "../../../lib/theme";
-import {
-  FILTER_OPERATORS,
-  LEGACY_TOKENIZER_THEME_STORAGE_KEY,
-} from "../constants";
+import { AppTopNav } from "../../shared/components/AppTopNav";
+import { FILTER_OPERATORS } from "../constants";
 import {
   asRecord,
   buildDataloaderConfigFromForm,
@@ -82,7 +79,6 @@ import { useTokenizerLocalFileStats } from "../hooks/useTokenizerLocalFileStats"
 import { useTokenizerPersistence } from "../hooks/useTokenizerPersistence";
 import { useTokenizerSettingsNavigation } from "../hooks/useTokenizerSettingsNavigation";
 import { useTokenizerToasts } from "../hooks/useTokenizerToasts";
-import { TokenizerStudioNav } from "./TokenizerStudioNav";
 import { TokenizerToastViewport } from "./TokenizerToastViewport";
 import { TokenizerWorkflowSection } from "./TokenizerWorkflowSection";
 import type {
@@ -116,9 +112,6 @@ export function TokenizerPageContent() {
   const [trainingForm, setTrainingForm] = useState<TrainingFormState>(() =>
     trainingFormFromConfig(defaultDataloaderConfig)
   );
-  const [themeMode, setThemeMode] = useThemeMode({
-    legacyStorageKeys: [LEGACY_TOKENIZER_THEME_STORAGE_KEY],
-  });
 
   const [jobs, setJobs] = useState<TrainingJob[]>([]);
   const [hiddenRecentJobIds, setHiddenRecentJobIds] = useState<string[]>([]);
@@ -991,14 +984,7 @@ export function TokenizerPageContent() {
 
   return (
     <main className="studioRoot tokenizerPage">
-      <TokenizerStudioNav
-        themeMode={themeMode}
-        onToggleTheme={() =>
-          setThemeMode((previous) =>
-            previous === "white" ? "dark" : "white"
-          )
-        }
-      />
+      <AppTopNav />
 
       <TokenizerWorkflowSection
         tokenizerReady={tokenizerReady}
