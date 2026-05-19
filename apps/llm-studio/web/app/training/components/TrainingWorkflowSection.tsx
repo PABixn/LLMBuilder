@@ -4,6 +4,7 @@ export type TrainingWorkflowStep = {
   title: string;
   state: "ready" | "inProgress" | "waiting";
   status: string;
+  description: string;
   actionLabel?: string;
   onAction?: () => void;
 };
@@ -46,6 +47,7 @@ export function TrainingWorkflowSection({
           >
             <p className="workflowStepTitle">{step.title}</p>
             <strong>{formatStatusLabel(step.status)}</strong>
+            <p className="fieldNote">{step.description}</p>
             {step.onAction && step.actionLabel ? (
               <button
                 type="button"

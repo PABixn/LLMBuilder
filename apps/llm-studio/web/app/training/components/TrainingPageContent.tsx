@@ -61,7 +61,9 @@ import {
   writeStoredJson,
 } from "../lib/object";
 import {
+  compactWorkflowMessage,
   formatLearningRate,
+  formatStatusLabel,
   replaceRunInOrder,
 } from "../lib/run";
 import { useRunPodSettings } from "../hooks/useRunPodSettings";
@@ -547,11 +549,57 @@ export function TrainingPageContent() {
   const stoppingActiveRun = activeRunCanBeStopped && stoppingRunId === activeRun.id;
   const batchAndLrRecommendation = preflight?.batch_and_lr_recommendation ?? null;
   const trainingCompleted = activeRun?.status === "completed";
+  const maxStepsValue = asNumber(trainingConfig?.max_steps, Number.NaN);
+  const maxSteps = Number.isFinite(maxStepsValue) ? maxStepsValue : null;
+  const seqLenValue = asNumber(trainingConfig?.seq_len, Number.NaN);
+  const seqLen = Number.isFinite(seqLenValue) ? seqLenValue : null;
+  const learningRateValue = asNumber(asRecord(trainingConfig?.optimizer)?.lr, Number.NaN);
+  const configuredLearningRate = Number.isFinite(learningRateValue) ? learningRateValue : null;
+  const tokenizerConfigName = selectedTokenizer?.tokenizer_config.name;
+  const selectedTokenizerLabel =
+    typeof tokenizerConfigName === "string" && tokenizerConfigName.trim() !== ""
+      ? tokenizerConfigName
+      : selectedTokenizer?.artifact_file ?? selectedTokenizer?.id ?? "Selected tokenizer";
+  const datasetSummary =
+    datasetSourceMode === "local_file"
+      ? localTrainFiles.length > 0
+        ? `${formatInteger(localTrainFiles.length)} local file${localTrainFiles.length === 1 ? "" : "s"}`
+        : "local dataset"
+      : streamingDatasets.length > 0
+        ? `${formatInteger(streamingDatasets.length)} streaming dataset${streamingDatasets.length === 1 ? "" : "s"}`
+        : "streaming dataset";
+  const trainingSettingsSummary =
+    trainingRuntimeReady && maxSteps !== null && seqLen !== null
+      ? `${formatInteger(maxSteps)} steps at ${formatInteger(seqLen)} tokens, ${executionKind === "runpod_pod" ? "RunPod" : "local"} runtime.`
+      : trainingRuntimeReady
+        ? `Training and ${datasetSummary} settings loaded.`
+        : "Load training and dataset settings before preflight.";
+  const preflightSummary = preflight?.valid
+    ? preflight.warnings.length > 0
+      ? `Passed with ${formatInteger(preflight.warnings.length)} warning${preflight.warnings.length === 1 ? "" : "s"}.`
+      : "Model, tokenizer, dataset, and runtime checks passed."
+    : preflightLoading
+      ? "Checking compatibility, memory, scheduler, and data inputs."
+      : preflightError
+        ? compactWorkflowMessage(preflightError)
+        : "Review checks after model, tokenizer, and settings are selected.";
+  const trainSummary = trainingCompleted
+    ? `${activeRun.name} finished with ${formatInteger(activeRun.checkpoint_count)} checkpoint${activeRun.checkpoint_count === 1 ? "" : "s"}.`
+    : hasTrainingInProgress && activeRun
+      ? compactWorkflowMessage(activeRun.stage || formatStatusLabel(activeRun.state))
+      : startReady
+        ? configuredLearningRate
+          ? `Ready to launch at ${formatLearningRate(configuredLearningRate)}.`
+          : "Ready to launch from the current validated plan."
+        : "Pass preflight before starting a training run.";
   const workflowSteps: TrainingWorkflowStep[] = [
     {
       title: "1. Model",
       state: selectedProject ? "ready" : "waiting",
       status: selectedProject ? "Ready" : "Needs setup",
+      description: selectedProject
+        ? selectedProject.name || selectedProject.artifact_file
+        : "Choose the model config to train.",
       actionLabel: "Choose model",
       onAction: () => openWorkflowTarget("model"),
     },
@@ -565,6 +613,12 @@ export function TrainingPageContent() {
         selectedTokenizer && selectedTokenizer.status === "completed"
           ? "Ready"
           : "Needs setup",
+      description:
+        selectedTokenizer && selectedTokenizer.status === "completed"
+          ? selectedTokenizerLabel
+          : selectedTokenizer
+            ? `Tokenizer is ${formatStatusLabel(selectedTokenizer.status)}.`
+            : "Choose a completed tokenizer job.",
       actionLabel: "Choose tokenizer",
       onAction: () => openWorkflowTarget("tokenizer"),
     },
@@ -572,6 +626,7 @@ export function TrainingPageContent() {
       title: "3. Settings",
       state: trainingRuntimeReady ? "ready" : "waiting",
       status: trainingRuntimeReady ? "Ready" : "Needs setup",
+      description: trainingSettingsSummary,
       actionLabel: "Open settings",
       onAction: () => openWorkflowTarget("training"),
     },
@@ -583,6 +638,7 @@ export function TrainingPageContent() {
         : preflightLoading
           ? "In progress"
           : "Needs setup",
+      description: preflightSummary,
       actionLabel: "Review preflight",
       onAction: () => openWorkflowTarget("preflight"),
     },
@@ -598,6 +654,7 @@ export function TrainingPageContent() {
         : hasTrainingInProgress
           ? "In progress"
           : "Not ready",
+      description: trainSummary,
     },
   ];
 

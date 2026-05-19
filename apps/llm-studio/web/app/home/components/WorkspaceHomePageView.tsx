@@ -2,7 +2,6 @@ import { WorkspaceAssetManager } from "../../components/WorkspaceAssetManager";
 import styles from "../../workspace-home.module.css";
 import { HomeHero } from "./HomeHero";
 import { HomeNavigation } from "./HomeNavigation";
-import { HomeStatsGrid } from "./HomeStatsGrid";
 import { HomeSyncStatus } from "./HomeSyncStatus";
 import type { useWorkspaceHomeController } from "../hooks/useWorkspaceHomeController";
 
@@ -18,8 +17,6 @@ export function WorkspaceHomePageView({ controller }: WorkspaceHomePageViewProps
     setTheme,
     inventory,
     showInitialWorkspaceLoading,
-    activeCount,
-    failedCount,
     syncLabel,
   } = controller;
 
@@ -47,16 +44,6 @@ export function WorkspaceHomePageView({ controller }: WorkspaceHomePageViewProps
       ) : null}
 
       <HomeHero />
-
-      <HomeStatsGrid
-        showInitialWorkspaceLoading={showInitialWorkspaceLoading}
-        modelCount={inventory.counts.modelCount}
-        totalModelBytes={inventory.counts.totalModelBytes}
-        tokenizerCompletedCount={inventory.counts.tokenizerCompletedCount}
-        trainingCompletedCount={inventory.counts.trainingCompletedCount}
-        activeCount={activeCount}
-        failedCount={failedCount}
-      />
 
       <WorkspaceAssetManager
         inventory={inventory}
