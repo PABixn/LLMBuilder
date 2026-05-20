@@ -6,6 +6,11 @@ import type {
   ModelConfig,
   NormConfig,
 } from "../../../lib/defaults";
+import type {
+  SimpleDatasetSource,
+  SimpleExecutionKind,
+  SimpleTrainingProfile,
+} from "../types";
 
 export type SimplePresetSize = "tiny" | "small" | "medium";
 export type SimplePresetSupport = "inspired" | "size-style" | "family-style" | "app-native";
@@ -16,9 +21,13 @@ export interface SimpleModelPreset {
   intent: string;
   bestUse: string;
   relativeSize: SimplePresetSize;
+  defaultDatasetSource: SimpleDatasetSource;
+  defaultTrainingProfile: SimpleTrainingProfile;
+  defaultExecutionKind: SimpleExecutionKind;
   defaultVocabSize: number;
   starterVocabSize: number;
   uploadVocabSize: number;
+  streamingVocabSize: number;
   defaultContextLength: number;
   contextLengthOptions: number[];
   blockCount: number;
@@ -44,41 +53,49 @@ export interface BuildPresetModelConfigOptions {
 const PRESETS: SimpleModelPreset[] = [
   {
     id: "nano-gpt-quick",
-    name: "NanoGPT-style quick model",
-    intent: "Fast local smoke tests and tiny datasets.",
-    bestUse: "Verify the full workflow quickly on CPU or a small GPU.",
+    name: "Local quickstart GQA",
+    intent: "Small decoder-only transformer with efficient modern defaults.",
+    bestUse: "First local run, tiny corpora, and full workflow checks.",
     relativeSize: "tiny",
+    defaultDatasetSource: "starter",
+    defaultTrainingProfile: "quick",
+    defaultExecutionKind: "local",
     defaultVocabSize: 1000,
     starterVocabSize: 1000,
     uploadVocabSize: 8000,
+    streamingVocabSize: 16000,
     defaultContextLength: 512,
     contextLengthOptions: [256, 512, 1024],
     blockCount: 4,
     nEmbeddings: 256,
     nHead: 4,
-    nKvHead: 4,
-    norm: "layernorm",
-    activation: "gelu",
+    nKvHead: 2,
+    norm: "rmsnorm",
+    activation: "silu",
     mlpMultiplier: 4,
     weightTying: true,
-    headLayout: "4 attention heads, dense KV",
-    normActivationLabel: "LayerNorm + GELU",
+    headLayout: "4 query heads, 2 KV heads",
+    normActivationLabel: "RMSNorm + SiLU + GQA",
     honestyNote:
-      "Inspired by small decoder-only GPT examples; not a pretrained nanoGPT checkpoint.",
+      "App-native quickstart template. It uses decoder-only transformer defaults, not a pretrained checkpoint.",
     hardwareWarning: null,
-    support: "inspired",
+    support: "app-native",
   },
   {
     id: "gpt2-small-style",
     name: "GPT-2 Small size baseline",
     intent: "A familiar dense transformer baseline.",
-    bestUse: "Compare against a well-known dense size class.",
+    bestUse: "Compare against a well-known dense GPT size class.",
     relativeSize: "medium",
+    defaultDatasetSource: "upload",
+    defaultTrainingProfile: "balanced",
+    defaultExecutionKind: "local",
     defaultVocabSize: 32000,
     starterVocabSize: 1000,
-    uploadVocabSize: 32000,
+    uploadVocabSize: 16000,
+    streamingVocabSize: 32000,
     defaultContextLength: 1024,
-    contextLengthOptions: [512, 1024],
+    contextLengthOptions: [512, 1024, 2048],
     blockCount: 12,
     nEmbeddings: 768,
     nHead: 12,
@@ -100,11 +117,15 @@ const PRESETS: SimpleModelPreset[] = [
     intent: "Efficient research-style dense baseline.",
     bestUse: "Run a modern-style dense decoder with a longer context.",
     relativeSize: "medium",
+    defaultDatasetSource: "streaming",
+    defaultTrainingProfile: "balanced",
+    defaultExecutionKind: "runpod_pod",
     defaultVocabSize: 32000,
     starterVocabSize: 1000,
-    uploadVocabSize: 32000,
+    uploadVocabSize: 16000,
+    streamingVocabSize: 32000,
     defaultContextLength: 2048,
-    contextLengthOptions: [1024, 2048],
+    contextLengthOptions: [512, 1024, 2048],
     blockCount: 12,
     nEmbeddings: 768,
     nHead: 12,
@@ -125,9 +146,13 @@ const PRESETS: SimpleModelPreset[] = [
     intent: "A compact grouped-query run for local GPUs.",
     bestUse: "Try an efficient LLaMA-like layout when GQA matters.",
     relativeSize: "medium",
+    defaultDatasetSource: "upload",
+    defaultTrainingProfile: "balanced",
+    defaultExecutionKind: "runpod_pod",
     defaultVocabSize: 32000,
     starterVocabSize: 1000,
-    uploadVocabSize: 32000,
+    uploadVocabSize: 16000,
+    streamingVocabSize: 32000,
     defaultContextLength: 2048,
     contextLengthOptions: [1024, 2048],
     blockCount: 16,
@@ -149,13 +174,17 @@ const PRESETS: SimpleModelPreset[] = [
     id: "gqa-balanced",
     name: "Efficient GQA balanced model",
     intent: "A balanced app-native model for GPU users.",
-    bestUse: "Default choice when a GPU can fit a moderate local run.",
+    bestUse: "Default choice for a moderate GPU-backed run.",
     relativeSize: "medium",
+    defaultDatasetSource: "upload",
+    defaultTrainingProfile: "balanced",
+    defaultExecutionKind: "runpod_pod",
     defaultVocabSize: 32000,
     starterVocabSize: 1000,
-    uploadVocabSize: 32000,
+    uploadVocabSize: 16000,
+    streamingVocabSize: 32000,
     defaultContextLength: 1024,
-    contextLengthOptions: [1024, 2048],
+    contextLengthOptions: [512, 1024, 2048],
     blockCount: 12,
     nEmbeddings: 768,
     nHead: 12,
@@ -176,6 +205,10 @@ export const SIMPLE_MODEL_PRESETS: readonly SimpleModelPreset[] = PRESETS;
 
 export function getSimpleModelPreset(presetId: string): SimpleModelPreset {
   return PRESETS.find((preset) => preset.id === presetId) ?? PRESETS[0];
+}
+
+export function isSimpleModelPresetId(value: unknown): value is string {
+  return typeof value === "string" && PRESETS.some((preset) => preset.id === value);
 }
 
 function createNorm(kind: SimpleModelPreset["norm"]): NormConfig {
@@ -278,6 +311,9 @@ export function targetVocabForPresetDataset(
   const preset = getSimpleModelPreset(presetId);
   if (datasetSource === "starter") {
     return preset.starterVocabSize;
+  }
+  if (datasetSource === "streaming") {
+    return preset.streamingVocabSize;
   }
   return preset.uploadVocabSize;
 }

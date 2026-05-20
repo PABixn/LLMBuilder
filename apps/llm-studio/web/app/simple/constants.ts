@@ -7,13 +7,17 @@ export const SIMPLE_RECENT_RUNS_POLL_INTERVAL_MS = 3500;
 export const SIMPLE_STARTER_DATASET_PATH = "datasets/shake.txt";
 export const SIMPLE_STARTER_DATASET_NAME = "Starter Shakespeare sample";
 export const SIMPLE_STREAMING_DATASET_NAME = "HuggingFaceFW/fineweb-edu";
+export const SIMPLE_STREAMING_DATASET_FILTERS = [
+  ["language_score", ">", 0.95],
+  ["int_score", ">=", 4],
+] as const;
 export const SIMPLE_DEFAULT_PROMPT = "Once upon a time";
 export const SIMPLE_LATEST_CHECKPOINT_VALUE = "latest";
 
 export const DEFAULT_SIMPLE_FLOW_STATE: SimpleFlowState = {
   version: SIMPLE_FLOW_VERSION,
   presetId: "nano-gpt-quick",
-  modelName: "Simple quick model",
+  modelName: "Local quickstart model",
   targetVocabSize: 1000,
   targetContextLength: 512,
   projectId: null,

@@ -17,7 +17,10 @@ export function SimpleStepShell({
   const expanded = activeStep === step.id;
 
   return (
-    <section className={`simpleStepShell is-${step.state}`} aria-labelledby={`${step.id}-title`}>
+    <section
+      className={`simpleStepShell is-${step.state} ${expanded ? "is-expanded" : "is-collapsed"}`}
+      aria-labelledby={`${step.id}-title`}
+    >
       <div className="simpleStepShellHeader">
         <div>
           <p className="simpleEyebrow">Step {step.index}</p>

@@ -3,10 +3,11 @@ import { FiExternalLink, FiSave } from "react-icons/fi";
 import { formatBytes } from "../../../lib/workspaceAssets";
 import {
   getSimpleModelPreset,
+  type SimpleModelPreset,
   SIMPLE_MODEL_PRESETS,
   targetVocabForPresetDataset,
 } from "../lib/modelPresets";
-import type { SimpleModeController } from "../types";
+import type { SimpleDatasetSource, SimpleModeController } from "../types";
 
 interface ArchitectureStepProps {
   controller: SimpleModeController;
@@ -26,6 +27,34 @@ function formatParameterCount(value: number | null | undefined): string {
     return `${(value / 1_000).toFixed(1)}K params`;
   }
   return `${value.toLocaleString()} params`;
+}
+
+const DATASET_LABELS = {
+  starter: "Starter data",
+  upload: "Upload data",
+  streaming: "Streaming data",
+} satisfies Record<SimpleDatasetSource, string>;
+
+const TRAINING_PROFILE_LABELS = {
+  quick: "Quick",
+  balanced: "Balanced",
+  longer: "Longer",
+};
+
+const EXECUTION_LABELS = {
+  local: "Local",
+  runpod_pod: "RunPod-ready",
+};
+
+function datasetForPresetSelection(
+  currentDatasetSource: SimpleDatasetSource,
+  localFileCount: number,
+  preset: SimpleModelPreset
+): SimpleDatasetSource {
+  if (currentDatasetSource === "upload" && localFileCount > 0) {
+    return "upload";
+  }
+  return preset.defaultDatasetSource;
 }
 
 export function ArchitectureStep({ controller }: ArchitectureStepProps) {
@@ -56,23 +85,35 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
                 type="button"
                 className={`simplePresetCard${item.id === flow.presetId ? " is-selected" : ""}`}
                 onClick={() =>
-                  updateFlow((current) => ({
-                    ...current,
-                    presetId: item.id,
-                    targetContextLength: item.defaultContextLength,
-                    targetVocabSize: targetVocabForPresetDataset(item.id, current.datasetSource),
-                  }))
+                  updateFlow((current) => {
+                    const datasetSource = datasetForPresetSelection(
+                      current.datasetSource,
+                      current.localTrainFiles.length,
+                      item
+                    );
+                    return {
+                      ...current,
+                      presetId: item.id,
+                      datasetSource,
+                      trainingProfile: item.defaultTrainingProfile,
+                      executionKind: item.defaultExecutionKind,
+                      targetContextLength: item.defaultContextLength,
+                      targetVocabSize: targetVocabForPresetDataset(item.id, datasetSource),
+                    };
+                  })
                 }
               >
                 <span className="simplePresetHead">
                   <strong>{item.name}</strong>
-                  <span>{item.support}</span>
+                  <span>{item.relativeSize}</span>
                 </span>
                 <span>{item.bestUse}</span>
                 <span className="simplePresetMeta">
-                  <span>{item.relativeSize}</span>
                   <span>{item.defaultContextLength.toLocaleString()} ctx</span>
                   <span>{item.headLayout}</span>
+                  <span>{DATASET_LABELS[item.defaultDatasetSource]}</span>
+                  <span>{TRAINING_PROFILE_LABELS[item.defaultTrainingProfile]}</span>
+                  <span>{EXECUTION_LABELS[item.defaultExecutionKind]}</span>
                 </span>
                 <span className="simplePresetEstimate">
                   {analysisError
@@ -83,6 +124,7 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
             );
           })}
         </div>
+
       </div>
 
       <div className="simplePanel">
@@ -92,7 +134,7 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
             <h3>Create architecture</h3>
           </div>
           {modelStep.project ? (
-            <span className="simpleStatusPill is-completed">Saved</span>
+            <span className="simpleStatusPill is-completed">Created</span>
           ) : null}
         </div>
 
@@ -100,12 +142,13 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
           <span>Model name</span>
           <input
             value={flow.modelName}
-            onChange={(event) =>
+            onChange={(event) => {
+              const modelName = event.currentTarget.value;
               updateFlow((current) => ({
                 ...current,
-                modelName: event.currentTarget.value,
-              }))
-            }
+                modelName,
+              }));
+            }}
           />
         </label>
 
@@ -117,12 +160,13 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
               min={128}
               step={128}
               value={flow.targetVocabSize}
-              onChange={(event) =>
+              onChange={(event) => {
+                const targetVocabSize = Math.max(1, Number(event.currentTarget.value) || 1);
                 updateFlow((current) => ({
                   ...current,
-                  targetVocabSize: Math.max(1, Number(event.currentTarget.value) || 1),
-                }))
-              }
+                  targetVocabSize,
+                }));
+              }}
             />
           </label>
 
@@ -130,12 +174,13 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
             <span>Context length</span>
             <select
               value={flow.targetContextLength}
-              onChange={(event) =>
+              onChange={(event) => {
+                const targetContextLength = Number(event.currentTarget.value);
                 updateFlow((current) => ({
                   ...current,
-                  targetContextLength: Number(event.currentTarget.value),
-                }))
-              }
+                  targetContextLength,
+                }));
+              }}
             >
               {preset.contextLengthOptions.map((contextLength) => (
                 <option key={contextLength} value={contextLength}>
@@ -165,6 +210,11 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
           </span>
         </div>
 
+        <div className="simpleOutputBox">
+          <strong>{preset.intent}</strong>
+          <span>{preset.honestyNote}</span>
+        </div>
+
         {preset.hardwareWarning ? (
           <div className="inlineNotice tone-info">{preset.hardwareWarning}</div>
         ) : null}
@@ -183,12 +233,6 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
             {modelStep.creating ? "Creating" : "Create architecture"}
           </button>
         </div>
-
-        <details className="simpleDetails">
-          <summary>Advanced details</summary>
-          <p>{preset.honestyNote}</p>
-          <pre>{JSON.stringify({ preset, target: { vocab: flow.targetVocabSize, context: flow.targetContextLength } }, null, 2)}</pre>
-        </details>
       </div>
     </div>
   );

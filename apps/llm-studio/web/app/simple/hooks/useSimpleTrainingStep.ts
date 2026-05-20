@@ -81,6 +81,8 @@ export function useSimpleTrainingStep({
   const [samples, setSamples] = useState<TrainingSampleEntry[]>([]);
   const [logs, setLogs] = useState<TrainingLogsResponse | null>(null);
   const appliedFixSignatureRef = useRef("");
+  const handledManualPreflightIdRef = useRef(0);
+  const lastValidatedPreflightKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,6 +148,16 @@ export function useSimpleTrainingStep({
 
   const trainingConfig = fixedConfigs?.trainingConfig ?? null;
   const dataloaderConfig = fixedConfigs?.dataloaderConfig ?? null;
+  const preflightInputKey = useMemo(
+    () =>
+      JSON.stringify({
+        projectId: flow.projectId,
+        tokenizerJobId: flow.tokenizerJobId,
+        trainingConfig,
+        dataloaderConfig,
+      }),
+    [dataloaderConfig, flow.projectId, flow.tokenizerJobId, trainingConfig]
+  );
 
   useEffect(() => {
     const recommendedFixes = preflight?.recommended_fixes ?? [];
@@ -168,54 +180,69 @@ export function useSimpleTrainingStep({
       return;
     }
 
+    if (
+      manualPreflightRefreshId === 0 ||
+      handledManualPreflightIdRef.current === manualPreflightRefreshId
+    ) {
+      return;
+    }
+    handledManualPreflightIdRef.current = manualPreflightRefreshId;
+
     const controller = new AbortController();
-    const delayMs = manualPreflightRefreshId > 0 ? 0 : 450;
-    const timeoutId = window.setTimeout(() => {
-      setPreflightLoading(true);
-      void validateTrainingPreflight(
-        {
-          project_id: flow.projectId as string,
-          tokenizer_job_id: flow.tokenizerJobId as string,
-          training_config: trainingConfig,
-          dataloader_config: dataloaderConfig,
-        },
-        controller.signal
-      )
-        .then((result) => {
-          startTransition(() => {
-            setPreflight(result);
-            setPreflightError(null);
-          });
-        })
-        .catch((error) => {
-          if (!controller.signal.aborted) {
-            setPreflight(null);
-            setPreflightError(
-              error instanceof Error ? error.message : "Preflight validation failed."
-            );
-          }
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) {
-            setPreflightLoading(false);
-          }
+    const requestKey = preflightInputKey;
+    setPreflightLoading(true);
+    void validateTrainingPreflight(
+      {
+        project_id: flow.projectId,
+        tokenizer_job_id: flow.tokenizerJobId,
+        training_config: trainingConfig,
+        dataloader_config: dataloaderConfig,
+      },
+      controller.signal
+    )
+      .then((result) => {
+        startTransition(() => {
+          lastValidatedPreflightKeyRef.current = requestKey;
+          setPreflight(result);
+          setPreflightError(null);
         });
-    }, delayMs);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          setPreflight(null);
+          setPreflightError(
+            error instanceof Error ? error.message : "Preflight validation failed."
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setPreflightLoading(false);
+        }
+      });
 
     return () => {
       controller.abort();
-      window.clearTimeout(timeoutId);
     };
   }, [
     dataloaderConfig,
     flow.projectId,
     flow.tokenizerJobId,
     manualPreflightRefreshId,
+    preflightInputKey,
     projectReady,
     templatesError,
     tokenizerReady,
     trainingConfig,
   ]);
+
+  useEffect(() => {
+    if (!preflight || lastValidatedPreflightKeyRef.current === preflightInputKey) {
+      return;
+    }
+    setPreflight(null);
+    setPreflightError(null);
+  }, [preflight, preflightInputKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -227,21 +254,6 @@ export function useSimpleTrainingStep({
         if (!cancelled) {
           startTransition(() => {
             setRecentRuns(jobs);
-            if (!flow.trainingJobId) {
-              const matchingCompleted = jobs.find(
-                (job) =>
-                  job.project_id === flow.projectId &&
-                  job.tokenizer_job_id === flow.tokenizerJobId &&
-                  job.status === "completed"
-              );
-              if (matchingCompleted) {
-                updateFlow((current) => ({
-                  ...current,
-                  trainingJobId: matchingCompleted.id,
-                  lastCompletedStep: "training",
-                }));
-              }
-            }
           });
         }
       } catch {

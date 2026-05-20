@@ -21,7 +21,7 @@ export function SimpleModePageView({ controller }: SimpleModePageViewProps) {
       <section className="simpleHeroPanel">
         <div>
           <p className="simpleEyebrow">Simple Mode</p>
-          <h1>Build, train, and test one model</h1>
+          <h1>Build, train, and test</h1>
           <p>
             Follow the guided path and keep every artifact compatible with Expert Mode.
           </p>

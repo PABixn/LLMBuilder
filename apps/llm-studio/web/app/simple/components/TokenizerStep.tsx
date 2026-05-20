@@ -29,9 +29,34 @@ const DATASET_OPTIONS: Array<{ id: SimpleDatasetSource; label: string; descripti
   },
 ];
 
+function readBudgetLimit(config: Record<string, unknown>): number | null {
+  const budget = config.budget;
+  if (typeof budget !== "object" || budget === null || Array.isArray(budget)) {
+    return null;
+  }
+  const limit = (budget as Record<string, unknown>).limit;
+  return typeof limit === "number" && Number.isFinite(limit) ? limit : null;
+}
+
+function formatCharacterBudget(value: number | null): string {
+  if (value === null) {
+    return "auto budget";
+  }
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toLocaleString(undefined, {
+      maximumFractionDigits: 1,
+    })}M chars`;
+  }
+  if (value >= 1_000) {
+    return `${Math.round(value / 1_000).toLocaleString()}K chars`;
+  }
+  return `${value.toLocaleString()} chars`;
+}
+
 export function TokenizerStep({ controller }: TokenizerStepProps) {
   const { flow, tokenizerStep, updateFlow } = controller;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const budgetLabel = formatCharacterBudget(readBudgetLimit(tokenizerStep.dataloaderConfig));
 
   const handleFilesSelected = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.currentTarget.files ?? []);
@@ -123,7 +148,7 @@ export function TokenizerStep({ controller }: TokenizerStepProps) {
             <h3>Train tokenizer</h3>
           </div>
           {tokenizerStep.tokenizerJob?.status === "completed" ? (
-            <span className="simpleStatusPill is-completed">Complete</span>
+            <span className="simpleStatusPill is-completed">Tokenizer ready</span>
           ) : null}
         </div>
 
@@ -139,6 +164,13 @@ export function TokenizerStep({ controller }: TokenizerStepProps) {
           <span>
             <strong>Auto matched</strong>
             <small>Model vocab sync</small>
+          </span>
+        </div>
+
+        <div className="simpleOutputBox">
+          <strong>Stable tokenizer defaults</strong>
+          <span>
+            Byte-level BPE with min frequency 2, EOS/PAD special tokens, and a {budgetLabel} data budget.
           </span>
         </div>
 
@@ -165,27 +197,32 @@ export function TokenizerStep({ controller }: TokenizerStepProps) {
           <button
             type="button"
             className="buttonGhost"
-            disabled={tokenizerStep.validating || !flow.projectId}
+            disabled={
+              tokenizerStep.validating ||
+              tokenizerStep.training ||
+              !flow.projectId ||
+              !tokenizerStep.datasetReady
+            }
             onClick={() => void tokenizerStep.validateTokenizer()}
           >
             <FiCheckCircle aria-hidden="true" />
-            {tokenizerStep.validating ? "Validating" : "Validate tokenizer"}
+            {tokenizerStep.validating ? "Validating" : "Validate"}
           </button>
           <button
             type="button"
             className="buttonPrimary"
-            disabled={tokenizerStep.training || !flow.projectId || !tokenizerStep.datasetReady}
+            disabled={
+              tokenizerStep.training ||
+              tokenizerStep.validating ||
+              !flow.projectId ||
+              !tokenizerStep.datasetReady
+            }
             onClick={() => void tokenizerStep.startTokenizerTraining()}
           >
             <FiPlay aria-hidden="true" />
             {tokenizerStep.training ? "Starting" : "Train tokenizer"}
           </button>
         </div>
-
-        <details className="simpleDetails">
-          <summary>Advanced details</summary>
-          <pre>{JSON.stringify({ tokenizer: tokenizerStep.tokenizerConfig, dataloader: tokenizerStep.dataloaderConfig }, null, 2)}</pre>
-        </details>
       </div>
     </div>
   );

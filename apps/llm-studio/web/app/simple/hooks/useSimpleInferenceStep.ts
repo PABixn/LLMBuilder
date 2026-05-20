@@ -57,7 +57,7 @@ export function useSimpleInferenceStep({
     if (flow.trainingJobId) {
       return completedRuns.find((job) => job.id === flow.trainingJobId) ?? null;
     }
-    return completedRuns[0] ?? null;
+    return null;
   }, [completedRuns, flow.trainingJobId]);
 
   const latestCheckpoint = useMemo(
@@ -97,15 +97,6 @@ export function useSimpleInferenceStep({
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (!flow.trainingJobId && selectedRun) {
-      updateFlow((current) => ({
-        ...current,
-        trainingJobId: selectedRun.id,
-      }));
-    }
-  }, [flow.trainingJobId, selectedRun, updateFlow]);
 
   useEffect(() => {
     setCheckpoints([]);

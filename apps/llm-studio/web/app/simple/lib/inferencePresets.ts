@@ -11,9 +11,9 @@ export interface SimpleInferenceSettings {
 }
 
 export const SIMPLE_LENGTH_PRESETS: Record<SimpleInferenceLength, { label: string; maxTokens: number }> = {
-  short: { label: "Short", maxTokens: 32 },
-  medium: { label: "Medium", maxTokens: 64 },
-  long: { label: "Long", maxTokens: 128 },
+  short: { label: "Short", maxTokens: 48 },
+  medium: { label: "Medium", maxTokens: 96 },
+  long: { label: "Long", maxTokens: 160 },
 };
 
 export const SIMPLE_CREATIVITY_PRESETS: Record<
@@ -24,19 +24,19 @@ export const SIMPLE_CREATIVITY_PRESETS: Record<
     label: "Precise",
     temperature: 0.2,
     topK: 20,
-    repetitionPenalty: 1.1,
+    repetitionPenalty: 1.12,
   },
   balanced: {
     label: "Balanced",
-    temperature: 0.8,
-    topK: 50,
-    repetitionPenalty: 1.0,
+    temperature: 0.7,
+    topK: 40,
+    repetitionPenalty: 1.08,
   },
   creative: {
     label: "Creative",
-    temperature: 1.0,
-    topK: 100,
-    repetitionPenalty: 1.0,
+    temperature: 0.95,
+    topK: 80,
+    repetitionPenalty: 1.04,
   },
 };
 

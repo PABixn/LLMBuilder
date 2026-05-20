@@ -7,6 +7,7 @@ import {
   SIMPLE_FLOW_STORAGE_KEY,
   SIMPLE_FLOW_VERSION,
 } from "../constants";
+import { isSimpleModelPresetId } from "../lib/modelPresets";
 import type {
   SimpleDatasetSource,
   SimpleExecutionKind,
@@ -47,6 +48,10 @@ function asTrainingProfile(value: unknown): SimpleTrainingProfile {
 
 function asExecutionKind(value: unknown): SimpleExecutionKind {
   return value === "runpod_pod" ? "runpod_pod" : "local";
+}
+
+function asPresetId(value: unknown): string {
+  return isSimpleModelPresetId(value) ? value : DEFAULT_SIMPLE_FLOW_STATE.presetId;
 }
 
 function asSimpleStep(value: unknown): SimpleStepId | null {
@@ -93,7 +98,7 @@ export function parseSimpleFlowState(value: unknown): SimpleFlowState {
 
   return {
     version: SIMPLE_FLOW_VERSION,
-    presetId: asString(value.presetId, DEFAULT_SIMPLE_FLOW_STATE.presetId),
+    presetId: asPresetId(value.presetId),
     modelName: asString(value.modelName, DEFAULT_SIMPLE_FLOW_STATE.modelName),
     targetVocabSize: asPositiveInteger(
       value.targetVocabSize,
@@ -118,13 +123,23 @@ export function parseSimpleFlowState(value: unknown): SimpleFlowState {
   };
 }
 
+function clearRestoredArtifacts(state: SimpleFlowState): SimpleFlowState {
+  return {
+    ...state,
+    projectId: null,
+    tokenizerJobId: null,
+    trainingJobId: null,
+    lastCompletedStep: null,
+  };
+}
+
 function readStoredSimpleFlow(): SimpleFlowState {
   if (typeof window === "undefined") {
     return DEFAULT_SIMPLE_FLOW_STATE;
   }
   try {
     const raw = window.localStorage.getItem(SIMPLE_FLOW_STORAGE_KEY);
-    return raw ? parseSimpleFlowState(JSON.parse(raw)) : DEFAULT_SIMPLE_FLOW_STATE;
+    return raw ? clearRestoredArtifacts(parseSimpleFlowState(JSON.parse(raw))) : DEFAULT_SIMPLE_FLOW_STATE;
   } catch {
     return DEFAULT_SIMPLE_FLOW_STATE;
   }

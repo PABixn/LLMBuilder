@@ -13,19 +13,48 @@ interface TrainingStepProps {
 }
 
 const PROFILE_OPTIONS: Array<{ id: SimpleTrainingProfile; label: string; description: string }> = [
-  { id: "quick", label: "Quick check", description: "Short local smoke test" },
-  { id: "balanced", label: "Balanced", description: "Backend recommendation" },
-  { id: "longer", label: "Longer run", description: "Conservative extension" },
+  { id: "quick", label: "Quick check", description: "20-100 steps for fast feedback" },
+  { id: "balanced", label: "Balanced", description: "Recommended batch and learning rate" },
+  { id: "longer", label: "Longer run", description: "Conservative capped extension" },
 ];
 
-const EXECUTION_OPTIONS: Array<{ id: SimpleExecutionKind; label: string }> = [
-  { id: "local", label: "Local machine" },
-  { id: "runpod_pod", label: "RunPod" },
+const EXECUTION_OPTIONS: Array<{ id: SimpleExecutionKind; label: string; description: string }> = [
+  { id: "local", label: "Local machine", description: "No cloud launch" },
+  { id: "runpod_pod", label: "RunPod", description: "GPU pod with confirmation" },
 ];
+
+function readNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readOptimizerLearningRate(config: Record<string, unknown> | null): number | null {
+  if (
+    !config ||
+    typeof config.optimizer !== "object" ||
+    config.optimizer === null ||
+    Array.isArray(config.optimizer)
+  ) {
+    return null;
+  }
+  return readNumber((config.optimizer as Record<string, unknown>).lr);
+}
+
+function formatInteger(value: number | null): string {
+  return value === null ? "Loading" : Math.trunc(value).toLocaleString();
+}
+
+function formatLearningRate(value: number | null): string {
+  return value === null ? "Loading" : value.toExponential(1);
+}
 
 export function TrainingStep({ controller }: TrainingStepProps) {
   const { flow, modelStep, tokenizerStep, trainingStep, updateFlow } = controller;
   const tokenizerVocabSize = readTokenizerVocabSize(tokenizerStep.tokenizerJob);
+  const trainingConfig = trainingStep.trainingConfig;
+  const seqLen = readNumber(trainingConfig?.seq_len);
+  const maxSteps = readNumber(trainingConfig?.max_steps);
+  const totalBatchSize = readNumber(trainingConfig?.total_batch_size);
+  const learningRate = readOptimizerLearningRate(trainingConfig);
 
   return (
     <div className="simpleStepGrid">
@@ -80,6 +109,25 @@ export function TrainingStep({ controller }: TrainingStepProps) {
           ))}
         </div>
 
+        <div className="simpleSummaryGrid simpleSummaryGridFour">
+          <span>
+            <strong>{formatInteger(seqLen)}</strong>
+            <small>Sequence length</small>
+          </span>
+          <span>
+            <strong>{formatInteger(maxSteps)}</strong>
+            <small>Max steps</small>
+          </span>
+          <span>
+            <strong>{formatInteger(totalBatchSize)}</strong>
+            <small>Total batch tokens</small>
+          </span>
+          <span>
+            <strong>{formatLearningRate(learningRate)}</strong>
+            <small>Learning rate</small>
+          </span>
+        </div>
+
         <div className="simpleSegmented compact">
           {EXECUTION_OPTIONS.map((option) => (
             <button
@@ -94,6 +142,7 @@ export function TrainingStep({ controller }: TrainingStepProps) {
               }
             >
               <strong>{option.label}</strong>
+              <span>{option.description}</span>
             </button>
           ))}
         </div>
@@ -167,11 +216,6 @@ export function TrainingStep({ controller }: TrainingStepProps) {
           checkpointCount={trainingStep.checkpoints.length}
           sampleCount={trainingStep.samples.length}
         />
-
-        <details className="simpleDetails">
-          <summary>Advanced details</summary>
-          <pre>{JSON.stringify({ training: trainingStep.trainingConfig, dataloader: trainingStep.dataloaderConfig }, null, 2)}</pre>
-        </details>
       </div>
     </div>
   );

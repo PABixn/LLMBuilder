@@ -1,4 +1,5 @@
 import {
+  SIMPLE_STREAMING_DATASET_FILTERS,
   SIMPLE_STARTER_DATASET_PATH,
   SIMPLE_STREAMING_DATASET_NAME,
 } from "../constants";
@@ -39,9 +40,15 @@ export function tokenizerBudgetForDataset(
     return targetVocabSize <= 1000 ? 250_000 : 500_000;
   }
   if (datasetSource === "upload") {
-    return targetVocabSize <= 8000 ? 2_000_000 : 10_000_000;
+    if (targetVocabSize <= 8000) {
+      return 2_000_000;
+    }
+    if (targetVocabSize <= 16000) {
+      return 6_000_000;
+    }
+    return 12_000_000;
   }
-  return 10_000_000;
+  return targetVocabSize <= 16000 ? 8_000_000 : 16_000_000;
 }
 
 export function buildSimpleTokenizerDataloaderConfig({
@@ -95,7 +102,7 @@ export function buildSimpleTokenizerDataloaderConfig({
         split: "train",
         text_columns: ["text"],
         weight: 1,
-        streaming: true,
+        filters: SIMPLE_STREAMING_DATASET_FILTERS.map((filter) => [...filter]),
       },
     ],
     budget,

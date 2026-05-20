@@ -8,20 +8,30 @@ import type {
   TrainingCheckpointEntry,
   TrainingJob,
 } from "../../../lib/training/types";
-import { DEFAULT_SIMPLE_FLOW_STATE } from "../constants";
+import {
+  DEFAULT_SIMPLE_FLOW_STATE,
+  SIMPLE_STREAMING_DATASET_FILTERS,
+} from "../constants";
 import { parseSimpleFlowState } from "../hooks/useSimpleFlowPersistence";
 import { buildInferenceSettings } from "./inferencePresets";
 import {
   SIMPLE_MODEL_PRESETS,
   assertPresetModelConfig,
   buildPresetModelConfig,
+  getSimpleModelPreset,
+  isSimpleModelPresetId,
   targetVocabForPresetDataset,
 } from "./modelPresets";
 import { deriveSimpleStepStatuses } from "./stepStatus";
 import {
+  buildSimpleTrainingDataloaderConfig,
   buildSimpleTrainingConfig,
   selectRecommendedTrainingOption,
 } from "./trainingProfiles";
+import {
+  buildSimpleTokenizerDataloaderConfig,
+  tokenizerBudgetForDataset,
+} from "./tokenizerDefaults";
 import {
   buildModelConfigWithSyncedVocab,
   modelNeedsTokenizerVocabSync,
@@ -105,6 +115,7 @@ const trainingTemplate = {
 test("simple flow parser migrates malformed state to safe defaults", () => {
   assert.deepEqual(parseSimpleFlowState(null), DEFAULT_SIMPLE_FLOW_STATE);
   assert.equal(parseSimpleFlowState({ datasetSource: "bad" }).datasetSource, "starter");
+  assert.equal(parseSimpleFlowState({ presetId: "bad" }).presetId, DEFAULT_SIMPLE_FLOW_STATE.presetId);
   assert.equal(parseSimpleFlowState({ trainingProfile: "longer" }).trainingProfile, "longer");
   assert.deepEqual(
     parseSimpleFlowState({
@@ -121,9 +132,19 @@ test("model presets satisfy local structural constraints", () => {
   }
 });
 
+test("model presets carry coordinated simple-mode defaults", () => {
+  const quickstart = getSimpleModelPreset(DEFAULT_SIMPLE_FLOW_STATE.presetId);
+  assert.equal(isSimpleModelPresetId(quickstart.id), true);
+  assert.equal(isSimpleModelPresetId("missing"), false);
+  assert.equal(quickstart.defaultDatasetSource, "starter");
+  assert.equal(quickstart.defaultTrainingProfile, "quick");
+  assert.equal(quickstart.defaultExecutionKind, "local");
+});
+
 test("preset tokenizer targets stay small for starter data", () => {
   assert.equal(targetVocabForPresetDataset("nano-gpt-quick", "starter"), 1000);
-  assert.equal(targetVocabForPresetDataset("gqa-balanced", "upload"), 32000);
+  assert.equal(targetVocabForPresetDataset("gqa-balanced", "upload"), 16000);
+  assert.equal(targetVocabForPresetDataset("gqa-balanced", "streaming"), 32000);
 });
 
 test("vocabulary sync reads tokenizer stats and updates model config", () => {
@@ -146,7 +167,7 @@ test("training profiles apply backend recommendation and conservative caps", () 
 
   const quick = buildSimpleTrainingConfig(trainingTemplate, "quick", 1024, rec);
   assert.equal(quick.config.max_steps, 100);
-  assert.equal(quick.config.seq_len, 1024);
+  assert.equal(quick.config.seq_len, 256);
   assert.equal(quick.config.total_batch_size, 64);
   assert.equal((quick.config.optimizer as Record<string, unknown>).lr, 0.00025);
   assert.equal("micro_batch_size" in quick.config, false);
@@ -154,21 +175,45 @@ test("training profiles apply backend recommendation and conservative caps", () 
 
   const longer = buildSimpleTrainingConfig(trainingTemplate, "longer", 2048, rec);
   assert.equal(longer.config.max_steps, 240);
+  assert.equal(longer.config.seq_len, 1024);
 });
 
 test("inference preset mapping hides numeric sampling controls behind stable choices", () => {
   assert.deepEqual(buildInferenceSettings("short", "precise"), {
-    max_tokens: 32,
+    max_tokens: 48,
     temperature: 0.2,
     top_k: 20,
-    repetition_penalty: 1.1,
+    repetition_penalty: 1.12,
   });
   assert.deepEqual(buildInferenceSettings("long", "creative"), {
-    max_tokens: 128,
-    temperature: 1.0,
-    top_k: 100,
-    repetition_penalty: 1.0,
+    max_tokens: 160,
+    temperature: 0.95,
+    top_k: 80,
+    repetition_penalty: 1.04,
   });
+});
+
+test("streaming data templates keep quality filters and tokenizer schema compatibility", () => {
+  const tokenizerDataloader = buildSimpleTokenizerDataloaderConfig({
+    datasetSource: "streaming",
+    localTrainFiles: [],
+    budgetLimit: tokenizerBudgetForDataset("streaming", 32000),
+  });
+  const tokenizerDataset = (tokenizerDataloader.datasets as Record<string, unknown>[])[0];
+  assert.deepEqual(
+    tokenizerDataset.filters,
+    SIMPLE_STREAMING_DATASET_FILTERS.map((filter) => [...filter])
+  );
+  assert.equal("streaming" in tokenizerDataset, false);
+  assert.equal((tokenizerDataloader.budget as Record<string, unknown>).limit, 16_000_000);
+
+  const trainingDataloader = buildSimpleTrainingDataloaderConfig({}, "streaming", []);
+  const trainingDataset = (trainingDataloader.datasets as Record<string, unknown>[])[0];
+  assert.deepEqual(
+    trainingDataset.filters,
+    SIMPLE_STREAMING_DATASET_FILTERS.map((filter) => [...filter])
+  );
+  assert.equal(trainingDataset.streaming, true);
 });
 
 test("step readiness derives from artifacts instead of only persisted state", () => {

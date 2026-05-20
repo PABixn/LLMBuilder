@@ -3,7 +3,11 @@ import type {
   TrainingBatchLrRecommendationOption,
   TrainingFixSuggestion,
 } from "../../../lib/training/types";
-import { SIMPLE_STARTER_DATASET_PATH, SIMPLE_STREAMING_DATASET_NAME } from "../constants";
+import {
+  SIMPLE_STARTER_DATASET_PATH,
+  SIMPLE_STREAMING_DATASET_FILTERS,
+  SIMPLE_STREAMING_DATASET_NAME,
+} from "../constants";
 import type {
   SimpleDatasetSource,
   SimpleLocalTrainFile,
@@ -66,11 +70,30 @@ function recommendedStepsForProfile(
 
   const doubled = recommendedMaxSteps * 2;
   const signals = recommendation?.signals;
+  const datasetScale = signals?.dataset_scale ?? "";
   const tinyDataset =
-    signals?.dataset_scale === "tiny" ||
+    datasetScale === "tiny" ||
+    datasetScale === "tiny_local" ||
     (typeof signals?.approx_local_tokens === "number" && signals.approx_local_tokens < 50_000);
-  const upperCap = tinyDataset ? 300 : 2000;
+  const smallDataset =
+    datasetScale === "small_local" ||
+    (typeof signals?.approx_local_tokens === "number" && signals.approx_local_tokens < 500_000);
+  const upperCap = tinyDataset ? 300 : smallDataset ? 800 : 2000;
   return clampInteger(Math.min(doubled, upperCap), 20, upperCap);
+}
+
+function sequenceLengthForProfile(
+  profile: SimpleTrainingProfile,
+  modelContextLength: number
+): number {
+  const safeContextLength = Math.max(1, Math.trunc(modelContextLength));
+  const preferred =
+    profile === "quick"
+      ? 256
+      : profile === "balanced"
+        ? 512
+        : 1024;
+  return clampInteger(Math.min(preferred, safeContextLength), 1, safeContextLength);
 }
 
 function setOptimizerLearningRate(
@@ -126,11 +149,7 @@ export function buildSimpleTrainingConfig(
 ): SimpleTrainingProfileResult {
   const option = selectRecommendedTrainingOption(recommendation);
   const maxSteps = recommendedStepsForProfile(profile, option, recommendation);
-  const seqLen = clampInteger(
-    asNumber(template.seq_len, modelContextLength),
-    1,
-    Math.max(1, modelContextLength)
-  );
+  const seqLen = sequenceLengthForProfile(profile, modelContextLength);
 
   let config = cloneRecord(template);
   config.seq_len = seqLen;
@@ -158,8 +177,8 @@ export function buildSimpleTrainingConfig(
   const profileLabel =
     profile === "quick" ? "Quick check" : profile === "balanced" ? "Balanced" : "Longer run";
   const note = option
-    ? `${profileLabel} uses backend batch and learning-rate guidance.`
-    : `${profileLabel} uses backend templates while waiting for recommendation data.`;
+    ? `${profileLabel}: ${maxSteps.toLocaleString()} steps at ${seqLen.toLocaleString()} tokens, with backend batch and learning-rate guidance.`
+    : `${profileLabel}: ${maxSteps.toLocaleString()} steps at ${seqLen.toLocaleString()} tokens while waiting for backend guidance.`;
 
   return {
     config,
@@ -212,6 +231,7 @@ export function buildSimpleTrainingDataloaderConfig(
       split: "train",
       text_columns: ["text"],
       weight: 1,
+      filters: SIMPLE_STREAMING_DATASET_FILTERS.map((filter) => [...filter]),
       streaming: true,
     },
   ];

@@ -82,7 +82,7 @@ export function deriveSimpleStepStatuses(options: {
             : flow.modelName.trim() && flow.presetId
               ? "ready"
               : "blocked",
-      status: architectureComplete ? "Saved" : projectLoading ? "Working" : projectError ? "Failed" : "Ready",
+      status: architectureComplete ? "Architecture set" : projectLoading ? "Working" : projectError ? "Failed" : "Start here",
       blocker: projectError,
       actionLabel: architectureComplete ? "Edit architecture" : "Create architecture",
       artifactLabel: project ? project.name ?? project.artifact_file : null,
@@ -103,17 +103,17 @@ export function deriveSimpleStepStatuses(options: {
                 ? "ready"
                 : "blocked",
       status: tokenizerComplete
-        ? "Trained"
+        ? "Tokenizer set"
         : tokenizerRunning
           ? "Training"
           : !architectureComplete
             ? "Blocked"
-            : "Ready",
+            : "Can train",
       blocker:
         tokenizerError ??
         tokenizerValidationError ??
         (!architectureComplete ? "Create an architecture first." : datasetBlocker),
-      actionLabel: tokenizerComplete ? "Review tokenizer" : "Train tokenizer",
+      actionLabel: "Train tokenizer",
       artifactLabel: tokenizerJob ? String(tokenizerJob.tokenizer_config.name ?? tokenizerJob.id) : null,
     },
     {
@@ -132,11 +132,11 @@ export function deriveSimpleStepStatuses(options: {
                 ? "ready"
                 : "blocked",
       status: trainingComplete
-        ? "Trained"
+        ? "Checkpoint ready"
         : trainingRunning
           ? "Running"
           : preflightValid
-            ? "Ready"
+            ? "Can start"
             : "Blocked",
       blocker:
         trainingRun?.error ??
@@ -145,7 +145,7 @@ export function deriveSimpleStepStatuses(options: {
           : !tokenizerComplete
             ? "Train a tokenizer first."
             : preflightError ?? "Run preflight before training."),
-      actionLabel: trainingComplete ? "Review run" : "Start training",
+      actionLabel: "Start training",
       artifactLabel: trainingRun ? trainingRun.name : null,
     },
     {
@@ -164,7 +164,7 @@ export function deriveSimpleStepStatuses(options: {
         : inferenceGenerating
           ? "Generating"
           : trainingComplete
-            ? "Ready"
+            ? "Can generate"
             : "Blocked",
       blocker: checkpointError ?? (!trainingComplete ? "Finish training with a checkpoint first." : null),
       actionLabel: generationSucceeded ? "Generate again" : "Generate",
