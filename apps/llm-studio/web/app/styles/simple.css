@@ -499,6 +499,56 @@
   font-weight: 620;
 }
 
+.simpleArchitectureStatsGrid {
+  margin-top: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.simpleArchitectureStatsGrid .statusCard {
+  min-width: 0;
+  padding: 10px;
+}
+
+.simpleArchitectureStatsGrid .statusCardValue,
+.simpleArchitectureStatsGrid .statusCardDetail {
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.simpleArchitectureStatsGrid .statusCardValue {
+  line-height: 1.18;
+}
+
+.simpleArchitectureTooltip {
+  display: grid;
+  gap: 8px;
+}
+
+.simpleArchitectureTooltipGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.simpleArchitectureTooltipGrid span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 7px 8px;
+}
+
+.simpleArchitectureTooltipGrid small {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 680;
+}
+
 .simpleSegmented {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -546,6 +596,52 @@
   color: var(--text-muted);
   font-size: 0.75rem;
   line-height: 1.3;
+}
+
+.simpleStreamingMixer,
+.simpleCheckboxGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.simpleChoiceCheck {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-soft) 74%, var(--surface));
+  padding: 10px;
+  color: var(--text);
+}
+
+.simpleChoiceCheck input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin-top: 2px;
+  accent-color: var(--brand);
+}
+
+.simpleChoiceCheck span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.simpleChoiceCheck strong,
+.simpleChoiceCheck small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simpleChoiceCheck small {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
 }
 
 .simpleUploadBox,
@@ -617,18 +713,137 @@
   flex-wrap: wrap;
 }
 
-.simpleOutputBox {
-  display: grid;
-  gap: 4px;
+.simpleTokenizerPreview {
+  min-width: 0;
   border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--surface-soft) 78%, var(--surface));
+  padding: 0;
+}
+
+.simpleTokenizerPreview summary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.simpleTokenizerPreview summary::-webkit-details-marker {
+  display: none;
+}
+
+.simpleTokenizerPreview summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform 0.16s ease;
+}
+
+.simpleTokenizerPreview[open] summary::after {
+  transform: rotate(225deg);
+}
+
+.simpleTokenizerPreview summary > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.simpleTokenizerPreview summary strong,
+.simpleTokenizerPreview summary small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simpleTokenizerPreview summary small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.simplePreviewBadge {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 4px 8px;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.simpleTokenizerPreviewBody {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
   padding: 10px;
 }
 
-.simpleOutputBox span {
-  color: var(--text-muted);
+.simpleModePage .simplePreviewField textarea {
+  min-height: 94px;
+  resize: vertical;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
   font-size: 0.82rem;
+}
+
+.simpleTokenizedText {
+  border: 1px dashed color-mix(in srgb, var(--line) 90%, transparent);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 10px;
+  color: var(--text);
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.simplePlainSegment {
+  color: var(--text);
+}
+
+.simpleTokenMark {
+  border: 1px solid;
+  border-radius: 6px;
+  padding: 0 1px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: help;
+}
+
+.simpleTokenChipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.simpleTokenChip {
+  max-width: 100%;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.76rem;
+}
+
+.simpleTokenChip code {
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .simpleCheckbox {
@@ -662,15 +877,117 @@
   background: linear-gradient(90deg, var(--brand), var(--ok));
 }
 
+.simpleTokenizerMonitor {
+  display: grid;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-soft) 76%, var(--surface));
+  padding: 10px;
+}
+
+.simpleProgressHeader {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.simpleProgressHeader > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.simpleProgressHeader > span strong,
+.simpleProgressHeader > span small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.simpleProgressValue {
+  flex: 0 0 auto;
+  min-width: max-content;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.simpleProgressHeader small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
 .simpleOptionRows > div {
   display: grid;
   gap: 6px;
 }
 
+.simpleOptionRowsCompact {
+  gap: 8px;
+}
+
+.simpleOptionRows .simpleOptionLine {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
 .simpleOptionRows > div > span {
+  width: 72px;
+  flex: 0 0 72px;
   color: var(--text-muted);
   font-size: 0.78rem;
   font-weight: 750;
+}
+
+.simpleMiniSegmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-soft) 80%, var(--surface));
+  padding: 2px;
+}
+
+.simpleMiniSegmented button {
+  min-width: 0;
+  min-height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 4px 9px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 720;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.simpleMiniSegmented button:hover,
+.simpleMiniSegmented button:focus-visible {
+  color: var(--text);
+  outline: none;
+}
+
+.simpleMiniSegmented button.is-selected {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(18, 31, 47, 0.12);
 }
 
 .simpleGeneration {
@@ -726,6 +1043,17 @@
   .simpleActionRow .buttonGhost,
   .simpleHeroPanel .buttonGhost {
     justify-content: center;
+  }
+
+  .simpleOptionRows .simpleOptionLine {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .simpleOptionRows > div > span {
+    width: auto;
+    flex-basis: auto;
   }
 }
 

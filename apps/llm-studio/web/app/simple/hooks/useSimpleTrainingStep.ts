@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   createTrainingJob,
@@ -15,6 +15,7 @@ import {
 } from "../../../lib/training/jobs";
 import type {
   TrainingCheckpointEntry,
+  TrainingBatchLrRecommendation,
   TrainingConfigTemplates,
   TrainingFixSuggestion,
   TrainingJob,
@@ -29,6 +30,7 @@ import {
   SIMPLE_RECENT_RUNS_POLL_INTERVAL_MS,
 } from "../constants";
 import {
+  applySimpleTrainingProfileGuardrails,
   applySafeTrainingFixes,
   buildSimpleTrainingConfig,
   buildSimpleTrainingDataloaderConfig,
@@ -59,6 +61,24 @@ function fixSignature(fixes: TrainingFixSuggestion[]): string {
   );
 }
 
+function recommendationSignature(
+  recommendation: TrainingBatchLrRecommendation | null | undefined
+): string {
+  if (!recommendation) {
+    return "";
+  }
+  return JSON.stringify({
+    recommended_option_key: recommendation.recommended_option_key,
+    options: recommendation.options.map((option) => ({
+      key: option.key,
+      total_batch_size: option.total_batch_size,
+      learning_rate: option.learning_rate,
+      recommended_max_steps: option.recommended_max_steps,
+      clear_manual_micro_batch: option.clear_manual_micro_batch,
+    })),
+  });
+}
+
 export function useSimpleTrainingStep({
   flow,
   projectReady,
@@ -73,6 +93,8 @@ export function useSimpleTrainingStep({
   const [manualPreflightRefreshId, setManualPreflightRefreshId] = useState(0);
   const [launching, setLaunching] = useState(false);
   const [cloudConfirmed, setCloudConfirmed] = useState(false);
+  const [batchRecommendation, setBatchRecommendation] =
+    useState<TrainingBatchLrRecommendation | null>(null);
   const [appliedFixes, setAppliedFixes] = useState<TrainingFixSuggestion[]>([]);
   const [trainingRun, setTrainingRun] = useState<TrainingJob | null>(null);
   const [recentRuns, setRecentRuns] = useState<TrainingJob[]>([]);
@@ -81,6 +103,7 @@ export function useSimpleTrainingStep({
   const [samples, setSamples] = useState<TrainingSampleEntry[]>([]);
   const [logs, setLogs] = useState<TrainingLogsResponse | null>(null);
   const appliedFixSignatureRef = useRef("");
+  const appliedRecommendationSignatureRef = useRef("");
   const handledManualPreflightIdRef = useRef(0);
   const lastValidatedPreflightKeyRef = useRef<string | null>(null);
 
@@ -115,12 +138,12 @@ export function useSimpleTrainingStep({
       templates.training_config_template,
       flow.trainingProfile,
       flow.targetContextLength,
-      preflight?.batch_and_lr_recommendation
+      batchRecommendation
     );
   }, [
+    batchRecommendation,
     flow.targetContextLength,
     flow.trainingProfile,
-    preflight?.batch_and_lr_recommendation,
     templates,
   ]);
 
@@ -131,20 +154,36 @@ export function useSimpleTrainingStep({
     return buildSimpleTrainingDataloaderConfig(
       templates.dataloader_config_template,
       flow.datasetSource,
-      flow.localTrainFiles
+      flow.localTrainFiles,
+      flow.streamingPrimaryDatasetId,
+      flow.streamingAdditionalDatasetIds
     );
-  }, [flow.datasetSource, flow.localTrainFiles, templates]);
+  }, [
+    flow.datasetSource,
+    flow.localTrainFiles,
+    flow.streamingAdditionalDatasetIds,
+    flow.streamingPrimaryDatasetId,
+    templates,
+  ]);
 
   const fixedConfigs = useMemo(() => {
     if (!profiledTraining || !baseDataloaderConfig) {
       return null;
     }
-    return applySafeTrainingFixes(
+    const fixed = applySafeTrainingFixes(
       profiledTraining.config,
       baseDataloaderConfig,
       appliedFixes
     );
-  }, [appliedFixes, baseDataloaderConfig, profiledTraining]);
+    return {
+      ...fixed,
+      trainingConfig: applySimpleTrainingProfileGuardrails(
+        fixed.trainingConfig,
+        flow.trainingProfile,
+        profiledTraining.appliedRecommendation
+      ),
+    };
+  }, [appliedFixes, baseDataloaderConfig, flow.trainingProfile, profiledTraining]);
 
   const trainingConfig = fixedConfigs?.trainingConfig ?? null;
   const dataloaderConfig = fixedConfigs?.dataloaderConfig ?? null;
@@ -158,6 +197,33 @@ export function useSimpleTrainingStep({
       }),
     [dataloaderConfig, flow.projectId, flow.tokenizerJobId, trainingConfig]
   );
+
+  const preflightBlocker = useMemo(() => {
+    if (templatesError) {
+      return templatesError;
+    }
+    if (!projectReady || !flow.projectId) {
+      return "Create an architecture first.";
+    }
+    if (!tokenizerReady || !flow.tokenizerJobId) {
+      return "Train a tokenizer first.";
+    }
+    if (!trainingConfig || !dataloaderConfig) {
+      return templates
+        ? "Training settings are still being prepared."
+        : "Loading backend training defaults.";
+    }
+    return null;
+  }, [
+    dataloaderConfig,
+    flow.projectId,
+    flow.tokenizerJobId,
+    projectReady,
+    templates,
+    templatesError,
+    tokenizerReady,
+    trainingConfig,
+  ]);
 
   useEffect(() => {
     const recommendedFixes = preflight?.recommended_fixes ?? [];
@@ -173,67 +239,111 @@ export function useSimpleTrainingStep({
   }, [preflight?.recommended_fixes]);
 
   useEffect(() => {
-    if (!projectReady || !tokenizerReady || !flow.projectId || !flow.tokenizerJobId || !trainingConfig || !dataloaderConfig) {
+    if (!preflight) {
+      return;
+    }
+    const signature = recommendationSignature(preflight.batch_and_lr_recommendation);
+    if (signature === appliedRecommendationSignatureRef.current) {
+      return;
+    }
+    appliedRecommendationSignatureRef.current = signature;
+    setBatchRecommendation(preflight.batch_and_lr_recommendation);
+  }, [preflight]);
+
+  const runTrainingPreflight = useCallback(
+    async (signal?: AbortSignal): Promise<TrainingPreflightResponse | null> => {
+      if (preflightBlocker) {
+        setPreflight(null);
+        setPreflightError(preflightBlocker);
+        return null;
+      }
+      if (!flow.projectId || !flow.tokenizerJobId || !trainingConfig || !dataloaderConfig) {
+        return null;
+      }
+
+      const requestKey = preflightInputKey;
+      setPreflightLoading(true);
+      setPreflightError(null);
+      try {
+        const result = await validateTrainingPreflight(
+          {
+            project_id: flow.projectId,
+            tokenizer_job_id: flow.tokenizerJobId,
+            training_config: trainingConfig,
+            dataloader_config: dataloaderConfig,
+          },
+          signal
+        );
+        if (!signal?.aborted) {
+          startTransition(() => {
+            lastValidatedPreflightKeyRef.current = requestKey;
+            setPreflight(result);
+            setPreflightError(null);
+          });
+        }
+        return result;
+      } catch (error) {
+        if (!signal?.aborted) {
+          setPreflight(null);
+          setPreflightError(
+            error instanceof Error ? error.message : "Preflight validation failed."
+          );
+        }
+        return null;
+      } finally {
+        if (!signal?.aborted) {
+          setPreflightLoading(false);
+        }
+      }
+    },
+    [
+      dataloaderConfig,
+      flow.projectId,
+      flow.tokenizerJobId,
+      preflightBlocker,
+      preflightInputKey,
+      trainingConfig,
+    ]
+  );
+
+  useEffect(() => {
+    if (preflightBlocker) {
       setPreflight(null);
       setPreflightLoading(false);
       setPreflightError(templatesError);
       return;
     }
 
-    if (
-      manualPreflightRefreshId === 0 ||
-      handledManualPreflightIdRef.current === manualPreflightRefreshId
-    ) {
+    const manualRefreshRequested =
+      handledManualPreflightIdRef.current !== manualPreflightRefreshId;
+    if (!manualRefreshRequested && lastValidatedPreflightKeyRef.current === preflightInputKey) {
       return;
     }
-    handledManualPreflightIdRef.current = manualPreflightRefreshId;
+    if (manualRefreshRequested) {
+      handledManualPreflightIdRef.current = manualPreflightRefreshId;
+    }
 
+    let timeoutId: number | null = null;
     const controller = new AbortController();
-    const requestKey = preflightInputKey;
-    setPreflightLoading(true);
-    void validateTrainingPreflight(
-      {
-        project_id: flow.projectId,
-        tokenizer_job_id: flow.tokenizerJobId,
-        training_config: trainingConfig,
-        dataloader_config: dataloaderConfig,
+    timeoutId = window.setTimeout(
+      () => {
+        void runTrainingPreflight(controller.signal);
       },
-      controller.signal
-    )
-      .then((result) => {
-        startTransition(() => {
-          lastValidatedPreflightKeyRef.current = requestKey;
-          setPreflight(result);
-          setPreflightError(null);
-        });
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted) {
-          setPreflight(null);
-          setPreflightError(
-            error instanceof Error ? error.message : "Preflight validation failed."
-          );
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setPreflightLoading(false);
-        }
-      });
+      manualRefreshRequested ? 0 : 350
+    );
 
     return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
       controller.abort();
     };
   }, [
-    dataloaderConfig,
-    flow.projectId,
-    flow.tokenizerJobId,
     manualPreflightRefreshId,
+    preflightBlocker,
     preflightInputKey,
-    projectReady,
+    runTrainingPreflight,
     templatesError,
-    tokenizerReady,
-    trainingConfig,
   ]);
 
   useEffect(() => {
@@ -339,12 +449,21 @@ export function useSimpleTrainingStep({
   }, [flow.trainingJobId, updateFlow]);
 
   const runPreflight = () => {
+    if (preflightBlocker) {
+      setPreflightError(preflightBlocker);
+      return;
+    }
     setManualPreflightRefreshId((current) => current + 1);
   };
 
   const startTraining = async () => {
-    if (!flow.projectId || !flow.tokenizerJobId || !trainingConfig || !dataloaderConfig || !preflight?.valid) {
+    if (preflightBlocker || !flow.projectId || !flow.tokenizerJobId || !trainingConfig || !dataloaderConfig) {
+      setPreflightError(preflightBlocker ?? "Training settings are still being prepared.");
+      return;
+    }
+    if (!preflight?.valid || lastValidatedPreflightKeyRef.current !== preflightInputKey) {
       setPreflightError("Fix preflight blockers before starting training.");
+      setManualPreflightRefreshId((current) => current + 1);
       return;
     }
     if (flow.executionKind === "runpod_pod" && !cloudConfirmed) {

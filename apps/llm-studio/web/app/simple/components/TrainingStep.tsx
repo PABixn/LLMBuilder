@@ -1,6 +1,7 @@
 import { FiExternalLink, FiPlay, FiRefreshCw } from "react-icons/fi";
 
 import { readTokenizerVocabSize } from "../lib/vocabularySync";
+import { formatLearningRate } from "../../training/lib/run";
 import type {
   SimpleExecutionKind,
   SimpleModeController,
@@ -13,9 +14,9 @@ interface TrainingStepProps {
 }
 
 const PROFILE_OPTIONS: Array<{ id: SimpleTrainingProfile; label: string; description: string }> = [
-  { id: "quick", label: "Quick check", description: "20-100 steps for fast feedback" },
-  { id: "balanced", label: "Balanced", description: "Recommended batch and learning rate" },
-  { id: "longer", label: "Longer run", description: "Conservative capped extension" },
+  { id: "quick", label: "Quick check", description: "100-200 steps for fast feedback" },
+  { id: "balanced", label: "Balanced", description: "500+ steps with backend batch and LR" },
+  { id: "longer", label: "Longer run", description: "1,000+ steps, capped for stability" },
 ];
 
 const EXECUTION_OPTIONS: Array<{ id: SimpleExecutionKind; label: string; description: string }> = [
@@ -41,10 +42,6 @@ function readOptimizerLearningRate(config: Record<string, unknown> | null): numb
 
 function formatInteger(value: number | null): string {
   return value === null ? "Loading" : Math.trunc(value).toLocaleString();
-}
-
-function formatLearningRate(value: number | null): string {
-  return value === null ? "Loading" : value.toExponential(1);
 }
 
 export function TrainingStep({ controller }: TrainingStepProps) {

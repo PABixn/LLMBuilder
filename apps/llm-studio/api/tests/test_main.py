@@ -172,7 +172,22 @@ def test_batch_and_lr_recommendation_keeps_small_models_substantial_when_unconst
         dataset_cap_tokens=None,
     )
 
-    assert target == 262144
+    assert target == 131072
+
+
+def test_batch_and_lr_recommendation_keeps_tiny_models_above_minimum_update_count() -> None:
+    from app.training_recommendations import _model_target_total_batch_size
+
+    target = _model_target_total_batch_size(
+        total_parameters=3_000_000,
+        seq_len=512,
+        max_memory_micro_batch_size=64,
+        max_grad_accum=64,
+        dataset_cap_tokens=None,
+    )
+
+    assert target == 32768
+    assert (3_000_000 * 20) // target >= 1500
 
 
 def test_batch_and_lr_recommendation_prefers_power_of_two_token_batches() -> None:

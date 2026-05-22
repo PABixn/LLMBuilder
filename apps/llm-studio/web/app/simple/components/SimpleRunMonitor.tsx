@@ -1,4 +1,6 @@
 import type { TrainingJob, TrainingMetricPoint } from "../../../lib/training/types";
+import { deriveTrainingStepProgress } from "../../training/lib/display";
+import { formatLearningRate } from "../../training/lib/run";
 
 interface SimpleRunMonitorProps {
   run: TrainingJob | null;
@@ -16,6 +18,12 @@ function formatNumber(value: number | null | undefined, digits = 2): string {
   });
 }
 
+function formatStateLabel(value: string): string {
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export function SimpleRunMonitor({
   run,
   metrics,
@@ -24,22 +32,28 @@ export function SimpleRunMonitor({
 }: SimpleRunMonitorProps) {
   const latestMetric = metrics[metrics.length - 1] ?? null;
   if (!run) {
-    return <p className="simpleMuted">No training run started.</p>;
+    return null;
   }
+  const progress = deriveTrainingStepProgress(run);
 
   return (
     <div className="simpleRunMonitor">
-      <div className="simpleProgressBar" aria-label={`Training progress ${Math.round(run.progress * 100)} percent`}>
-        <span style={{ width: `${Math.max(0, Math.min(100, run.progress * 100))}%` }} />
+      <div
+        className="simpleProgressBar"
+        aria-label={`Training progress ${progress.percentLabel}`}
+      >
+        <span
+          style={{ width: `${Math.max(0, Math.min(100, progress.fraction * 100))}%` }}
+        />
       </div>
       <div className="simpleSummaryGrid">
         <span>
-          <strong>{run.stage || run.state}</strong>
-          <small>Stage</small>
+          <strong>{formatStateLabel(run.status)}</strong>
+          <small>Status</small>
         </span>
         <span>
           <strong>
-            {run.last_step.toLocaleString()} / {run.max_steps.toLocaleString()}
+            {progress.completedSteps.toLocaleString()} / {progress.maxSteps.toLocaleString()}
           </strong>
           <small>Steps</small>
         </span>
@@ -48,7 +62,7 @@ export function SimpleRunMonitor({
           <small>Loss</small>
         </span>
         <span>
-          <strong>{formatNumber(run.latest_lr ?? latestMetric?.lr, 6)}</strong>
+          <strong>{formatLearningRate(run.latest_lr ?? latestMetric?.lr)}</strong>
           <small>LR</small>
         </span>
         <span>

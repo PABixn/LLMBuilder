@@ -153,7 +153,6 @@
   border-radius: 999px;
   background: var(--line-strong);
   flex: 0 0 30px;
-  transition: background-color 0.16s ease;
 }
 
 .modeSwitchThumb {
@@ -165,6 +164,13 @@
   border-radius: 999px;
   background: var(--surface);
   box-shadow: 0 1px 4px rgba(9, 25, 49, 0.25);
+}
+
+.modeSwitch.isTransitionReady .modeSwitchTrack {
+  transition: background-color 0.16s ease;
+}
+
+.modeSwitch.isTransitionReady .modeSwitchThumb {
   transition: transform 0.16s ease;
 }
 

@@ -1,9 +1,12 @@
 import {
-  SIMPLE_STREAMING_DATASET_FILTERS,
   SIMPLE_STARTER_DATASET_PATH,
-  SIMPLE_STREAMING_DATASET_NAME,
 } from "../constants";
-import type { SimpleDatasetSource, SimpleLocalTrainFile } from "../types";
+import type {
+  SimpleDatasetSource,
+  SimpleLocalTrainFile,
+  SimpleStreamingDatasetId,
+} from "../types";
+import { buildSimpleStreamingDatasetSpecs } from "./streamingDatasets";
 
 export interface BuildSimpleTokenizerConfigOptions {
   name: string;
@@ -13,6 +16,8 @@ export interface BuildSimpleTokenizerConfigOptions {
 export interface BuildSimpleDataloaderConfigOptions {
   datasetSource: SimpleDatasetSource;
   localTrainFiles: SimpleLocalTrainFile[];
+  streamingPrimaryDatasetId: SimpleStreamingDatasetId;
+  streamingAdditionalDatasetIds: SimpleStreamingDatasetId[];
   budgetLimit: number;
 }
 
@@ -54,6 +59,8 @@ export function tokenizerBudgetForDataset(
 export function buildSimpleTokenizerDataloaderConfig({
   datasetSource,
   localTrainFiles,
+  streamingPrimaryDatasetId,
+  streamingAdditionalDatasetIds,
   budgetLimit,
 }: BuildSimpleDataloaderConfigOptions): Record<string, unknown> {
   const budget = {
@@ -96,15 +103,11 @@ export function buildSimpleTokenizerDataloaderConfig({
   }
 
   return {
-    datasets: [
-      {
-        name: SIMPLE_STREAMING_DATASET_NAME,
-        split: "train",
-        text_columns: ["text"],
-        weight: 1,
-        filters: SIMPLE_STREAMING_DATASET_FILTERS.map((filter) => [...filter]),
-      },
-    ],
+    datasets: buildSimpleStreamingDatasetSpecs(
+      streamingPrimaryDatasetId,
+      streamingAdditionalDatasetIds,
+      { includeStreamingFlag: false }
+    ),
     budget,
   };
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FiMoon, FiSun } from "react-icons/fi";
 
 import { useThemeMode } from "../../../lib/theme";
@@ -24,11 +24,19 @@ export function AppTopNav({ activeSimpleStep = null }: AppTopNavProps) {
   const router = useRouter();
   const [theme, setTheme] = useThemeMode();
   const [uiMode, setUiMode] = useUiMode();
+  const [switchTransitionsReady, setSwitchTransitionsReady] = useState(false);
   const isSimpleRoute = pathname === "/simple" || pathname.startsWith("/simple/");
   const links = uiMode === "simple" ? SIMPLE_NAV_LINKS : EXPERT_NAV_LINKS;
   const modeSwitchLabel = uiMode === "simple" ? "Expert Mode" : "Simple Mode";
   const modeSwitchTitle =
     uiMode === "simple" ? "Switch to Expert Mode" : "Switch to Simple Mode";
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setSwitchTransitionsReady(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -91,7 +99,7 @@ export function AppTopNav({ activeSimpleStep = null }: AppTopNavProps) {
       <div className="studioNavControls">
         <button
           type="button"
-          className="modeSwitch"
+          className={switchTransitionsReady ? "modeSwitch isTransitionReady" : "modeSwitch"}
           role="switch"
           aria-checked={uiMode === "simple"}
           aria-label={modeSwitchTitle}

@@ -22,12 +22,15 @@ import {
   isSimpleModelPresetId,
   targetVocabForPresetDataset,
 } from "./modelPresets";
+import { normalizeSimpleStreamingSelection } from "./streamingDatasets";
 import { deriveSimpleStepStatuses } from "./stepStatus";
 import {
+  applySimpleTrainingProfileGuardrails,
   buildSimpleTrainingDataloaderConfig,
   buildSimpleTrainingConfig,
   selectRecommendedTrainingOption,
 } from "./trainingProfiles";
+import { buildSimpleTokenizerProgressState } from "./tokenizerProgress";
 import {
   buildSimpleTokenizerDataloaderConfig,
   tokenizerBudgetForDataset,
@@ -38,7 +41,7 @@ import {
   readTokenizerVocabSize,
 } from "./vocabularySync";
 
-function recommendation(): TrainingBatchLrRecommendation {
+function recommendation(recommendedMaxSteps = 120): TrainingBatchLrRecommendation {
   return {
     headline: "Balanced",
     summary: "Use the balanced profile.",
@@ -59,7 +62,7 @@ function recommendation(): TrainingBatchLrRecommendation {
         grad_accum_steps: 16,
         learning_rate: 0.00025,
         estimated_tokens_per_run: 2048,
-        recommended_max_steps: 120,
+        recommended_max_steps: recommendedMaxSteps,
         estimated_tokens_per_recommended_run: 7680,
         estimated_local_passes_at_recommended_steps: null,
         clear_manual_micro_batch: true,
@@ -116,13 +119,36 @@ test("simple flow parser migrates malformed state to safe defaults", () => {
   assert.deepEqual(parseSimpleFlowState(null), DEFAULT_SIMPLE_FLOW_STATE);
   assert.equal(parseSimpleFlowState({ datasetSource: "bad" }).datasetSource, "starter");
   assert.equal(parseSimpleFlowState({ presetId: "bad" }).presetId, DEFAULT_SIMPLE_FLOW_STATE.presetId);
-  assert.equal(parseSimpleFlowState({ trainingProfile: "longer" }).trainingProfile, "longer");
+  assert.equal(
+    parseSimpleFlowState({
+      presetId: "bad",
+      datasetSource: "streaming",
+      targetVocabSize: 16000,
+      targetContextLength: 2048,
+      trainingProfile: "balanced",
+      executionKind: "runpod_pod",
+    }).targetVocabSize,
+    DEFAULT_SIMPLE_FLOW_STATE.targetVocabSize
+  );
+  assert.equal(
+    parseSimpleFlowState({
+      presetId: DEFAULT_SIMPLE_FLOW_STATE.presetId,
+      trainingProfile: "longer",
+    }).trainingProfile,
+    "longer"
+  );
   assert.deepEqual(
     parseSimpleFlowState({
       localTrainFiles: [{ id: "a", fileName: "a.txt", filePath: "datasets/a.txt" }],
     }).localTrainFiles,
     [{ id: "a", fileName: "a.txt", filePath: "datasets/a.txt", sizeBytes: null, sizeChars: null }]
   );
+  const streamingState = parseSimpleFlowState({
+    streamingPrimaryDatasetId: "the-stack",
+    streamingAdditionalDatasetIds: ["the-stack", "tinystories", "bad", "tinystories"],
+  });
+  assert.equal(streamingState.streamingPrimaryDatasetId, "the-stack");
+  assert.deepEqual(streamingState.streamingAdditionalDatasetIds, ["tinystories"]);
 });
 
 test("model presets satisfy local structural constraints", () => {
@@ -161,21 +187,98 @@ test("vocabulary sync reads tokenizer stats and updates model config", () => {
   assert.equal(buildModelConfigWithSyncedVocab(project.model_config, 2048).vocab_size, 2048);
 });
 
-test("training profiles apply backend recommendation and conservative caps", () => {
+test("training profiles apply backend token-budget recommendations", () => {
   const rec = recommendation();
   assert.equal(selectRecommendedTrainingOption(rec)?.key, "balanced");
 
   const quick = buildSimpleTrainingConfig(trainingTemplate, "quick", 1024, rec);
-  assert.equal(quick.config.max_steps, 100);
+  assert.equal(quick.config.max_steps, 120);
   assert.equal(quick.config.seq_len, 256);
-  assert.equal(quick.config.total_batch_size, 64);
+  assert.equal(quick.config.total_batch_size, 2048);
   assert.equal((quick.config.optimizer as Record<string, unknown>).lr, 0.00025);
   assert.equal("micro_batch_size" in quick.config, false);
-  assert.equal(quick.config.save_every, 100);
+  assert.equal(quick.config.save_every, 12);
+
+  const balanced = buildSimpleTrainingConfig(trainingTemplate, "balanced", 1024, rec);
+  assert.equal(balanced.config.max_steps, 120);
+  assert.equal(balanced.config.seq_len, 512);
+  assert.equal(balanced.config.total_batch_size, 64);
+  assert.equal((balanced.config.optimizer as Record<string, unknown>).lr, 0.00025);
+  assert.equal(balanced.config.save_every, 12);
 
   const longer = buildSimpleTrainingConfig(trainingTemplate, "longer", 2048, rec);
   assert.equal(longer.config.max_steps, 240);
   assert.equal(longer.config.seq_len, 1024);
+  assert.equal(longer.config.total_batch_size, 64);
+  assert.equal((longer.config.optimizer as Record<string, unknown>).lr, 0.00025);
+  assert.equal(longer.config.save_every, 24);
+});
+
+test("balanced and longer preserve small backend token-budget recommendations", () => {
+  const rec = recommendation(8);
+  rec.options[0] = {
+    ...rec.options[0],
+    learning_rate: 0.000001,
+    total_batch_size: 512,
+  };
+  const quick = buildSimpleTrainingConfig(trainingTemplate, "quick", 1024, rec);
+  const balanced = buildSimpleTrainingConfig(trainingTemplate, "balanced", 1024, rec);
+  const longer = buildSimpleTrainingConfig(trainingTemplate, "longer", 1024, rec);
+
+  assert.equal(quick.config.max_steps, 100);
+  assert.equal(balanced.config.max_steps, 8);
+  assert.equal(longer.config.max_steps, 16);
+  assert.equal(quick.config.total_batch_size, 2048);
+  assert.equal(balanced.config.total_batch_size, 512);
+  assert.equal(longer.config.total_batch_size, 512);
+  assert.equal((quick.config.optimizer as Record<string, unknown>).lr, 0.0001);
+  assert.equal((balanced.config.optimizer as Record<string, unknown>).lr, 0.000001);
+  assert.equal((longer.config.optimizer as Record<string, unknown>).lr, 0.000001);
+});
+
+test("post-fix guardrails preserve backend token budget for recommendation-backed profiles", () => {
+  const rec = recommendation(1831);
+  rec.options[0] = {
+    ...rec.options[0],
+    total_batch_size: 32768,
+    learning_rate: 0.0003,
+    recommended_max_steps: 1831,
+    estimated_tokens_per_recommended_run: 59_998_208,
+  };
+  rec.signals.total_parameters = 3_000_000;
+  rec.signals.recommended_run_token_budget = 60_000_000;
+  rec.signals.parameter_scaled_run_token_target = 60_000_000;
+
+  const balanced = buildSimpleTrainingConfig(trainingTemplate, "balanced", 1024, rec);
+  const guarded = applySimpleTrainingProfileGuardrails(
+    balanced.config,
+    "balanced",
+    balanced.appliedRecommendation
+  );
+
+  assert.equal(guarded.max_steps, 1831);
+  assert.equal(guarded.total_batch_size, 32768);
+  assert.equal(
+    (guarded.max_steps as number) * (guarded.total_batch_size as number),
+    59_998_208
+  );
+});
+
+test("safe preflight fixes cannot collapse simple training guardrails", () => {
+  const fixed = applySimpleTrainingProfileGuardrails(
+    {
+      ...trainingTemplate,
+      max_steps: 8,
+      total_batch_size: 512,
+      optimizer: { lr: 0.000001 },
+    },
+    "balanced"
+  );
+
+  assert.equal(fixed.max_steps, 500);
+  assert.equal(fixed.total_batch_size, 8192);
+  assert.equal((fixed.optimizer as Record<string, unknown>).lr, 0.00008);
+  assert.equal(fixed.save_every, 50);
 });
 
 test("inference preset mapping hides numeric sampling controls behind stable choices", () => {
@@ -194,26 +297,102 @@ test("inference preset mapping hides numeric sampling controls behind stable cho
 });
 
 test("streaming data templates keep quality filters and tokenizer schema compatibility", () => {
+  assert.deepEqual(
+    normalizeSimpleStreamingSelection("the-stack", ["the-stack", "tinystories", "bad"]),
+    {
+      primaryId: "the-stack",
+      additionalIds: ["tinystories"],
+    }
+  );
+
   const tokenizerDataloader = buildSimpleTokenizerDataloaderConfig({
     datasetSource: "streaming",
     localTrainFiles: [],
+    streamingPrimaryDatasetId: "fineweb-edu",
+    streamingAdditionalDatasetIds: ["tinystories", "the-stack"],
     budgetLimit: tokenizerBudgetForDataset("streaming", 32000),
   });
-  const tokenizerDataset = (tokenizerDataloader.datasets as Record<string, unknown>[])[0];
+  const tokenizerDatasets = tokenizerDataloader.datasets as Record<string, unknown>[];
+  const tokenizerDataset = tokenizerDatasets[0];
+  assert.equal(tokenizerDatasets.length, 3);
+  assert.equal(tokenizerDataset.name, "HuggingFaceFW/fineweb-edu");
+  assert.equal(tokenizerDataset.weight, 0.8);
   assert.deepEqual(
     tokenizerDataset.filters,
     SIMPLE_STREAMING_DATASET_FILTERS.map((filter) => [...filter])
   );
-  assert.equal("streaming" in tokenizerDataset, false);
+  assert.equal(tokenizerDatasets[1].name, "roneneldan/TinyStories");
+  assert.equal(tokenizerDatasets[1].weight, 0.1);
+  assert.equal(tokenizerDatasets[2].name, "bigcode/the-stack");
+  assert.deepEqual(tokenizerDatasets[2].text_columns, ["content"]);
+  assert.equal(tokenizerDatasets.some((dataset) => "streaming" in dataset), false);
   assert.equal((tokenizerDataloader.budget as Record<string, unknown>).limit, 16_000_000);
 
-  const trainingDataloader = buildSimpleTrainingDataloaderConfig({}, "streaming", []);
-  const trainingDataset = (trainingDataloader.datasets as Record<string, unknown>[])[0];
+  const trainingDataloader = buildSimpleTrainingDataloaderConfig(
+    {},
+    "streaming",
+    [],
+    "fineweb-edu",
+    ["tinystories", "the-stack"]
+  );
+  const trainingDatasets = trainingDataloader.datasets as Record<string, unknown>[];
+  const trainingDataset = trainingDatasets[0];
+  assert.equal(trainingDatasets.length, 3);
   assert.deepEqual(
     trainingDataset.filters,
     SIMPLE_STREAMING_DATASET_FILTERS.map((filter) => [...filter])
   );
-  assert.equal(trainingDataset.streaming, true);
+  assert.equal(trainingDatasets.every((dataset) => dataset.streaming === true), true);
+});
+
+test("tokenizer progress state makes validation, running, and completed jobs visible", () => {
+  const checking = buildSimpleTokenizerProgressState({
+    job: null,
+    starting: false,
+    validating: true,
+  });
+  assert.equal(checking?.pillLabel, "Checking");
+  assert.equal(checking?.headline, "Checking tokenizer inputs");
+  assert.equal(checking?.progressLabel, "4%");
+
+  const running = buildSimpleTokenizerProgressState({
+    job: {
+      status: "running",
+      state: "training",
+      stage: "Training BPE merges",
+      progress: 0.34,
+      stats: null,
+    } as unknown as TokenizerJob,
+    starting: false,
+    validating: false,
+  });
+  assert.equal(running?.pillLabel, "Training");
+  assert.equal(running?.pillState, "running");
+  assert.equal(running?.progressLabel, "34%");
+  assert.equal(running?.recordsLabel, "Pending");
+  assert.equal(running?.tokensLabel, "Pending");
+
+  const completed = buildSimpleTokenizerProgressState({
+    job: {
+      status: "completed",
+      state: "completed",
+      stage: "Saved",
+      progress: 0.84,
+      stats: {
+        num_records: 12,
+        num_tokens: 3456,
+        vocab_size: 1024,
+      },
+    } as unknown as TokenizerJob,
+    starting: false,
+    validating: false,
+  });
+  assert.equal(completed?.pillLabel, "Tokenizer ready");
+  assert.equal(completed?.pillState, "completed");
+  assert.equal(completed?.progressLabel, "100%");
+  assert.equal(completed?.recordsLabel, "12");
+  assert.equal(completed?.tokensLabel, "3,456");
+  assert.equal(completed?.vocabLabel, "1,024");
 });
 
 test("step readiness derives from artifacts instead of only persisted state", () => {

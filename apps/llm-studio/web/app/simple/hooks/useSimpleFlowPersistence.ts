@@ -7,7 +7,8 @@ import {
   SIMPLE_FLOW_STORAGE_KEY,
   SIMPLE_FLOW_VERSION,
 } from "../constants";
-import { isSimpleModelPresetId } from "../lib/modelPresets";
+import { isSimpleModelPresetId, targetVocabForPresetDataset } from "../lib/modelPresets";
+import { normalizeSimpleStreamingSelection } from "../lib/streamingDatasets";
 import type {
   SimpleDatasetSource,
   SimpleExecutionKind,
@@ -90,31 +91,45 @@ export function parseSimpleFlowState(value: unknown): SimpleFlowState {
   if (!isRecord(value)) {
     return DEFAULT_SIMPLE_FLOW_STATE;
   }
+  const presetId = asPresetId(value.presetId);
+  const hasValidPresetId = isSimpleModelPresetId(value.presetId);
+  const datasetSource = hasValidPresetId
+    ? asDatasetSource(value.datasetSource)
+    : DEFAULT_SIMPLE_FLOW_STATE.datasetSource;
+  const recommendedVocabSize = targetVocabForPresetDataset(presetId, datasetSource);
   const localFiles = Array.isArray(value.localTrainFiles)
     ? value.localTrainFiles
         .map(parseLocalTrainFile)
         .filter((entry): entry is SimpleLocalTrainFile => entry !== null)
     : DEFAULT_SIMPLE_FLOW_STATE.localTrainFiles;
+  const streamingSelection = normalizeSimpleStreamingSelection(
+    value.streamingPrimaryDatasetId,
+    value.streamingAdditionalDatasetIds
+  );
 
   return {
     version: SIMPLE_FLOW_VERSION,
-    presetId: asPresetId(value.presetId),
+    presetId,
     modelName: asString(value.modelName, DEFAULT_SIMPLE_FLOW_STATE.modelName),
-    targetVocabSize: asPositiveInteger(
-      value.targetVocabSize,
-      DEFAULT_SIMPLE_FLOW_STATE.targetVocabSize
-    ),
-    targetContextLength: asPositiveInteger(
-      value.targetContextLength,
-      DEFAULT_SIMPLE_FLOW_STATE.targetContextLength
-    ),
+    targetVocabSize: hasValidPresetId
+      ? asPositiveInteger(value.targetVocabSize, recommendedVocabSize)
+      : recommendedVocabSize,
+    targetContextLength: hasValidPresetId
+      ? asPositiveInteger(value.targetContextLength, DEFAULT_SIMPLE_FLOW_STATE.targetContextLength)
+      : DEFAULT_SIMPLE_FLOW_STATE.targetContextLength,
     projectId: asNullableString(value.projectId),
     tokenizerJobId: asNullableString(value.tokenizerJobId),
     trainingJobId: asNullableString(value.trainingJobId),
-    datasetSource: asDatasetSource(value.datasetSource),
+    datasetSource,
     localTrainFiles: localFiles,
-    trainingProfile: asTrainingProfile(value.trainingProfile),
-    executionKind: asExecutionKind(value.executionKind),
+    streamingPrimaryDatasetId: streamingSelection.primaryId,
+    streamingAdditionalDatasetIds: streamingSelection.additionalIds,
+    trainingProfile: hasValidPresetId
+      ? asTrainingProfile(value.trainingProfile)
+      : DEFAULT_SIMPLE_FLOW_STATE.trainingProfile,
+    executionKind: hasValidPresetId
+      ? asExecutionKind(value.executionKind)
+      : DEFAULT_SIMPLE_FLOW_STATE.executionKind,
     checkpointValue: asString(
       value.checkpointValue,
       DEFAULT_SIMPLE_FLOW_STATE.checkpointValue

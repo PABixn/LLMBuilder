@@ -58,10 +58,10 @@ export function InferenceStep({ controller }: InferenceStepProps) {
           />
         </label>
 
-        <div className="simpleOptionRows">
-          <div>
+        <div className="simpleOptionRows simpleOptionRowsCompact">
+          <div className="simpleOptionLine">
             <span>Length</span>
-            <div className="simpleSegmented compact">
+            <div className="simpleMiniSegmented" role="group" aria-label="Generation length">
               {(Object.keys(SIMPLE_LENGTH_PRESETS) as SimpleInferenceLength[]).map((id) => (
                 <button
                   key={id}
@@ -69,14 +69,14 @@ export function InferenceStep({ controller }: InferenceStepProps) {
                   className={inferenceStep.lengthPreset === id ? "is-selected" : ""}
                   onClick={() => inferenceStep.setLengthPreset(id)}
                 >
-                  <strong>{SIMPLE_LENGTH_PRESETS[id].label}</strong>
+                  {SIMPLE_LENGTH_PRESETS[id].label}
                 </button>
               ))}
             </div>
           </div>
-          <div>
+          <div className="simpleOptionLine">
             <span>Creativity</span>
-            <div className="simpleSegmented compact">
+            <div className="simpleMiniSegmented" role="group" aria-label="Generation creativity">
               {(Object.keys(SIMPLE_CREATIVITY_PRESETS) as SimpleInferenceCreativity[]).map((id) => (
                 <button
                   key={id}
@@ -84,7 +84,7 @@ export function InferenceStep({ controller }: InferenceStepProps) {
                   className={inferenceStep.creativityPreset === id ? "is-selected" : ""}
                   onClick={() => inferenceStep.setCreativityPreset(id)}
                 >
-                  <strong>{SIMPLE_CREATIVITY_PRESETS[id].label}</strong>
+                  {SIMPLE_CREATIVITY_PRESETS[id].label}
                 </button>
               ))}
             </div>

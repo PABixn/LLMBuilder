@@ -5,14 +5,14 @@ import type {
 } from "../../../lib/training/types";
 import {
   SIMPLE_STARTER_DATASET_PATH,
-  SIMPLE_STREAMING_DATASET_FILTERS,
-  SIMPLE_STREAMING_DATASET_NAME,
 } from "../constants";
 import type {
   SimpleDatasetSource,
   SimpleLocalTrainFile,
+  SimpleStreamingDatasetId,
   SimpleTrainingProfile,
 } from "../types";
+import { buildSimpleStreamingDatasetSpecs } from "./streamingDatasets";
 import { fitSchedulersToMaxSteps } from "../../training/lib/learningRateSchedule";
 import {
   asNumber,
@@ -35,8 +35,95 @@ export interface AppliedTrainingFixResult {
   labels: string[];
 }
 
+const TOTAL_BATCH_TOKEN_LIMITS: Record<
+  SimpleTrainingProfile,
+  { floor: number; cap: number }
+> = {
+  quick: { floor: 2_048, cap: 8_192 },
+  balanced: { floor: 8_192, cap: 32_768 },
+  longer: { floor: 16_384, cap: 65_536 },
+};
+
+const LEARNING_RATE_LIMITS: Record<
+  SimpleTrainingProfile,
+  { fallback: number; floor: number; cap: number }
+> = {
+  quick: { fallback: 0.0005, floor: 0.0001, cap: 0.0008 },
+  balanced: { fallback: 0.0003, floor: 0.00008, cap: 0.0006 },
+  longer: { fallback: 0.0002, floor: 0.00005, cap: 0.0004 },
+};
+
+const STEP_LIMITS: Record<
+  SimpleTrainingProfile,
+  { fallback: number; floor: number; cap: number }
+> = {
+  quick: { fallback: 100, floor: 100, cap: 200 },
+  balanced: { fallback: 500, floor: 500, cap: 20_000 },
+  longer: { fallback: 1000, floor: 1000, cap: 6000 },
+};
+
+const LONGER_PROFILE_TOKEN_BUDGET_MULTIPLIER = 2;
+
 function clampInteger(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.trunc(value)));
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function positiveIntegerOrFallback(value: number | null | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.trunc(value)
+    : fallback;
+}
+
+function totalBatchTokensForProfile(
+  profile: SimpleTrainingProfile,
+  currentValue: unknown,
+  option: TrainingBatchLrRecommendationOption | null
+): number {
+  const limits = TOTAL_BATCH_TOKEN_LIMITS[profile];
+  if (
+    profile !== "quick" &&
+    typeof option?.total_batch_size === "number" &&
+    Number.isFinite(option.total_batch_size) &&
+    option.total_batch_size > 0
+  ) {
+    return Math.trunc(option.total_batch_size);
+  }
+  const recommendedBatchTokens = positiveIntegerOrFallback(
+    option?.total_batch_size,
+    asNumber(currentValue, limits.floor)
+  );
+  return clampInteger(
+    Math.max(recommendedBatchTokens, limits.floor),
+    limits.floor,
+    limits.cap
+  );
+}
+
+function learningRateForProfile(
+  profile: SimpleTrainingProfile,
+  currentValue: unknown,
+  option: TrainingBatchLrRecommendationOption | null
+): number {
+  const limits = LEARNING_RATE_LIMITS[profile];
+  if (
+    profile !== "quick" &&
+    typeof option?.learning_rate === "number" &&
+    Number.isFinite(option.learning_rate) &&
+    option.learning_rate > 0
+  ) {
+    return option.learning_rate;
+  }
+  const recommendedLearningRate =
+    typeof option?.learning_rate === "number" &&
+    Number.isFinite(option.learning_rate) &&
+    option.learning_rate > 0
+      ? option.learning_rate
+      : asNumber(currentValue, limits.fallback);
+  return clampNumber(recommendedLearningRate, limits.floor, limits.cap);
 }
 
 export function selectRecommendedTrainingOption(
@@ -51,24 +138,9 @@ export function selectRecommendedTrainingOption(
   );
 }
 
-function recommendedStepsForProfile(
-  profile: SimpleTrainingProfile,
-  option: TrainingBatchLrRecommendationOption | null,
+function longerProfileStepCap(
   recommendation: TrainingBatchLrRecommendation | null | undefined
 ): number {
-  const templateFallback =
-    profile === "quick" ? 100 : profile === "balanced" ? 500 : 1000;
-  const recommendedMaxSteps = option?.recommended_max_steps ?? templateFallback;
-
-  if (profile === "quick") {
-    return clampInteger(Math.min(recommendedMaxSteps, 100), 20, 100);
-  }
-
-  if (profile === "balanced") {
-    return clampInteger(recommendedMaxSteps, 1, 20_000);
-  }
-
-  const doubled = recommendedMaxSteps * 2;
   const signals = recommendation?.signals;
   const datasetScale = signals?.dataset_scale ?? "";
   const tinyDataset =
@@ -78,8 +150,59 @@ function recommendedStepsForProfile(
   const smallDataset =
     datasetScale === "small_local" ||
     (typeof signals?.approx_local_tokens === "number" && signals.approx_local_tokens < 500_000);
-  const upperCap = tinyDataset ? 300 : smallDataset ? 800 : 2000;
-  return clampInteger(Math.min(doubled, upperCap), 20, upperCap);
+  return tinyDataset ? 1500 : smallDataset ? 3000 : STEP_LIMITS.longer.cap;
+}
+
+function stepCountForProfile(
+  profile: SimpleTrainingProfile,
+  value: number | null | undefined,
+  recommendation: TrainingBatchLrRecommendation | null | undefined
+): number {
+  const limits = STEP_LIMITS[profile];
+  const requestedSteps = positiveIntegerOrFallback(value, limits.fallback);
+
+  if (profile === "longer") {
+    return clampInteger(
+      Math.max(requestedSteps, limits.floor),
+      limits.floor,
+      longerProfileStepCap(recommendation)
+    );
+  }
+
+  return clampInteger(
+    Math.max(requestedSteps, limits.floor),
+    limits.floor,
+    limits.cap
+  );
+}
+
+function recommendedStepsForProfile(
+  profile: SimpleTrainingProfile,
+  option: TrainingBatchLrRecommendationOption | null,
+  recommendation: TrainingBatchLrRecommendation | null | undefined
+): number {
+  const recommendedMaxSteps = option?.recommended_max_steps;
+  if (
+    typeof recommendedMaxSteps === "number" &&
+    Number.isFinite(recommendedMaxSteps) &&
+    recommendedMaxSteps > 0
+  ) {
+    if (profile === "balanced") {
+      return Math.trunc(recommendedMaxSteps);
+    }
+    if (profile === "longer") {
+      return clampInteger(
+        Math.ceil(recommendedMaxSteps * LONGER_PROFILE_TOKEN_BUDGET_MULTIPLIER),
+        1,
+        longerProfileStepCap(recommendation)
+      );
+    }
+  }
+  const requestedSteps =
+    profile === "longer" && typeof recommendedMaxSteps === "number"
+      ? recommendedMaxSteps * LONGER_PROFILE_TOKEN_BUDGET_MULTIPLIER
+      : recommendedMaxSteps;
+  return stepCountForProfile(profile, requestedSteps, recommendation);
 }
 
 function sequenceLengthForProfile(
@@ -141,6 +264,69 @@ function clampIntervalField(
   };
 }
 
+function cadenceForFraction(maxSteps: number, fraction: number): number {
+  return Math.max(1, Math.min(maxSteps, Math.round(maxSteps * fraction)));
+}
+
+function setCheckpointCadence(
+  config: Record<string, unknown>,
+  maxSteps: number
+): Record<string, unknown> {
+  return {
+    ...config,
+    save_every: cadenceForFraction(maxSteps, 0.1),
+  };
+}
+
+export function applySimpleTrainingProfileGuardrails(
+  config: Record<string, unknown>,
+  profile: SimpleTrainingProfile,
+  appliedRecommendation: TrainingBatchLrRecommendationOption | null = null
+): Record<string, unknown> {
+  let nextConfig = cloneRecord(config);
+  const hasBackendRecommendation = profile !== "quick" && appliedRecommendation !== null;
+  const maxSteps = hasBackendRecommendation
+    ? positiveIntegerOrFallback(
+        asNumber(nextConfig.max_steps, STEP_LIMITS[profile].fallback),
+        STEP_LIMITS[profile].fallback
+      )
+    : stepCountForProfile(
+        profile,
+        asNumber(nextConfig.max_steps, STEP_LIMITS[profile].fallback),
+        null
+      );
+  const learningRate = hasBackendRecommendation
+    ? asNumber(asRecord(nextConfig.optimizer).lr, appliedRecommendation.learning_rate)
+    : learningRateForProfile(
+        profile,
+        asRecord(nextConfig.optimizer).lr,
+        null
+      );
+
+  nextConfig.max_steps = maxSteps;
+  nextConfig.total_batch_size = hasBackendRecommendation
+    ? positiveIntegerOrFallback(
+        asNumber(nextConfig.total_batch_size, appliedRecommendation.total_batch_size),
+        appliedRecommendation.total_batch_size
+      )
+    : totalBatchTokensForProfile(
+        profile,
+        nextConfig.total_batch_size,
+        null
+      );
+  nextConfig = setOptimizerLearningRate(nextConfig, learningRate);
+  nextConfig = refitScheduler(nextConfig, maxSteps, learningRate);
+
+  if (profile === "quick") {
+    nextConfig.sample_every = Math.max(10, Math.floor(maxSteps / 4));
+    return setCheckpointCadence(nextConfig, maxSteps);
+  }
+
+  nextConfig = clampIntervalField(nextConfig, "sample_every", maxSteps);
+  nextConfig = clampIntervalField(nextConfig, "save_every", maxSteps);
+  return setCheckpointCadence(nextConfig, maxSteps);
+}
+
 export function buildSimpleTrainingConfig(
   template: Record<string, unknown>,
   profile: SimpleTrainingProfile,
@@ -156,29 +342,35 @@ export function buildSimpleTrainingConfig(
   config.max_steps = maxSteps;
 
   if (option) {
-    config.total_batch_size = option.total_batch_size;
     if (option.clear_manual_micro_batch) {
       delete config.micro_batch_size;
     }
-    config = setOptimizerLearningRate(config, option.learning_rate);
   }
+  const learningRate = learningRateForProfile(profile, asRecord(config.optimizer).lr, option);
+  config = setOptimizerLearningRate(config, learningRate);
+  config.total_batch_size = totalBatchTokensForProfile(
+    profile,
+    config.total_batch_size,
+    option
+  );
 
-  const learningRate = asNumber(asRecord(config.optimizer).lr, 0.0003);
   config = refitScheduler(config, maxSteps, learningRate);
 
   if (profile === "quick") {
     config.sample_every = Math.max(10, Math.floor(maxSteps / 4));
-    config.save_every = maxSteps;
+    config = setCheckpointCadence(config, maxSteps);
   } else {
     config = clampIntervalField(config, "sample_every", maxSteps);
     config = clampIntervalField(config, "save_every", maxSteps);
+    config = setCheckpointCadence(config, maxSteps);
   }
 
   const profileLabel =
     profile === "quick" ? "Quick check" : profile === "balanced" ? "Balanced" : "Longer run";
+  const totalBatchTokens = asNumber(config.total_batch_size, TOTAL_BATCH_TOKEN_LIMITS[profile].floor);
   const note = option
-    ? `${profileLabel}: ${maxSteps.toLocaleString()} steps at ${seqLen.toLocaleString()} tokens, with backend batch and learning-rate guidance.`
-    : `${profileLabel}: ${maxSteps.toLocaleString()} steps at ${seqLen.toLocaleString()} tokens while waiting for backend guidance.`;
+    ? `${profileLabel}: ${maxSteps.toLocaleString()} steps at ${seqLen.toLocaleString()} tokens, ${totalBatchTokens.toLocaleString()} total batch tokens, with bounded backend learning-rate guidance.`
+    : `${profileLabel}: ${maxSteps.toLocaleString()} steps at ${seqLen.toLocaleString()} tokens, ${totalBatchTokens.toLocaleString()} total batch tokens while waiting for backend guidance.`;
 
   return {
     config,
@@ -190,7 +382,9 @@ export function buildSimpleTrainingConfig(
 export function buildSimpleTrainingDataloaderConfig(
   template: Record<string, unknown>,
   datasetSource: SimpleDatasetSource,
-  localTrainFiles: SimpleLocalTrainFile[]
+  localTrainFiles: SimpleLocalTrainFile[],
+  streamingPrimaryDatasetId: SimpleStreamingDatasetId,
+  streamingAdditionalDatasetIds: SimpleStreamingDatasetId[]
 ): Record<string, unknown> {
   const config = cloneRecord(template);
 
@@ -225,16 +419,11 @@ export function buildSimpleTrainingDataloaderConfig(
     return config;
   }
 
-  config.datasets = [
-    {
-      name: SIMPLE_STREAMING_DATASET_NAME,
-      split: "train",
-      text_columns: ["text"],
-      weight: 1,
-      filters: SIMPLE_STREAMING_DATASET_FILTERS.map((filter) => [...filter]),
-      streaming: true,
-    },
-  ];
+  config.datasets = buildSimpleStreamingDatasetSpecs(
+    streamingPrimaryDatasetId,
+    streamingAdditionalDatasetIds,
+    { includeStreamingFlag: true }
+  );
   return config;
 }
 

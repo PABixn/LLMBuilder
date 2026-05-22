@@ -19,6 +19,7 @@ export type SimpleTrainingProfile = "quick" | "balanced" | "longer";
 export type SimpleExecutionKind = "local" | "runpod_pod";
 export type SimpleInferenceLength = "short" | "medium" | "long";
 export type SimpleInferenceCreativity = "precise" | "balanced" | "creative";
+export type SimpleStreamingDatasetId = "fineweb-edu" | "tinystories" | "the-stack";
 
 export interface SimpleLocalTrainFile {
   id: string;
@@ -39,6 +40,8 @@ export interface SimpleFlowState {
   trainingJobId: string | null;
   datasetSource: SimpleDatasetSource;
   localTrainFiles: SimpleLocalTrainFile[];
+  streamingPrimaryDatasetId: SimpleStreamingDatasetId;
+  streamingAdditionalDatasetIds: SimpleStreamingDatasetId[];
   trainingProfile: SimpleTrainingProfile;
   executionKind: SimpleExecutionKind;
   checkpointValue: string;
@@ -78,11 +81,14 @@ export interface SimpleTokenizerStepState {
   uploading: boolean;
   training: boolean;
   previewing: boolean;
+  previewText: string;
+  previewError: string | null;
   previewResult: TokenizerPreviewResult | null;
   tokenizerConfig: Record<string, unknown>;
   dataloaderConfig: Record<string, unknown>;
   datasetReady: boolean;
   datasetBlocker: string | null;
+  setPreviewText: (value: string) => void;
   uploadFiles: (files: File[]) => Promise<void>;
   validateTokenizer: () => Promise<boolean>;
   startTokenizerTraining: () => Promise<void>;

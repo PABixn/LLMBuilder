@@ -84,9 +84,10 @@ export function useSimpleTokenizerStep({
   const [uploading, setUploading] = useState(false);
   const [training, setTraining] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [previewText, setPreviewText] = useState(SIMPLE_DEFAULT_PROMPT);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewResult, setPreviewResult] = useState<TokenizerPreviewResult | null>(null);
   const syncedTokenizerJobIdRef = useRef<string | null>(null);
-  const previewedTokenizerJobIdRef = useRef<string | null>(null);
 
   const budgetLimit = tokenizerBudgetForDataset(flow.datasetSource, flow.targetVocabSize);
   const tokenizerConfig = useMemo(
@@ -103,8 +104,16 @@ export function useSimpleTokenizerStep({
         budgetLimit,
         datasetSource: flow.datasetSource,
         localTrainFiles: flow.localTrainFiles,
+        streamingAdditionalDatasetIds: flow.streamingAdditionalDatasetIds,
+        streamingPrimaryDatasetId: flow.streamingPrimaryDatasetId,
       }),
-    [budgetLimit, flow.datasetSource, flow.localTrainFiles]
+    [
+      budgetLimit,
+      flow.datasetSource,
+      flow.localTrainFiles,
+      flow.streamingAdditionalDatasetIds,
+      flow.streamingPrimaryDatasetId,
+    ]
   );
   const datasetBlocker = simpleDatasetBlocker(flow.datasetSource, flow.localTrainFiles);
   const datasetReady = datasetBlocker === null;
@@ -194,20 +203,45 @@ export function useSimpleTokenizerStep({
   }, [syncProjectVocab, tokenizerJob, updateFlow]);
 
   useEffect(() => {
-    if (
-      !tokenizerJob ||
-      tokenizerJob.status !== "completed" ||
-      previewedTokenizerJobIdRef.current === tokenizerJob.id
-    ) {
+    if (!tokenizerJob || tokenizerJob.status !== "completed" || !tokenizerJob.artifact_file) {
+      setPreviewResult(null);
+      setPreviewError(null);
+      setPreviewing(false);
       return;
     }
-    previewedTokenizerJobIdRef.current = tokenizerJob.id;
-    setPreviewing(true);
-    void previewJobTokenizer(tokenizerJob.id, { text: SIMPLE_DEFAULT_PROMPT })
-      .then((result) => setPreviewResult(result))
-      .catch(() => setPreviewResult(null))
-      .finally(() => setPreviewing(false));
-  }, [tokenizerJob]);
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      setPreviewing(true);
+      setPreviewError(null);
+      void previewJobTokenizer(tokenizerJob.id, { text: previewText })
+        .then((result) => {
+          if (!cancelled) {
+            setPreviewResult(result);
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            setPreviewResult(null);
+            setPreviewError(error instanceof Error ? error.message : "Tokenizer preview failed.");
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setPreviewing(false);
+          }
+        });
+    }, 280);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [previewText, tokenizerJob]);
+
+  const updatePreviewText = (value: string) => {
+    setPreviewText(value.slice(0, 50_000));
+  };
 
   const validateTokenizer = async (): Promise<boolean> => {
     if (!datasetReady) {
@@ -241,6 +275,7 @@ export function useSimpleTokenizerStep({
     }
     setTraining(true);
     setTokenizerError(null);
+    setValidationMessage(null);
     try {
       const job = await createTrainingJob({
         tokenizer_config: tokenizerConfig,
@@ -315,11 +350,14 @@ export function useSimpleTokenizerStep({
     uploading,
     training,
     previewing,
+    previewText,
+    previewError,
     previewResult,
     tokenizerConfig,
     dataloaderConfig,
     datasetReady,
     datasetBlocker,
+    setPreviewText: updatePreviewText,
     uploadFiles,
     validateTokenizer,
     startTokenizerTraining,
