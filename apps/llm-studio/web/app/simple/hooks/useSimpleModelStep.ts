@@ -13,9 +13,10 @@ import {
 } from "../../../lib/api";
 import { upsertCachedWorkspaceProject } from "../../../lib/workspaceAssets";
 import {
+  backendAnalysisSkipReason,
   buildPresetModelConfig,
   getSimpleModelPreset,
-  SIMPLE_MODEL_PRESETS,
+  shouldAnalyzePresetWithBackend,
 } from "../lib/modelPresets";
 import { buildModelConfigWithSyncedVocab } from "../lib/vocabularySync";
 import type { SimpleFlowState, SimpleModelStepState } from "../types";
@@ -106,43 +107,60 @@ export function useSimpleModelStep({
 
   useEffect(() => {
     const controller = new AbortController();
+    const analysisOptions = {
+      vocabSize: flow.targetVocabSize,
+      contextLength: flow.targetContextLength,
+    };
+
+    if (!shouldAnalyzePresetWithBackend(selectedPreset, analysisOptions)) {
+      const skippedReason = backendAnalysisSkipReason(selectedPreset, analysisOptions);
+      setAnalyzing(false);
+      startTransition(() => {
+        setAnalysisByPresetId((current) => ({
+          ...current,
+          [selectedPreset.id]: null,
+        }));
+        setAnalysisErrorsByPresetId((current) => ({
+          ...current,
+          [selectedPreset.id]: skippedReason ?? "Backend analysis skipped.",
+        }));
+      });
+      return () => controller.abort();
+    }
+
     setAnalyzing(true);
 
-    void Promise.allSettled(
-      SIMPLE_MODEL_PRESETS.map(async (preset) => ({
-        presetId: preset.id,
-        analysis: await analyzeModelConfig(
-          buildPresetModelConfig(preset.id, {
-            vocabSize:
-              preset.id === selectedPreset.id ? flow.targetVocabSize : preset.defaultVocabSize,
-            contextLength:
-              preset.id === selectedPreset.id
-                ? flow.targetContextLength
-                : preset.defaultContextLength,
-          }),
-          controller.signal
-        ),
-      }))
-    )
-      .then((results) => {
+    void analyzeModelConfig(selectedConfig, controller.signal)
+      .then((analysis) => {
         if (controller.signal.aborted) {
           return;
         }
-        const nextAnalyses: Record<string, ModelAnalysisResponse | null> = {};
-        const nextErrors: Record<string, string> = {};
-        results.forEach((result, index) => {
-          const presetId = SIMPLE_MODEL_PRESETS[index].id;
-          if (result.status === "fulfilled") {
-            nextAnalyses[presetId] = result.value.analysis;
-          } else {
-            nextAnalyses[presetId] = null;
-            nextErrors[presetId] =
-              result.reason instanceof Error ? result.reason.message : "Analysis failed.";
-          }
-        });
         startTransition(() => {
-          setAnalysisByPresetId(nextAnalyses);
-          setAnalysisErrorsByPresetId(nextErrors);
+          setAnalysisByPresetId((current) => ({
+            ...current,
+            [selectedPreset.id]: analysis,
+          }));
+          setAnalysisErrorsByPresetId((current) => {
+            const { [selectedPreset.id]: _removed, ...rest } = current;
+            void _removed;
+            return rest;
+          });
+        });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        startTransition(() => {
+          setAnalysisByPresetId((current) => ({
+            ...current,
+            [selectedPreset.id]: null,
+          }));
+          setAnalysisErrorsByPresetId((current) => ({
+            ...current,
+            [selectedPreset.id]:
+              error instanceof Error ? error.message : "Analysis failed.",
+          }));
         });
       })
       .finally(() => {
@@ -155,8 +173,9 @@ export function useSimpleModelStep({
   }, [
     flow.targetContextLength,
     flow.targetVocabSize,
-    selectedPreset.defaultContextLength,
     selectedPreset.id,
+    selectedPreset.trainingTarget,
+    selectedConfig,
   ]);
 
   const createArchitecture = async () => {

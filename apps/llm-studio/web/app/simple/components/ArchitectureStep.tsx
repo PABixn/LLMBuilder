@@ -1,11 +1,28 @@
-import { useState } from "react";
-import { FiCpu, FiHardDrive, FiLayers, FiSave, FiExternalLink } from "react-icons/fi";
+import { useMemo, useState } from "react";
+import {
+  FiChevronDown,
+  FiCloud,
+  FiCpu,
+  FiExternalLink,
+  FiHardDrive,
+  FiLayers,
+  FiSave,
+  FiSearch,
+} from "react-icons/fi";
 
 import { formatBytes } from "../../../lib/workspaceAssets";
 import { StatusCard } from "../../studio/components/primitives";
 import {
+  estimatePresetBf16MemoryBytes,
+  estimatePresetParameterCount,
   getSimpleModelPreset,
+  SIMPLE_PRESET_ARCHITECTURE_TYPES,
+  SIMPLE_PRESET_SIZE_GROUPS,
+  SIMPLE_PRESET_TRAINING_TARGETS,
   type SimpleModelPreset,
+  type SimplePresetArchitectureType,
+  type SimplePresetSize,
+  type SimplePresetTrainingTarget,
   SIMPLE_MODEL_PRESETS,
   targetVocabForPresetDataset,
 } from "../lib/modelPresets";
@@ -56,10 +73,49 @@ function formatPercentage(value: number): string {
   return `${value.toFixed(3)}%`;
 }
 
-const EXECUTION_LABELS = {
-  local: "Local",
-  runpod_pod: "RunPod-ready",
-};
+type PresetFilterValue<T extends string> = T | "all";
+
+function formatEstimatedParameterCount(value: number): string {
+  return `~${formatParameterCount(value)}`;
+}
+
+function sizeLabelFor(size: SimplePresetSize): string {
+  return SIMPLE_PRESET_SIZE_GROUPS.find((group) => group.id === size)?.label ?? size;
+}
+
+function architectureTypeLabelFor(type: SimplePresetArchitectureType): string {
+  return (
+    SIMPLE_PRESET_ARCHITECTURE_TYPES.find((option) => option.id === type)?.label ??
+    type.toUpperCase()
+  );
+}
+
+function trainingTargetLabelFor(target: SimplePresetTrainingTarget): string {
+  return (
+    SIMPLE_PRESET_TRAINING_TARGETS.find((option) => option.id === target)?.label ??
+    target
+  );
+}
+
+function presetMatchesQuery(preset: SimpleModelPreset, query: string): boolean {
+  if (!query) {
+    return true;
+  }
+  const haystack = [
+    preset.name,
+    preset.intent,
+    preset.bestUse,
+    preset.headLayout,
+    preset.normActivationLabel,
+    preset.hardwareTier,
+    preset.relativeSize,
+    preset.architectureType,
+    preset.trainingTarget,
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
+}
 
 function datasetForPresetSelection(
   currentDatasetSource: SimpleDatasetSource,
@@ -76,8 +132,75 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
   const { flow, modelStep, updateFlow } = controller;
   const preset = getSimpleModelPreset(flow.presetId);
   const selectedAnalysis = modelStep.selectedAnalysis?.analysis ?? null;
+  const selectedEstimate = estimatePresetParameterCount(preset, {
+    vocabSize: flow.targetVocabSize,
+    contextLength: flow.targetContextLength,
+  });
+  const selectedBf16Bytes =
+    selectedAnalysis?.parameter_memory_bytes_bf16 ??
+    estimatePresetBf16MemoryBytes(preset, {
+      vocabSize: flow.targetVocabSize,
+      contextLength: flow.targetContextLength,
+    });
+  const selectedAnalysisError = modelStep.analysisErrorsByPresetId[preset.id] ?? null;
   const [parameterBreakdownMode, setParameterBreakdownMode] =
     useState<ParameterBreakdownMode>("all");
+  const [sizeFilter, setSizeFilter] =
+    useState<PresetFilterValue<SimplePresetSize>>("all");
+  const [architectureTypeFilter, setArchitectureTypeFilter] =
+    useState<PresetFilterValue<SimplePresetArchitectureType>>("all");
+  const [trainingTargetFilter, setTrainingTargetFilter] =
+    useState<PresetFilterValue<SimplePresetTrainingTarget>>("all");
+  const [collapsedSizeGroups, setCollapsedSizeGroups] = useState<
+    Partial<Record<SimplePresetSize, boolean>>
+  >({});
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
+  const groupedPresets = useMemo(
+    () =>
+      SIMPLE_PRESET_SIZE_GROUPS.map((group) => ({
+        group,
+        presets: SIMPLE_MODEL_PRESETS.filter(
+          (item) =>
+            item.relativeSize === group.id &&
+            (sizeFilter === "all" || item.relativeSize === sizeFilter) &&
+            (architectureTypeFilter === "all" ||
+              item.architectureType === architectureTypeFilter) &&
+            (trainingTargetFilter === "all" ||
+              item.trainingTarget === trainingTargetFilter) &&
+            presetMatchesQuery(item, normalizedQuery)
+        ),
+      })).filter((group) => group.presets.length > 0),
+    [architectureTypeFilter, normalizedQuery, sizeFilter, trainingTargetFilter]
+  );
+  const filteredPresetCount = groupedPresets.reduce(
+    (sum, group) => sum + group.presets.length,
+    0
+  );
+  const selectPreset = (item: SimpleModelPreset) => {
+    updateFlow((current) => {
+      const datasetSource = datasetForPresetSelection(
+        current.datasetSource,
+        current.localTrainFiles.length,
+        item
+      );
+      return {
+        ...current,
+        presetId: item.id,
+        datasetSource,
+        trainingProfile: item.defaultTrainingProfile,
+        executionKind: item.defaultExecutionKind,
+        targetContextLength: item.defaultContextLength,
+        targetVocabSize: targetVocabForPresetDataset(item.id, datasetSource),
+      };
+    });
+  };
+  const toggleSizeGroup = (groupId: SimplePresetSize) => {
+    setCollapsedSizeGroups((current) => ({
+      ...current,
+      [groupId]: !current[groupId],
+    }));
+  };
   const parameterBreakdownTotal = selectedAnalysis
     ? parameterBreakdownMode === "trainable"
       ? selectedAnalysis.trainable_parameters
@@ -123,57 +246,166 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
         <div className="simplePanelHeader">
           <div>
             <p className="simpleEyebrow">Template</p>
-            <h3>Choose a template</h3>
+            <h3>Architecture templates</h3>
           </div>
           <a className="buttonGhost buttonSmall" href="/studio">
             <FiExternalLink aria-hidden="true" /> Expert
           </a>
         </div>
 
-        <div className="simplePresetGrid">
-          {SIMPLE_MODEL_PRESETS.map((item) => {
-            const analysis = modelStep.analysisByPresetId[item.id]?.analysis ?? null;
-            const analysisError = modelStep.analysisErrorsByPresetId[item.id];
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className={`simplePresetCard${item.id === flow.presetId ? " is-selected" : ""}`}
-                onClick={() =>
-                  updateFlow((current) => {
-                    const datasetSource = datasetForPresetSelection(
-                      current.datasetSource,
-                      current.localTrainFiles.length,
-                      item
-                    );
-                    return {
-                      ...current,
-                      presetId: item.id,
-                      datasetSource,
-                      trainingProfile: item.defaultTrainingProfile,
-                      executionKind: item.defaultExecutionKind,
-                      targetContextLength: item.defaultContextLength,
-                      targetVocabSize: targetVocabForPresetDataset(item.id, datasetSource),
-                    };
-                  })
-                }
-              >
-                <span className="simplePresetHead">
-                  <strong>{item.name}</strong>
-                  <span>{item.relativeSize}</span>
-                </span>
-                <span>{item.bestUse}</span>
-                <span className="simplePresetMeta">
-                  <span>{EXECUTION_LABELS[item.defaultExecutionKind]}</span>
-                </span>
-                <span className="simplePresetEstimate">
-                  {analysisError
-                    ? "Analysis unavailable"
-                    : formatParameterCount(analysis?.total_parameters)}
-                </span>
-              </button>
-            );
-          })}
+        <div className="simplePresetToolbar">
+          <label className="simplePresetSearch">
+            <FiSearch aria-hidden="true" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.currentTarget.value)}
+              placeholder="Search architectures"
+            />
+          </label>
+
+          <div className="simplePresetFilters" aria-label="Architecture filters">
+            <div className="simplePresetFilterGroup">
+              <span>Size</span>
+              <div className="simpleFilterChips">
+                <button
+                  type="button"
+                  className={sizeFilter === "all" ? "is-selected" : ""}
+                  aria-pressed={sizeFilter === "all"}
+                  onClick={() => setSizeFilter("all")}
+                >
+                  All
+                </button>
+                {SIMPLE_PRESET_SIZE_GROUPS.map((group) => (
+                  <button
+                    key={group.id}
+                    type="button"
+                    className={sizeFilter === group.id ? "is-selected" : ""}
+                    aria-pressed={sizeFilter === group.id}
+                    onClick={() => setSizeFilter(group.id)}
+                  >
+                    {group.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="simplePresetFilterGroup">
+              <span>Type</span>
+              <div className="simpleFilterChips">
+                <button
+                  type="button"
+                  className={architectureTypeFilter === "all" ? "is-selected" : ""}
+                  aria-pressed={architectureTypeFilter === "all"}
+                  onClick={() => setArchitectureTypeFilter("all")}
+                >
+                  All
+                </button>
+                {SIMPLE_PRESET_ARCHITECTURE_TYPES.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={architectureTypeFilter === option.id ? "is-selected" : ""}
+                    aria-pressed={architectureTypeFilter === option.id}
+                    title={option.description}
+                    onClick={() => setArchitectureTypeFilter(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="simplePresetFilterGroup">
+              <span>Target</span>
+              <div className="simpleFilterChips">
+                <button
+                  type="button"
+                  className={trainingTargetFilter === "all" ? "is-selected" : ""}
+                  aria-pressed={trainingTargetFilter === "all"}
+                  onClick={() => setTrainingTargetFilter("all")}
+                >
+                  All
+                </button>
+                {SIMPLE_PRESET_TRAINING_TARGETS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={trainingTargetFilter === option.id ? "is-selected" : ""}
+                    aria-pressed={trainingTargetFilter === option.id}
+                    title={option.description}
+                    onClick={() => setTrainingTargetFilter(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="simplePresetToolbarMeta">
+            {filteredPresetCount} architecture
+            {filteredPresetCount === 1 ? "" : "s"} shown
+          </div>
+        </div>
+
+        <div className="simplePresetSelectionBox">
+          {groupedPresets.length > 0 ? (
+            groupedPresets.map(({ group, presets }) => (
+              <section key={group.id} className="simplePresetGroup">
+                <button
+                  type="button"
+                  className="simplePresetGroupHeader"
+                  aria-expanded={!collapsedSizeGroups[group.id]}
+                  onClick={() => toggleSizeGroup(group.id)}
+                >
+                  <span>
+                    <FiChevronDown aria-hidden="true" />
+                    <strong>{group.label}</strong>
+                  </span>
+                  <span>
+                    {presets.length} · {group.target}
+                  </span>
+                </button>
+                {!collapsedSizeGroups[group.id] ? (
+                  <div className="simplePresetGrid">
+                    {presets.map((item) => {
+                      const analysis = modelStep.analysisByPresetId[item.id]?.analysis ?? null;
+                      const parameterLabel = analysis
+                        ? formatParameterCount(analysis.total_parameters)
+                        : formatEstimatedParameterCount(estimatePresetParameterCount(item));
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`simplePresetCard${
+                            item.id === flow.presetId ? " is-selected" : ""
+                          }`}
+                          title={item.bestUse}
+                          onClick={() => selectPreset(item)}
+                        >
+                          <span className="simplePresetHead">
+                            <strong>{item.name}</strong>
+                            <span className="simplePresetEstimate">
+                              <strong>{parameterLabel}</strong>
+                            </span>
+                          </span>
+                          <span className="simplePresetMeta">
+                            <span>{architectureTypeLabelFor(item.architectureType)}</span>
+                            <span>{trainingTargetLabelFor(item.trainingTarget)}</span>
+                            <span>{sizeLabelFor(item.relativeSize)}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </section>
+            ))
+          ) : (
+            <div className="simplePresetEmpty">
+              No architecture templates match the current filters.
+            </div>
+          )}
         </div>
 
       </div>
@@ -245,8 +477,8 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
         <div className="statusGrid simpleArchitectureStatsGrid">
           <StatusCard
             title="Parameters"
-            value={formatCompactCount(selectedAnalysis?.total_parameters)}
-            detail="Backend estimate"
+            value={formatCompactCount(selectedAnalysis?.total_parameters ?? selectedEstimate)}
+            detail={selectedAnalysis ? "Backend" : "Catalog"}
             tone="good"
             icon={<FiLayers />}
             tooltipLabel="Parameter breakdown by layer type"
@@ -338,7 +570,10 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
               ) : (
                 <>
                   <strong>Parameter breakdown</strong>
-                  <p>Create or refresh the architecture to load backend parameter analysis.</p>
+                  <p>
+                    {selectedAnalysisError ??
+                      "Backend parameter breakdown is not loaded for this template yet."}
+                  </p>
                 </>
               )
             }
@@ -348,9 +583,9 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
             value={
               selectedAnalysis
                 ? formatBytes(selectedAnalysis.parameter_memory_bytes_bf16)
-                : "Analyzing"
+                : formatBytes(selectedBf16Bytes)
             }
-            detail="Weight memory"
+            detail={selectedAnalysis ? "Weight memory" : "Weights"}
             tone="neutral"
             icon={<FiHardDrive />}
           />
@@ -384,6 +619,16 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
                     <strong>{flow.targetContextLength.toLocaleString()}</strong>
                     <small>Context</small>
                   </span>
+                  <span>
+                    <strong>{architectureTypeLabelFor(preset.architectureType)}</strong>
+                    <small>Type</small>
+                  </span>
+                  <span>
+                    <strong>
+                      {preset.trainingTarget === "runpod" ? "RunPod" : "Local"}
+                    </strong>
+                    <small>Target</small>
+                  </span>
                 </div>
                 <p>{preset.honestyNote}</p>
               </div>
@@ -392,7 +637,14 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
         </div>
 
         {preset.hardwareWarning ? (
-          <div className="inlineNotice tone-info">{preset.hardwareWarning}</div>
+          <div className="inlineNotice tone-info">
+            {preset.trainingTarget === "runpod" ? (
+              <FiCloud aria-hidden="true" />
+            ) : (
+              <FiCpu aria-hidden="true" />
+            )}
+            <span>{preset.hardwareWarning}</span>
+          </div>
         ) : null}
         {modelStep.projectError ? (
           <div className="inlineNotice tone-error">{modelStep.projectError}</div>

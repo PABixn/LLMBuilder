@@ -16,10 +16,15 @@ import { parseSimpleFlowState } from "../hooks/useSimpleFlowPersistence";
 import { buildInferenceSettings } from "./inferencePresets";
 import {
   SIMPLE_MODEL_PRESETS,
+  SIMPLE_PRESET_ARCHITECTURE_TYPES,
+  SIMPLE_PRESET_SIZE_GROUPS,
+  SIMPLE_PRESET_TRAINING_TARGETS,
   assertPresetModelConfig,
+  estimatePresetParameterCount,
   buildPresetModelConfig,
   getSimpleModelPreset,
   isSimpleModelPresetId,
+  shouldAnalyzePresetWithBackend,
   targetVocabForPresetDataset,
 } from "./modelPresets";
 import { normalizeSimpleStreamingSelection } from "./streamingDatasets";
@@ -155,7 +160,51 @@ test("model presets satisfy local structural constraints", () => {
   for (const preset of SIMPLE_MODEL_PRESETS) {
     const config = buildPresetModelConfig(preset.id);
     assert.doesNotThrow(() => assertPresetModelConfig(config));
+    assert.equal(
+      preset.trainingTarget === "runpod",
+      preset.defaultExecutionKind === "runpod_pod"
+    );
+    assert.equal(Number.isFinite(estimatePresetParameterCount(preset)), true);
+    assert.equal(estimatePresetParameterCount(preset) > 0, true);
   }
+});
+
+test("model presets provide production-grade catalog coverage", () => {
+  assert.equal(SIMPLE_MODEL_PRESETS.length >= 20, true);
+
+  for (const group of SIMPLE_PRESET_SIZE_GROUPS) {
+    const presets = SIMPLE_MODEL_PRESETS.filter((preset) => preset.relativeSize === group.id);
+    assert.equal(
+      presets.length >= 3,
+      true,
+      `${group.label} should have several architecture choices`
+    );
+  }
+
+  for (const option of SIMPLE_PRESET_ARCHITECTURE_TYPES) {
+    const presets = SIMPLE_MODEL_PRESETS.filter(
+      (preset) => preset.architectureType === option.id
+    );
+    assert.equal(
+      presets.length >= 3,
+      true,
+      `${option.label} should have several architecture choices`
+    );
+  }
+
+  for (const option of SIMPLE_PRESET_TRAINING_TARGETS) {
+    const presets = SIMPLE_MODEL_PRESETS.filter(
+      (preset) => preset.trainingTarget === option.id
+    );
+    assert.equal(
+      presets.length >= 3,
+      true,
+      `${option.label} should have several architecture choices`
+    );
+  }
+
+  assert.equal(shouldAnalyzePresetWithBackend("nano-gpt-quick"), true);
+  assert.equal(shouldAnalyzePresetWithBackend("runpod-wide-480m"), false);
 });
 
 test("model presets carry coordinated simple-mode defaults", () => {
