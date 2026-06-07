@@ -237,10 +237,10 @@ Training defaults:
 - Start from backend `training_config_template` and `dataloader_config_template`.
 - Clamp `seq_len` to the selected model context length.
 - Use backend preflight to validate compatibility, memory, local files, scheduler, and tokenizer tokens.
-- If preflight returns `batch_and_lr_recommendation`, Simple Mode should auto-select the recommended option.
+- If preflight returns `batch_and_lr_recommendation`, Simple Mode should auto-select the recommended batch and learning-rate option.
 - For `Quick check`, use a shorter safe run derived from the recommendation.
-- For `Balanced`, use the backend recommended option directly.
-- For `Longer run`, use the recommended batch and learning rate but extend max steps only within a conservative cap.
+- For `Balanced`, use the recommended batch and learning rate, then derive max steps from the model-scale token target: approximately `20 * total_parameters`.
+- For `Longer run`, use the same recommended batch and learning rate, then derive max steps from twice the balanced token target.
 - If preflight provides recommended fixes, Simple Mode should apply safe deterministic fixes automatically after explaining them in the step status.
 
 Training profile mapping:
@@ -250,13 +250,14 @@ Training profile mapping:
   - Set `sample_every` to `max(10, floor(max_steps / 4))`.
   - Set `save_every` to `max_steps` unless the backend requires an earlier checkpoint.
 - `Balanced`
-  - Use the backend recommended option exactly.
+  - Use backend `total_batch_size` exactly so model size, sequence length, memory, micro batch, and accumulation shape determine the optimizer step size.
+  - Set max steps to `ceil(parameter_scaled_run_token_target / total_batch_size)`, falling back to `ceil((20 * total_parameters) / total_batch_size)` if the explicit signal is absent.
   - Refit scheduler phases to max steps with the existing scheduler helper.
   - Keep `sample_every` and `save_every` from the template unless they exceed max steps, then clamp them.
 - `Longer run`
   - Use recommended total batch size and learning rate.
-  - Set max steps to `min(recommended_max_steps * 2, 2000)` unless the dataset is tiny.
-  - For tiny local datasets, cap at a conservative number of passes based on tokenizer/job stats or preflight signals.
+  - Set max steps to `ceil((2 * parameter_scaled_run_token_target) / total_batch_size)`.
+  - Do not let tiny local dataset pass caps collapse the model-scale run length; those caps are advisory context for expert mode, not the simple-mode balanced/longer budget.
   - Make the UI copy clear that longer runs are not guaranteed to improve output on small datasets.
 
 Cloud guardrail:

@@ -55,6 +55,7 @@ export function WorkspaceAssetManager({
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const hasAssets = inventory.assets.length > 0;
   const showLoadingState = inventory.loading && inventory.lastRefreshedAt === null;
+  const showSectionHeader = hasAssets;
 
   const filteredAndSortedAssets = useMemo(() => {
     let result = [...inventory.assets];
@@ -136,87 +137,89 @@ export function WorkspaceAssetManager({
 
   return (
     <section className={styles.assetManagerSection}>
-      <div className={styles.sectionHeader}>
-        <div className={styles.controlsRow} style={{ marginBottom: "12px", justifyContent: "space-between" }}>
-          <div className={styles.sectionLead}>
-            <h2 className={styles.sectionTitle}>
-              {title}
-              <InfoTooltip label="Workspace explanation" align="left" width="wide">
-                <strong>Workspace</strong>
-                <p>
-                  This list combines saved model configs, tokenizer jobs, and training runs.
-                  Selecting a card opens the page that owns that asset.
-                </p>
-              </InfoTooltip>
-            </h2>
-            {description ? <p className={styles.sectionCopy}>{description}</p> : null}
+      {showSectionHeader ? (
+        <div className={styles.sectionHeader}>
+          <div className={styles.controlsRow} style={{ marginBottom: "12px", justifyContent: "space-between" }}>
+            <div className={styles.sectionLead}>
+              <h2 className={styles.sectionTitle}>
+                {title}
+                <InfoTooltip label="Workspace explanation" align="left" width="wide">
+                  <strong>Workspace</strong>
+                  <p>
+                    This list combines saved model configs, tokenizer jobs, and training runs.
+                    Selecting a card opens the page that owns that asset.
+                  </p>
+                </InfoTooltip>
+              </h2>
+              {description ? <p className={styles.sectionCopy}>{description}</p> : null}
+            </div>
+            {hasAssets && (
+              <HelpTooltip label="Delete all workspace items" content="Deletes every workspace item shown by the backend inventory. This cannot be undone.">
+                <button
+                  className={styles.removeAllButton}
+                  onClick={handleRemoveAll}
+                  disabled={inventory.refreshing}
+                >
+                  <FiTrash2 /> Delete all
+                </button>
+              </HelpTooltip>
+            )}
           </div>
+
           {hasAssets && (
-            <HelpTooltip label="Delete all workspace items" content="Deletes every workspace item shown by the backend inventory. This cannot be undone.">
-              <button
-                className={styles.removeAllButton}
-                onClick={handleRemoveAll}
-                disabled={inventory.refreshing}
-              >
-                <FiTrash2 /> Delete all
-              </button>
-            </HelpTooltip>
+            <div className={styles.controlsRow}>
+              <div className={styles.searchWrapper}>
+                <FiSearch className={styles.searchIcon} />
+                <input
+                  type="text"
+                  placeholder="Search workspace"
+                  className={styles.searchInput}
+                  value={searchQuery}
+                  aria-label="Search workspace assets"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                />
+              </div>
+              <div className={styles.filterControls}>
+                <div className={styles.selectWrapper}>
+                  <FiLayers className={styles.controlIcon} />
+                  <HelpTooltip label="Workspace type filter" content="Filters the inventory by asset type: model configs, tokenizer artifacts, or training runs.">
+                    <select
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value as FilterType)}
+                      className={styles.controlSelect}
+                      aria-label="Filter workspace assets"
+                    >
+                      <option value="all">All items</option>
+                      <option value="model">Models</option>
+                      <option value="tokenizer">Tokenizers</option>
+                      <option value="training_run">Training runs</option>
+                    </select>
+                  </HelpTooltip>
+                  <FiChevronDown className={styles.chevronIcon} />
+                </div>
+                <div className={styles.selectWrapper}>
+                  <FiFilter className={styles.controlIcon} />
+                  <HelpTooltip label="Workspace sort order" content="Changes how matching assets are ordered. Largest uses known artifact size when available.">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as SortBy)}
+                      className={styles.controlSelect}
+                      aria-label="Sort workspace assets"
+                    >
+                      <option value="date-desc">Newest</option>
+                      <option value="date-asc">Oldest</option>
+                      <option value="name-asc">Name A-Z</option>
+                      <option value="name-desc">Name Z-A</option>
+                      <option value="size-desc">Largest</option>
+                    </select>
+                  </HelpTooltip>
+                  <FiChevronDown className={styles.chevronIcon} />
+                </div>
+              </div>
+            </div>
           )}
         </div>
-
-        {hasAssets && (
-          <div className={styles.controlsRow}>
-            <div className={styles.searchWrapper}>
-              <FiSearch className={styles.searchIcon} />
-              <input
-                type="text"
-                placeholder="Search workspace"
-                className={styles.searchInput}
-                value={searchQuery}
-                aria-label="Search workspace assets"
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </div>
-            <div className={styles.filterControls}>
-              <div className={styles.selectWrapper}>
-                <FiLayers className={styles.controlIcon} />
-                <HelpTooltip label="Workspace type filter" content="Filters the inventory by asset type: model configs, tokenizer artifacts, or training runs.">
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value as FilterType)}
-                    className={styles.controlSelect}
-                    aria-label="Filter workspace assets"
-                  >
-                    <option value="all">All items</option>
-                    <option value="model">Models</option>
-                    <option value="tokenizer">Tokenizers</option>
-                    <option value="training_run">Training runs</option>
-                  </select>
-                </HelpTooltip>
-                <FiChevronDown className={styles.chevronIcon} />
-              </div>
-              <div className={styles.selectWrapper}>
-                <FiFilter className={styles.controlIcon} />
-                <HelpTooltip label="Workspace sort order" content="Changes how matching assets are ordered. Largest uses known artifact size when available.">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortBy)}
-                    className={styles.controlSelect}
-                    aria-label="Sort workspace assets"
-                  >
-                    <option value="date-desc">Newest</option>
-                    <option value="date-asc">Oldest</option>
-                    <option value="name-asc">Name A-Z</option>
-                    <option value="name-desc">Name Z-A</option>
-                    <option value="size-desc">Largest</option>
-                  </select>
-                </HelpTooltip>
-                <FiChevronDown className={styles.chevronIcon} />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      ) : null}
 
       <div className={styles.assetGrid}>
         {showLoadingState

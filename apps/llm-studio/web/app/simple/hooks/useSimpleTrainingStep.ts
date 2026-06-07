@@ -69,6 +69,13 @@ function recommendationSignature(
   }
   return JSON.stringify({
     recommended_option_key: recommendation.recommended_option_key,
+    signals: {
+      total_parameters: recommendation.signals.total_parameters,
+      parameter_scaled_run_token_target: recommendation.signals.parameter_scaled_run_token_target,
+      recommended_run_token_budget: recommendation.signals.recommended_run_token_budget,
+      recommended_batch_target: recommendation.signals.recommended_batch_target,
+      max_memory_micro_batch_size: recommendation.signals.max_memory_micro_batch_size,
+    },
     options: recommendation.options.map((option) => ({
       key: option.key,
       total_batch_size: option.total_batch_size,
@@ -180,7 +187,9 @@ export function useSimpleTrainingStep({
       trainingConfig: applySimpleTrainingProfileGuardrails(
         fixed.trainingConfig,
         flow.trainingProfile,
-        profiledTraining.appliedRecommendation
+        profiledTraining.appliedRecommendation,
+        profiledTraining.targetRunTokens,
+        profiledTraining.targetTotalBatchTokens
       ),
     };
   }, [appliedFixes, baseDataloaderConfig, flow.trainingProfile, profiledTraining]);
@@ -227,9 +236,6 @@ export function useSimpleTrainingStep({
 
   useEffect(() => {
     const recommendedFixes = preflight?.recommended_fixes ?? [];
-    if (recommendedFixes.length === 0) {
-      return;
-    }
     const signature = fixSignature(recommendedFixes);
     if (signature === appliedFixSignatureRef.current) {
       return;

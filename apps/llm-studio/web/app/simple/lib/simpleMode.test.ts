@@ -14,6 +14,7 @@ import {
 } from "../constants";
 import { parseSimpleFlowState } from "../hooks/useSimpleFlowPersistence";
 import { buildInferenceSettings } from "./inferencePresets";
+import { buildArchitectureTemplateGuidance } from "./architectureGuidance";
 import {
   SIMPLE_MODEL_PRESETS,
   SIMPLE_PRESET_ARCHITECTURE_TYPES,
@@ -120,6 +121,20 @@ const trainingTemplate = {
   save_every: 1000,
 };
 
+function assertTokenBudgetIsTight(
+  config: Record<string, unknown>,
+  targetRunTokens: number
+): void {
+  const maxSteps = config.max_steps as number;
+  const totalBatchSize = config.total_batch_size as number;
+  const actualRunTokens = maxSteps * totalBatchSize;
+
+  assert.equal(Number.isInteger(maxSteps), true);
+  assert.equal(Number.isInteger(totalBatchSize), true);
+  assert.equal(actualRunTokens >= targetRunTokens, true);
+  assert.equal(actualRunTokens < targetRunTokens + totalBatchSize, true);
+}
+
 test("simple flow parser migrates malformed state to safe defaults", () => {
   assert.deepEqual(parseSimpleFlowState(null), DEFAULT_SIMPLE_FLOW_STATE);
   assert.equal(parseSimpleFlowState({ datasetSource: "bad" }).datasetSource, "starter");
@@ -207,6 +222,29 @@ test("model presets provide production-grade catalog coverage", () => {
   assert.equal(shouldAnalyzePresetWithBackend("runpod-wide-480m"), false);
 });
 
+test("model presets provide concise beginner guidance", () => {
+  for (const preset of SIMPLE_MODEL_PRESETS) {
+    const guidance = buildArchitectureTemplateGuidance(preset);
+
+    assert.equal(guidance.title, preset.name);
+    assert.equal(guidance.highlights.length, 5);
+    assert.equal(guidance.highlights[0].startsWith("Best for:"), true);
+    assert.equal(guidance.highlights.some((item) => item.startsWith("Expect:")), true);
+    assert.equal(guidance.highlights.some((item) => item.startsWith("Why this shape:")), true);
+    assert.equal(guidance.highlights.some((item) => item.startsWith("Next step:")), true);
+    assert.equal(guidance.highlights.some((item) => item.startsWith("Watch:")), true);
+    assert.equal(guidance.summary.length <= 150, true, `${preset.id} summary is too long`);
+
+    for (const highlight of guidance.highlights) {
+      assert.equal(
+        highlight.length <= 190,
+        true,
+        `${preset.id} guidance bullet is too long: ${highlight}`
+      );
+    }
+  }
+});
+
 test("model presets carry coordinated simple-mode defaults", () => {
   const quickstart = getSimpleModelPreset(DEFAULT_SIMPLE_FLOW_STATE.presetId);
   assert.equal(isSimpleModelPresetId(quickstart.id), true);
@@ -249,40 +287,88 @@ test("training profiles apply backend token-budget recommendations", () => {
   assert.equal(quick.config.save_every, 12);
 
   const balanced = buildSimpleTrainingConfig(trainingTemplate, "balanced", 1024, rec);
-  assert.equal(balanced.config.max_steps, 120);
+  assert.equal(balanced.config.max_steps, 4);
   assert.equal(balanced.config.seq_len, 512);
-  assert.equal(balanced.config.total_batch_size, 64);
+  assert.equal(balanced.config.total_batch_size, 2048);
+  assert.equal(balanced.targetRunTokens, 7680);
   assert.equal((balanced.config.optimizer as Record<string, unknown>).lr, 0.00025);
-  assert.equal(balanced.config.save_every, 12);
+  assert.equal(balanced.config.save_every, 1);
 
   const longer = buildSimpleTrainingConfig(trainingTemplate, "longer", 2048, rec);
-  assert.equal(longer.config.max_steps, 240);
+  assert.equal(longer.config.max_steps, 4);
   assert.equal(longer.config.seq_len, 1024);
-  assert.equal(longer.config.total_batch_size, 64);
+  assert.equal(longer.config.total_batch_size, 4096);
+  assert.equal(longer.targetRunTokens, 15360);
   assert.equal((longer.config.optimizer as Record<string, unknown>).lr, 0.00025);
-  assert.equal(longer.config.save_every, 24);
+  assert.equal(longer.config.save_every, 1);
 });
 
-test("balanced and longer preserve small backend token-budget recommendations", () => {
-  const rec = recommendation(8);
+test("balanced and longer ignore tiny local step caps and use model-scale token targets", () => {
+  const rec = recommendation(4);
   rec.options[0] = {
     ...rec.options[0],
-    learning_rate: 0.000001,
     total_batch_size: 512,
+    micro_batch_size: 1,
+    grad_accum_steps: 1,
+    learning_rate: 0.0003,
+    recommended_max_steps: 4,
+    estimated_tokens_per_recommended_run: 2_048,
   };
+  rec.signals.total_parameters = 3_000_000;
+  rec.signals.max_memory_micro_batch_size = 4;
+  rec.signals.recommended_batch_target = 512;
+  rec.signals.recommended_run_token_budget = 2_048;
+  rec.signals.parameter_scaled_run_token_target = 60_000_000;
+
   const quick = buildSimpleTrainingConfig(trainingTemplate, "quick", 1024, rec);
   const balanced = buildSimpleTrainingConfig(trainingTemplate, "balanced", 1024, rec);
   const longer = buildSimpleTrainingConfig(trainingTemplate, "longer", 1024, rec);
 
   assert.equal(quick.config.max_steps, 100);
-  assert.equal(balanced.config.max_steps, 8);
-  assert.equal(longer.config.max_steps, 16);
+  assert.equal(balanced.config.max_steps, Math.ceil(60_000_000 / 32768));
+  assert.equal(longer.config.max_steps, Math.ceil(120_000_000 / 32768));
   assert.equal(quick.config.total_batch_size, 2048);
-  assert.equal(balanced.config.total_batch_size, 512);
-  assert.equal(longer.config.total_batch_size, 512);
-  assert.equal((quick.config.optimizer as Record<string, unknown>).lr, 0.0001);
-  assert.equal((balanced.config.optimizer as Record<string, unknown>).lr, 0.000001);
-  assert.equal((longer.config.optimizer as Record<string, unknown>).lr, 0.000001);
+  assert.equal(balanced.config.total_batch_size, 32768);
+  assert.equal(longer.config.total_batch_size, 32768);
+  assert.equal(balanced.targetRunTokens, 60_000_000);
+  assert.equal(longer.targetRunTokens, 120_000_000);
+  assert.equal(balanced.targetTotalBatchTokens, 32768);
+  assert.equal(longer.targetTotalBatchTokens, 32768);
+  assertTokenBudgetIsTight(balanced.config, 60_000_000);
+  assertTokenBudgetIsTight(longer.config, 120_000_000);
+  assert.equal((quick.config.optimizer as Record<string, unknown>).lr, 0.0003);
+  assert.equal((balanced.config.optimizer as Record<string, unknown>).lr, 0.0003);
+  assert.equal((longer.config.optimizer as Record<string, unknown>).lr, 0.0003);
+});
+
+test("balanced and longer keep model-sized backend batch recommendations without profile caps", () => {
+  const rec = recommendation(120);
+  const targetRunTokens = 2_480_000_000;
+  rec.options[0] = {
+    ...rec.options[0],
+    total_batch_size: 131_072,
+    micro_batch_size: 8,
+    grad_accum_steps: 32,
+    learning_rate: 0.0003,
+    recommended_max_steps: 120,
+    estimated_tokens_per_recommended_run: 15_728_640,
+  };
+  rec.signals.total_parameters = 124_000_000;
+  rec.signals.recommended_batch_target = 131_072;
+  rec.signals.recommended_run_token_budget = 15_728_640;
+  rec.signals.parameter_scaled_run_token_target = targetRunTokens;
+
+  const balanced = buildSimpleTrainingConfig(trainingTemplate, "balanced", 1024, rec);
+  const longer = buildSimpleTrainingConfig(trainingTemplate, "longer", 2048, rec);
+
+  assert.equal(balanced.config.total_batch_size, 131_072);
+  assert.equal(longer.config.total_batch_size, 131_072);
+  assert.equal(balanced.targetTotalBatchTokens, 131_072);
+  assert.equal(longer.targetTotalBatchTokens, 131_072);
+  assert.equal(balanced.config.max_steps, Math.ceil(targetRunTokens / 131_072));
+  assert.equal(longer.config.max_steps, Math.ceil((targetRunTokens * 2) / 131_072));
+  assertTokenBudgetIsTight(balanced.config, targetRunTokens);
+  assertTokenBudgetIsTight(longer.config, targetRunTokens * 2);
 });
 
 test("post-fix guardrails preserve backend token budget for recommendation-backed profiles", () => {
@@ -302,15 +388,28 @@ test("post-fix guardrails preserve backend token budget for recommendation-backe
   const guarded = applySimpleTrainingProfileGuardrails(
     balanced.config,
     "balanced",
-    balanced.appliedRecommendation
+    balanced.appliedRecommendation,
+    balanced.targetRunTokens,
+    balanced.targetTotalBatchTokens
   );
 
-  assert.equal(guarded.max_steps, 1831);
+  assert.equal(guarded.max_steps, 1832);
   assert.equal(guarded.total_batch_size, 32768);
-  assert.equal(
-    (guarded.max_steps as number) * (guarded.total_batch_size as number),
-    59_998_208
+  assertTokenBudgetIsTight(guarded, 60_000_000);
+
+  const staleBatchFix = applySimpleTrainingProfileGuardrails(
+    {
+      ...balanced.config,
+      total_batch_size: 1024,
+    },
+    "balanced",
+    balanced.appliedRecommendation,
+    balanced.targetRunTokens,
+    balanced.targetTotalBatchTokens
   );
+  assert.equal(staleBatchFix.max_steps, 1832);
+  assert.equal(staleBatchFix.total_batch_size, 32768);
+  assertTokenBudgetIsTight(staleBatchFix, 60_000_000);
 });
 
 test("safe preflight fixes cannot collapse simple training guardrails", () => {

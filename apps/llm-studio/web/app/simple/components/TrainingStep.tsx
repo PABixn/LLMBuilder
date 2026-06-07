@@ -15,8 +15,8 @@ interface TrainingStepProps {
 
 const PROFILE_OPTIONS: Array<{ id: SimpleTrainingProfile; label: string; description: string }> = [
   { id: "quick", label: "Quick check", description: "100-200 steps for fast feedback" },
-  { id: "balanced", label: "Balanced", description: "500+ steps with backend batch and LR" },
-  { id: "longer", label: "Longer run", description: "1,000+ steps, capped for stability" },
+  { id: "balanced", label: "Balanced", description: "~20 tokens per parameter" },
+  { id: "longer", label: "Longer run", description: "~40 tokens per parameter" },
 ];
 
 const EXECUTION_OPTIONS: Array<{ id: SimpleExecutionKind; label: string; description: string }> = [

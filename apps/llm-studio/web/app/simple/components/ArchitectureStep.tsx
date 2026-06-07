@@ -8,9 +8,11 @@ import {
   FiLayers,
   FiSave,
   FiSearch,
+  FiSliders,
 } from "react-icons/fi";
 
 import { formatBytes } from "../../../lib/workspaceAssets";
+import { InfoTooltip } from "../../shared/components/HelpTooltip";
 import { StatusCard } from "../../studio/components/primitives";
 import {
   estimatePresetBf16MemoryBytes,
@@ -26,6 +28,10 @@ import {
   SIMPLE_MODEL_PRESETS,
   targetVocabForPresetDataset,
 } from "../lib/modelPresets";
+import {
+  buildArchitectureTemplateGuidance,
+  type ArchitectureTemplateGuidance,
+} from "../lib/architectureGuidance";
 import type { SimpleDatasetSource, SimpleModeController } from "../types";
 
 interface ArchitectureStepProps {
@@ -126,6 +132,23 @@ function datasetForPresetSelection(
     return "upload";
   }
   return preset.defaultDatasetSource;
+}
+
+function ArchitectureTemplateTooltip({
+  guidance,
+}: {
+  guidance: ArchitectureTemplateGuidance;
+}) {
+  return (
+    <div className="simpleTemplateTooltip">
+      <p>{guidance.summary}</p>
+      <ul>
+        {guidance.highlights.map((highlight) => (
+          <li key={highlight}>{highlight}</li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 export function ArchitectureStep({ controller }: ArchitectureStepProps) {
@@ -254,98 +277,104 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
         </div>
 
         <div className="simplePresetToolbar">
-          <label className="simplePresetSearch">
-            <FiSearch aria-hidden="true" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.currentTarget.value)}
-              placeholder="Search architectures"
-            />
-          </label>
-
-          <div className="simplePresetFilters" aria-label="Architecture filters">
-            <div className="simplePresetFilterGroup">
-              <span>Size</span>
-              <div className="simpleFilterChips">
-                <button
-                  type="button"
-                  className={sizeFilter === "all" ? "is-selected" : ""}
-                  aria-pressed={sizeFilter === "all"}
-                  onClick={() => setSizeFilter("all")}
-                >
-                  All
-                </button>
-                {SIMPLE_PRESET_SIZE_GROUPS.map((group) => (
-                  <button
-                    key={group.id}
-                    type="button"
-                    className={sizeFilter === group.id ? "is-selected" : ""}
-                    aria-pressed={sizeFilter === group.id}
-                    onClick={() => setSizeFilter(group.id)}
-                  >
-                    {group.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="simplePresetFilterGroup">
-              <span>Type</span>
-              <div className="simpleFilterChips">
-                <button
-                  type="button"
-                  className={architectureTypeFilter === "all" ? "is-selected" : ""}
-                  aria-pressed={architectureTypeFilter === "all"}
-                  onClick={() => setArchitectureTypeFilter("all")}
-                >
-                  All
-                </button>
-                {SIMPLE_PRESET_ARCHITECTURE_TYPES.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={architectureTypeFilter === option.id ? "is-selected" : ""}
-                    aria-pressed={architectureTypeFilter === option.id}
-                    title={option.description}
-                    onClick={() => setArchitectureTypeFilter(option.id)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="simplePresetFilterGroup">
-              <span>Target</span>
-              <div className="simpleFilterChips">
-                <button
-                  type="button"
-                  className={trainingTargetFilter === "all" ? "is-selected" : ""}
-                  aria-pressed={trainingTargetFilter === "all"}
-                  onClick={() => setTrainingTargetFilter("all")}
-                >
-                  All
-                </button>
-                {SIMPLE_PRESET_TRAINING_TARGETS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={trainingTargetFilter === option.id ? "is-selected" : ""}
-                    aria-pressed={trainingTargetFilter === option.id}
-                    title={option.description}
-                    onClick={() => setTrainingTargetFilter(option.id)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="simplePresetToolbarTop">
+            <label className="simplePresetSearch">
+              <FiSearch aria-hidden="true" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.currentTarget.value)}
+                placeholder="Search architectures"
+              />
+            </label>
+            <span className="simplePresetToolbarMeta">
+              {filteredPresetCount} shown
+            </span>
           </div>
 
-          <div className="simplePresetToolbarMeta">
-            {filteredPresetCount} architecture
-            {filteredPresetCount === 1 ? "" : "s"} shown
-          </div>
+          <details className="simplePresetFilterDisclosure">
+            <summary>
+              <FiSliders aria-hidden="true" />
+              Filters
+            </summary>
+            <div className="simplePresetFilters" aria-label="Architecture filters">
+              <div className="simplePresetFilterGroup">
+                <span>Size</span>
+                <div className="simpleFilterChips">
+                  <button
+                    type="button"
+                    className={sizeFilter === "all" ? "is-selected" : ""}
+                    aria-pressed={sizeFilter === "all"}
+                    onClick={() => setSizeFilter("all")}
+                  >
+                    All
+                  </button>
+                  {SIMPLE_PRESET_SIZE_GROUPS.map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      className={sizeFilter === group.id ? "is-selected" : ""}
+                      aria-pressed={sizeFilter === group.id}
+                      onClick={() => setSizeFilter(group.id)}
+                    >
+                      {group.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="simplePresetFilterGroup">
+                <span>Type</span>
+                <div className="simpleFilterChips">
+                  <button
+                    type="button"
+                    className={architectureTypeFilter === "all" ? "is-selected" : ""}
+                    aria-pressed={architectureTypeFilter === "all"}
+                    onClick={() => setArchitectureTypeFilter("all")}
+                  >
+                    All
+                  </button>
+                  {SIMPLE_PRESET_ARCHITECTURE_TYPES.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={architectureTypeFilter === option.id ? "is-selected" : ""}
+                      aria-pressed={architectureTypeFilter === option.id}
+                      title={option.description}
+                      onClick={() => setArchitectureTypeFilter(option.id)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="simplePresetFilterGroup">
+                <span>Target</span>
+                <div className="simpleFilterChips">
+                  <button
+                    type="button"
+                    className={trainingTargetFilter === "all" ? "is-selected" : ""}
+                    aria-pressed={trainingTargetFilter === "all"}
+                    onClick={() => setTrainingTargetFilter("all")}
+                  >
+                    All
+                  </button>
+                  {SIMPLE_PRESET_TRAINING_TARGETS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={trainingTargetFilter === option.id ? "is-selected" : ""}
+                      aria-pressed={trainingTargetFilter === option.id}
+                      title={option.description}
+                      onClick={() => setTrainingTargetFilter(option.id)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
 
         <div className="simplePresetSelectionBox">
@@ -370,31 +399,51 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
                   <div className="simplePresetGrid">
                     {presets.map((item) => {
                       const analysis = modelStep.analysisByPresetId[item.id]?.analysis ?? null;
+                      const parameterCount =
+                        analysis?.total_parameters ?? estimatePresetParameterCount(item);
                       const parameterLabel = analysis
-                        ? formatParameterCount(analysis.total_parameters)
-                        : formatEstimatedParameterCount(estimatePresetParameterCount(item));
+                        ? formatParameterCount(parameterCount)
+                        : formatEstimatedParameterCount(parameterCount);
+                      const guidance = buildArchitectureTemplateGuidance(
+                        item,
+                        parameterCount
+                      );
+                      const isSelected = item.id === flow.presetId;
                       return (
-                        <button
+                        <div
                           key={item.id}
-                          type="button"
-                          className={`simplePresetCard${
-                            item.id === flow.presetId ? " is-selected" : ""
+                          className={`simplePresetCardFrame${
+                            isSelected ? " is-selected" : ""
                           }`}
-                          title={item.bestUse}
-                          onClick={() => selectPreset(item)}
                         >
-                          <span className="simplePresetHead">
-                            <strong>{item.name}</strong>
-                            <span className="simplePresetEstimate">
-                              <strong>{parameterLabel}</strong>
+                          <button
+                            type="button"
+                            className={`simplePresetCard${isSelected ? " is-selected" : ""}`}
+                            onClick={() => selectPreset(item)}
+                          >
+                            <span className="simplePresetHead">
+                              <strong>{item.name}</strong>
+                              <span className="simplePresetEstimate">
+                                <strong>{parameterLabel}</strong>
+                              </span>
                             </span>
+                            <span className="simplePresetMeta">
+                              <span>{architectureTypeLabelFor(item.architectureType)}</span>
+                              <span>{trainingTargetLabelFor(item.trainingTarget)}</span>
+                              <span>{sizeLabelFor(item.relativeSize)}</span>
+                            </span>
+                          </button>
+                          <span className="simplePresetInfo">
+                            <InfoTooltip
+                              label={`${item.name} guidance`}
+                              align="right"
+                              width="wide"
+                              title={item.name}
+                            >
+                              <ArchitectureTemplateTooltip guidance={guidance} />
+                            </InfoTooltip>
                           </span>
-                          <span className="simplePresetMeta">
-                            <span>{architectureTypeLabelFor(item.architectureType)}</span>
-                            <span>{trainingTargetLabelFor(item.trainingTarget)}</span>
-                            <span>{sizeLabelFor(item.relativeSize)}</span>
-                          </span>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
