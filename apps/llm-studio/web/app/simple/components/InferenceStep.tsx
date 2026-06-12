@@ -1,4 +1,4 @@
-import { FiExternalLink, FiRefreshCw, FiSend } from "react-icons/fi";
+import { FiRefreshCw, FiSend } from "react-icons/fi";
 
 import {
   SIMPLE_CREATIVITY_PRESETS,
@@ -24,16 +24,6 @@ export function InferenceStep({ controller }: InferenceStepProps) {
   return (
     <div className="simpleStepGrid">
       <div className="simplePanel">
-        <div className="simplePanelHeader">
-          <div>
-            <p className="simpleEyebrow">Inference</p>
-            <h3>Generate from checkpoint</h3>
-          </div>
-          <a className="buttonGhost buttonSmall" href="/inference">
-            <FiExternalLink aria-hidden="true" /> Expert
-          </a>
-        </div>
-
         <div className="simpleArtifactList">
           <div>
             <span>Training run</span>

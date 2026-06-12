@@ -3,7 +3,6 @@ import {
   FiChevronDown,
   FiCloud,
   FiCpu,
-  FiExternalLink,
   FiHardDrive,
   FiLayers,
   FiSave,
@@ -266,16 +265,6 @@ export function ArchitectureStep({ controller }: ArchitectureStepProps) {
   return (
     <div className="simpleStepGrid">
       <div className="simplePanel">
-        <div className="simplePanelHeader">
-          <div>
-            <p className="simpleEyebrow">Template</p>
-            <h3>Architecture templates</h3>
-          </div>
-          <a className="buttonGhost buttonSmall" href="/studio">
-            <FiExternalLink aria-hidden="true" /> Expert
-          </a>
-        </div>
-
         <div className="simplePresetToolbar">
           <div className="simplePresetToolbarTop">
             <label className="simplePresetSearch">

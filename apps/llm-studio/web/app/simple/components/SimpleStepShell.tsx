@@ -1,5 +1,13 @@
 import type { ReactNode } from "react";
+import { FiExternalLink } from "react-icons/fi";
 import type { SimpleStepId, SimpleStepViewModel } from "../types";
+
+const EXPERT_HREFS: Record<SimpleStepId, string> = {
+  architecture: "/studio",
+  tokenizer: "/tokenizer",
+  training: "/training",
+  inference: "/inference",
+};
 
 interface SimpleStepShellProps {
   activeStep: SimpleStepId;
@@ -29,6 +37,11 @@ export function SimpleStepShell({
         </div>
         <div className="simpleStepShellMeta">
           <span className={`simpleStatusPill is-${step.state}`}>{step.status}</span>
+          {expanded ? (
+            <a className="buttonGhost buttonSmall" href={EXPERT_HREFS[step.id]}>
+              <FiExternalLink aria-hidden="true" /> Expert
+            </a>
+          ) : null}
           {!expanded ? (
             <button
               type="button"

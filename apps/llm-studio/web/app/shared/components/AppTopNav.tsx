@@ -27,7 +27,7 @@ export function AppTopNav({ activeSimpleStep = null }: AppTopNavProps) {
   const [switchTransitionsReady, setSwitchTransitionsReady] = useState(false);
   const isSimpleRoute = pathname === "/simple" || pathname.startsWith("/simple/");
   const links = uiMode === "simple" ? SIMPLE_NAV_LINKS : EXPERT_NAV_LINKS;
-  const modeSwitchLabel = uiMode === "simple" ? "Expert Mode" : "Simple Mode";
+  const modeSwitchLabel = uiMode === "simple" ? "Simple Mode" : "Expert Mode";
   const modeSwitchTitle =
     uiMode === "simple" ? "Switch to Expert Mode" : "Switch to Simple Mode";
 

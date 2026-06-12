@@ -328,11 +328,6 @@
   min-width: 0;
   display: grid;
   gap: 13px;
-  padding: 15px;
-  border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
-  border-radius: 12px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, transparent), var(--surface));
-  box-shadow: 0 12px 30px rgba(18, 31, 47, 0.06);
 }
 
 .simplePanelHeader {
@@ -352,10 +347,6 @@
 .simplePresetToolbar {
   display: grid;
   gap: 7px;
-  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--surface-soft) 76%, var(--surface));
-  padding: 8px;
 }
 
 .simplePresetToolbarTop {
@@ -1387,7 +1378,6 @@
     font-size: 1.85rem;
   }
 
-  .simplePanel,
   .simpleStepShell {
     border-radius: 12px;
   }

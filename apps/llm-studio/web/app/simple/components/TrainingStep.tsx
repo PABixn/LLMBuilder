@@ -1,4 +1,4 @@
-import { FiExternalLink, FiPlay, FiRefreshCw } from "react-icons/fi";
+import { FiPlay, FiRefreshCw } from "react-icons/fi";
 
 import { readTokenizerVocabSize } from "../lib/vocabularySync";
 import { formatLearningRate } from "../../training/lib/run";
@@ -56,16 +56,6 @@ export function TrainingStep({ controller }: TrainingStepProps) {
   return (
     <div className="simpleStepGrid">
       <div className="simplePanel">
-        <div className="simplePanelHeader">
-          <div>
-            <p className="simpleEyebrow">Plan</p>
-            <h3>Recommended training</h3>
-          </div>
-          <a className="buttonGhost buttonSmall" href="/training">
-            <FiExternalLink aria-hidden="true" /> Expert
-          </a>
-        </div>
-
         <div className="simpleArtifactList">
           <div>
             <span>Model</span>

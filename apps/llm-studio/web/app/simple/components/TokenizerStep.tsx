@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent } from "react";
-import { FiExternalLink, FiPlay, FiTrash2, FiUpload } from "react-icons/fi";
+import { FiPlay, FiTrash2, FiUpload } from "react-icons/fi";
 
 import type { TokenizerPreviewResult } from "../../../lib/tokenizerLegacyApi";
 import { SIMPLE_STARTER_DATASET_NAME } from "../constants";
@@ -214,16 +214,6 @@ export function TokenizerStep({ controller }: TokenizerStepProps) {
   return (
     <div className="simpleStepGrid">
       <div className="simplePanel">
-        <div className="simplePanelHeader">
-          <div>
-            <p className="simpleEyebrow">Data</p>
-            <h3>Choose text data</h3>
-          </div>
-          <a className="buttonGhost buttonSmall" href="/tokenizer">
-            <FiExternalLink aria-hidden="true" /> Expert
-          </a>
-        </div>
-
         <div className="simpleSegmented">
           {DATASET_OPTIONS.map((option) => (
             <button
