@@ -1,0 +1,16 @@
+{
+  "cargo_audit": {
+    "warning_policy": "Cargo Audit vulnerabilities fail the build. Transitive unmaintained or unsound warnings remain visible and require explicit release review because replacing the Tauri/WebKit dependency stack is not locally actionable."
+  },
+  "pip_audit_accepted_findings": [
+    {
+      "installed_version_min_exclusive": "2.6.0",
+      "package": "torch",
+      "rationale": "The OSV record identifies PyTorch 2.6.0 as the last affected version. pip-audit currently reports the CVE against newer PyTorch releases without an affected-version range.",
+      "reviewed_on": "2026-06-13",
+      "source": "https://api.osv.dev/v1/vulns/CVE-2025-3000",
+      "vulnerability_id": "CVE-2025-3000"
+    }
+  ],
+  "schema_version": 1
+}

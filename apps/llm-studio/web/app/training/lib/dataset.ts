@@ -358,11 +358,6 @@ export function hydrateDatasetUiFromConfig(config: Record<string, unknown> | nul
         )
       : [];
 
-  const hfToken =
-    sourceMode === "streaming_hf"
-      ? asString(firstDataset.hf_token).trim()
-      : "";
-
   const streamingDatasets =
     sourceMode === "streaming_hf" && datasetsRaw.length > 0
       ? normalizeStreamingDatasetWeights(
@@ -401,7 +396,7 @@ export function hydrateDatasetUiFromConfig(config: Record<string, unknown> | nul
   return {
     sourceMode,
     localTrainFiles,
-    hfToken,
+    hfToken: "",
     streamingDatasets,
   };
 }
@@ -409,7 +404,6 @@ export function hydrateDatasetUiFromConfig(config: Record<string, unknown> | nul
 export function buildDatasetsFromUi(
   sourceMode: DatasetSourceMode,
   localTrainFiles: LocalTrainFileFormState[],
-  hfToken: string,
   streamingDatasets: StreamingDatasetFormState[]
 ): Record<string, unknown>[] {
   if (sourceMode === "local_file") {
@@ -434,8 +428,6 @@ export function buildDatasetsFromUi(
     streamingDatasets.length > 0
       ? normalizeStreamingDatasetWeights(streamingDatasets)
       : [makeStreamingDatasetEntry()];
-  const token = hfToken.trim();
-
   return normalizedDatasets.map((entry) => {
     const datasetConfig: Record<string, unknown> = {
       name: entry.name.trim(),
@@ -450,9 +442,6 @@ export function buildDatasetsFromUi(
     const configName = entry.config.trim();
     if (configName !== "") {
       datasetConfig.config = configName;
-    }
-    if (token !== "") {
-      datasetConfig.hf_token = token;
     }
     const filters = entry.filters
       .filter((filter) => filter.column.trim() !== "" && filter.value.trim() !== "")
@@ -480,4 +469,24 @@ export function buildDatasetsFromUi(
     }
     return datasetConfig;
   });
+}
+
+export function stripDataloaderCredentials(
+  config: Record<string, unknown>
+): Record<string, unknown> {
+  return stripCredentialValue(config) as Record<string, unknown>;
+}
+
+function stripCredentialValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripCredentialValue(item));
+  }
+  if (typeof value !== "object" || value === null) {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => key.toLowerCase().replace(/[^a-z0-9]/g, "") !== "hftoken")
+      .map(([key, item]) => [key, stripCredentialValue(item)])
+  );
 }

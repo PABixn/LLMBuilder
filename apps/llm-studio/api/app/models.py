@@ -10,6 +10,36 @@ class HealthResponse(BaseModel):
     ok: bool = True
 
 
+class StartupTimingResponse(BaseModel):
+    elapsed_ms: float
+    ready_in_ms: float | None = None
+    stage_ms: dict[str, float]
+
+
+class ReadinessResponse(BaseModel):
+    ok: bool
+    ready: bool
+    startup_stage: str
+    startup_detail: str
+    backend_version: str
+    api_contract_version: str
+    runtime_version: str
+    data_schema_version: str
+    runtime_manifest_schema_version: str
+    desktop_mode: bool
+    compute: dict[str, Any]
+    migration_status: dict[str, Any] | None = None
+    startup_timing: StartupTimingResponse
+
+
+class ActiveJobsResponse(BaseModel):
+    active: bool
+    tokenizer_jobs: list[dict[str, Any]]
+    training_jobs: list[dict[str, Any]]
+    has_active_local_training: bool
+    has_active_runpod_training: bool
+
+
 class ConfigTemplatesResponse(BaseModel):
     model_config_template: dict[str, Any]
 

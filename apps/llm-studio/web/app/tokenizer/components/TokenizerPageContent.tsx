@@ -14,9 +14,7 @@ import {
 import { FiTrash2, FiX } from "react-icons/fi";
 
 import {
-  artifactDownloadUrl,
   createTrainingJob,
-  downloadJobArtifact,
   fetchConfigTemplates,
   fetchTrainingJob,
   fetchTrainingJobs,
@@ -27,6 +25,7 @@ import {
   validateDataloaderConfig,
   validateTokenizerConfig,
 } from "../../../lib/tokenizerLegacyApi";
+import { downloadApiArtifact } from "../../../lib/downloads";
 import {
   defaultDataloaderConfig,
   defaultTokenizerConfig,
@@ -71,10 +70,6 @@ import {
   sanitizePositiveIntegerInput,
 } from "../../shared/lib/configNumber";
 import { FieldLabelText, HelpTooltip, InfoTooltip } from "../../shared/components/HelpTooltip";
-import {
-  getTauriInvoke,
-  triggerBlobDownload,
-} from "../lib/storage";
 import { useTokenizerLocalFileStats } from "../hooks/useTokenizerLocalFileStats";
 import { useTokenizerPersistence } from "../hooks/useTokenizerPersistence";
 import { useTokenizerSettingsNavigation } from "../hooks/useTokenizerSettingsNavigation";
@@ -193,11 +188,11 @@ export function TokenizerPageContent() {
         const job = await fetchTrainingJob(jobIdFromUrl as string);
         setActiveJobId(job.id);
         setActiveJob(job);
-        
+
         // Populate forms from job config
         const tokConfig = asRecord(job.tokenizer_config);
         const datConfig = asRecord(job.dataloader_config);
-        
+
         if (Object.keys(tokConfig).length > 0) {
           setTokenizerForm(tokenizerFormFromConfig(tokConfig));
         }
@@ -205,8 +200,8 @@ export function TokenizerPageContent() {
           setDatasetForm(datasetFormFromConfig(datConfig));
           setTrainingForm(trainingFormFromConfig(datConfig));
         }
-        
-      notify("info", `Loaded job ${job.id.slice(0, 8)}`);
+
+        notify("info", `Loaded job ${job.id.slice(0, 8)}`);
       } catch (err) {
         notify("error", `Could not load job: ${err instanceof Error ? err.message : "Unknown error"}`);
       }
@@ -506,7 +501,7 @@ export function TokenizerPageContent() {
   }, []);
 
   const handleDownloadArtifact = useCallback(
-    async (event: MouseEvent<HTMLAnchorElement>) => {
+    async (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
 
       if (!activeJob?.artifact_file || isDownloadingArtifact) {
@@ -517,30 +512,13 @@ export function TokenizerPageContent() {
       setIsDownloadingArtifact(true);
 
       try {
-        const blob = await downloadJobArtifact(activeJob.id);
-        const tauriInvoke = getTauriInvoke();
-
-        if (tauriInvoke) {
-          try {
-            const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
-            const result = await tauriInvoke("save_tokenizer_artifact", {
-              file_name: fileName,
-              bytes,
-            });
-            const savedPath =
-              typeof result === "string" && result.trim() !== "" ? result : null;
-
-            if (savedPath) {
-              notify("success", `Saved ${fileName}`, 4500);
-            }
-            return;
-          } catch {
-            // Fall back to browser-style download if the desktop command is unavailable.
-          }
+        const result = await downloadApiArtifact(
+          `/tokenizer/jobs/${activeJob.id}/artifact`,
+          fileName
+        );
+        if (result !== "cancelled") {
+          notify("success", `${result === "native" ? "Saved" : "Downloaded"} ${fileName}`, 4500);
         }
-
-        triggerBlobDownload(blob, fileName);
-        notify("success", `Downloaded ${fileName}`, 4500);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Could not download tokenizer";
@@ -924,6 +902,7 @@ export function TokenizerPageContent() {
       const job = await createTrainingJob({
         tokenizer_config: tokenizerBuild.value,
         dataloader_config: dataloaderBuild.value,
+        hf_token: datasetForm.hfToken.trim() || undefined,
         evaluation_thresholds: thresholds,
       });
 
@@ -1226,18 +1205,17 @@ export function TokenizerPageContent() {
               ) : null}
 
               {activeJob.artifact_file ? (
-                <a
+                <button
+                  type="button"
                   className="downloadLink"
-                  href={artifactDownloadUrl(activeJob.id)}
-                  download={activeJob.artifact_file}
                   onClick={(event) => void handleDownloadArtifact(event)}
                   aria-disabled={isDownloadingArtifact}
-                  rel="noreferrer"
+                  disabled={isDownloadingArtifact}
                 >
                   {isDownloadingArtifact
                     ? `Downloading ${activeJob.artifact_file}...`
                     : `Download ${activeJob.artifact_file}`}
-                </a>
+                </button>
               ) : null}
 
               {activeJob.error ? <p className="hint hint-error">{activeJob.error}</p> : null}

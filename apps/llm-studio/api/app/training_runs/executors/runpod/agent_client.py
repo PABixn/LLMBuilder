@@ -11,6 +11,7 @@ from urllib.request import Request, urlopen
 
 import certifi
 
+from ....logging_config import redact_secrets
 from .errors import (
     RemoteAgentError,
     decode_http_error,
@@ -180,4 +181,4 @@ class RemoteAgentClient:
             message = format_agent_http_error(exc.code, detail, payload)
             raise RemoteAgentError(message, status_code=exc.code, payload=payload, retryable=retryable) from exc
         except URLError as exc:
-            raise RemoteAgentError(f"Pod agent is unreachable: {exc.reason}") from exc
+            raise RemoteAgentError(f"Pod agent is unreachable: {redact_secrets(str(exc.reason))}") from exc

@@ -5,28 +5,34 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:desktop": "LLM_STUDIO_DESKTOP_BUILD=1 next build",
+    "build:desktop": "LLM_STUDIO_DESKTOP_BUILD=1 next build && npm run validate:desktop-output",
+    "validate:desktop-output": "node scripts/validate-desktop-output.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test:regression": "tsx --test \"app/**/*.test.ts\""
+    "test:regression": "tsx --test \"app/**/*.test.ts\"",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "next": "^16.0.0",
+    "next": "^16.2.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
     "recharts": "^3.8.1"
   },
+  "overrides": {
+    "postcss": "8.5.15"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^22.13.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "eslint": "^10.0.1",
     "eslint-config-next": "^0.2.4",
     "globals": "^17.5.0",
-    "tsx": "^4.20.6",
+    "tsx": "^4.22.4",
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.59.0"
   }

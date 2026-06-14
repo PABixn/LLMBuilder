@@ -1,4 +1,3 @@
-export * from "./training/artifacts";
 export * from "./training/client";
 export * from "./training/errors";
 export * from "./training/generation";

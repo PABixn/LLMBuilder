@@ -4,6 +4,7 @@ import importlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -14,6 +15,13 @@ from typing import Any
 
 SENSITIVE_KEYS = {"api_key", "apikey", "authorization", "bearer", "password", "secret", "token"}
 SENSITIVE_KEY_SUFFIXES = ("_api_key", "_apikey", "_authorization", "_password", "_secret", "_token")
+SECRET_ASSIGNMENT = re.compile(
+    r"(?i)\b(?:authorization|api[_-]?key|token|password|secret|credential)"
+    r"\b[\"']?(?:\s*[=:]\s*|\s+)(?:\"[^\"]*\"|'[^']*'|[^\s,;}\]]+)"
+)
+BEARER = re.compile(r"(?i)\bbearer\s+[a-z0-9._~+/=-]+")
+PROVIDER_CREDENTIAL = re.compile(r"(?i)\b(?:hf|rpa|rps)_[a-z0-9_-]{16,}\b")
+HF_DATASET_TOKENS_ENV = "LLM_STUDIO_HF_DATASET_TOKENS"
 ENV_KEYS_TO_REPORT = (
     "CUDA_VISIBLE_DEVICES",
     "HF_DATASETS_CACHE",
@@ -73,7 +81,7 @@ def log_event(
             "event": "diagnostic_log_write_failed",
             "service": service,
             "target": str(workspace_root() / "logs" / file_name),
-            "error": f"{type(exc).__name__}: {exc}",
+            "error": redact_secrets(f"{type(exc).__name__}: {exc}"),
         }
         print(f"[{prefix}] {json.dumps(fallback, ensure_ascii=True, sort_keys=True)}", flush=True)
     return payload
@@ -288,12 +296,46 @@ def sanitize_log_value(value: Any) -> Any:
         return sanitize_log_fields(value)
     if isinstance(value, list):
         return [sanitize_log_value(item) for item in value]
+    if isinstance(value, str):
+        return redact_secrets(value)
     return value
 
 
 def is_sensitive_key(key: str) -> bool:
     key_lower = key.lower()
     return key_lower in SENSITIVE_KEYS or key_lower.endswith(SENSITIVE_KEY_SUFFIXES)
+
+
+def redact_secrets(value: str) -> str:
+    redacted = BEARER.sub("Bearer [redacted]", value)
+    redacted = SECRET_ASSIGNMENT.sub("[redacted]", redacted)
+    redacted = PROVIDER_CREDENTIAL.sub("[redacted]", redacted)
+    for secret in execution_known_secrets():
+        redacted = redacted.replace(secret, "[redacted]")
+    return redacted
+
+
+def execution_known_secrets() -> tuple[str, ...]:
+    raw = os.getenv(HF_DATASET_TOKENS_ENV)
+    if not raw:
+        return ()
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return ()
+    if not isinstance(payload, list):
+        return ()
+    return tuple(
+        sorted(
+            {
+                item.strip()
+                for item in payload
+                if isinstance(item, str) and item.strip()
+            },
+            key=len,
+            reverse=True,
+        )
+    )
 
 
 def main() -> int:

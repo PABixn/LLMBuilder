@@ -35,6 +35,7 @@ class EvaluationSource(str, Enum):
 class TrainTokenizerRequest(BaseModel):
     tokenizer_config: dict[str, Any]
     dataloader_config: dict[str, Any]
+    hf_token: str | None = Field(default=None, min_length=1)
     evaluation_thresholds: list[int] = Field(default_factory=lambda: [5, 10, 25])
     evaluation_text_path: str | None = Field(
         default=None,

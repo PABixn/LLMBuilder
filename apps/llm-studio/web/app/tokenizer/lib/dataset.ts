@@ -367,7 +367,7 @@ export function hydrateDatasetForm(value: unknown, fallback: DatasetFormState): 
   return {
     sourceMode,
     localTrainFiles: normalizeLocalTrainFiles(localTrainFiles),
-    hfToken: asString(record.hfToken, fallback.hfToken),
+    hfToken: "",
     streamingDatasets: normalizeStreamingDatasetWeights(
       streamingDatasets.length > 0 ? streamingDatasets : [makeStreamingDatasetEntry()]
     ),
@@ -754,7 +754,6 @@ export function tokenizerFormFromConfig(config: Record<string, unknown>): Tokeni
 export function datasetFormFromConfig(config: Record<string, unknown>): DatasetFormState {
   const datasetsRaw = Array.isArray(config.datasets) ? config.datasets : [];
   const firstDataset = asRecord(datasetsRaw[0]);
-  const firstHfToken = typeof firstDataset.hf_token === "string" ? firstDataset.hf_token : "";
   const localTrainPaths = extractTrainFilePaths(firstDataset.data_files);
   const sourceMode: DatasetSourceMode =
     datasetsRaw.length === 1 && localTrainPaths.length > 0 ? "local_file" : "streaming_hf";
@@ -812,7 +811,7 @@ export function datasetFormFromConfig(config: Record<string, unknown>): DatasetF
 
   return {
     localTrainFiles,
-    hfToken: firstHfToken,
+    hfToken: "",
     sourceMode,
     streamingDatasets,
   };
@@ -876,7 +875,6 @@ export function buildDataloaderConfigFromForm(
   training: TrainingFormState
 ): Record<string, unknown> {
   let datasets: Record<string, unknown>[];
-  const hfToken = dataset.hfToken.trim();
 
   if (dataset.sourceMode === "local_file") {
     const localTrainPaths = resolveLocalTrainFilePaths(dataset.localTrainFiles);
@@ -925,10 +923,6 @@ export function buildDataloaderConfigFromForm(
       const datasetConfigName = entry.config.trim();
       if (datasetConfigName !== "") {
         datasetConfig.config = datasetConfigName;
-      }
-
-      if (hfToken !== "") {
-        datasetConfig.hf_token = hfToken;
       }
 
       const parsedFilters = buildFiltersFromForm(

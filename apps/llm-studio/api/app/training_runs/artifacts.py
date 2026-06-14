@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import re
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from ..schemas import write_json
+from ..dataset_credentials import split_dataset_hf_tokens, strip_hf_tokens
 from .executors import TrainingJobBundle
 from .preflight import ResolvedPreflightContext
 from .runtime_files import directory_size
@@ -53,20 +54,31 @@ def prepare_training_job(
     job_dir = training_jobs_root / resolved_job_id
     job_dir.mkdir(parents=True, exist_ok=False)
 
+    sanitized_dataloader_config, _ = split_dataset_hf_tokens(context.normalized_dataloader_config)
+    _, dataset_hf_tokens = split_dataset_hf_tokens(
+        request.dataloader_config,
+        fallback_token=request.hf_token,
+    )
+    sanitized_context = replace(
+        context,
+        normalized_dataloader_config=sanitized_dataloader_config,
+    )
+    sanitized_preflight_payload = strip_hf_tokens(preflight_payload)
     bundle = build_training_job_bundle(
         job_id=resolved_job_id,
         job_dir=job_dir,
         execution_target_payload=request.execution_target.model_dump(mode="json"),
+        dataset_hf_tokens=dataset_hf_tokens,
     )
     write_training_job_inputs(
         bundle=bundle,
-        context=context,
-        preflight_payload=preflight_payload,
+        context=sanitized_context,
+        preflight_payload=sanitized_preflight_payload,
         tokenizer_source_path=tokenizer_source_path,
     )
     stored = build_stored_training_job(
         request=request,
-        context=context,
+        context=sanitized_context,
         job_id=resolved_job_id,
         job_dir=job_dir,
         bundle=bundle,
@@ -77,7 +89,7 @@ def prepare_training_job(
         stored=stored,
         bundle=bundle,
         job_dir=job_dir,
-        preflight_payload=preflight_payload,
+        preflight_payload=sanitized_preflight_payload,
     )
 
 
@@ -86,6 +98,7 @@ def build_training_job_bundle(
     job_id: str,
     job_dir: Path,
     execution_target_payload: dict[str, Any],
+    dataset_hf_tokens: list[str | None] | None = None,
 ) -> TrainingJobBundle:
     return TrainingJobBundle(
         job_id=job_id,
@@ -103,6 +116,7 @@ def build_training_job_bundle(
             "format": "llm-studio-training-bundle-v1",
             "job_id": job_id,
             "execution_target": execution_target_payload,
+            "dataset_hf_tokens": list(dataset_hf_tokens or []),
         },
     )
 

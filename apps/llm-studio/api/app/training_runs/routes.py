@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Iterator
 import json
-import sys
+import logging
 from pathlib import Path
 from typing import Any
 
+import anyio
 import torch
 from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
@@ -18,8 +20,12 @@ from ..config import (
     TRAINING_LOOP_TEMPLATE_PATH,
     get_settings,
 )
+from ..dataset_credentials import strip_hf_tokens
+from ..logging_config import redact_value
 from ..models import HealthResponse
+from ..runtime_paths import ensure_source_root_on_path
 from ..schemas import load_json
+from ..storage_safety import InsufficientStorageError
 from .executors.runpod.client import RunPodClient, RunPodClientError
 from .runpod_catalog import build_runpod_provider_catalog
 from .schemas import (
@@ -48,9 +54,7 @@ from .schemas import (
     ValidateConfigResponse,
 )
 
-IMPORT_ROOT = Path(__file__).resolve().parents[5]
-if str(IMPORT_ROOT) not in sys.path:
-    sys.path.append(str(IMPORT_ROOT))
+IMPORT_ROOT = ensure_source_root_on_path()
 
 from model.loader import LLMConfig
 from model.model import ConfigurableGPT
@@ -58,6 +62,8 @@ from training.dataloader_config import TrainingDataloaderConfig
 from training.training_config import TrainingConfig
 
 training_api = APIRouter(prefix="/api/v1/training", tags=["training-workspace"])
+logger = logging.getLogger("llm_studio.training_routes")
+_GENERATION_DONE = object()
 
 
 def register_training_routes(app: FastAPI) -> APIRouter:
@@ -92,7 +98,7 @@ def validate_training_dataloader(payload: ValidateConfigRequest) -> ValidateConf
         normalized = TrainingDataloaderConfig.model_validate(payload.config).model_dump(mode="json")
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
-    return ValidateConfigResponse(normalized_config=normalized)
+    return ValidateConfigResponse(normalized_config=strip_hf_tokens(normalized))
 
 
 @training_api.post("/validate/training-config", response_model=ValidateConfigResponse)
@@ -116,6 +122,8 @@ def validate_training_preflight(payload: TrainingPreflightRequest, request: Requ
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except InsufficientStorageError as exc:
+        raise HTTPException(status_code=507, detail=str(exc)) from exc
 
 
 def _runpod_defaults() -> RunPodProviderDefaults:
@@ -175,31 +183,63 @@ def validate_runpod_key(payload: RunPodValidateKeyRequest, request: Request) -> 
     try:
         account = RunPodClient(api_key).validate_key()
     except RunPodClientError as exc:
+        _log_provider_event("runpod.key.validation_failed", "RunPod API key validation failed.")
         return RunPodValidateKeyResponse(valid=False, message=str(exc), account=None)
     request.app.state.runpod_api_key_override = api_key
+    _log_provider_event("runpod.key.validated", "RunPod API key validated.", source="memory")
     return RunPodValidateKeyResponse(valid=True, message="RunPod API key validated.", account=account)
 
 
 @training_api.get("/providers/runpod/pods", response_model=RunPodResourceListResponse)
 def list_runpod_pods(request: Request) -> RunPodResourceListResponse:
-    api_key, _ = _runpod_api_key(request)
+    api_key, source = _runpod_api_key(request)
     if api_key is None:
+        _log_provider_event("runpod.pods.unavailable", "RunPod pods unavailable.", source=source)
         raise HTTPException(status_code=409, detail="RunPod API key is not configured.")
     try:
-        return RunPodResourceListResponse(items=RunPodClient(api_key).list_pods())
+        items = RunPodClient(api_key).list_pods()
     except RunPodClientError as exc:
+        _log_provider_event("runpod.pods.list_failed", "RunPod pod listing failed.", source=source)
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    _log_provider_event("runpod.pods.listed", "RunPod pods listed.", source=source, count=len(items))
+    sanitized_items = redact_value(items)
+    return RunPodResourceListResponse(items=sanitized_items if isinstance(sanitized_items, list) else [])
 
 
 @training_api.get("/providers/runpod/network-volumes", response_model=RunPodResourceListResponse)
 def list_runpod_network_volumes(request: Request) -> RunPodResourceListResponse:
-    api_key, _ = _runpod_api_key(request)
+    api_key, source = _runpod_api_key(request)
     if api_key is None:
+        _log_provider_event("runpod.volumes.unavailable", "RunPod volumes unavailable.", source=source)
         raise HTTPException(status_code=409, detail="RunPod API key is not configured.")
     try:
-        return RunPodResourceListResponse(items=RunPodClient(api_key).list_network_volumes())
+        items = RunPodClient(api_key).list_network_volumes()
     except RunPodClientError as exc:
+        _log_provider_event("runpod.volumes.list_failed", "RunPod volume listing failed.", source=source)
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    _log_provider_event(
+        "runpod.volumes.listed",
+        "RunPod volumes listed.",
+        source=source,
+        count=len(items),
+    )
+    sanitized_items = redact_value(items)
+    return RunPodResourceListResponse(items=sanitized_items if isinstance(sanitized_items, list) else [])
+
+
+def _log_provider_event(
+    event_id: str,
+    message: str,
+    *,
+    source: str | None = None,
+    count: int | None = None,
+) -> None:
+    fields: dict[str, Any] = {}
+    if source is not None:
+        fields["source"] = source
+    if count is not None:
+        fields["count"] = count
+    logger.info(message, extra={"event_id": event_id, "event_fields": fields})
 
 
 @training_api.post("/jobs", response_model=TrainingJobResponse, status_code=201)
@@ -242,6 +282,8 @@ def delete_training_job(job_id: str, request: Request) -> Response:
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
     except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return Response(status_code=204)
 
@@ -403,63 +445,164 @@ def stream_generate_from_training_job(
         request,
     )
 
-    def encode_event(event_payload: dict[str, object]) -> str:
-        return json.dumps(event_payload, ensure_ascii=False) + "\n"
+    return StreamingResponse(
+        _stream_generation_events(
+            request=request,
+            job_id=job_id,
+            checkpoint_step=checkpoint.step,
+            checkpoint_path=checkpoint_path,
+            tokenizer_job_id=job.tokenizer_job_id,
+            tokenizer=tokenizer,
+            prompt_token_ids=prompt_token_ids,
+            model=model,
+            payload=payload,
+        ),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache"},
+    )
 
-    def stream_events():
-        generated_token_ids: list[int] = []
-        try:
-            yield encode_event(
-                {
-                    "type": "start",
-                    "job_id": job_id,
-                    "checkpoint_step": checkpoint.step,
-                    "checkpoint_path": str(checkpoint_path),
-                    "tokenizer_job_id": job.tokenizer_job_id,
-                    "prompt": payload.prompt,
-                    "prompt_token_count": len(prompt_token_ids),
-                }
-            )
-            for token_id in model.generate(
+
+async def _stream_generation_events(
+    *,
+    request: Request,
+    job_id: str,
+    checkpoint_step: int,
+    checkpoint_path: Path,
+    tokenizer_job_id: str,
+    tokenizer: Tokenizer,
+    prompt_token_ids: list[int],
+    model: ConfigurableGPT,
+    payload: TrainingGenerateRequest,
+) -> AsyncIterator[str]:
+    generated_token_ids: list[int] = []
+    generation: Iterator[int] | None = None
+    terminal_event = False
+    cancellation_logged = False
+    _log_inference_stream_event(
+        "training.inference.stream.started",
+        "Streamed inference started.",
+        job_id=job_id,
+        checkpoint_step=checkpoint_step,
+    )
+    try:
+        yield _encode_stream_event(
+            {
+                "type": "start",
+                "job_id": job_id,
+                "checkpoint_step": checkpoint_step,
+                "checkpoint_path": str(checkpoint_path),
+                "tokenizer_job_id": tokenizer_job_id,
+                "prompt": payload.prompt,
+                "prompt_token_count": len(prompt_token_ids),
+            }
+        )
+        generation = iter(
+            model.generate(
                 tokens=prompt_token_ids,
                 max_tokens=payload.max_tokens,
                 temperature=payload.temperature,
                 top_k=payload.top_k,
                 seed=payload.seed,
                 repetition_penalty=payload.repetition_penalty,
-            ):
-                generated_token_ids.append(token_id)
-                yield encode_event(
-                    {
-                        "type": "token",
-                        "index": len(generated_token_ids),
-                        "token_id": token_id,
-                        "token_text": tokenizer.decode([token_id], skip_special_tokens=False),
-                    }
+            )
+        )
+        while True:
+            if await request.is_disconnected():
+                cancellation_logged = True
+                _log_inference_stream_event(
+                    "training.inference.stream.cancelled",
+                    "Streamed inference stopped after the caller disconnected.",
+                    job_id=job_id,
+                    checkpoint_step=checkpoint_step,
+                    generated_token_count=len(generated_token_ids),
                 )
-            full_token_ids = prompt_token_ids + generated_token_ids
-            yield encode_event(
+                return
+            token_id = await anyio.to_thread.run_sync(_next_generation_item, generation)
+            if token_id is _GENERATION_DONE:
+                break
+            generated_token_ids.append(token_id)
+            yield _encode_stream_event(
                 {
-                    "type": "done",
-                    "completion": tokenizer.decode(generated_token_ids, skip_special_tokens=False),
-                    "text": tokenizer.decode(full_token_ids, skip_special_tokens=False),
-                    "generated_token_count": len(generated_token_ids),
-                    "generated_token_ids": generated_token_ids,
+                    "type": "token",
+                    "index": len(generated_token_ids),
+                    "token_id": token_id,
+                    "token_text": tokenizer.decode([token_id], skip_special_tokens=False),
                 }
             )
-        except Exception as exc:
-            yield encode_event(
-                {
-                    "type": "error",
-                    "detail": f"Inference failed: {type(exc).__name__}: {exc}",
-                }
+        full_token_ids = prompt_token_ids + generated_token_ids
+        terminal_event = True
+        _log_inference_stream_event(
+            "training.inference.stream.completed",
+            "Streamed inference completed.",
+            job_id=job_id,
+            checkpoint_step=checkpoint_step,
+            generated_token_count=len(generated_token_ids),
+        )
+        yield _encode_stream_event(
+            {
+                "type": "done",
+                "completion": tokenizer.decode(generated_token_ids, skip_special_tokens=False),
+                "text": tokenizer.decode(full_token_ids, skip_special_tokens=False),
+                "generated_token_count": len(generated_token_ids),
+                "generated_token_ids": generated_token_ids,
+            }
+        )
+    except Exception as exc:
+        terminal_event = True
+        _log_inference_stream_event(
+            "training.inference.stream.failed",
+            "Streamed inference failed.",
+            job_id=job_id,
+            checkpoint_step=checkpoint_step,
+            generated_token_count=len(generated_token_ids),
+            error_type=type(exc).__name__,
+        )
+        yield _encode_stream_event(
+            {
+                "type": "error",
+                "detail": f"Inference failed: {type(exc).__name__}: {exc}",
+            }
+        )
+    finally:
+        close = getattr(generation, "close", None) if generation is not None else None
+        if callable(close):
+            close()
+        if not terminal_event and not cancellation_logged:
+            _log_inference_stream_event(
+                "training.inference.stream.cancelled",
+                "Streamed inference response was cancelled.",
+                job_id=job_id,
+                checkpoint_step=checkpoint_step,
+                generated_token_count=len(generated_token_ids),
             )
 
-    return StreamingResponse(
-        stream_events(),
-        media_type="application/x-ndjson",
-        headers={"Cache-Control": "no-cache"},
-    )
+
+def _next_generation_item(generation: Iterator[int]) -> int | object:
+    return next(generation, _GENERATION_DONE)
+
+
+def _encode_stream_event(event_payload: dict[str, object]) -> str:
+    return json.dumps(event_payload, ensure_ascii=False) + "\n"
+
+
+def _log_inference_stream_event(
+    event_id: str,
+    message: str,
+    *,
+    job_id: str,
+    checkpoint_step: int,
+    generated_token_count: int | None = None,
+    error_type: str | None = None,
+) -> None:
+    fields: dict[str, object] = {
+        "job_id": job_id,
+        "checkpoint_step": checkpoint_step,
+    }
+    if generated_token_count is not None:
+        fields["generated_token_count"] = generated_token_count
+    if error_type is not None:
+        fields["error_type"] = error_type
+    logger.info(message, extra={"event_id": event_id, "event_fields": fields})
 
 
 @training_api.post("/jobs/{job_id}/stop", response_model=TrainingJobResponse)
@@ -511,6 +654,12 @@ def download_training_job_artifact(job_id: str, request: Request) -> FileRespons
         path = manager.build_artifact_bundle(job_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Unknown training job id: {job_id}") from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except InsufficientStorageError as exc:
+        raise HTTPException(status_code=507, detail=str(exc)) from exc
     return FileResponse(path, filename=path.name, media_type="application/zip")
 
 

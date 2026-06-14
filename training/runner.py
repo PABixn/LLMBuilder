@@ -28,6 +28,8 @@ from training.memory_estimator import MemoryEstimator
 from training.training_config import derive_batch_runtime_plan, load_training_config
 from training.utils import get_init
 
+HF_DATASET_TOKENS_ENV = "LLM_STUDIO_HF_DATASET_TOKENS"
+
 
 class CancellationRequested(RuntimeError):
     pass
@@ -71,6 +73,7 @@ class TrainingStateWriter:
     def __init__(self, job_id: str, paths: TrainingRunPaths) -> None:
         self.job_id = job_id
         self.paths = paths
+        self._known_secrets = execution_known_secrets()
         now = utc_now()
         self.state: dict[str, Any] = {
             "job_id": job_id,
@@ -140,8 +143,9 @@ class TrainingStateWriter:
         if progress is not None:
             self.state["progress"] = max(0.0, min(float(progress), 1.0))
         if error is not None:
-            self.state["error"] = error
-            self.metadata["error"] = error
+            sanitized_error = redact_execution_secrets(error, secrets=self._known_secrets)
+            self.state["error"] = sanitized_error
+            self.metadata["error"] = sanitized_error
         for key, value in fields.items():
             self.state[key] = value
         self.state["updated_at"] = utc_now()
@@ -522,7 +526,8 @@ def maybe_compile_model(model: torch.nn.Module, *, is_cuda: bool) -> torch.nn.Mo
     try:
         compiled = torch.compile(model, dynamic=False)
     except Exception as exc:
-        print(f"torch.compile disabled: {type(exc).__name__}: {exc}; running training in eager mode.", flush=True)
+        error = redact_execution_secrets(f"{type(exc).__name__}: {exc}")
+        print(f"torch.compile disabled: {error}; running training in eager mode.", flush=True)
         return model
 
     print(f"torch.compile enabled with C compiler: {compiler}", flush=True)
@@ -558,6 +563,40 @@ def phase_progress(fraction: float, progress_start: float, progress_end: float) 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def execution_known_secrets() -> tuple[str, ...]:
+    raw = os.getenv(HF_DATASET_TOKENS_ENV)
+    if not raw:
+        return ()
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return ()
+    if not isinstance(payload, list):
+        return ()
+    return tuple(
+        sorted(
+            {
+                item.strip()
+                for item in payload
+                if isinstance(item, str) and item.strip()
+            },
+            key=len,
+            reverse=True,
+        )
+    )
+
+
+def redact_execution_secrets(
+    value: str,
+    *,
+    secrets: tuple[str, ...] | None = None,
+) -> str:
+    redacted = value
+    for secret in secrets if secrets is not None else execution_known_secrets():
+        redacted = redacted.replace(secret, "[REDACTED]")
+    return redacted
 
 
 def atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -648,7 +687,7 @@ def main(argv: list[str] | None = None) -> int:
             stage="Failed",
             error=f"{type(exc).__name__}: {exc}",
         )
-        print(traceback.format_exc())
+        print(redact_execution_secrets(traceback.format_exc()))
         return 1
 
 

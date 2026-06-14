@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any
 
 from ...schemas import load_json
+from ...runtime_paths import ensure_source_root_on_path
 from ...tokenizer_storage import StudioStore as TokenizerStudioStore
 from ..identifiers import JOB_ID_RE, PROJECT_ID_RE, validate_identifier
 from ..schemas import TrainingAssetRef
 
-IMPORT_ROOT = Path(__file__).resolve().parents[6]
-if str(IMPORT_ROOT) not in sys.path:
-    sys.path.append(str(IMPORT_ROOT))
+IMPORT_ROOT = ensure_source_root_on_path()
 
 from model.loader import LLMConfig
 

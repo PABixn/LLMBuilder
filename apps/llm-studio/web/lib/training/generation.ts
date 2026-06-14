@@ -1,4 +1,5 @@
-import { API_BASE, applyRuntimeHeaders, readErrorDetail, request } from "./client";
+import { readErrorDetail, request } from "./client";
+import { runtimeRequest } from "../runtimeConfig";
 import type {
   GenerateTrainingCompletionRequest,
   GenerateTrainingCompletionResponse,
@@ -23,9 +24,7 @@ export async function streamTrainingCompletion(
 ): Promise<void> {
   const headers = new Headers();
   headers.set("Content-Type", "application/json");
-  applyRuntimeHeaders(headers);
-
-  const response = await fetch(`${API_BASE}/jobs/${jobId}/generate/stream`, {
+  const response = await runtimeRequest(`/training/jobs/${jobId}/generate/stream`, {
     method: "POST",
     headers,
     body: JSON.stringify(payload),

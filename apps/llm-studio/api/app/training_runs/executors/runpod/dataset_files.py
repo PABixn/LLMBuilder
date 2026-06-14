@@ -7,7 +7,9 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-IMPORT_ROOT = Path(__file__).resolve().parents[7]
+from ....runtime_paths import source_root
+
+IMPORT_ROOT = source_root()
 
 
 def rewrite_local_dataset_files(

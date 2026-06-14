@@ -8,9 +8,14 @@ from typing import Any, Iterator
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, Index, Integer, String, Text, create_engine, event, select, update
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
-from ..config import training_database_url
+from ..config import get_settings, training_database_url
+from ..dataset_credentials import strip_hf_tokens
+from ..logging_config import redact_secrets
+from ..managed_locations import encode_managed_location, resolve_managed_location
+from ..storage_safety import database_unavailable_error, ensure_directory
 from .migrations import apply_sqlite_migrations
 from .schemas import TrainingJobState, TrainingJobStatus
 
@@ -143,8 +148,23 @@ class StoredTrainingJob:
 
 
 class TrainingStudioStore:
-    def __init__(self, url: str | None = None) -> None:
+    def __init__(
+        self,
+        url: str | None = None,
+        *,
+        sqlite_timeout_seconds: float = 5.0,
+        managed_root: Path | None = None,
+    ) -> None:
+        self._managed_root = (
+            managed_root.expanduser().resolve(strict=False)
+            if managed_root is not None
+            else get_settings().data_dir.expanduser().resolve(strict=False)
+            if url is None
+            else None
+        )
         self._url = url or training_database_url()
+        self._database_path = _sqlite_path_from_url(self._url)
+        self._sqlite_timeout_seconds = max(0.0, float(sqlite_timeout_seconds))
         self._engine = self._build_engine(self._url)
         self._session_factory = sessionmaker(
             bind=self._engine,
@@ -153,8 +173,12 @@ class TrainingStudioStore:
         )
 
     def initialize(self) -> None:
-        Base.metadata.create_all(self._engine)
-        self._migrate_schema()
+        try:
+            Base.metadata.create_all(self._engine)
+            self._migrate_schema()
+            self._sanitize_stored_secrets()
+        except SQLAlchemyError as exc:
+            raise database_unavailable_error("training", self._database_path) from exc
 
     def dispose(self) -> None:
         self._engine.dispose()
@@ -178,15 +202,15 @@ class TrainingStudioStore:
                     tokenizer_name=job.tokenizer_name,
                     model_config=dict(job.model_config),
                     training_config=dict(job.training_config),
-                    dataloader_config=dict(job.dataloader_config),
+                    dataloader_config=strip_hf_tokens(job.dataloader_config),
                     resolved_runtime=None if job.resolved_runtime is None else dict(job.resolved_runtime),
                     memory_estimate=None if job.memory_estimate is None else dict(job.memory_estimate),
-                    artifact_dir=job.artifact_dir,
+                    artifact_dir=self._encode_path(job.artifact_dir),
                     artifact_bundle_file=job.artifact_bundle_file,
-                    stats_path=job.stats_path,
-                    samples_path=job.samples_path,
-                    stdout_path=job.stdout_path,
-                    stderr_path=job.stderr_path,
+                    stats_path=self._encode_path(job.stats_path),
+                    samples_path=self._encode_path(job.samples_path),
+                    stdout_path=self._encode_path(job.stdout_path),
+                    stderr_path=self._encode_path(job.stderr_path),
                     last_step=max(0, int(job.last_step)),
                     max_steps=max(0, int(job.max_steps)),
                     latest_loss=job.latest_loss,
@@ -195,7 +219,7 @@ class TrainingStudioStore:
                     latest_tokens_per_sec=job.latest_tokens_per_sec,
                     checkpoint_count=max(0, int(job.checkpoint_count)),
                     sample_count=max(0, int(job.sample_count)),
-                    error=job.error,
+                    error=None if job.error is None else redact_secrets(job.error),
                     process_id=job.process_id,
                     output_size_bytes=max(0, int(job.output_size_bytes)),
                     executor_kind=job.executor_kind,
@@ -217,7 +241,7 @@ class TrainingStudioStore:
                     runpod_last_sync_at=_ensure_optional_utc(job.runpod_last_sync_at),
                     runpod_cleanup_policy=job.runpod_cleanup_policy,
                     remote_workspace_path=job.remote_workspace_path,
-                    remote_error=job.remote_error,
+                    remote_error=None if job.remote_error is None else redact_secrets(job.remote_error),
                 )
             )
 
@@ -226,14 +250,14 @@ class TrainingStudioStore:
             row = session.get(TrainingRunRow, job_id)
             if row is None:
                 return None
-            return _row_to_stored_job(row)
+            return _row_to_stored_job(row, self._managed_root)
 
     def list_jobs(self) -> list[StoredTrainingJob]:
         with self._session() as session:
             rows = session.scalars(
                 select(TrainingRunRow).order_by(TrainingRunRow.created_at.desc())
             ).all()
-            return [_row_to_stored_job(row) for row in rows]
+            return [_row_to_stored_job(row, self._managed_root) for row in rows]
 
     def update_job(self, job_id: str, **updates: Any) -> StoredTrainingJob | None:
         with self._session() as session:
@@ -261,16 +285,20 @@ class TrainingStudioStore:
                 elif field_name in {"project_id", "project_name", "tokenizer_job_id", "tokenizer_name"}:
                     setattr(row, field_name, str(value))
                 elif field_name in {"model_config", "training_config", "dataloader_config"}:
-                    setattr(row, field_name, dict(value))
+                    payload = dict(value)
+                    setattr(row, field_name, strip_hf_tokens(payload) if field_name == "dataloader_config" else payload)
                 elif field_name in {"resolved_runtime", "memory_estimate"}:
                     setattr(row, field_name, None if value is None else dict(value))
                 elif field_name in {
                     "artifact_dir",
-                    "artifact_bundle_file",
                     "stats_path",
                     "samples_path",
                     "stdout_path",
                     "stderr_path",
+                }:
+                    setattr(row, field_name, self._encode_path(value))
+                elif field_name in {
+                    "artifact_bundle_file",
                     "error",
                     "executor_kind",
                     "executor_status",
@@ -286,7 +314,10 @@ class TrainingStudioStore:
                     "remote_workspace_path",
                     "remote_error",
                 }:
-                    setattr(row, field_name, None if value is None else str(value))
+                    text = None if value is None else str(value)
+                    if field_name in {"error", "remote_error"} and text is not None:
+                        text = redact_secrets(text)
+                    setattr(row, field_name, text)
                 elif field_name in {"last_step", "max_steps", "checkpoint_count", "sample_count", "process_id", "output_size_bytes", "runpod_gpu_count"}:
                     setattr(row, field_name, None if value is None else int(value))
                 elif field_name in {"latest_loss", "latest_grad_norm", "latest_lr", "latest_tokens_per_sec", "runpod_cost_per_hr"}:
@@ -301,14 +332,23 @@ class TrainingStudioStore:
                     raise ValueError(f"Unknown training job update field: {field_name}")
 
             session.flush()
-            return _row_to_stored_job(row)
+            return _row_to_stored_job(row, self._managed_root)
+
+    def _sanitize_stored_secrets(self) -> None:
+        with self._session() as session:
+            for row in session.scalars(select(TrainingRunRow)).all():
+                row.dataloader_config = strip_hf_tokens(dict(row.dataloader_config))
+                if row.error is not None:
+                    row.error = redact_secrets(row.error)
+                if row.remote_error is not None:
+                    row.remote_error = redact_secrets(row.remote_error)
 
     def delete_job(self, job_id: str) -> StoredTrainingJob | None:
         with self._session() as session:
             row = session.get(TrainingRunRow, job_id)
             if row is None:
                 return None
-            stored = _row_to_stored_job(row)
+            stored = _row_to_stored_job(row, self._managed_root)
             session.delete(row)
             session.flush()
             return stored
@@ -376,7 +416,7 @@ class TrainingStudioStore:
                 )
                 .order_by(TrainingRunRow.created_at.desc())
             ).all()
-            return [_row_to_stored_job(row) for row in rows]
+            return [_row_to_stored_job(row, self._managed_root) for row in rows]
 
     def mark_incomplete_runpod_jobs_recovery_limited(self, reason: str) -> int:
         """Record that RunPod jobs may still be running but cannot auto-refresh.
@@ -408,6 +448,12 @@ class TrainingStudioStore:
         try:
             yield session
             session.commit()
+        except SQLAlchemyError as exc:
+            try:
+                session.rollback()
+            except SQLAlchemyError:
+                pass
+            raise database_unavailable_error("training", self._database_path) from exc
         except Exception:
             session.rollback()
             raise
@@ -419,9 +465,10 @@ class TrainingStudioStore:
 
         if url.startswith("sqlite"):
             connect_args["check_same_thread"] = False
+            connect_args["timeout"] = self._sqlite_timeout_seconds
             db_file = _sqlite_path_from_url(url)
             if db_file is not None:
-                db_file.parent.mkdir(parents=True, exist_ok=True)
+                ensure_directory(db_file.parent, operation="training database initialization")
 
         engine = create_engine(
             url,
@@ -442,13 +489,22 @@ class TrainingStudioStore:
 
         return engine
 
+    def _encode_path(self, value: object) -> str:
+        text = str(value)
+        if self._managed_root is None:
+            return text
+        return encode_managed_location(text, self._managed_root)
+
     def _migrate_schema(self) -> None:
         if not self._url.startswith("sqlite"):
             return
         apply_sqlite_migrations(self._engine)
 
 
-def _row_to_stored_job(row: TrainingRunRow) -> StoredTrainingJob:
+def _row_to_stored_job(
+    row: TrainingRunRow,
+    managed_root: Path | None = None,
+) -> StoredTrainingJob:
     return StoredTrainingJob(
         id=row.id,
         name=row.name,
@@ -465,15 +521,15 @@ def _row_to_stored_job(row: TrainingRunRow) -> StoredTrainingJob:
         tokenizer_name=row.tokenizer_name,
         model_config=_json_dict(row.model_config),
         training_config=_json_dict(row.training_config),
-        dataloader_config=_json_dict(row.dataloader_config),
+        dataloader_config=strip_hf_tokens(_json_dict(row.dataloader_config)),
         resolved_runtime=_json_optional_dict(row.resolved_runtime),
         memory_estimate=_json_optional_dict(row.memory_estimate),
-        artifact_dir=row.artifact_dir,
+        artifact_dir=_resolve_path(row.artifact_dir, managed_root),
         artifact_bundle_file=row.artifact_bundle_file,
-        stats_path=row.stats_path,
-        samples_path=row.samples_path,
-        stdout_path=row.stdout_path,
-        stderr_path=row.stderr_path,
+        stats_path=_resolve_path(row.stats_path, managed_root),
+        samples_path=_resolve_path(row.samples_path, managed_root),
+        stdout_path=_resolve_path(row.stdout_path, managed_root),
+        stderr_path=_resolve_path(row.stderr_path, managed_root),
         last_step=max(0, int(row.last_step)),
         max_steps=max(0, int(row.max_steps)),
         latest_loss=row.latest_loss,
@@ -482,7 +538,7 @@ def _row_to_stored_job(row: TrainingRunRow) -> StoredTrainingJob:
         latest_tokens_per_sec=row.latest_tokens_per_sec,
         checkpoint_count=max(0, int(row.checkpoint_count)),
         sample_count=max(0, int(row.sample_count)),
-        error=row.error,
+        error=None if row.error is None else redact_secrets(row.error),
         process_id=row.process_id,
         output_size_bytes=max(0, int(row.output_size_bytes)),
         executor_kind=row.executor_kind or "local",
@@ -504,8 +560,14 @@ def _row_to_stored_job(row: TrainingRunRow) -> StoredTrainingJob:
         runpod_last_sync_at=_ensure_optional_utc(row.runpod_last_sync_at),
         runpod_cleanup_policy=_json_optional_dict(row.runpod_cleanup_policy),
         remote_workspace_path=row.remote_workspace_path,
-        remote_error=row.remote_error,
+        remote_error=None if row.remote_error is None else redact_secrets(row.remote_error),
     )
+
+
+def _resolve_path(value: str, managed_root: Path | None) -> str:
+    if managed_root is None:
+        return value
+    return resolve_managed_location(value, managed_root)
 
 
 def _coerce_status(value: TrainingJobStatus | str) -> TrainingJobStatus:

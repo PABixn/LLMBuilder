@@ -4,21 +4,24 @@ import os
 import signal
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
-from pathlib import Path
 
 from ..schemas import TrainingJobState, TrainingJobStatus
 from ..store import StoredTrainingJob
+from ...runtime_paths import ensure_source_root_on_path
+from ...dataset_credentials import HF_DATASET_TOKENS_ENV, encode_dataset_hf_tokens
 from .base import CleanupPolicy, ExecutionHandle, ExecutionSnapshot, TrainingJobBundle
 
-IMPORT_ROOT = Path(__file__).resolve().parents[6]
+IMPORT_ROOT = ensure_source_root_on_path()
 
 
 class LocalSubprocessExecutor:
     kind = "local"
 
-    def __init__(self) -> None:
+    def __init__(self, *, shutdown_grace_seconds: float = 5.0) -> None:
         self._processes: dict[str, subprocess.Popen[bytes]] = {}
+        self._shutdown_grace_seconds = max(0.0, float(shutdown_grace_seconds))
 
     def submit(self, job: StoredTrainingJob, bundle: TrainingJobBundle) -> ExecutionHandle:
         process = self._spawn_process(bundle)
@@ -40,6 +43,7 @@ class LocalSubprocessExecutor:
             exit_code = process.poll()
             if exit_code is not None:
                 self._processes.pop(job.id, None)
+                self._terminate_owned_process(process)
         elif job.process_id is not None and job.status in {TrainingJobStatus.pending, TrainingJobStatus.running}:
             if not process_exists(job.process_id):
                 exit_code = 1
@@ -80,11 +84,9 @@ class LocalSubprocessExecutor:
         )
 
     def stop(self, job: StoredTrainingJob) -> ExecutionSnapshot:
-        if job.process_id is not None:
-            self._terminate_process(job.process_id)
         process = self._processes.pop(job.id, None)
-        if process is not None and process.poll() is None:
-            process.terminate()
+        if process is not None:
+            self._terminate_owned_process(process)
         return ExecutionSnapshot(
             status=TrainingJobStatus.cancelled,
             state=TrainingJobState.cancelled,
@@ -100,15 +102,22 @@ class LocalSubprocessExecutor:
 
     def shutdown(self) -> None:
         for process in self._processes.values():
-            if process.poll() is None:
-                process.terminate()
+            self._terminate_owned_process(process)
         self._processes.clear()
 
     def _spawn_process(self, bundle: TrainingJobBundle) -> subprocess.Popen[bytes]:
         stdout_handle = bundle.stdout_path.open("ab")
         stderr_handle = bundle.stderr_path.open("ab")
         env = os.environ.copy()
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
         env["PYTHONUNBUFFERED"] = "1"
+        encoded_hf_tokens = encode_dataset_hf_tokens(
+            bundle.manifest.get("dataset_hf_tokens", [])
+            if isinstance(bundle.manifest.get("dataset_hf_tokens"), list)
+            else []
+        )
+        if encoded_hf_tokens is not None:
+            env[HF_DATASET_TOKENS_ENV] = encoded_hf_tokens
         command = [
             sys.executable,
             "-m",
@@ -126,6 +135,11 @@ class LocalSubprocessExecutor:
             "--output-dir",
             str(bundle.job_dir),
         ]
+        process_group_options: dict[str, object] = {"start_new_session": True}
+        if os.name == "nt":
+            process_group_options = {
+                "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP,
+            }
         try:
             process = subprocess.Popen(
                 command,
@@ -133,21 +147,82 @@ class LocalSubprocessExecutor:
                 stdout=stdout_handle,
                 stderr=stderr_handle,
                 env=env,
-                start_new_session=True,
+                **process_group_options,
             )
         finally:
             stdout_handle.close()
             stderr_handle.close()
         return process
 
-    def _terminate_process(self, pid: int) -> None:
+    def _terminate_owned_process(self, process: subprocess.Popen[bytes]) -> None:
+        pid = process.pid
+        if os.name == "nt":
+            self._terminate_windows_process_tree(process)
+            return
+
+        self._signal_unix_process_group(pid, signal.SIGTERM)
+        self._wait_for_unix_process_group_exit(process, self._shutdown_grace_seconds)
+        if process_group_exists(pid):
+            self._signal_unix_process_group(pid, signal.SIGKILL)
+            self._wait_for_unix_process_group_exit(process, self._shutdown_grace_seconds)
+        if process.poll() is None:
+            process.kill()
+        try:
+            process.wait(timeout=self._shutdown_grace_seconds)
+        except subprocess.TimeoutExpired:
+            pass
+
+    def _terminate_windows_process_tree(self, process: subprocess.Popen[bytes]) -> None:
+        if process.poll() is None:
+            try:
+                process.send_signal(signal.CTRL_BREAK_EVENT)
+                process.wait(timeout=self._shutdown_grace_seconds)
+            except (OSError, subprocess.TimeoutExpired):
+                subprocess.run(
+                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
+        if process.poll() is None:
+            process.kill()
+        try:
+            process.wait(timeout=self._shutdown_grace_seconds)
+        except subprocess.TimeoutExpired:
+            pass
+
+    def _wait_for_unix_process_group_exit(
+        self,
+        process: subprocess.Popen[bytes],
+        timeout: float,
+    ) -> None:
+        deadline = time.monotonic() + timeout
+        while process_group_exists(process.pid) and time.monotonic() < deadline:
+            process.poll()
+            time.sleep(0.025)
+
+    @staticmethod
+    def _signal_unix_process_group(pid: int, signal_number: int) -> None:
         try:
             if hasattr(os, "killpg"):
-                os.killpg(pid, signal.SIGTERM)
+                os.killpg(pid, signal_number)
             else:
-                os.kill(pid, signal.SIGTERM)
+                os.kill(pid, signal_number)
         except ProcessLookupError:
             return
+
+
+def process_group_exists(pid: int) -> bool:
+    if not hasattr(os, "killpg"):
+        return process_exists(pid)
+    try:
+        os.killpg(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 def process_exists(pid: int) -> bool:

@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import math
-import sys
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
-IMPORT_ROOT = Path(__file__).resolve().parents[6]
-if str(IMPORT_ROOT) not in sys.path:
-    sys.path.append(str(IMPORT_ROOT))
+from ...runtime_paths import ensure_source_root_on_path
+
+IMPORT_ROOT = ensure_source_root_on_path()
 
 from training.local_text_data import is_local_text_dataset, resolve_local_data_files
 from model.loader import ActivationComponent, AttentionComponent, LLMConfig, MLPComponent, NormComponent

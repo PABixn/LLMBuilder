@@ -1,0 +1,16 @@
+{
+  "development_guardrails": {
+    "linked-development": {
+      "max_payload_bytes": 16777216,
+      "max_payload_files": 2000,
+      "rationale": "Linked runtimes contain source, metadata, and one interpreter symlink. Large growth indicates unintended files."
+    },
+    "portable-unlocked-development": {
+      "max_payload_bytes": 2684354560,
+      "max_payload_files": 100000,
+      "rationale": "Characterization-only ceiling catches accidental caches, test trees, and duplicate ML runtimes without claiming a release baseline."
+    }
+  },
+  "release_thresholds": {},
+  "schema_version": 1
+}

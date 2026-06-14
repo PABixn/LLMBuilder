@@ -14,6 +14,7 @@ import {
   DATASET_FORM_STORAGE_KEY,
   HIDDEN_RECENT_JOB_IDS_STORAGE_KEY,
   PREVIEW_TEXT_STORAGE_KEY,
+  TOKENIZER_STORAGE_KEY_MIGRATIONS,
   TOKENIZER_FORM_STORAGE_KEY,
   TRAINING_FORM_STORAGE_KEY,
 } from "../constants";
@@ -24,6 +25,7 @@ import {
 } from "../lib/dataset";
 import { hydratePreviewText } from "../lib/preview";
 import {
+  migrateStoredValues,
   readStoredJson,
   readStoredStringArray,
   readStoredValue,
@@ -71,6 +73,8 @@ export function useTokenizerPersistence({
   const hasHydratedLocalStateRef = useRef(false);
 
   useEffect(() => {
+    migrateStoredValues(TOKENIZER_STORAGE_KEY_MIGRATIONS);
+
     const storedTokenizerForm = readStoredJson(TOKENIZER_FORM_STORAGE_KEY);
     if (storedTokenizerForm !== null) {
       setTokenizerForm((previous) => hydrateTokenizerForm(storedTokenizerForm, previous));
@@ -119,7 +123,10 @@ export function useTokenizerPersistence({
     if (!hasHydratedLocalState) {
       return;
     }
-    writeStoredJson(DATASET_FORM_STORAGE_KEY, datasetForm);
+    writeStoredJson(DATASET_FORM_STORAGE_KEY, {
+      ...datasetForm,
+      hfToken: "",
+    });
   }, [datasetForm, hasHydratedLocalState]);
 
   useEffect(() => {

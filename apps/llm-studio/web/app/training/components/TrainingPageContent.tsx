@@ -48,6 +48,7 @@ import {
   canStopTrainingRun,
   defaultRunName,
 } from "../lib/display";
+import { stripDataloaderCredentials } from "../lib/dataset";
 import { formatInteger } from "../lib/metrics";
 import {
   asNumber,
@@ -297,7 +298,9 @@ export function TrainingPageContent() {
       .then(([templates, jobs]) => {
         startTransition(() => {
           setTrainingConfig(storedTraining ?? templates.training_config_template);
-          setDataloaderConfig(storedDataloader ?? templates.dataloader_config_template);
+          setDataloaderConfig(
+            stripDataloaderCredentials(storedDataloader ?? templates.dataloader_config_template)
+          );
           setRecentRuns(jobs);
           if (initialSelection.shouldSelectMostRecentRun) {
             const nextRun = jobs[0] ?? null;
@@ -347,7 +350,7 @@ export function TrainingPageContent() {
 
   useEffect(() => {
     if (dataloaderConfig) {
-      writeStoredJson(DATALOADER_CONFIG_STORAGE_KEY, dataloaderConfig);
+      writeStoredJson(DATALOADER_CONFIG_STORAGE_KEY, stripDataloaderCredentials(dataloaderConfig));
     }
   }, [dataloaderConfig]);
 
@@ -482,6 +485,7 @@ export function TrainingPageContent() {
         tokenizer_job_id: selectedTokenizerJobId,
         training_config: trainingConfig,
         dataloader_config: dataloaderConfig,
+        hf_token: hfToken.trim() || undefined,
         execution_target: executionTarget,
       });
       startTransition(() => {

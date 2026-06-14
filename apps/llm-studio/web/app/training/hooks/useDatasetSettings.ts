@@ -86,7 +86,6 @@ export function useDatasetSettings({
     const nextDatasets = buildDatasetsFromUi(
       datasetSourceMode,
       localTrainFiles,
-      hfToken,
       streamingDatasets
     );
     setDataloaderConfig((current) => {
@@ -94,7 +93,7 @@ export function useDatasetSettings({
       next.datasets = nextDatasets;
       return next;
     });
-  }, [datasetSourceMode, hfToken, localTrainFiles, setDataloaderConfig, streamingDatasets]);
+  }, [datasetSourceMode, localTrainFiles, setDataloaderConfig, streamingDatasets]);
 
   useEffect(() => {
     if (!datasetUiHydratedRef.current) {

@@ -1,0 +1,5523 @@
+{
+  "api_contract_version": "1",
+  "components": {
+    "schemas": {
+      "ActiveJobsResponse": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "has_active_local_training": {
+            "title": "Has Active Local Training",
+            "type": "boolean"
+          },
+          "has_active_runpod_training": {
+            "title": "Has Active Runpod Training",
+            "type": "boolean"
+          },
+          "tokenizer_jobs": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Tokenizer Jobs",
+            "type": "array"
+          },
+          "training_jobs": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Training Jobs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "active",
+          "tokenizer_jobs",
+          "training_jobs",
+          "has_active_local_training",
+          "has_active_runpod_training"
+        ],
+        "title": "ActiveJobsResponse",
+        "type": "object"
+      },
+      "AnalyzeModelRequest": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          }
+        },
+        "required": [
+          "config"
+        ],
+        "title": "AnalyzeModelRequest",
+        "type": "object"
+      },
+      "AnalyzeModelResponse": {
+        "properties": {
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelAnalysisSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "instantiated": {
+            "default": false,
+            "title": "Instantiated",
+            "type": "boolean"
+          },
+          "instantiation_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instantiation Error"
+          },
+          "normalized_config": {
+            "additionalProperties": true,
+            "title": "Normalized Config",
+            "type": "object"
+          },
+          "valid": {
+            "default": true,
+            "title": "Valid",
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "normalized_config"
+        ],
+        "title": "AnalyzeModelResponse",
+        "type": "object"
+      },
+      "ArtifactMetadataResponse": {
+        "properties": {
+          "artifact_file": {
+            "title": "Artifact File",
+            "type": "string"
+          },
+          "artifact_path": {
+            "title": "Artifact Path",
+            "type": "string"
+          },
+          "exists": {
+            "title": "Exists",
+            "type": "boolean"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id",
+          "artifact_file",
+          "artifact_path",
+          "exists",
+          "size_bytes"
+        ],
+        "title": "ArtifactMetadataResponse",
+        "type": "object"
+      },
+      "Body_upload_train_file_api_v1_tokenizer_files_train_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_train_file_api_v1_tokenizer_files_train_post",
+        "type": "object"
+      },
+      "Body_upload_validation_file_api_v1_tokenizer_files_validation_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_validation_file_api_v1_tokenizer_files_validation_post",
+        "type": "object"
+      },
+      "CreateProjectRequest": {
+        "properties": {
+          "model_config": {
+            "additionalProperties": true,
+            "title": "Model Config",
+            "type": "object"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "model_config"
+        ],
+        "title": "CreateProjectRequest",
+        "type": "object"
+      },
+      "CreateTrainingJobRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "dataloader_config": {
+            "additionalProperties": true,
+            "title": "Dataloader Config",
+            "type": "object"
+          },
+          "execution_target": {
+            "$ref": "#/components/schemas/TrainingExecutionTarget"
+          },
+          "hf_token": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hf Token"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "tokenizer_job_id": {
+            "title": "Tokenizer Job Id",
+            "type": "string"
+          },
+          "training_config": {
+            "additionalProperties": true,
+            "title": "Training Config",
+            "type": "object"
+          }
+        },
+        "required": [
+          "project_id",
+          "tokenizer_job_id",
+          "training_config",
+          "dataloader_config"
+        ],
+        "title": "CreateTrainingJobRequest",
+        "type": "object"
+      },
+      "DerivedRuntimeSummary": {
+        "properties": {
+          "ddp": {
+            "default": false,
+            "title": "Ddp",
+            "type": "boolean"
+          },
+          "ddp_rank": {
+            "default": 0,
+            "title": "Ddp Rank",
+            "type": "integer"
+          },
+          "ddp_world_size": {
+            "default": 1,
+            "title": "Ddp World Size",
+            "type": "integer"
+          },
+          "device": {
+            "title": "Device",
+            "type": "string"
+          },
+          "device_type": {
+            "title": "Device Type",
+            "type": "string"
+          },
+          "grad_accum_steps": {
+            "title": "Grad Accum Steps",
+            "type": "integer"
+          },
+          "max_allowed_batch_size": {
+            "title": "Max Allowed Batch Size",
+            "type": "integer"
+          },
+          "max_batch_size_from_memory": {
+            "title": "Max Batch Size From Memory",
+            "type": "integer"
+          },
+          "max_batch_size_from_total": {
+            "title": "Max Batch Size From Total",
+            "type": "integer"
+          },
+          "micro_batch_size": {
+            "title": "Micro Batch Size",
+            "type": "integer"
+          },
+          "tokens_per_micro_step": {
+            "title": "Tokens Per Micro Step",
+            "type": "integer"
+          },
+          "tokens_per_world_step": {
+            "title": "Tokens Per World Step",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "device",
+          "device_type",
+          "micro_batch_size",
+          "tokens_per_micro_step",
+          "tokens_per_world_step",
+          "grad_accum_steps",
+          "max_batch_size_from_total",
+          "max_batch_size_from_memory",
+          "max_allowed_batch_size"
+        ],
+        "title": "DerivedRuntimeSummary",
+        "type": "object"
+      },
+      "EvaluationSource": {
+        "enum": [
+          "training_dataset",
+          "legacy_file"
+        ],
+        "title": "EvaluationSource",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "ok": {
+            "default": true,
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "JobState": {
+        "enum": [
+          "queued",
+          "initializing",
+          "preparing_dataset",
+          "training",
+          "saving_artifact",
+          "evaluating",
+          "running",
+          "completed",
+          "failed"
+        ],
+        "title": "JobState",
+        "type": "string"
+      },
+      "JobStatus": {
+        "enum": [
+          "pending",
+          "running",
+          "completed",
+          "failed"
+        ],
+        "title": "JobStatus",
+        "type": "string"
+      },
+      "ModelAnalysisSummary": {
+        "properties": {
+          "activation_component_count": {
+            "title": "Activation Component Count",
+            "type": "integer"
+          },
+          "attention_component_count": {
+            "title": "Attention Component Count",
+            "type": "integer"
+          },
+          "block_count": {
+            "title": "Block Count",
+            "type": "integer"
+          },
+          "component_count": {
+            "title": "Component Count",
+            "type": "integer"
+          },
+          "estimated_kv_cache_bytes_for_context_fp16": {
+            "title": "Estimated Kv Cache Bytes For Context Fp16",
+            "type": "integer"
+          },
+          "estimated_kv_cache_bytes_per_token_fp16": {
+            "title": "Estimated Kv Cache Bytes Per Token Fp16",
+            "type": "integer"
+          },
+          "instantiation_time_ms": {
+            "title": "Instantiation Time Ms",
+            "type": "number"
+          },
+          "max_head_dim": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Head Dim"
+          },
+          "min_head_dim": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Head Dim"
+          },
+          "mlp_activation_step_count": {
+            "title": "Mlp Activation Step Count",
+            "type": "integer"
+          },
+          "mlp_component_count": {
+            "title": "Mlp Component Count",
+            "type": "integer"
+          },
+          "module_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Module Counts",
+            "type": "object"
+          },
+          "norm_component_count": {
+            "title": "Norm Component Count",
+            "type": "integer"
+          },
+          "parameter_breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/ParameterBreakdownEntry"
+            },
+            "title": "Parameter Breakdown",
+            "type": "array"
+          },
+          "parameter_memory_bytes_bf16": {
+            "title": "Parameter Memory Bytes Bf16",
+            "type": "integer"
+          },
+          "parameter_memory_bytes_fp32": {
+            "title": "Parameter Memory Bytes Fp32",
+            "type": "integer"
+          },
+          "total_parameters": {
+            "title": "Total Parameters",
+            "type": "integer"
+          },
+          "trainable_parameters": {
+            "title": "Trainable Parameters",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_parameters",
+          "trainable_parameters",
+          "parameter_memory_bytes_fp32",
+          "parameter_memory_bytes_bf16",
+          "estimated_kv_cache_bytes_per_token_fp16",
+          "estimated_kv_cache_bytes_for_context_fp16",
+          "block_count",
+          "component_count",
+          "attention_component_count",
+          "mlp_component_count",
+          "norm_component_count",
+          "activation_component_count",
+          "mlp_activation_step_count",
+          "instantiation_time_ms"
+        ],
+        "title": "ModelAnalysisSummary",
+        "type": "object"
+      },
+      "ParameterBreakdownEntry": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "module_count": {
+            "title": "Module Count",
+            "type": "integer"
+          },
+          "parameters": {
+            "title": "Parameters",
+            "type": "integer"
+          },
+          "percentage": {
+            "title": "Percentage",
+            "type": "number"
+          },
+          "trainable_parameters": {
+            "title": "Trainable Parameters",
+            "type": "integer"
+          },
+          "trainable_percentage": {
+            "title": "Trainable Percentage",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "parameters",
+          "trainable_parameters",
+          "module_count",
+          "percentage",
+          "trainable_percentage"
+        ],
+        "title": "ParameterBreakdownEntry",
+        "type": "object"
+      },
+      "ProjectDetailResponse": {
+        "properties": {
+          "artifact_file": {
+            "title": "Artifact File",
+            "type": "string"
+          },
+          "artifact_path": {
+            "title": "Artifact Path",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "model_config": {
+            "additionalProperties": true,
+            "title": "Model Config",
+            "type": "object"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "valid": {
+            "default": true,
+            "title": "Valid",
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "artifact_file",
+          "artifact_path",
+          "size_bytes",
+          "model_config"
+        ],
+        "title": "ProjectDetailResponse",
+        "type": "object"
+      },
+      "ProjectSummaryResponse": {
+        "properties": {
+          "artifact_file": {
+            "title": "Artifact File",
+            "type": "string"
+          },
+          "artifact_path": {
+            "title": "Artifact Path",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "artifact_file",
+          "artifact_path",
+          "size_bytes"
+        ],
+        "title": "ProjectSummaryResponse",
+        "type": "object"
+      },
+      "ProjectsListResponse": {
+        "properties": {
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectSummaryResponse"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "projects"
+        ],
+        "title": "ProjectsListResponse",
+        "type": "object"
+      },
+      "ReadinessResponse": {
+        "properties": {
+          "api_contract_version": {
+            "title": "Api Contract Version",
+            "type": "string"
+          },
+          "backend_version": {
+            "title": "Backend Version",
+            "type": "string"
+          },
+          "compute": {
+            "additionalProperties": true,
+            "title": "Compute",
+            "type": "object"
+          },
+          "data_schema_version": {
+            "title": "Data Schema Version",
+            "type": "string"
+          },
+          "desktop_mode": {
+            "title": "Desktop Mode",
+            "type": "boolean"
+          },
+          "migration_status": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Migration Status"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "runtime_manifest_schema_version": {
+            "title": "Runtime Manifest Schema Version",
+            "type": "string"
+          },
+          "runtime_version": {
+            "title": "Runtime Version",
+            "type": "string"
+          },
+          "startup_detail": {
+            "title": "Startup Detail",
+            "type": "string"
+          },
+          "startup_stage": {
+            "title": "Startup Stage",
+            "type": "string"
+          },
+          "startup_timing": {
+            "$ref": "#/components/schemas/StartupTimingResponse"
+          }
+        },
+        "required": [
+          "ok",
+          "ready",
+          "startup_stage",
+          "startup_detail",
+          "backend_version",
+          "api_contract_version",
+          "runtime_version",
+          "data_schema_version",
+          "runtime_manifest_schema_version",
+          "desktop_mode",
+          "compute",
+          "startup_timing"
+        ],
+        "title": "ReadinessResponse",
+        "type": "object"
+      },
+      "RunPodCleanupPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "network_volume": {
+            "const": "keep",
+            "default": "keep",
+            "title": "Network Volume",
+            "type": "string"
+          },
+          "pod": {
+            "default": "delete_after_sync",
+            "enum": [
+              "delete_after_sync",
+              "stop_after_sync",
+              "keep"
+            ],
+            "title": "Pod",
+            "type": "string"
+          }
+        },
+        "title": "RunPodCleanupPolicy",
+        "type": "object"
+      },
+      "RunPodCloudType": {
+        "enum": [
+          "SECURE",
+          "COMMUNITY"
+        ],
+        "title": "RunPodCloudType",
+        "type": "string"
+      },
+      "RunPodGpuCatalogItem": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "memory_gb": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Gb"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "RunPodGpuCatalogItem",
+        "type": "object"
+      },
+      "RunPodProviderCatalog": {
+        "properties": {
+          "gpu_options": {
+            "items": {
+              "$ref": "#/components/schemas/RunPodGpuCatalogItem"
+            },
+            "title": "Gpu Options",
+            "type": "array"
+          }
+        },
+        "title": "RunPodProviderCatalog",
+        "type": "object"
+      },
+      "RunPodProviderDefaults": {
+        "properties": {
+          "agent_port": {
+            "title": "Agent Port",
+            "type": "integer"
+          },
+          "agent_port_protocol": {
+            "enum": [
+              "tcp",
+              "http"
+            ],
+            "title": "Agent Port Protocol",
+            "type": "string"
+          },
+          "cleanup_policy": {
+            "$ref": "#/components/schemas/RunPodCleanupPolicy"
+          },
+          "cloud_type": {
+            "$ref": "#/components/schemas/RunPodCloudType"
+          },
+          "container_disk_gb": {
+            "title": "Container Disk Gb",
+            "type": "integer"
+          },
+          "data_center_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Center Id"
+          },
+          "gpu_count": {
+            "title": "Gpu Count",
+            "type": "integer"
+          },
+          "gpu_type_id": {
+            "title": "Gpu Type Id",
+            "type": "string"
+          },
+          "network_volume_size_gb": {
+            "title": "Network Volume Size Gb",
+            "type": "integer"
+          },
+          "training_image": {
+            "title": "Training Image",
+            "type": "string"
+          },
+          "volume_mount_path": {
+            "title": "Volume Mount Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "gpu_type_id",
+          "gpu_count",
+          "cloud_type",
+          "network_volume_size_gb",
+          "container_disk_gb",
+          "volume_mount_path",
+          "training_image",
+          "agent_port",
+          "agent_port_protocol",
+          "cleanup_policy"
+        ],
+        "title": "RunPodProviderDefaults",
+        "type": "object"
+      },
+      "RunPodProviderStatus": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "defaults": {
+            "$ref": "#/components/schemas/RunPodProviderDefaults"
+          },
+          "source": {
+            "enum": [
+              "environment",
+              "memory",
+              "none"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "validated": {
+            "title": "Validated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "configured",
+          "validated",
+          "source",
+          "defaults"
+        ],
+        "title": "RunPodProviderStatus",
+        "type": "object"
+      },
+      "RunPodResourceListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "RunPodResourceListResponse",
+        "type": "object"
+      },
+      "RunPodValidateKeyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "api_key": {
+            "minLength": 1,
+            "title": "Api Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "api_key"
+        ],
+        "title": "RunPodValidateKeyRequest",
+        "type": "object"
+      },
+      "RunPodValidateKeyResponse": {
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "message"
+        ],
+        "title": "RunPodValidateKeyResponse",
+        "type": "object"
+      },
+      "StartupTimingResponse": {
+        "properties": {
+          "elapsed_ms": {
+            "title": "Elapsed Ms",
+            "type": "number"
+          },
+          "ready_in_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ready In Ms"
+          },
+          "stage_ms": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Stage Ms",
+            "type": "object"
+          }
+        },
+        "required": [
+          "elapsed_ms",
+          "stage_ms"
+        ],
+        "title": "StartupTimingResponse",
+        "type": "object"
+      },
+      "TokenPreviewTokenResponse": {
+        "properties": {
+          "end": {
+            "title": "End",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "start": {
+            "title": "Start",
+            "type": "integer"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "id",
+          "token",
+          "start",
+          "end"
+        ],
+        "title": "TokenPreviewTokenResponse",
+        "type": "object"
+      },
+      "TokenizerPreviewRequest": {
+        "properties": {
+          "text": {
+            "maxLength": 50000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TokenizerPreviewRequest",
+        "type": "object"
+      },
+      "TokenizerPreviewResponse": {
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "num_tokens": {
+            "title": "Num Tokens",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "text_length": {
+            "title": "Text Length",
+            "type": "integer"
+          },
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/TokenPreviewTokenResponse"
+            },
+            "title": "Tokens",
+            "type": "array"
+          }
+        },
+        "required": [
+          "job_id",
+          "text",
+          "text_length",
+          "num_tokens",
+          "tokens"
+        ],
+        "title": "TokenizerPreviewResponse",
+        "type": "object"
+      },
+      "TokenizerStatsResponse": {
+        "properties": {
+          "avg_chars_per_record": {
+            "default": 0.0,
+            "title": "Avg Chars Per Record",
+            "type": "number"
+          },
+          "avg_tokens_per_record": {
+            "default": 0.0,
+            "title": "Avg Tokens Per Record",
+            "type": "number"
+          },
+          "chars_per_token": {
+            "default": 0.0,
+            "title": "Chars Per Token",
+            "type": "number"
+          },
+          "num_chars": {
+            "title": "Num Chars",
+            "type": "integer"
+          },
+          "num_records": {
+            "default": 0,
+            "title": "Num Records",
+            "type": "integer"
+          },
+          "num_tokens": {
+            "title": "Num Tokens",
+            "type": "integer"
+          },
+          "num_unused_tokens": {
+            "title": "Num Unused Tokens",
+            "type": "integer"
+          },
+          "num_used_tokens": {
+            "title": "Num Used Tokens",
+            "type": "integer"
+          },
+          "rare_token_fraction": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Rare Token Fraction",
+            "type": "object"
+          },
+          "rare_tokens": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Rare Tokens",
+            "type": "object"
+          },
+          "token_per_char": {
+            "title": "Token Per Char",
+            "type": "number"
+          },
+          "vocab_size": {
+            "title": "Vocab Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "num_chars",
+          "num_tokens",
+          "token_per_char",
+          "vocab_size",
+          "num_used_tokens",
+          "num_unused_tokens",
+          "rare_tokens",
+          "rare_token_fraction"
+        ],
+        "title": "TokenizerStatsResponse",
+        "type": "object"
+      },
+      "TrainTokenizerRequest": {
+        "properties": {
+          "dataloader_config": {
+            "additionalProperties": true,
+            "title": "Dataloader Config",
+            "type": "object"
+          },
+          "evaluation_text_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deprecated. Evaluation always uses the tokenizer training dataset.",
+            "title": "Evaluation Text Path"
+          },
+          "evaluation_thresholds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Evaluation Thresholds",
+            "type": "array"
+          },
+          "hf_token": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hf Token"
+          },
+          "tokenizer_config": {
+            "additionalProperties": true,
+            "title": "Tokenizer Config",
+            "type": "object"
+          }
+        },
+        "required": [
+          "tokenizer_config",
+          "dataloader_config"
+        ],
+        "title": "TrainTokenizerRequest",
+        "type": "object"
+      },
+      "TrainingAssetRef": {
+        "properties": {
+          "artifact_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact File"
+          },
+          "artifact_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Path"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TrainingAssetRef",
+        "type": "object"
+      },
+      "TrainingBatchLrRecommendation": {
+        "properties": {
+          "confidence": {
+            "default": "medium",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "current_grad_accum_steps": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Grad Accum Steps"
+          },
+          "current_learning_rate": {
+            "title": "Current Learning Rate",
+            "type": "number"
+          },
+          "current_micro_batch_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Micro Batch Size"
+          },
+          "current_total_batch_size": {
+            "title": "Current Total Batch Size",
+            "type": "integer"
+          },
+          "factors": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingBatchLrRecommendationFactor"
+            },
+            "title": "Factors",
+            "type": "array"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingBatchLrRecommendationOption"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "recommended_option_key": {
+            "title": "Recommended Option Key",
+            "type": "string"
+          },
+          "signals": {
+            "$ref": "#/components/schemas/TrainingBatchLrRecommendationSignals"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "headline",
+          "summary",
+          "current_total_batch_size",
+          "current_learning_rate",
+          "recommended_option_key",
+          "signals"
+        ],
+        "title": "TrainingBatchLrRecommendation",
+        "type": "object"
+      },
+      "TrainingBatchLrRecommendationFactor": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "tone": {
+            "default": "neutral",
+            "enum": [
+              "good",
+              "neutral",
+              "warning"
+            ],
+            "title": "Tone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "detail"
+        ],
+        "title": "TrainingBatchLrRecommendationFactor",
+        "type": "object"
+      },
+      "TrainingBatchLrRecommendationOption": {
+        "properties": {
+          "clear_manual_micro_batch": {
+            "default": true,
+            "title": "Clear Manual Micro Batch",
+            "type": "boolean"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "estimated_local_passes_at_recommended_steps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Local Passes At Recommended Steps"
+          },
+          "estimated_tokens_per_recommended_run": {
+            "title": "Estimated Tokens Per Recommended Run",
+            "type": "integer"
+          },
+          "estimated_tokens_per_run": {
+            "title": "Estimated Tokens Per Run",
+            "type": "integer"
+          },
+          "grad_accum_steps": {
+            "title": "Grad Accum Steps",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "learning_rate": {
+            "title": "Learning Rate",
+            "type": "number"
+          },
+          "micro_batch_size": {
+            "title": "Micro Batch Size",
+            "type": "integer"
+          },
+          "recommended_max_steps": {
+            "title": "Recommended Max Steps",
+            "type": "integer"
+          },
+          "tone": {
+            "default": "neutral",
+            "enum": [
+              "recommended",
+              "neutral"
+            ],
+            "title": "Tone",
+            "type": "string"
+          },
+          "total_batch_size": {
+            "title": "Total Batch Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "description",
+          "total_batch_size",
+          "micro_batch_size",
+          "grad_accum_steps",
+          "learning_rate",
+          "estimated_tokens_per_run",
+          "recommended_max_steps",
+          "estimated_tokens_per_recommended_run"
+        ],
+        "title": "TrainingBatchLrRecommendationOption",
+        "type": "object"
+      },
+      "TrainingBatchLrRecommendationSignals": {
+        "properties": {
+          "approx_local_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approx Local Tokens"
+          },
+          "attention_component_count": {
+            "title": "Attention Component Count",
+            "type": "integer"
+          },
+          "block_count": {
+            "title": "Block Count",
+            "type": "integer"
+          },
+          "dataset_count": {
+            "title": "Dataset Count",
+            "type": "integer"
+          },
+          "dataset_scale": {
+            "title": "Dataset Scale",
+            "type": "string"
+          },
+          "device": {
+            "title": "Device",
+            "type": "string"
+          },
+          "device_type": {
+            "title": "Device Type",
+            "type": "string"
+          },
+          "dominant_dataset_weight": {
+            "title": "Dominant Dataset Weight",
+            "type": "number"
+          },
+          "estimated_kv_cache_bytes_for_context_fp16": {
+            "title": "Estimated Kv Cache Bytes For Context Fp16",
+            "type": "integer"
+          },
+          "local_dataset_count": {
+            "title": "Local Dataset Count",
+            "type": "integer"
+          },
+          "local_file_count": {
+            "title": "Local File Count",
+            "type": "integer"
+          },
+          "local_total_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Total Size Bytes"
+          },
+          "max_memory_micro_batch_size": {
+            "title": "Max Memory Micro Batch Size",
+            "type": "integer"
+          },
+          "max_mlp_multiplier": {
+            "title": "Max Mlp Multiplier",
+            "type": "number"
+          },
+          "parameter_memory_bytes_bf16": {
+            "title": "Parameter Memory Bytes Bf16",
+            "type": "integer"
+          },
+          "parameter_scaled_run_token_target": {
+            "title": "Parameter Scaled Run Token Target",
+            "type": "integer"
+          },
+          "recommended_batch_target": {
+            "title": "Recommended Batch Target",
+            "type": "integer"
+          },
+          "recommended_run_token_budget": {
+            "title": "Recommended Run Token Budget",
+            "type": "integer"
+          },
+          "schedule_peak_factor": {
+            "title": "Schedule Peak Factor",
+            "type": "number"
+          },
+          "streaming_dataset_count": {
+            "title": "Streaming Dataset Count",
+            "type": "integer"
+          },
+          "total_parameters": {
+            "title": "Total Parameters",
+            "type": "integer"
+          },
+          "warmup_fraction": {
+            "title": "Warmup Fraction",
+            "type": "number"
+          }
+        },
+        "required": [
+          "device",
+          "device_type",
+          "total_parameters",
+          "parameter_memory_bytes_bf16",
+          "estimated_kv_cache_bytes_for_context_fp16",
+          "block_count",
+          "attention_component_count",
+          "max_mlp_multiplier",
+          "dataset_count",
+          "local_dataset_count",
+          "streaming_dataset_count",
+          "local_file_count",
+          "dominant_dataset_weight",
+          "dataset_scale",
+          "schedule_peak_factor",
+          "warmup_fraction",
+          "max_memory_micro_batch_size",
+          "recommended_batch_target",
+          "recommended_run_token_budget",
+          "parameter_scaled_run_token_target"
+        ],
+        "title": "TrainingBatchLrRecommendationSignals",
+        "type": "object"
+      },
+      "TrainingCheckpointEntry": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "directory": {
+            "title": "Directory",
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "step",
+          "directory",
+          "size_bytes"
+        ],
+        "title": "TrainingCheckpointEntry",
+        "type": "object"
+      },
+      "TrainingCheckpointsResponse": {
+        "properties": {
+          "checkpoints": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingCheckpointEntry"
+            },
+            "title": "Checkpoints",
+            "type": "array"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "checkpoints"
+        ],
+        "title": "TrainingCheckpointsResponse",
+        "type": "object"
+      },
+      "TrainingCompatibilitySummary": {
+        "properties": {
+          "max_steps": {
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "missing_special_tokens": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Special Tokens",
+            "type": "array"
+          },
+          "model_context_length": {
+            "title": "Model Context Length",
+            "type": "integer"
+          },
+          "model_vocab_size": {
+            "title": "Model Vocab Size",
+            "type": "integer"
+          },
+          "scheduler_total_steps": {
+            "title": "Scheduler Total Steps",
+            "type": "integer"
+          },
+          "seq_len": {
+            "title": "Seq Len",
+            "type": "integer"
+          },
+          "tokenizer_vocab_size": {
+            "title": "Tokenizer Vocab Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model_context_length",
+          "model_vocab_size",
+          "tokenizer_vocab_size",
+          "seq_len",
+          "scheduler_total_steps",
+          "max_steps"
+        ],
+        "title": "TrainingCompatibilitySummary",
+        "type": "object"
+      },
+      "TrainingConfigSchemasResponse": {
+        "properties": {
+          "dataloader_schema": {
+            "additionalProperties": true,
+            "title": "Dataloader Schema",
+            "type": "object"
+          },
+          "training_config_schema": {
+            "additionalProperties": true,
+            "title": "Training Config Schema",
+            "type": "object"
+          }
+        },
+        "required": [
+          "training_config_schema",
+          "dataloader_schema"
+        ],
+        "title": "TrainingConfigSchemasResponse",
+        "type": "object"
+      },
+      "TrainingConfigTemplatesResponse": {
+        "properties": {
+          "dataloader_config_template": {
+            "additionalProperties": true,
+            "title": "Dataloader Config Template",
+            "type": "object"
+          },
+          "training_config_template": {
+            "additionalProperties": true,
+            "title": "Training Config Template",
+            "type": "object"
+          }
+        },
+        "required": [
+          "training_config_template",
+          "dataloader_config_template"
+        ],
+        "title": "TrainingConfigTemplatesResponse",
+        "type": "object"
+      },
+      "TrainingExecutionTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "cleanup_policy": {
+            "$ref": "#/components/schemas/RunPodCleanupPolicy"
+          },
+          "cloud_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunPodCloudType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data_center_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Center Id"
+          },
+          "gpu_count": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gpu Count"
+          },
+          "gpu_type_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gpu Type Id"
+          },
+          "interruptible": {
+            "default": false,
+            "title": "Interruptible",
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TrainingExecutorKind",
+            "default": "local"
+          },
+          "network_volume_size_gb": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network Volume Size Gb"
+          }
+        },
+        "title": "TrainingExecutionTarget",
+        "type": "object"
+      },
+      "TrainingExecutorKind": {
+        "enum": [
+          "local",
+          "runpod_pod"
+        ],
+        "title": "TrainingExecutorKind",
+        "type": "string"
+      },
+      "TrainingFixSuggestion": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "description",
+          "path"
+        ],
+        "title": "TrainingFixSuggestion",
+        "type": "object"
+      },
+      "TrainingGenerateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "checkpoint_step": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkpoint Step"
+          },
+          "max_tokens": {
+            "default": 64,
+            "maximum": 1024.0,
+            "minimum": 1.0,
+            "title": "Max Tokens",
+            "type": "integer"
+          },
+          "prompt": {
+            "maxLength": 50000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "repetition_penalty": {
+            "default": 1.0,
+            "exclusiveMinimum": 0.0,
+            "maximum": 5.0,
+            "title": "Repetition Penalty",
+            "type": "number"
+          },
+          "seed": {
+            "default": 42,
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "temperature": {
+            "default": 0.8,
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Temperature",
+            "type": "number"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "maximum": 50000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 50,
+            "title": "Top K"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "TrainingGenerateRequest",
+        "type": "object"
+      },
+      "TrainingGenerateResponse": {
+        "properties": {
+          "checkpoint_path": {
+            "title": "Checkpoint Path",
+            "type": "string"
+          },
+          "checkpoint_step": {
+            "title": "Checkpoint Step",
+            "type": "integer"
+          },
+          "completion": {
+            "title": "Completion",
+            "type": "string"
+          },
+          "generated_token_count": {
+            "title": "Generated Token Count",
+            "type": "integer"
+          },
+          "generated_token_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Generated Token Ids",
+            "type": "array"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "prompt_token_count": {
+            "title": "Prompt Token Count",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "tokenizer_job_id": {
+            "title": "Tokenizer Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "checkpoint_step",
+          "checkpoint_path",
+          "tokenizer_job_id",
+          "prompt",
+          "completion",
+          "text",
+          "prompt_token_count",
+          "generated_token_count",
+          "generated_token_ids"
+        ],
+        "title": "TrainingGenerateResponse",
+        "type": "object"
+      },
+      "TrainingIssue": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "severity": {
+            "default": "error",
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "path"
+        ],
+        "title": "TrainingIssue",
+        "type": "object"
+      },
+      "TrainingJobState": {
+        "enum": [
+          "queued",
+          "preflight",
+          "estimating_memory",
+          "initializing_model",
+          "building_dataloader",
+          "training",
+          "checkpointing",
+          "sampling",
+          "finalizing",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "title": "TrainingJobState",
+        "type": "string"
+      },
+      "TrainingJobStatus": {
+        "enum": [
+          "pending",
+          "running",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "title": "TrainingJobStatus",
+        "type": "string"
+      },
+      "TrainingLogsResponse": {
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "stderr_lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Stderr Lines",
+            "type": "array"
+          },
+          "stdout_lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Stdout Lines",
+            "type": "array"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "title": "TrainingLogsResponse",
+        "type": "object"
+      },
+      "TrainingMetricPoint": {
+        "properties": {
+          "dt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dt"
+          },
+          "loss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loss"
+          },
+          "lr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lr"
+          },
+          "norm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Norm"
+          },
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          },
+          "tok_per_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tok Per Sec"
+          }
+        },
+        "required": [
+          "step"
+        ],
+        "title": "TrainingMetricPoint",
+        "type": "object"
+      },
+      "TrainingMetricsResponse": {
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingMetricPoint"
+            },
+            "title": "Metrics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "job_id",
+          "metrics"
+        ],
+        "title": "TrainingMetricsResponse",
+        "type": "object"
+      },
+      "TrainingPreflightRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "dataloader_config": {
+            "additionalProperties": true,
+            "title": "Dataloader Config",
+            "type": "object"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "tokenizer_job_id": {
+            "title": "Tokenizer Job Id",
+            "type": "string"
+          },
+          "training_config": {
+            "additionalProperties": true,
+            "title": "Training Config",
+            "type": "object"
+          }
+        },
+        "required": [
+          "project_id",
+          "tokenizer_job_id",
+          "training_config",
+          "dataloader_config"
+        ],
+        "title": "TrainingPreflightRequest",
+        "type": "object"
+      },
+      "TrainingPreflightResponse": {
+        "properties": {
+          "batch_and_lr_recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainingBatchLrRecommendation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "compatibility": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainingCompatibilitySummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "derived_runtime": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DerivedRuntimeSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingIssue"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "memory_estimate": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Estimate"
+          },
+          "model_project": {
+            "$ref": "#/components/schemas/TrainingAssetRef"
+          },
+          "normalized_dataloader_config": {
+            "additionalProperties": true,
+            "title": "Normalized Dataloader Config",
+            "type": "object"
+          },
+          "normalized_training_config": {
+            "additionalProperties": true,
+            "title": "Normalized Training Config",
+            "type": "object"
+          },
+          "recommended_fixes": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingFixSuggestion"
+            },
+            "title": "Recommended Fixes",
+            "type": "array"
+          },
+          "tokenizer": {
+            "$ref": "#/components/schemas/TrainingAssetRef"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingIssue"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "valid",
+          "model_project",
+          "tokenizer",
+          "normalized_training_config",
+          "normalized_dataloader_config"
+        ],
+        "title": "TrainingPreflightResponse",
+        "type": "object"
+      },
+      "TrainingSampleEntry": {
+        "properties": {
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingSampleText"
+            },
+            "title": "Samples",
+            "type": "array"
+          },
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "step",
+          "samples"
+        ],
+        "title": "TrainingSampleEntry",
+        "type": "object"
+      },
+      "TrainingSampleText": {
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "text"
+        ],
+        "title": "TrainingSampleText",
+        "type": "object"
+      },
+      "TrainingSamplesResponse": {
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/TrainingSampleEntry"
+            },
+            "title": "Samples",
+            "type": "array"
+          }
+        },
+        "required": [
+          "job_id",
+          "samples"
+        ],
+        "title": "TrainingSamplesResponse",
+        "type": "object"
+      },
+      "UploadedTrainFileResponse": {
+        "properties": {
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "size_chars": {
+            "title": "Size Chars",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file_name",
+          "file_path",
+          "size_bytes",
+          "size_chars"
+        ],
+        "title": "UploadedTrainFileResponse",
+        "type": "object"
+      },
+      "ValidateConfigRequest": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          }
+        },
+        "required": [
+          "config"
+        ],
+        "title": "ValidateConfigRequest",
+        "type": "object"
+      },
+      "ValidateConfigResponse": {
+        "properties": {
+          "normalized_config": {
+            "additionalProperties": true,
+            "title": "Normalized Config",
+            "type": "object"
+          },
+          "valid": {
+            "default": true,
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "normalized_config"
+        ],
+        "title": "ValidateConfigResponse",
+        "type": "object"
+      },
+      "ValidateModelRequest": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          }
+        },
+        "required": [
+          "config"
+        ],
+        "title": "ValidateModelRequest",
+        "type": "object"
+      },
+      "ValidateModelResponse": {
+        "properties": {
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "normalized_config": {
+            "additionalProperties": true,
+            "title": "Normalized Config",
+            "type": "object"
+          },
+          "valid": {
+            "default": true,
+            "title": "Valid",
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "normalized_config"
+        ],
+        "title": "ValidateModelResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ValidationIssue": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "path"
+        ],
+        "title": "ValidationIssue",
+        "type": "object"
+      },
+      "app__models__ConfigSchemasResponse": {
+        "properties": {
+          "model_config_schema": {
+            "additionalProperties": true,
+            "title": "Model Config Schema",
+            "type": "object"
+          }
+        },
+        "required": [
+          "model_config_schema"
+        ],
+        "title": "ConfigSchemasResponse",
+        "type": "object"
+      },
+      "app__models__ConfigTemplatesResponse": {
+        "properties": {
+          "model_config_template": {
+            "additionalProperties": true,
+            "title": "Model Config Template",
+            "type": "object"
+          }
+        },
+        "required": [
+          "model_config_template"
+        ],
+        "title": "ConfigTemplatesResponse",
+        "type": "object"
+      },
+      "app__tokenizer_models__ConfigSchemasResponse": {
+        "properties": {
+          "dataloader_schema": {
+            "additionalProperties": true,
+            "title": "Dataloader Schema",
+            "type": "object"
+          },
+          "tokenizer_schema": {
+            "additionalProperties": true,
+            "title": "Tokenizer Schema",
+            "type": "object"
+          }
+        },
+        "required": [
+          "tokenizer_schema",
+          "dataloader_schema"
+        ],
+        "title": "ConfigSchemasResponse",
+        "type": "object"
+      },
+      "app__tokenizer_models__ConfigTemplatesResponse": {
+        "properties": {
+          "dataloader_config_template": {
+            "additionalProperties": true,
+            "title": "Dataloader Config Template",
+            "type": "object"
+          },
+          "tokenizer_config_template": {
+            "additionalProperties": true,
+            "title": "Tokenizer Config Template",
+            "type": "object"
+          }
+        },
+        "required": [
+          "tokenizer_config_template",
+          "dataloader_config_template"
+        ],
+        "title": "ConfigTemplatesResponse",
+        "type": "object"
+      },
+      "app__tokenizer_models__TrainingJobResponse": {
+        "properties": {
+          "artifact_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact File"
+          },
+          "artifact_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Path"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataloader_config": {
+            "additionalProperties": true,
+            "title": "Dataloader Config",
+            "type": "object"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "evaluation_source": {
+            "$ref": "#/components/schemas/EvaluationSource"
+          },
+          "evaluation_text_path": {
+            "title": "Evaluation Text Path",
+            "type": "string"
+          },
+          "evaluation_thresholds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Evaluation Thresholds",
+            "type": "array"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "$ref": "#/components/schemas/JobState"
+          },
+          "stats": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TokenizerStatsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "tokenizer_config": {
+            "additionalProperties": true,
+            "title": "Tokenizer Config",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "state",
+          "stage",
+          "progress",
+          "created_at",
+          "tokenizer_config",
+          "dataloader_config",
+          "evaluation_source",
+          "evaluation_thresholds",
+          "evaluation_text_path"
+        ],
+        "title": "TrainingJobResponse",
+        "type": "object"
+      },
+      "app__tokenizer_models__TrainingJobsListResponse": {
+        "properties": {
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/app__tokenizer_models__TrainingJobResponse"
+            },
+            "title": "Jobs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "jobs"
+        ],
+        "title": "TrainingJobsListResponse",
+        "type": "object"
+      },
+      "app__training_runs__schemas__TrainingJobResponse": {
+        "properties": {
+          "artifact_bundle_file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Bundle File"
+          },
+          "artifact_dir": {
+            "title": "Artifact Dir",
+            "type": "string"
+          },
+          "checkpoint_count": {
+            "default": 0,
+            "title": "Checkpoint Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "dataloader_config": {
+            "additionalProperties": true,
+            "title": "Dataloader Config",
+            "type": "object"
+          },
+          "elapsed_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Seconds"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "eta_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta Seconds"
+          },
+          "executor_kind": {
+            "$ref": "#/components/schemas/TrainingExecutorKind",
+            "default": "local"
+          },
+          "executor_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Executor Status"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_step": {
+            "default": 0,
+            "title": "Last Step",
+            "type": "integer"
+          },
+          "latest_grad_norm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Grad Norm"
+          },
+          "latest_loss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Loss"
+          },
+          "latest_lr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Lr"
+          },
+          "latest_tokens_per_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Tokens Per Sec"
+          },
+          "max_steps": {
+            "default": 0,
+            "title": "Max Steps",
+            "type": "integer"
+          },
+          "memory_estimate": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Estimate"
+          },
+          "model_config": {
+            "additionalProperties": true,
+            "title": "Model Config",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "output_size_bytes": {
+            "default": 0,
+            "title": "Output Size Bytes",
+            "type": "integer"
+          },
+          "process_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process Id"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_name": {
+            "title": "Project Name",
+            "type": "string"
+          },
+          "remote_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remote Error"
+          },
+          "remote_workspace_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remote Workspace Path"
+          },
+          "resolved_runtime": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Runtime"
+          },
+          "runpod_agent_base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Agent Base Url"
+          },
+          "runpod_cleanup_policy": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Cleanup Policy"
+          },
+          "runpod_cloud_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Cloud Type"
+          },
+          "runpod_cost_per_hr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Cost Per Hr"
+          },
+          "runpod_data_center_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Data Center Id"
+          },
+          "runpod_gpu_count": {
+            "default": 1,
+            "title": "Runpod Gpu Count",
+            "type": "integer"
+          },
+          "runpod_gpu_type_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Gpu Type Id"
+          },
+          "runpod_interruptible": {
+            "default": false,
+            "title": "Runpod Interruptible",
+            "type": "boolean"
+          },
+          "runpod_last_heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Last Heartbeat At"
+          },
+          "runpod_last_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Last Sync At"
+          },
+          "runpod_network_volume_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Network Volume Id"
+          },
+          "runpod_pod_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Pod Id"
+          },
+          "runpod_pod_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Pod Name"
+          },
+          "runpod_port_mappings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Port Mappings"
+          },
+          "runpod_public_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runpod Public Ip"
+          },
+          "sample_count": {
+            "default": 0,
+            "title": "Sample Count",
+            "type": "integer"
+          },
+          "samples_path": {
+            "title": "Samples Path",
+            "type": "string"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "$ref": "#/components/schemas/TrainingJobState"
+          },
+          "stats_path": {
+            "title": "Stats Path",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TrainingJobStatus"
+          },
+          "stderr_path": {
+            "title": "Stderr Path",
+            "type": "string"
+          },
+          "stdout_path": {
+            "title": "Stdout Path",
+            "type": "string"
+          },
+          "tokenizer_job_id": {
+            "title": "Tokenizer Job Id",
+            "type": "string"
+          },
+          "tokenizer_name": {
+            "title": "Tokenizer Name",
+            "type": "string"
+          },
+          "training_config": {
+            "additionalProperties": true,
+            "title": "Training Config",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "state",
+          "stage",
+          "progress",
+          "created_at",
+          "project_id",
+          "project_name",
+          "tokenizer_job_id",
+          "tokenizer_name",
+          "model_config",
+          "training_config",
+          "dataloader_config",
+          "artifact_dir",
+          "stats_path",
+          "samples_path",
+          "stdout_path",
+          "stderr_path"
+        ],
+        "title": "TrainingJobResponse",
+        "type": "object"
+      },
+      "app__training_runs__schemas__TrainingJobsListResponse": {
+        "properties": {
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/app__training_runs__schemas__TrainingJobResponse"
+            },
+            "title": "Jobs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "jobs"
+        ],
+        "title": "TrainingJobsListResponse",
+        "type": "object"
+      }
+    }
+  },
+  "description": "Frozen, sanitized request/response schema fixtures generated from FastAPI OpenAPI. Representative values contain no credentials or user data.",
+  "groups": [
+    {
+      "evidence": [
+        "apps/llm-studio/api/tests/test_training_routes.py",
+        "apps/llm-studio/api/tests/test_runpod_training.py"
+      ],
+      "id": "remote-lifecycle",
+      "operations": [
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "cleanup_remote_training_job_api_v1_training_jobs__job_id__remote_cleanup_post",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__training_runs__schemas__TrainingJobResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Cleanup Remote Training Job",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/remote/cleanup"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "reattach_remote_training_job_api_v1_training_jobs__job_id__remote_reattach_post",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__training_runs__schemas__TrainingJobResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Reattach Remote Training Job",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/remote/reattach"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "resync_remote_training_job_api_v1_training_jobs__job_id__remote_resync_post",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__training_runs__schemas__TrainingJobResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Resync Remote Training Job",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/remote/resync"
+        }
+      ],
+      "representative": {
+        "method": "POST",
+        "path": "/api/v1/training/jobs/{job_id}/remote/cleanup",
+        "request_json": null,
+        "response_json_subset": {
+          "executor_kind": "runpod_pod",
+          "executor_status": "cleaned_up",
+          "id": "<job-id>",
+          "status": "running"
+        },
+        "response_status": "200"
+      },
+      "title": "Remote lifecycle"
+    },
+    {
+      "evidence": [
+        "scripts/desktop/smoke_runtime.py",
+        "apps/llm-studio/api/tests/test_training_artifacts_and_responses.py"
+      ],
+      "id": "inference",
+      "operations": [
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "generate_from_training_job_api_v1_training_jobs__job_id__generate_post",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/TrainingGenerateRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/TrainingGenerateResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Generate From Training Job",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/generate"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "stream_generate_from_training_job_api_v1_training_jobs__job_id__generate_stream_post",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/TrainingGenerateRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {}
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Stream Generate From Training Job",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/generate/stream"
+        }
+      ],
+      "representative": {
+        "method": "POST",
+        "path": "/api/v1/training/jobs/{job_id}/generate",
+        "request_json": {
+          "checkpoint_step": 1,
+          "max_tokens": 2,
+          "prompt": "hello"
+        },
+        "response_json_subset": {
+          "completion": "<generated-text>",
+          "generated_token_ids": [
+            1,
+            2
+          ],
+          "job_id": "<job-id>"
+        },
+        "response_status": "200"
+      },
+      "title": "Inference"
+    },
+    {
+      "evidence": [
+        "apps/llm-studio/api/tests/test_training_routes.py",
+        "apps/llm-studio/api/tests/test_training_manager_characterization.py"
+      ],
+      "id": "runpod-provider",
+      "operations": [
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_runpod_catalog_api_v1_training_providers_runpod_catalog_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/RunPodProviderCatalog"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Get Runpod Catalog",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/providers/runpod/catalog"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_runpod_defaults_api_v1_training_providers_runpod_defaults_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/RunPodProviderDefaults"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Get Runpod Defaults",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/providers/runpod/defaults"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "list_runpod_network_volumes_api_v1_training_providers_runpod_network_volumes_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/RunPodResourceListResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "List Runpod Network Volumes",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/providers/runpod/network-volumes"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "list_runpod_pods_api_v1_training_providers_runpod_pods_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/RunPodResourceListResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "List Runpod Pods",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/providers/runpod/pods"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_runpod_status_api_v1_training_providers_runpod_status_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/RunPodProviderStatus"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Get Runpod Status",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/providers/runpod/status"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "validate_runpod_key_api_v1_training_providers_runpod_validate_key_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/RunPodValidateKeyRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/RunPodValidateKeyResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Validate Runpod Key",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/providers/runpod/validate-key"
+        }
+      ],
+      "representative": {
+        "method": "GET",
+        "path": "/api/v1/training/providers/runpod/status",
+        "request_json": null,
+        "response_json_subset": {
+          "configured": false,
+          "defaults": {},
+          "source": "none",
+          "validated": false
+        },
+        "response_status": "200"
+      },
+      "title": "RunPod provider"
+    },
+    {
+      "evidence": [
+        "scripts/desktop/smoke_runtime.py",
+        "apps/llm-studio/api/tests/test_training_preflight_modules.py"
+      ],
+      "id": "training-config-preflight",
+      "operations": [
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "training_config_schemas_api_v1_training_config_schemas_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/TrainingConfigSchemasResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Training Config Schemas",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/config/schemas"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "training_config_templates_api_v1_training_config_templates_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/TrainingConfigTemplatesResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Training Config Templates",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/config/templates"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "training_health_api_v1_training_health_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HealthResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Training Health",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/health"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "validate_training_dataloader_api_v1_training_validate_dataloader_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ValidateConfigRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ValidateConfigResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Validate Training Dataloader",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/validate/dataloader"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "validate_training_preflight_api_v1_training_validate_preflight_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/TrainingPreflightRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/TrainingPreflightResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Validate Training Preflight",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/validate/preflight"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "validate_training_config_api_v1_training_validate_training_config_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ValidateConfigRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ValidateConfigResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Validate Training Config",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/validate/training-config"
+        }
+      ],
+      "representative": {
+        "method": "POST",
+        "path": "/api/v1/training/validate/training-config",
+        "request_json": {
+          "config": {
+            "max_steps": 1
+          }
+        },
+        "response_json_subset": {
+          "normalized_config": {},
+          "valid": true
+        },
+        "response_status": "200"
+      },
+      "title": "Training config and preflight"
+    },
+    {
+      "evidence": [
+        "scripts/desktop/smoke_runtime.py",
+        "apps/llm-studio/api/tests/test_training_manager_characterization.py"
+      ],
+      "id": "training-jobs",
+      "operations": [
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "list_training_jobs_api_v1_training_jobs_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__training_runs__schemas__TrainingJobsListResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "List Training Jobs",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "create_training_job_api_v1_training_jobs_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/CreateTrainingJobRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "201": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__training_runs__schemas__TrainingJobResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Create Training Job",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs"
+        },
+        {
+          "method": "DELETE",
+          "operation": {
+            "operationId": "delete_training_job_api_v1_training_jobs__job_id__delete",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "204": {
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Delete Training Job",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_training_job_api_v1_training_jobs__job_id__get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__training_runs__schemas__TrainingJobResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Get Training Job",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "download_training_job_artifact_api_v1_training_jobs__job_id__artifact_get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {}
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Download Training Job Artifact",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/artifact"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_training_checkpoints_api_v1_training_jobs__job_id__checkpoints_get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/TrainingCheckpointsResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Get Training Checkpoints",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/checkpoints"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_training_logs_api_v1_training_jobs__job_id__logs_get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              },
+              {
+                "in": "query",
+                "name": "lines",
+                "required": false,
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Lines"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/TrainingLogsResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Get Training Logs",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/logs"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_training_metrics_api_v1_training_jobs__job_id__metrics_get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              },
+              {
+                "in": "query",
+                "name": "limit",
+                "required": false,
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Limit"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/TrainingMetricsResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Get Training Metrics",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/metrics"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_training_samples_api_v1_training_jobs__job_id__samples_get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              },
+              {
+                "in": "query",
+                "name": "limit",
+                "required": false,
+                "schema": {
+                  "default": 50,
+                  "title": "Limit",
+                  "type": "integer"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/TrainingSamplesResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Get Training Samples",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/samples"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "stop_training_job_api_v1_training_jobs__job_id__stop_post",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__training_runs__schemas__TrainingJobResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Stop Training Job",
+            "tags": [
+              "training-workspace"
+            ]
+          },
+          "path": "/api/v1/training/jobs/{job_id}/stop"
+        }
+      ],
+      "representative": {
+        "method": "GET",
+        "path": "/api/v1/training/jobs",
+        "request_json": null,
+        "response_json_subset": {
+          "jobs": []
+        },
+        "response_status": "200"
+      },
+      "title": "Training jobs"
+    },
+    {
+      "evidence": [
+        "scripts/desktop/smoke_runtime.py",
+        "apps/llm-studio/api/tests/test_main.py"
+      ],
+      "id": "tokenizer",
+      "operations": [
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "tokenizer_config_schemas_api_v1_tokenizer_config_schemas_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__tokenizer_models__ConfigSchemasResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Tokenizer Config Schemas",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/config/schemas"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "tokenizer_config_templates_api_v1_tokenizer_config_templates_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__tokenizer_models__ConfigTemplatesResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Tokenizer Config Templates",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/config/templates"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_local_file_stats_api_v1_tokenizer_files_stats_get",
+            "parameters": [
+              {
+                "in": "query",
+                "name": "file_path",
+                "required": true,
+                "schema": {
+                  "title": "File Path",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/UploadedTrainFileResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Get Local File Stats",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/files/stats"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "upload_train_file_api_v1_tokenizer_files_train_post",
+            "requestBody": {
+              "content": {
+                "multipart/form-data": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Body_upload_train_file_api_v1_tokenizer_files_train_post"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "201": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/UploadedTrainFileResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Upload Train File",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/files/train"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "upload_validation_file_api_v1_tokenizer_files_validation_post",
+            "requestBody": {
+              "content": {
+                "multipart/form-data": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Body_upload_validation_file_api_v1_tokenizer_files_validation_post"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "201": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/UploadedTrainFileResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Upload Validation File",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/files/validation"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "tokenizer_health_api_v1_tokenizer_health_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HealthResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Tokenizer Health",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/health"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "list_tokenizer_jobs_api_v1_tokenizer_jobs_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__tokenizer_models__TrainingJobsListResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "List Tokenizer Jobs",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/jobs"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "create_tokenizer_job_api_v1_tokenizer_jobs_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/TrainTokenizerRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "201": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__tokenizer_models__TrainingJobResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Create Tokenizer Job",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/jobs"
+        },
+        {
+          "method": "DELETE",
+          "operation": {
+            "operationId": "delete_tokenizer_job_api_v1_tokenizer_jobs__job_id__delete",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "204": {
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Delete Tokenizer Job",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/jobs/{job_id}"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_tokenizer_job_api_v1_tokenizer_jobs__job_id__get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__tokenizer_models__TrainingJobResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Get Tokenizer Job",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/jobs/{job_id}"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "tokenizer_artifact_download_api_v1_tokenizer_jobs__job_id__artifact_get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {}
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Tokenizer Artifact Download",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/jobs/{job_id}/artifact"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "tokenizer_artifact_meta_api_v1_tokenizer_jobs__job_id__artifact_meta_get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ArtifactMetadataResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Tokenizer Artifact Meta",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/jobs/{job_id}/artifact/meta"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "preview_job_tokenizer_api_v1_tokenizer_jobs__job_id__preview_post",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "job_id",
+                "required": true,
+                "schema": {
+                  "title": "Job Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/TokenizerPreviewRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/TokenizerPreviewResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Preview Job Tokenizer",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/jobs/{job_id}/preview"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "validate_dataloader_api_v1_tokenizer_validate_dataloader_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ValidateConfigRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ValidateConfigResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Validate Dataloader",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/validate/dataloader"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "validate_tokenizer_api_v1_tokenizer_validate_tokenizer_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ValidateConfigRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ValidateConfigResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Validate Tokenizer",
+            "tags": [
+              "tokenizer-workspace"
+            ]
+          },
+          "path": "/api/v1/tokenizer/validate/tokenizer"
+        }
+      ],
+      "representative": {
+        "method": "POST",
+        "path": "/api/v1/tokenizer/validate/tokenizer",
+        "request_json": {
+          "config": {
+            "name": "desktop-contract-fixture"
+          }
+        },
+        "response_json_subset": {
+          "normalized_config": {},
+          "valid": true
+        },
+        "response_status": "200"
+      },
+      "title": "Tokenizer"
+    },
+    {
+      "evidence": [
+        "scripts/desktop/smoke_runtime.py",
+        "apps/llm-studio/api/tests/test_main.py"
+      ],
+      "id": "model-studio",
+      "operations": [
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "analyze_model_api_v1_analyze_model_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AnalyzeModelRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/AnalyzeModelResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Analyze Model",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/analyze/model"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "list_projects_api_v1_projects_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ProjectsListResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "List Projects",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/projects"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "create_project_api_v1_projects_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/CreateProjectRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "201": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ProjectDetailResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Create Project",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/projects"
+        },
+        {
+          "method": "DELETE",
+          "operation": {
+            "operationId": "delete_project_api_v1_projects__project_id__delete",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "project_id",
+                "required": true,
+                "schema": {
+                  "title": "Project Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "204": {
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Delete Project",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/projects/{project_id}"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "get_project_api_v1_projects__project_id__get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "project_id",
+                "required": true,
+                "schema": {
+                  "title": "Project Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ProjectDetailResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Get Project",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/projects/{project_id}"
+        },
+        {
+          "method": "PUT",
+          "operation": {
+            "operationId": "update_project_api_v1_projects__project_id__put",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "project_id",
+                "required": true,
+                "schema": {
+                  "title": "Project Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/CreateProjectRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ProjectDetailResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Update Project",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/projects/{project_id}"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "download_project_artifact_api_v1_projects__project_id__artifact_get",
+            "parameters": [
+              {
+                "in": "path",
+                "name": "project_id",
+                "required": true,
+                "schema": {
+                  "title": "Project Id",
+                  "type": "string"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {}
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Download Project Artifact",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/projects/{project_id}/artifact"
+        },
+        {
+          "method": "POST",
+          "operation": {
+            "operationId": "validate_model_api_v1_validate_model_post",
+            "requestBody": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ValidateModelRequest"
+                  }
+                }
+              },
+              "required": true
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ValidateModelResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              },
+              "422": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HTTPValidationError"
+                    }
+                  }
+                },
+                "description": "Validation Error"
+              }
+            },
+            "summary": "Validate Model",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/validate/model"
+        }
+      ],
+      "representative": {
+        "method": "POST",
+        "path": "/api/v1/validate/model",
+        "request_json": {
+          "config": {
+            "context_length": 16,
+            "vocab_size": 64
+          }
+        },
+        "response_json_subset": {
+          "errors": [],
+          "normalized_config": {},
+          "valid": true,
+          "warnings": []
+        },
+        "response_status": "200"
+      },
+      "title": "Model Studio"
+    },
+    {
+      "evidence": [
+        "scripts/desktop/smoke_runtime.py",
+        "apps/llm-studio/api/tests/test_main.py"
+      ],
+      "id": "system-config",
+      "operations": [
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "config_schemas_api_v1_config_schemas_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__models__ConfigSchemasResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Config Schemas",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/config/schemas"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "config_templates_api_v1_config_templates_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/app__models__ConfigTemplatesResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Config Templates",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/config/templates"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "desktop_active_jobs_api_v1_desktop_active_jobs_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ActiveJobsResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Desktop Active Jobs",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/desktop/active-jobs"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "health_api_v1_health_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/ReadinessResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Health",
+            "tags": [
+              "llm-studio"
+            ]
+          },
+          "path": "/api/v1/health"
+        },
+        {
+          "method": "GET",
+          "operation": {
+            "operationId": "health_root_health_get",
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/HealthResponse"
+                    }
+                  }
+                },
+                "description": "Successful Response"
+              }
+            },
+            "summary": "Health Root",
+            "tags": [
+              "system"
+            ]
+          },
+          "path": "/health"
+        }
+      ],
+      "representative": {
+        "method": "GET",
+        "path": "/api/v1/health",
+        "request_json": null,
+        "response_json_subset": {
+          "api_contract_version": "1",
+          "desktop_mode": true,
+          "ready": true
+        },
+        "response_status": "200"
+      },
+      "title": "System and config"
+    }
+  ],
+  "operation_count": 55,
+  "schema_version": 1
+}

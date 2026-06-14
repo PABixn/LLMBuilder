@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import threading
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -226,6 +227,41 @@ def test_create_local_training_job_uses_fake_executor_without_running_trainer(tm
     assert (Path(response.artifact_dir) / "resolved_preflight.json").exists()
 
 
+def test_local_launch_failure_redacts_arbitrary_dataset_token_and_suppresses_raw_cause(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    manager, store, local_executor, _runpod_executor = make_manager(tmp_path, monkeypatch)
+    secret = "legacy-private-token-without-provider-prefix"
+    local_executor.submit = lambda *_args: (_ for _ in ()).throw(
+        RuntimeError(f"local provider echoed {secret}")
+    )
+    request = make_request()
+    request.hf_token = secret
+    request.dataloader_config = {
+        "datasets": [
+            {
+                "name": "private-dataset",
+                "split": "train",
+                "streaming": True,
+                "text_columns": ["text"],
+            }
+        ]
+    }
+
+    try:
+        manager.create_job(request)
+    except RuntimeError as exc:
+        assert secret not in str(exc)
+        assert exc.__cause__ is None
+        assert exc.__suppress_context__ is True
+    else:
+        raise AssertionError("Expected local launch failure")
+
+    assert store.jobs == {}
+    assert manager._token_registry() == {}
+
+
 def test_create_runpod_job_persists_row_before_remote_submission(tmp_path: Path, monkeypatch) -> None:
     DeferredThread.created = []
     monkeypatch.setattr("app.training_jobs.threading.Thread", DeferredThread)
@@ -273,6 +309,41 @@ def test_remote_submission_failure_marks_failed_and_keeps_job_directory(tmp_path
     assert failed.remote_error == "remote launch exploded"
     assert job_dir.exists()
     assert runpod_executor.submitted == []
+
+
+def test_remote_submission_failure_redacts_arbitrary_dataset_token(tmp_path: Path, monkeypatch) -> None:
+    manager, store, _local_executor, runpod_executor = make_manager(tmp_path, monkeypatch)
+    job_dir = tmp_path / "jobs" / "remote-job"
+    job_dir.mkdir(parents=True)
+    stored = make_stored_job(job_dir)
+    store.create_job(stored)
+    secret = "legacy-private-token-without-provider-prefix"
+    runpod_executor.submit = lambda *_args: (_ for _ in ()).throw(
+        RuntimeError(f"remote provider echoed {secret}")
+    )
+    bundle = TrainingJobBundle(
+        job_id=stored.id,
+        job_dir=job_dir,
+        model_config_path=job_dir / "model_config.json",
+        tokenizer_path=job_dir / "tokenizer.json",
+        training_config_path=job_dir / "training_config.json",
+        dataloader_config_path=job_dir / "dataloader_config.json",
+        resolved_preflight_path=job_dir / "resolved_preflight.json",
+        stdout_path=job_dir / "stdout.log",
+        stderr_path=job_dir / "stderr.log",
+        stats_path=job_dir / "stats.jsonl",
+        samples_path=job_dir / "samples.jsonl",
+        manifest={"dataset_hf_tokens": [secret]},
+    )
+    manager._remember_dataset_hf_tokens(stored.id, [secret])
+
+    manager._submit_remote_job(stored.id, stored, bundle)
+
+    failed = store.get_job(stored.id)
+    assert failed is not None
+    assert failed.error is not None and secret not in failed.error
+    assert failed.remote_error is not None and secret not in failed.remote_error
+    assert manager._known_dataset_hf_tokens(stored.id) == ()
 
 
 def test_state_updates_from_runtime_sets_terminal_completed_and_failed(tmp_path: Path, monkeypatch) -> None:
@@ -329,6 +400,148 @@ def test_get_logs_prepends_runpod_logs_and_limits_after_merge(tmp_path: Path, mo
     assert logs.stderr_lines == ["stderr"]
 
 
+def test_get_logs_redacts_active_arbitrary_dataset_token(tmp_path: Path, monkeypatch) -> None:
+    manager, _store, _local_executor, _runpod_executor = make_manager(tmp_path, monkeypatch)
+    job = make_stored_job(tmp_path)
+    secret = "legacy-private-token-without-provider-prefix"
+    (tmp_path / "stdout.log").write_text(f"provider echoed {secret}\n", encoding="utf-8")
+    (tmp_path / "stderr.log").write_text(f"retry used {secret}\n", encoding="utf-8")
+    manager.get_job = lambda _job_id: job
+    manager._remember_dataset_hf_tokens(job.id, [secret])
+
+    try:
+        logs = TrainingRunManager.get_logs(manager, job.id)
+    finally:
+        manager._forget_dataset_hf_tokens(job.id)
+
+    assert secret not in "\n".join([*logs.stdout_lines, *logs.stderr_lines])
+    assert "[REDACTED]" in "\n".join([*logs.stdout_lines, *logs.stderr_lines])
+
+
+def test_terminal_refresh_scrubs_arbitrary_dataset_token_before_scope_clear(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    manager, store, _local_executor, _runpod_executor = make_manager(tmp_path, monkeypatch)
+    job_dir = tmp_path / "jobs" / "job123456"
+    job_dir.mkdir(parents=True)
+    job = make_stored_job(job_dir)
+    job.executor_kind = "local"
+    store.create_job(job)
+    secret = "legacy-private-token-without-provider-prefix"
+    (job_dir / "runtime_state.json").write_text(
+        json.dumps(
+            {
+                "status": "failed",
+                "state": "failed",
+                "stage": "Failed",
+                "progress": 1.0,
+                "error": f"provider echoed {secret}",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (job_dir / "metadata.json").write_text(
+        json.dumps({"error": f"metadata echoed {secret}"}),
+        encoding="utf-8",
+    )
+    (job_dir / "stdout.log").write_text(f"stdout echoed {secret}\n", encoding="utf-8")
+    manager._remember_dataset_hf_tokens(job.id, [secret])
+
+    refreshed = manager._refresh_job(job.id)
+
+    assert refreshed is not None
+    assert refreshed.status == TrainingJobStatus.failed
+    assert refreshed.error is not None and secret not in refreshed.error
+    assert secret not in (job_dir / "runtime_state.json").read_text(encoding="utf-8")
+    assert secret not in (job_dir / "metadata.json").read_text(encoding="utf-8")
+    assert secret not in (job_dir / "stdout.log").read_text(encoding="utf-8")
+    assert manager._known_dataset_hf_tokens(job.id) == ()
+
+
+def test_terminal_refresh_retains_redaction_scope_when_scrub_cannot_complete(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    manager, store, _local_executor, _runpod_executor = make_manager(tmp_path, monkeypatch)
+    job_dir = tmp_path / "jobs" / "job123456"
+    job_dir.mkdir(parents=True)
+    job = make_stored_job(job_dir)
+    job.executor_kind = "local"
+    store.create_job(job)
+    secret = "legacy-private-token-without-provider-prefix"
+    (job_dir / "runtime_state.json").write_text(
+        json.dumps({"status": "failed", "state": "failed", "error": f"echoed {secret}"}),
+        encoding="utf-8",
+    )
+    manager._remember_dataset_hf_tokens(job.id, [secret])
+    manager._scrub_job_text_files = lambda _job: False
+
+    refreshed = manager._refresh_job(job.id)
+
+    assert refreshed is not None and refreshed.status == TrainingJobStatus.failed
+    assert manager._known_dataset_hf_tokens(job.id) == (secret,)
+    manager._forget_dataset_hf_tokens(job.id)
+
+
+def test_artifact_bundle_scrubs_arbitrary_dataset_token(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    manager, store, _local_executor, _runpod_executor = make_manager(tmp_path, monkeypatch)
+    job_dir = tmp_path / "jobs" / "job123456"
+    job_dir.mkdir(parents=True)
+    job = make_stored_job(job_dir, status=TrainingJobStatus.completed)
+    job.executor_kind = "local"
+    job.state = TrainingJobState.completed
+    job.executor_status = "completed"
+    store.create_job(job)
+    secret = "legacy-private-token-without-provider-prefix"
+    (job_dir / "stdout.log").write_text(f"provider echoed {secret}\n", encoding="utf-8")
+    (job_dir / "metadata.json").write_text(
+        json.dumps({"error": f"metadata echoed {secret}"}),
+        encoding="utf-8",
+    )
+    exports_dir = tmp_path / "exports"
+    monkeypatch.setattr("app.training_jobs.training_exports_dir", lambda: exports_dir)
+    manager._remember_dataset_hf_tokens(job.id, [secret])
+
+    try:
+        archive = manager.build_artifact_bundle(job.id)
+    finally:
+        manager._forget_dataset_hf_tokens(job.id)
+
+    with zipfile.ZipFile(archive) as bundle:
+        combined = b"".join(bundle.read(name) for name in bundle.namelist())
+    assert secret.encode() not in combined
+
+
+def test_artifact_bundle_is_blocked_when_credential_scrub_cannot_complete(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    manager, store, _local_executor, _runpod_executor = make_manager(tmp_path, monkeypatch)
+    job_dir = tmp_path / "jobs" / "job123456"
+    job_dir.mkdir(parents=True)
+    job = make_stored_job(job_dir, status=TrainingJobStatus.completed)
+    job.executor_kind = "local"
+    job.state = TrainingJobState.completed
+    job.executor_status = "completed"
+    store.create_job(job)
+    secret = "legacy-private-token-without-provider-prefix"
+    manager._remember_dataset_hf_tokens(job.id, [secret])
+    manager._scrub_job_text_files = lambda _job: False
+
+    try:
+        manager.build_artifact_bundle(job.id)
+    except RuntimeError as exc:
+        assert "credential-bearing managed output" in str(exc)
+    else:
+        raise AssertionError("Expected artifact export to fail closed")
+    finally:
+        manager._forget_dataset_hf_tokens(job.id)
+
+
 def test_delete_job_preserves_stop_before_delete_rule(tmp_path: Path, monkeypatch) -> None:
     manager, store, local_executor, _runpod_executor = make_manager(tmp_path, monkeypatch)
     job = make_stored_job(tmp_path)
@@ -345,3 +558,25 @@ def test_delete_job_preserves_stop_before_delete_rule(tmp_path: Path, monkeypatc
     assert store.get_job(job.id) is job
     assert store.deleted == []
     assert local_executor.stopped == []
+
+
+def test_delete_job_rejects_stored_artifact_directory_escape(tmp_path: Path, monkeypatch) -> None:
+    from app.storage_safety import UnsafeManagedPathError
+
+    manager, store, _local_executor, _runpod_executor = make_manager(tmp_path, monkeypatch)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    marker = outside / "keep.txt"
+    marker.write_text("keep", encoding="utf-8")
+    job = make_stored_job(outside, status=TrainingJobStatus.failed)
+    store.create_job(job)
+
+    try:
+        manager.delete_job(job.id)
+    except UnsafeManagedPathError:
+        pass
+    else:
+        raise AssertionError("Expected a stored artifact directory escape to be rejected")
+
+    assert marker.exists()
+    assert store.get_job(job.id) is job

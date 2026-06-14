@@ -44,3 +44,30 @@ test("tokenizer dataloader filters serialize as legacy tuple filters", () => {
   const datasets = config.datasets as Array<Record<string, unknown>>;
   assert.deepEqual(datasets[0].filters, [["score", ">=", 0.9]]);
 });
+
+test("tokenizer dataloader config never embeds the UI HF token", () => {
+  const dataset: DatasetFormState = {
+    sourceMode: "streaming_hf",
+    localTrainFiles: [],
+    hfToken: "hf_private_secret",
+    streamingDatasets: [
+      {
+        id: "a",
+        name: "private-dataset",
+        config: "",
+        split: "train",
+        textColumns: "text",
+        weight: "1",
+        filters: [],
+      },
+    ],
+  };
+  const training: TrainingFormState = {
+    budgetLimit: "1000",
+    budgetUnit: "chars",
+    budgetBehavior: "truncate",
+    evaluationThresholds: "5,10",
+  };
+
+  assert.equal(JSON.stringify(buildDataloaderConfigFromForm(dataset, training)).includes("hf_private_secret"), false);
+});

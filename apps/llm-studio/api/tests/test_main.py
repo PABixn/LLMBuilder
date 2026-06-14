@@ -27,6 +27,18 @@ class FakeProcess:
     def terminate(self) -> None:
         self._returncode = 2
 
+    def send_signal(self, _signal: int) -> None:
+        self._returncode = 2
+
+    def kill(self) -> None:
+        self._returncode = -9
+
+    def wait(self, timeout: float | None = None) -> int:
+        del timeout
+        if self._returncode is None:
+            self._returncode = 0
+        return self._returncode
+
 
 def _load_app_module() -> object:
     import app.main as main_module
@@ -524,6 +536,13 @@ def test_health_and_static_fallback(monkeypatch, tmp_path: Path) -> None:
         encoding="utf-8",
     )
     (web_dist / "asset.txt").write_text("asset-ok", encoding="utf-8")
+    outside = tmp_path / "outside.txt"
+    outside.write_text("must-not-be-served", encoding="utf-8")
+    linked_asset = web_dist / "linked.txt"
+    try:
+        linked_asset.symlink_to(outside)
+    except OSError:
+        linked_asset = None
 
     monkeypatch.setenv("LLM_STUDIO_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("LLM_STUDIO_WEB_DIST_DIR", str(web_dist))
@@ -539,7 +558,12 @@ def test_health_and_static_fallback(monkeypatch, tmp_path: Path) -> None:
 
         api_health = client.get("/api/v1/health")
         assert api_health.status_code == 200
-        assert api_health.json() == {"ok": True}
+        readiness = api_health.json()
+        assert readiness["ok"] is True
+        assert readiness["ready"] is True
+        assert readiness["startup_stage"] == "ready"
+        assert readiness["api_contract_version"] == "1"
+        assert readiness["compute"]["cpu"] is True
         tokenizer_health = client.get("/api/v1/tokenizer/health")
         assert tokenizer_health.status_code == 200
         assert tokenizer_health.json() == {"ok": True}
@@ -561,6 +585,71 @@ def test_health_and_static_fallback(monkeypatch, tmp_path: Path) -> None:
 
         missing_api = client.get("/api/v1/unknown-route")
         assert missing_api.status_code == 404
+        assert client.get("/api/not-a-static-route").status_code == 404
+        assert client.get("/missing.js").status_code == 404
+        assert client.get("/%2e%2e/outside.txt").status_code == 404
+        if linked_asset is not None:
+            assert client.get("/linked.txt").status_code == 404
+
+
+def test_desktop_runtime_token_protects_readiness_and_api(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("LLM_STUDIO_DESKTOP", "1")
+    monkeypatch.setenv("LLM_STUDIO_RUNTIME_TOKEN", "memory-only-test-token")
+    monkeypatch.setenv("LLM_STUDIO_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("LLM_STUDIO_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("LLM_STUDIO_LOG_DIR", str(tmp_path / "logs"))
+    config.reset_settings_cache()
+
+    module = _load_app_module()
+
+    with TestClient(module.app) as client:
+        assert client.get("/health").status_code == 200
+        assert client.get("/api/v1/health").status_code == 401
+        assert (
+            client.get(
+                "/api/v1/health",
+                headers={"X-Studio-Token": "memory-only-test-token"},
+            ).status_code
+            == 401
+        )
+        authorized = client.get(
+            "/api/v1/health",
+            headers={"X-LLM-Studio-Token": "memory-only-test-token"},
+        )
+        assert authorized.status_code == 200
+        assert authorized.json()["desktop_mode"] is True
+        assert authorized.json()["migration_status"]["schema_version"] == 3
+
+        allowed_preflight = client.options(
+            "/api/v1/health",
+            headers={
+                "Origin": "tauri://localhost",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "X-LLM-Studio-Token",
+            },
+        )
+        assert allowed_preflight.status_code == 200
+        assert allowed_preflight.headers["access-control-allow-origin"] == "tauri://localhost"
+
+        legacy_header_preflight = client.options(
+            "/api/v1/health",
+            headers={
+                "Origin": "tauri://localhost",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "X-Studio-Token",
+            },
+        )
+        assert legacy_header_preflight.status_code == 400
+
+        untrusted_origin = client.options(
+            "/api/v1/health",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "X-LLM-Studio-Token",
+            },
+        )
+        assert untrusted_origin.status_code == 400
 
 
 def test_tokenizer_endpoints_validate_and_file_stats(monkeypatch, tmp_path: Path) -> None:
@@ -590,14 +679,20 @@ def test_tokenizer_endpoints_validate_and_file_stats(monkeypatch, tmp_path: Path
         assert tokenizer_validation_body["valid"] is True
         assert isinstance(tokenizer_validation_body["normalized_config"], dict)
 
+        hf_token = "hf_0123456789abcdef0123456789abcdef"
+        credentialed_dataloader = json.loads(
+            json.dumps(template_payload["dataloader_config_template"])
+        )
+        credentialed_dataloader["datasets"][0]["hf_token"] = hf_token
         dataloader_validation = client.post(
             "/api/v1/tokenizer/validate/dataloader",
-            json={"config": template_payload["dataloader_config_template"]},
+            json={"config": credentialed_dataloader},
         )
         assert dataloader_validation.status_code == 200
         dataloader_validation_body = dataloader_validation.json()
         assert dataloader_validation_body["valid"] is True
         assert isinstance(dataloader_validation_body["normalized_config"], dict)
+        assert hf_token not in dataloader_validation.text
 
         file_stats = client.get(
             "/api/v1/tokenizer/files/stats",
@@ -681,24 +776,29 @@ def test_training_endpoints_validate_and_preflight(monkeypatch, tmp_path: Path) 
         assert validate_training.status_code == 200
         assert validate_training.json()["valid"] is True
 
+        hf_token = "hf_0123456789abcdef0123456789abcdef"
+        credentialed_payload = json.loads(json.dumps(payload))
+        credentialed_payload["dataloader_config"]["datasets"][0]["hf_token"] = hf_token
         validate_dataloader = client.post(
             "/api/v1/training/validate/dataloader",
-            json={"config": payload["dataloader_config"]},
+            json={"config": credentialed_payload["dataloader_config"]},
         )
         assert validate_dataloader.status_code == 200
         assert validate_dataloader.json()["valid"] is True
+        assert hf_token not in validate_dataloader.text
 
         preflight = client.post(
             "/api/v1/training/validate/preflight",
             json={
                 "project_id": project_id,
                 "tokenizer_job_id": "completed-tokenizer",
-                **payload,
+                **credentialed_payload,
             },
         )
         assert preflight.status_code == 200
         preflight_body = preflight.json()
         assert preflight_body["valid"] is True
+        assert hf_token not in preflight.text
         assert preflight_body["compatibility"]["tokenizer_vocab_size"] == 3
         assert preflight_body["compatibility"]["model_vocab_size"] == 3
         assert preflight_body["derived_runtime"]["micro_batch_size"] > 0
@@ -1205,3 +1305,63 @@ def test_tokenizer_job_delete_endpoint(monkeypatch, tmp_path: Path) -> None:
 
         missing = client.get("/api/v1/tokenizer/jobs/completed-job")
         assert missing.status_code == 404
+
+
+def test_tokenizer_artifact_endpoints_reject_stored_path_escape(monkeypatch, tmp_path: Path) -> None:
+    from app.tokenizer_models import JobStatus
+    from app.tokenizer_storage import StoredJob
+
+    data_dir = tmp_path / "data"
+    outside_artifact = tmp_path / "outside-tokenizer.json"
+    outside_artifact.write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("LLM_STUDIO_DATA_DIR", str(data_dir))
+    config.reset_settings_cache()
+    module = _load_app_module()
+    now = datetime.now(timezone.utc)
+
+    with TestClient(module.app) as client:
+        module.app.state.tokenizer_store.create_job(
+            StoredJob(
+                id="escaped-job",
+                status=JobStatus.completed,
+                stage="Completed",
+                progress=1.0,
+                created_at=now,
+                started_at=now,
+                finished_at=now,
+                tokenizer_config={"name": "escaped"},
+                dataloader_config={"source": "local"},
+                evaluation_thresholds=[5],
+                evaluation_text_path="__training_dataset__",
+                artifact_file=outside_artifact.name,
+                artifact_path=str(outside_artifact),
+                stats=None,
+                error=None,
+            )
+        )
+
+        assert client.get("/api/v1/tokenizer/jobs/escaped-job/artifact").status_code == 409
+        assert client.delete("/api/v1/tokenizer/jobs/escaped-job").status_code == 409
+        assert outside_artifact.exists()
+
+
+def test_project_symlink_escape_is_not_served_or_deleted(monkeypatch, tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    projects = data_dir / "projects"
+    projects.mkdir(parents=True)
+    outside = tmp_path / "outside-project"
+    outside.mkdir()
+    (outside / "keep.txt").write_text("keep", encoding="utf-8")
+    try:
+        (projects / "project123").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        return
+
+    monkeypatch.setenv("LLM_STUDIO_DATA_DIR", str(data_dir))
+    config.reset_settings_cache()
+    module = _load_app_module()
+
+    with TestClient(module.app) as client:
+        assert client.get("/api/v1/projects/project123").status_code == 404
+        assert client.delete("/api/v1/projects/project123").status_code == 404
+    assert (outside / "keep.txt").exists()

@@ -1,17 +1,18 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { 
-  FiDownload, 
-  FiSearch, 
-  FiFilter, 
-  FiTrash2, 
+import {
+  FiDownload,
+  FiSearch,
+  FiFilter,
+  FiTrash2,
   FiChevronDown,
   FiBox,
   FiCpu,
   FiActivity,
   FiLayers,
-  FiArrowRight
+  FiArrowRight,
+  FiFolder,
 } from "react-icons/fi";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,8 @@ import {
   type WorkspaceAsset,
   type WorkspaceAssetInventory,
 } from "../../lib/workspaceAssets";
+import { downloadApiArtifact, revealApiArtifact } from "../../lib/downloads";
+import { getRuntimeConfig } from "../../lib/runtimeConfig";
 import { HelpTooltip, InfoTooltip } from "../shared/components/HelpTooltip";
 import styles from "../workspace-home.module.css";
 
@@ -56,6 +59,10 @@ export function WorkspaceAssetManager({
   const hasAssets = inventory.assets.length > 0;
   const showLoadingState = inventory.loading && inventory.lastRefreshedAt === null;
   const showSectionHeader = hasAssets;
+  const runtimeConfig = getRuntimeConfig();
+  const canRevealArtifacts =
+    runtimeConfig.environment === "desktop" &&
+    runtimeConfig.capabilities.reveal_artifact;
 
   const filteredAndSortedAssets = useMemo(() => {
     let result = [...inventory.assets];
@@ -102,6 +109,33 @@ export function WorkspaceAssetManager({
       } catch (err) {
         alert(err instanceof Error ? err.message : "Could not delete this item.");
       }
+    }
+  };
+
+  const handleDownload = async (asset: WorkspaceAsset, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!asset.downloadPath) {
+      return;
+    }
+    try {
+      await downloadApiArtifact(
+        asset.downloadPath,
+        asset.fileName || `${asset.name.replace(/[^a-zA-Z0-9._-]+/g, "-")}.json`
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not download this item.");
+    }
+  };
+
+  const handleReveal = async (asset: WorkspaceAsset, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!asset.downloadPath) {
+      return;
+    }
+    try {
+      await revealApiArtifact(asset.downloadPath);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not reveal this item.");
     }
   };
 
@@ -240,8 +274,8 @@ export function WorkspaceAssetManager({
           : hasAssets ? (
               filteredAndSortedAssets.length > 0 ? (
                 filteredAndSortedAssets.map((asset) => (
-                  <div 
-                    key={`${asset.type}-${asset.id}`} 
+                  <div
+                    key={`${asset.type}-${asset.id}`}
                     className={styles.assetCard}
                     onClick={() => handleCardClick(asset)}
                     role="button"
@@ -266,7 +300,7 @@ export function WorkspaceAssetManager({
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className={styles.assetInfo}>
                        <div className={styles.assetAge}>
                         {formatAge(asset.createdAt)}
@@ -304,16 +338,29 @@ export function WorkspaceAssetManager({
                         </HelpTooltip>
                       ) : null}
 
-                      {asset.downloadUrl ? (
+                      {asset.downloadPath ? (
                         <HelpTooltip label="Download asset" content="Downloads this asset bundle or file from the backend when a download URL is available.">
-                          <a
-                            href={asset.downloadUrl}
-                            download={asset.fileName ?? undefined}
+                          <button
+                            type="button"
                             className={styles.actionButton}
                             aria-label={`Download ${asset.name}`}
+                            onClick={(event) => void handleDownload(asset, event)}
                           >
                             <FiDownload />
-                          </a>
+                          </button>
+                        </HelpTooltip>
+                      ) : null}
+
+                      {asset.downloadPath && canRevealArtifacts ? (
+                        <HelpTooltip label="Reveal asset" content="Opens the managed folder containing this asset in the desktop app.">
+                          <button
+                            type="button"
+                            className={styles.actionButton}
+                            aria-label={`Reveal ${asset.name}`}
+                            onClick={(event) => void handleReveal(asset, event)}
+                          >
+                            <FiFolder />
+                          </button>
                         </HelpTooltip>
                       ) : null}
 

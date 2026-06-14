@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import codecs
 from collections import Counter, defaultdict
+import logging
 import re
 import shutil
-import sys
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -30,14 +30,17 @@ from .config import (
     ensure_runtime_directories,
     get_settings,
     tokenizer_upload_dir,
+    validate_runtime_storage,
 )
 from .models import (
+    ActiveJobsResponse,
     AnalyzeModelRequest,
     AnalyzeModelResponse,
     ConfigSchemasResponse,
     ConfigTemplatesResponse,
     CreateProjectRequest,
     HealthResponse,
+    ReadinessResponse,
     ModelAnalysisSummary,
     ParameterBreakdownEntry,
     ProjectDetailResponse,
@@ -46,6 +49,24 @@ from .models import (
     ValidateModelRequest,
     ValidateModelResponse,
     ValidationIssue,
+)
+from .desktop_runtime import (
+    active_job_payload,
+    begin_startup,
+    readiness_payload,
+    set_migration_status,
+    set_startup_status,
+    startup_timing_payload,
+)
+from .data_migrations import prepare_data_schema
+from .dataset_credentials import strip_hf_tokens
+from .runtime_paths import ensure_source_root_on_path, validate_runtime_resources
+from .storage_safety import (
+    InsufficientStorageError,
+    ManagedDatabaseError,
+    ManagedStorageError,
+    ensure_free_space,
+    require_managed_path,
 )
 from .tokenizer_jobs import TrainingJobManager
 from .tokenizer_models import (
@@ -67,9 +88,7 @@ from .training_runs.store import TrainingStudioStore
 from .training_runs.routes import register_training_routes
 from .schemas import load_json, write_json
 
-IMPORT_ROOT = Path(__file__).resolve().parents[4]
-if str(IMPORT_ROOT) not in sys.path:
-    sys.path.append(str(IMPORT_ROOT))
+IMPORT_ROOT = ensure_source_root_on_path()
 
 from model.loader import (
     ActivationComponent,
@@ -92,6 +111,7 @@ _PROJECT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{6,64}$")
 _METADATA_FILE = "metadata.json"
 _ARTIFACT_FILE = "model_config.json"
 _FILENAME_SANITIZER = re.compile(r"[^a-zA-Z0-9._-]+")
+logger = logging.getLogger("llm_studio.backend")
 
 _PARAMETER_BREAKDOWN_LABELS: dict[str, str] = {
     "embeddings": "Token Embeddings",
@@ -108,21 +128,22 @@ _PARAMETER_BREAKDOWN_LABELS: dict[str, str] = {
 
 
 class RuntimeTokenMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: FastAPI, token: str) -> None:
+    def __init__(self, app: FastAPI, token: str, accepted_headers: tuple[str, ...]) -> None:
         super().__init__(app)
         self._token = token
+        self._accepted_headers = accepted_headers
 
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]
         path = request.url.path
         if not path.startswith("/api/v1"):
             return await call_next(request)
-        if path in {"/api/v1/health", "/api/v1/tokenizer/health", "/api/v1/training/health"}:
-            return await call_next(request)
-
-        provided = (
-            request.headers.get("X-Studio-Token")
-            or request.headers.get("X-LLM-Studio-Token")
-            or request.headers.get("X-Tokenizer-Studio-Token")
+        provided = next(
+            (
+                value
+                for header in self._accepted_headers
+                if (value := request.headers.get(header)) is not None
+            ),
+            None,
         )
         if provided != self._token:
             return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
@@ -132,8 +153,25 @@ class RuntimeTokenMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    begin_startup()
+    logger.info("Backend startup began.", extra={"event_id": "backend.startup.begin"})
+    set_startup_status("validating_runtime", "Validating packaged runtime resources.")
+    validate_runtime_resources()
+    set_startup_status("initializing_data", "Preparing managed data directories and stores.")
     apply_runtime_environment(settings)
     ensure_runtime_directories(settings)
+    if settings.desktop_mode:
+        validate_runtime_storage(settings)
+    set_startup_status("migrating_data", "Checking data schema and legacy managed files.")
+    migration_status = prepare_data_schema(settings)
+    set_migration_status(migration_status)
+    logger.info(
+        "Data schema is ready.",
+        extra={
+            "event_id": "backend.data_schema.ready",
+            "event_fields": {"migration_status": migration_status},
+        },
+    )
     tokenizer_store = TokenizerStudioStore()
     training_store = TrainingStudioStore()
     tokenizer_store.initialize()
@@ -159,11 +197,23 @@ async def lifespan(app: FastAPI):
         store=training_store,
         tokenizer_store=tokenizer_store,
     )
+    set_startup_status("ready", "Backend API is ready.", ready=True)
+    logger.info(
+        "Backend API is ready.",
+        extra={
+            "event_id": "backend.startup.ready",
+            "event_fields": {"startup_timing": startup_timing_payload()},
+        },
+    )
     yield
+    set_startup_status("stopping", "Stopping jobs and closing managed stores.")
+    logger.info("Backend shutdown began.", extra={"event_id": "backend.shutdown.begin"})
     app.state.training_jobs.shutdown()
     app.state.tokenizer_jobs.shutdown()
     app.state.training_store.dispose()
     app.state.tokenizer_store.dispose()
+    set_startup_status("stopped", "Backend API stopped.")
+    logger.info("Backend shutdown completed.", extra={"event_id": "backend.shutdown.complete"})
 
 
 app = FastAPI(
@@ -175,19 +225,46 @@ app = FastAPI(
 
 _settings = get_settings()
 if _settings.runtime_token is not None:
-    app.add_middleware(RuntimeTokenMiddleware, token=_settings.runtime_token)
+    app.add_middleware(
+        RuntimeTokenMiddleware,
+        token=_settings.runtime_token,
+        accepted_headers=(
+            ("X-LLM-Studio-Token",)
+            if _settings.desktop_mode
+            else ("X-LLM-Studio-Token", "X-Studio-Token", "X-Tokenizer-Studio-Token")
+        ),
+    )
+
+_allowed_headers = ["Accept", "Content-Type", "X-LLM-Studio-Token"]
+if not _settings.desktop_mode:
+    _allowed_headers.extend(["X-Studio-Token", "X-Tokenizer-Studio-Token"])
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(_settings.cors_allowed_origins),
     allow_origin_regex=_settings.cors_allow_origin_regex,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=_allowed_headers,
 )
 
 api = APIRouter(prefix="/api/v1", tags=["llm-studio"])
 tokenizer_api = APIRouter(prefix="/api/v1/tokenizer", tags=["tokenizer-workspace"])
+
+
+@app.exception_handler(InsufficientStorageError)
+async def insufficient_storage(_request: Request, exc: InsufficientStorageError) -> JSONResponse:
+    return JSONResponse(status_code=507, content={"detail": str(exc)})
+
+
+@app.exception_handler(ManagedStorageError)
+async def managed_storage_error(_request: Request, exc: ManagedStorageError) -> JSONResponse:
+    return JSONResponse(status_code=507, content={"detail": str(exc)})
+
+
+@app.exception_handler(ManagedDatabaseError)
+async def managed_database_error(_request: Request, exc: ManagedDatabaseError) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
@@ -195,9 +272,14 @@ def health_root() -> HealthResponse:
     return HealthResponse()
 
 
-@api.get("/health", response_model=HealthResponse)
-def health() -> HealthResponse:
-    return HealthResponse()
+@api.get("/health", response_model=ReadinessResponse)
+def health(request: Request) -> ReadinessResponse:
+    return ReadinessResponse.model_validate(readiness_payload(request.app.state.settings))
+
+
+@api.get("/desktop/active-jobs", response_model=ActiveJobsResponse)
+def desktop_active_jobs(request: Request) -> ActiveJobsResponse:
+    return ActiveJobsResponse.model_validate(active_job_payload(request.app.state))
 
 
 @api.get("/config/templates", response_model=ConfigTemplatesResponse)
@@ -222,7 +304,11 @@ async def _store_uploaded_text_file(file: UploadFile) -> UploadedTrainFileRespon
         raise HTTPException(status_code=400, detail="Uploaded file must have a filename")
 
     target_dir = tokenizer_upload_dir()
-    target_dir.mkdir(parents=True, exist_ok=True)
+    ensure_free_space(
+        target_dir,
+        minimum_free_bytes=64 * 1024 * 1024,
+        operation="dataset upload",
+    )
 
     safe_name = _sanitize_uploaded_filename(original_name)
     target_path = target_dir / f"{uuid4().hex[:12]}-{safe_name}"
@@ -334,7 +420,7 @@ def validate_dataloader(payload: ValidateConfigRequest) -> ValidateConfigRespons
         normalized = DataloaderConfig.model_validate(payload.config).model_dump(mode="json")
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
-    return ValidateConfigResponse(normalized_config=normalized)
+    return ValidateConfigResponse(normalized_config=strip_hf_tokens(normalized))
 
 
 @tokenizer_api.post("/files/train", response_model=UploadedTrainFileResponse, status_code=201)
@@ -375,6 +461,8 @@ def create_tokenizer_job(payload: TrainTokenizerRequest) -> TrainingJobResponse:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except InsufficientStorageError as exc:
+        raise HTTPException(status_code=507, detail=str(exc)) from exc
 
 
 @tokenizer_api.get("/jobs", response_model=TrainingJobsListResponse)
@@ -402,7 +490,7 @@ def delete_tokenizer_job(job_id: str) -> Response:
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return Response(status_code=204)
 
 
@@ -431,6 +519,8 @@ def tokenizer_artifact_meta(job_id: str) -> ArtifactMetadataResponse:
         raise HTTPException(status_code=404, detail=f"Unknown job id: {job_id}") from exc
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return ArtifactMetadataResponse.from_path(job_id, path)
 
 
@@ -443,6 +533,8 @@ def tokenizer_artifact_download(job_id: str) -> FileResponse:
         raise HTTPException(status_code=404, detail=f"Unknown job id: {job_id}") from exc
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return FileResponse(path, filename=path.name, media_type="application/json")
 
 
@@ -764,7 +856,14 @@ def _assert_valid_project_id(project_id: str) -> None:
 
 def _project_dir(project_id: str) -> Path:
     _assert_valid_project_id(project_id)
-    return _projects_root() / project_id
+    try:
+        return require_managed_path(
+            _projects_root() / project_id,
+            _projects_root(),
+            description="project directory",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Project not found") from exc
 
 
 def _project_metadata_path(project_id: str) -> Path:
@@ -815,6 +914,11 @@ def _load_project_detail(project_id: str) -> ProjectDetailResponse:
 @api.post("/projects", response_model=ProjectDetailResponse, status_code=201)
 def create_project(payload: CreateProjectRequest) -> ProjectDetailResponse:
     _, normalized, warnings, errors = _parse_and_validate_payload_model(payload.model_payload)
+    ensure_free_space(
+        _projects_root(),
+        minimum_free_bytes=16 * 1024 * 1024,
+        operation="project creation",
+    )
 
     project_id = uuid4().hex[:12]
     created_at = datetime.now(timezone.utc).isoformat()
@@ -844,6 +948,11 @@ def create_project(payload: CreateProjectRequest) -> ProjectDetailResponse:
 
 @api.put("/projects/{project_id}", response_model=ProjectDetailResponse)
 def update_project(project_id: str, payload: CreateProjectRequest) -> ProjectDetailResponse:
+    ensure_free_space(
+        _projects_root(),
+        minimum_free_bytes=16 * 1024 * 1024,
+        operation="project update",
+    )
     project_dir = _project_dir(project_id)
     metadata_path = project_dir / _METADATA_FILE
     artifact_path = project_dir / _ARTIFACT_FILE
@@ -954,7 +1063,14 @@ if _settings.serve_web and _settings.web_index_path.exists():
         if ".." in normalized.parts:
             raise HTTPException(status_code=404, detail="Not Found")
 
-        candidate = _settings.web_dist_dir / normalized
+        try:
+            candidate = require_managed_path(
+                _settings.web_dist_dir / normalized,
+                _settings.web_dist_dir,
+                description="static web asset",
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail="Not Found") from exc
         if candidate.is_file():
             return FileResponse(candidate)
         if normalized.suffix != "":

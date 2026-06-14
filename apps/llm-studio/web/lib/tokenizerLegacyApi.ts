@@ -1,3 +1,8 @@
+import {
+  apiBaseUrl as runtimeApiBaseUrl,
+  runtimeJsonRequest,
+} from "./runtimeConfig";
+
 export type JobStatus = "pending" | "running" | "completed" | "failed";
 export type JobState =
   | "queued"
@@ -74,25 +79,8 @@ export interface UploadedTrainFile {
   size_chars: number;
 }
 
-const API_BASE =
-  resolveApiBaseUrl();
-const RUNTIME_TOKEN =
-  process.env.NEXT_PUBLIC_RUNTIME_TOKEN &&
-  process.env.NEXT_PUBLIC_RUNTIME_TOKEN.trim() !== ""
-    ? process.env.NEXT_PUBLIC_RUNTIME_TOKEN.trim()
-    : null;
-
 function resolveApiBaseUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (explicit && explicit.trim() !== "") {
-    return normalizeApiBaseUrl(explicit.trim());
-  }
-
-  if (process.env.NODE_ENV === "development") {
-    return "http://127.0.0.1:8000/api/v1/tokenizer";
-  }
-
-  return "/api/v1/tokenizer";
+  return normalizeApiBaseUrl(runtimeApiBaseUrl());
 }
 
 function normalizeApiBaseUrl(value: string): string {
@@ -104,64 +92,12 @@ function normalizeApiBaseUrl(value: string): string {
       : `${trimmed}/api/v1/tokenizer`;
 }
 
-async function readErrorDetail(response: Response): Promise<string> {
-  let detail = `Request failed (${response.status})`;
-  try {
-    const body = await response.json();
-    if (typeof body?.detail === "string") {
-      detail = body.detail;
-    } else if (Array.isArray(body?.detail)) {
-      detail = body.detail
-        .map((item: { loc?: unknown; msg?: unknown }) => {
-          const location = Array.isArray(item?.loc)
-            ? item.loc.join(".")
-            : "unknown";
-          const message =
-            typeof item?.msg === "string" ? item.msg : "Validation error";
-          return `${location}: ${message}`;
-        })
-        .join("; ");
-    }
-  } catch {
-    // keep fallback detail
-  }
-  return detail;
-}
-
-function applyRuntimeHeaders(headers: Headers): void {
-  if (RUNTIME_TOKEN && !headers.has("X-Tokenizer-Studio-Token")) {
-    headers.set("X-Tokenizer-Studio-Token", RUNTIME_TOKEN);
-  }
-}
-
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = new Headers(init?.headers ?? {});
-  const hasFormDataBody =
-    typeof FormData !== "undefined" && init?.body instanceof FormData;
-  if (init?.body && !hasFormDataBody && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-  applyRuntimeHeaders(headers);
-
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorDetail(response));
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
+  return runtimeJsonRequest<T>(`/tokenizer${path}`, init);
 }
 
 export function apiBaseUrl(): string {
-  return API_BASE;
+  return resolveApiBaseUrl();
 }
 
 export async function fetchConfigTemplates(): Promise<ConfigTemplates> {
@@ -213,6 +149,7 @@ export async function fetchLocalTrainFileStats(
 export async function createTrainingJob(payload: {
   tokenizer_config: Record<string, unknown>;
   dataloader_config: Record<string, unknown>;
+  hf_token?: string | null;
   evaluation_thresholds: number[];
 }): Promise<TrainingJob> {
   return request<TrainingJob>("/jobs", {
@@ -244,25 +181,4 @@ export async function previewJobTokenizer(
     method: "POST",
     body: JSON.stringify(payload),
   });
-}
-
-export async function downloadJobArtifact(jobId: string): Promise<Blob> {
-  const headers = new Headers();
-  applyRuntimeHeaders(headers);
-
-  const response = await fetch(`${API_BASE}/jobs/${jobId}/artifact`, {
-    method: "GET",
-    headers,
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorDetail(response));
-  }
-
-  return response.blob();
-}
-
-export function artifactDownloadUrl(jobId: string): string {
-  return `${API_BASE}/jobs/${jobId}/artifact`;
 }

@@ -8,16 +8,26 @@ import {
   type SetStateAction,
 } from "react";
 
-export type ThemeMode = "white" | "dark";
+import {
+  LEGACY_THEME_STORAGE_KEYS,
+  THEME_STORAGE_KEY,
+  isThemeMode,
+  migrateStoredTheme,
+  writeStoredTheme,
+  type ThemeMode,
+} from "./themeStorage";
 
-export const THEME_STORAGE_KEY = "llm-studio-theme";
+export { THEME_STORAGE_KEY, type ThemeMode } from "./themeStorage";
 const THEME_CHANGED_EVENT = "llm-studio:theme-change";
 
-function isThemeMode(value: unknown): value is ThemeMode {
-  return value === "dark" || value === "white";
-}
+function readThemeMode(legacyStorageKeys: readonly string[]): ThemeMode {
+  if (typeof window !== "undefined") {
+    const storedTheme = migrateStoredTheme(window.localStorage, legacyStorageKeys);
+    if (storedTheme !== null) {
+      return storedTheme;
+    }
+  }
 
-function readThemeMode(legacyStorageKeys: string[]): ThemeMode {
   if (typeof document !== "undefined") {
     const documentTheme = document.documentElement.dataset.theme;
     if (isThemeMode(documentTheme)) {
@@ -25,33 +35,16 @@ function readThemeMode(legacyStorageKeys: string[]): ThemeMode {
     }
   }
 
-  if (typeof window !== "undefined") {
-    for (const key of [THEME_STORAGE_KEY, ...legacyStorageKeys]) {
-      try {
-        const raw = window.localStorage.getItem(key);
-        if (isThemeMode(raw)) {
-          return raw;
-        }
-      } catch {
-        // Ignore local storage failures in local workspace mode.
-      }
-    }
-  }
-
   return "white";
 }
 
-function applyThemeMode(theme: ThemeMode): void {
+function applyThemeMode(theme: ThemeMode, legacyStorageKeys: readonly string[]): void {
   if (typeof document !== "undefined") {
     document.documentElement.dataset.theme = theme;
   }
 
   if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch {
-      // Ignore local storage failures in local workspace mode.
-    }
+    writeStoredTheme(window.localStorage, theme, legacyStorageKeys);
 
     window.dispatchEvent(
       new CustomEvent<ThemeMode>(THEME_CHANGED_EVENT, {
@@ -64,14 +57,16 @@ function applyThemeMode(theme: ThemeMode): void {
 export function useThemeMode(options: {
   legacyStorageKeys?: string[];
 } = {}): [ThemeMode, Dispatch<SetStateAction<ThemeMode>>] {
-  const legacyStorageKeys = options.legacyStorageKeys ?? [];
+  const legacyStorageKeys = Array.from(
+    new Set([...LEGACY_THEME_STORAGE_KEYS, ...(options.legacyStorageKeys ?? [])])
+  );
   const legacyStorageKeySignature = legacyStorageKeys.join("|");
   const [theme, setThemeState] = useState<ThemeMode>("white");
 
   useLayoutEffect(() => {
     const nextTheme = readThemeMode(legacyStorageKeys);
     setThemeState((current) => (current === nextTheme ? current : nextTheme));
-    applyThemeMode(nextTheme);
+    applyThemeMode(nextTheme, legacyStorageKeys);
   }, [legacyStorageKeySignature]);
 
   useEffect(() => {
@@ -85,7 +80,7 @@ export function useThemeMode(options: {
 
       const nextTheme = readThemeMode(legacyStorageKeys);
       setThemeState((current) => (current === nextTheme ? current : nextTheme));
-      applyThemeMode(nextTheme);
+      applyThemeMode(nextTheme, legacyStorageKeys);
     }
 
     function handleThemeChange(event: Event): void {
@@ -107,7 +102,7 @@ export function useThemeMode(options: {
   const setTheme: Dispatch<SetStateAction<ThemeMode>> = (value) => {
     setThemeState((current) => {
       const nextTheme = typeof value === "function" ? value(current) : value;
-      applyThemeMode(nextTheme);
+      applyThemeMode(nextTheme, legacyStorageKeys);
       return nextTheme;
     });
   };

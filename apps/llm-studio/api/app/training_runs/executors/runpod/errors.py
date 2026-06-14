@@ -4,6 +4,8 @@ import json
 from typing import Any
 from urllib.error import HTTPError
 
+from ....logging_config import redact_secrets, redact_value
+
 
 class RemoteAgentError(RuntimeError):
     def __init__(
@@ -14,9 +16,9 @@ class RemoteAgentError(RuntimeError):
         payload: Any = None,
         retryable: bool = True,
     ) -> None:
-        super().__init__(message)
+        super().__init__(redact_secrets(message))
         self.status_code = status_code
-        self.payload = payload
+        self.payload = redact_value(payload)
         self.retryable = retryable
 
 

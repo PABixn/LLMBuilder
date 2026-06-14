@@ -267,6 +267,7 @@ class TrainingPreflightResponse(BaseModel):
 
 class CreateTrainingJobRequest(TrainingPreflightRequest):
     name: str | None = Field(default=None, max_length=200)
+    hf_token: str | None = Field(default=None, min_length=1)
     execution_target: TrainingExecutionTarget = Field(default_factory=TrainingExecutionTarget)
 
     @field_validator("name")

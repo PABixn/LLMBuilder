@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from tokenizers import Tokenizer
 
 from ...config import get_settings
+from ...dataset_credentials import strip_hf_tokens
 from ...tokenizer_storage import StudioStore as TokenizerStudioStore
 from ..schemas import (
     DerivedRuntimeSummary,
@@ -110,6 +111,7 @@ class TrainingPreflightService:
             parsed_dataloader_config = None
             normalized_dataloader_config = request.dataloader_config
             errors.append(issue("dataloader_config_invalid", str(exc), "$.dataloader_config"))
+        normalized_dataloader_config = strip_hf_tokens(normalized_dataloader_config)
 
         compatibility = None
         derived_runtime = None

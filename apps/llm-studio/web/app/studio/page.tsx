@@ -7,7 +7,7 @@ import { StudioPageView } from "./components/StudioPageView";
 
 function StudioPageContent() {
   const controllerProps = useStudioPageController();
-  
+
   return (
     <StudioPageView {...controllerProps} />
   );

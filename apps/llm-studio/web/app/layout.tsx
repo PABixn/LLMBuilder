@@ -1,19 +1,7 @@
 import type { Metadata } from "next";
-import { Sora, IBM_Plex_Mono } from "next/font/google";
+import { THEME_BOOTSTRAP_SCRIPT } from "../lib/themeStorage";
+import { RuntimeConfigGate } from "./shared/components/RuntimeConfigGate";
 import "./globals.css";
-
-const sora = Sora({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  weight: ["400", "500", "600"],
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "LLM Builder",
@@ -38,15 +26,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${sora.variable} ${ibmPlexMono.variable}`} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("llm-studio-theme");if(t==="dark")document.documentElement.dataset.theme="dark";}catch(e){}})();`,
+            __html: THEME_BOOTSTRAP_SCRIPT,
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <RuntimeConfigGate>{children}</RuntimeConfigGate>
+      </body>
     </html>
   );
 }

@@ -2,9 +2,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { apiBaseUrl, deleteProject, fetchProject, fetchProjects, type ProjectSummary, updateProject } from "./api";
+import { deleteProject, fetchProject, fetchProjects, type ProjectSummary, updateProject } from "./api";
 import {
-  artifactDownloadUrl as tokenizerArtifactDownloadUrl,
   deleteTrainingJob as deleteTokenizerJob,
   fetchTrainingJobs as fetchTokenizerJobs,
   type TrainingJob as TokenizerTrainingJob,
@@ -13,7 +12,6 @@ import {
   deleteTrainingJob as deleteModelTrainingJob,
   fetchTrainingJobs as fetchModelTrainingJobs,
 } from "./training/jobs";
-import { trainingArtifactDownloadUrl } from "./training/artifacts";
 import type { TrainingJob as ModelTrainingJob } from "./training/types";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -29,7 +27,7 @@ export type WorkspaceAsset = {
   type: "model" | "tokenizer" | "training_run";
   createdAt: string;
   size?: number;
-  downloadUrl?: string;
+  downloadPath?: string;
   fileName?: string | null;
   status?: string;
   subtitle?: string;
@@ -180,12 +178,6 @@ export function invalidateWorkspaceAssetInventory(): void {
   dispatchWorkspaceAssetChange({ type: "invalidate" });
 }
 
-function modelArtifactDownloadUrl(projectId: string): string {
-  const base = apiBaseUrl();
-  const resolvedBase = base === "" ? "/api/v1" : base;
-  return `${resolvedBase}/projects/${projectId}/artifact`;
-}
-
 function tokenizerName(job: TokenizerTrainingJob): string {
   const rawName = job.tokenizer_config.name;
   if (typeof rawName === "string" && rawName.trim() !== "") {
@@ -217,7 +209,7 @@ function buildAssets(
     type: "model",
     createdAt: project.created_at,
     size: project.size_bytes,
-    downloadUrl: modelArtifactDownloadUrl(project.id),
+    downloadPath: `/projects/${project.id}/artifact`,
     fileName: project.artifact_file,
     status: "READY",
   }));
@@ -228,7 +220,7 @@ function buildAssets(
       name: tokenizerName(job),
       type: "tokenizer",
       createdAt: job.created_at,
-      downloadUrl: job.status === "completed" ? tokenizerArtifactDownloadUrl(job.id) : undefined,
+      downloadPath: job.status === "completed" ? `/tokenizer/jobs/${job.id}/artifact` : undefined,
       fileName: job.artifact_file,
       status: job.status.toUpperCase(),
       subtitle: "Tokenizer artifact",
@@ -240,7 +232,7 @@ function buildAssets(
     type: "training_run",
     createdAt: job.created_at,
     size: job.output_size_bytes,
-    downloadUrl: trainingArtifactDownloadUrl(job.id),
+    downloadPath: `/training/jobs/${job.id}/artifact`,
     fileName: job.artifact_bundle_file,
     status: job.status.toUpperCase(),
     subtitle: `${job.project_name} • ${job.tokenizer_name}`,
@@ -324,7 +316,7 @@ export function formatAge(isoLike: string): string {
 
   const diffMs = Date.now() - timestamp;
   const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
-  
+
   if (diffSeconds < 60) {
     if (diffSeconds < 5) return "just now";
     return `${diffSeconds}s ago`;
@@ -563,16 +555,18 @@ export function useWorkspaceAssetInventory(
         latestTokenizerJobsRef.current,
         latestTrainingJobsRef.current
       );
-      
+
       // Delete in parallel
-      await Promise.allSettled(allAssets.map(asset => 
-        asset.type === "model"
-          ? deleteProject(asset.id)
-          : asset.type === "tokenizer"
-            ? deleteTokenizerJob(asset.id)
-            : deleteModelTrainingJob(asset.id)
-      ));
-      
+      await Promise.allSettled(
+        allAssets.map((asset) =>
+          asset.type === "model"
+            ? deleteProject(asset.id)
+            : asset.type === "tokenizer"
+              ? deleteTokenizerJob(asset.id)
+              : deleteModelTrainingJob(asset.id)
+        )
+      );
+
       void loadSnapshot(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to delete all assets";

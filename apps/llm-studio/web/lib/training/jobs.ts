@@ -71,6 +71,7 @@ export async function createTrainingJob(
     tokenizer_job_id: string;
     training_config: Record<string, unknown>;
     dataloader_config: Record<string, unknown>;
+    hf_token?: string | null;
     name?: string | null;
     execution_target?: TrainingExecutionTarget;
   }
