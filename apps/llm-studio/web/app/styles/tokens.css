@@ -1,5 +1,7 @@
 :root {
   color-scheme: light;
+  --font-sans: "Avenir Next", "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Menlo, Consolas, monospace;
   --bg: #eef4fb;
   --bg-accent-a: #dceafc;
   --bg-accent-b: #d8f0e9;

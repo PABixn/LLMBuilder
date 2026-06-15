@@ -8,9 +8,14 @@ from typing import Any, Iterator, Literal
 
 from sqlalchemy import JSON, DateTime, Float, Index, Integer, String, Text, create_engine, event, select, update
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
-from .config import tokenizer_database_url
+from .config import get_settings, tokenizer_database_url
+from .dataset_credentials import strip_hf_tokens
+from .logging_config import redact_secrets
+from .managed_locations import encode_managed_location, resolve_managed_location
+from .storage_safety import database_unavailable_error, ensure_directory
 from .tokenizer_models import JobStatus
 
 UploadKind = Literal["train", "validation"]
@@ -79,8 +84,23 @@ class StoredJob:
 
 
 class StudioStore:
-    def __init__(self, url: str | None = None) -> None:
+    def __init__(
+        self,
+        url: str | None = None,
+        *,
+        sqlite_timeout_seconds: float = 5.0,
+        managed_root: Path | None = None,
+    ) -> None:
+        self._managed_root = (
+            managed_root.expanduser().resolve(strict=False)
+            if managed_root is not None
+            else get_settings().data_dir.expanduser().resolve(strict=False)
+            if url is None
+            else None
+        )
         self._url = url or tokenizer_database_url()
+        self._database_path = _sqlite_path_from_url(self._url)
+        self._sqlite_timeout_seconds = max(0.0, float(sqlite_timeout_seconds))
         self._engine = self._build_engine(self._url)
         self._session_factory = sessionmaker(
             bind=self._engine,
@@ -89,7 +109,11 @@ class StudioStore:
         )
 
     def initialize(self) -> None:
-        Base.metadata.create_all(self._engine)
+        try:
+            Base.metadata.create_all(self._engine)
+            self._sanitize_stored_secrets()
+        except SQLAlchemyError as exc:
+            raise database_unavailable_error("tokenizer", self._database_path) from exc
 
     def dispose(self) -> None:
         self._engine.dispose()
@@ -106,13 +130,13 @@ class StudioStore:
                     started_at=_ensure_optional_utc(job.started_at),
                     finished_at=_ensure_optional_utc(job.finished_at),
                     tokenizer_config=job.tokenizer_config,
-                    dataloader_config=job.dataloader_config,
+                    dataloader_config=strip_hf_tokens(job.dataloader_config),
                     evaluation_thresholds=[int(value) for value in job.evaluation_thresholds],
-                    evaluation_text_path=job.evaluation_text_path,
+                    evaluation_text_path=self._encode_path(job.evaluation_text_path),
                     artifact_file=job.artifact_file,
-                    artifact_path=job.artifact_path,
+                    artifact_path=self._encode_optional_path(job.artifact_path),
                     stats=job.stats,
-                    error=job.error,
+                    error=None if job.error is None else redact_secrets(job.error),
                 )
             )
 
@@ -121,21 +145,21 @@ class StudioStore:
             row = session.get(TrainingJobRow, job_id)
             if row is None:
                 return None
-            return _row_to_stored_job(row)
+            return _row_to_stored_job(row, self._managed_root)
 
     def list_jobs(self) -> list[StoredJob]:
         with self._session() as session:
             rows = session.scalars(
                 select(TrainingJobRow).order_by(TrainingJobRow.created_at.desc())
             ).all()
-            return [_row_to_stored_job(row) for row in rows]
+            return [_row_to_stored_job(row, self._managed_root) for row in rows]
 
     def delete_job(self, job_id: str) -> StoredJob | None:
         with self._session() as session:
             row = session.get(TrainingJobRow, job_id)
             if row is None:
                 return None
-            stored = _row_to_stored_job(row)
+            stored = _row_to_stored_job(row, self._managed_root)
             session.delete(row)
             session.flush()
             return stored
@@ -175,9 +199,7 @@ class StudioStore:
                 )
 
             if "artifact_path" in updates:
-                row.artifact_path = (
-                    None if updates["artifact_path"] is None else str(updates["artifact_path"])
-                )
+                row.artifact_path = self._encode_optional_path(updates["artifact_path"])
 
             if "stats" in updates:
                 stats = updates["stats"]
@@ -185,10 +207,17 @@ class StudioStore:
 
             if "error" in updates:
                 error = updates["error"]
-                row.error = None if error is None else str(error)
+                row.error = None if error is None else redact_secrets(str(error))
 
             session.flush()
-            return _row_to_stored_job(row)
+            return _row_to_stored_job(row, self._managed_root)
+
+    def _sanitize_stored_secrets(self) -> None:
+        with self._session() as session:
+            for row in session.scalars(select(TrainingJobRow)).all():
+                row.dataloader_config = strip_hf_tokens(dict(row.dataloader_config))
+                if row.error is not None:
+                    row.error = redact_secrets(row.error)
 
     def mark_incomplete_jobs_failed(self, reason: str) -> int:
         now = _utc_now()
@@ -222,7 +251,7 @@ class StudioStore:
                 UploadedFileRow(
                     kind=kind,
                     file_name=file_name,
-                    file_path=file_path,
+                    file_path=self._encode_path(file_path),
                     size_bytes=max(0, int(size_bytes)),
                     created_at=_utc_now(),
                 )
@@ -234,6 +263,12 @@ class StudioStore:
         try:
             yield session
             session.commit()
+        except SQLAlchemyError as exc:
+            try:
+                session.rollback()
+            except SQLAlchemyError:
+                pass
+            raise database_unavailable_error("tokenizer", self._database_path) from exc
         except Exception:
             session.rollback()
             raise
@@ -245,9 +280,10 @@ class StudioStore:
 
         if url.startswith("sqlite"):
             connect_args["check_same_thread"] = False
+            connect_args["timeout"] = self._sqlite_timeout_seconds
             db_file = _sqlite_path_from_url(url)
             if db_file is not None:
-                db_file.parent.mkdir(parents=True, exist_ok=True)
+                ensure_directory(db_file.parent, operation="tokenizer database initialization")
 
         engine = create_engine(
             url,
@@ -268,8 +304,17 @@ class StudioStore:
 
         return engine
 
+    def _encode_path(self, value: object) -> str:
+        text = str(value)
+        if self._managed_root is None:
+            return text
+        return encode_managed_location(text, self._managed_root)
 
-def _row_to_stored_job(row: TrainingJobRow) -> StoredJob:
+    def _encode_optional_path(self, value: object | None) -> str | None:
+        return None if value is None else self._encode_path(value)
+
+
+def _row_to_stored_job(row: TrainingJobRow, managed_root: Path | None = None) -> StoredJob:
     return StoredJob(
         id=row.id,
         status=JobStatus(row.status),
@@ -279,14 +324,24 @@ def _row_to_stored_job(row: TrainingJobRow) -> StoredJob:
         started_at=_ensure_optional_utc(row.started_at),
         finished_at=_ensure_optional_utc(row.finished_at),
         tokenizer_config=dict(row.tokenizer_config),
-        dataloader_config=dict(row.dataloader_config),
+        dataloader_config=strip_hf_tokens(dict(row.dataloader_config)),
         evaluation_thresholds=[int(value) for value in row.evaluation_thresholds],
-        evaluation_text_path=row.evaluation_text_path,
+        evaluation_text_path=_resolve_path(row.evaluation_text_path, managed_root),
         artifact_file=row.artifact_file,
-        artifact_path=row.artifact_path,
+        artifact_path=_resolve_optional_path(row.artifact_path, managed_root),
         stats=dict(row.stats) if row.stats is not None else None,
-        error=row.error,
+        error=None if row.error is None else redact_secrets(row.error),
     )
+
+
+def _resolve_path(value: str, managed_root: Path | None) -> str:
+    if managed_root is None:
+        return value
+    return resolve_managed_location(value, managed_root)
+
+
+def _resolve_optional_path(value: str | None, managed_root: Path | None) -> str | None:
+    return None if value is None else _resolve_path(value, managed_root)
 
 
 def _clamp_progress(progress: float) -> float:

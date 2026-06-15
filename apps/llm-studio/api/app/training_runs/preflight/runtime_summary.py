@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import torch
@@ -10,16 +8,16 @@ import torch
 from ..schemas import DerivedRuntimeSummary, TrainingFixSuggestion, TrainingIssue
 from .config_validation import issue
 from .scheduler_fixes import runtime_batch_fixes
+from ...runtime_paths import ensure_source_root_on_path
 
-IMPORT_ROOT = Path(__file__).resolve().parents[6]
-if str(IMPORT_ROOT) not in sys.path:
-    sys.path.append(str(IMPORT_ROOT))
+IMPORT_ROOT = ensure_source_root_on_path()
 
 from model.loader import LLMConfig
 from model.model import ConfigurableGPT
 from training.dataloader_config import TrainingDataloaderConfig
 from training.memory_estimator import MemoryEstimator, StepSizeEstimate
 from training.training_config import BatchRuntimePlan, TrainingConfig, derive_batch_runtime_plan
+from training.utils import resolve_training_device_type
 
 
 @dataclass(slots=True)
@@ -116,8 +114,4 @@ def build_runtime_summary(
 
 
 def default_training_device() -> torch.device:
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
+    return torch.device(resolve_training_device_type())

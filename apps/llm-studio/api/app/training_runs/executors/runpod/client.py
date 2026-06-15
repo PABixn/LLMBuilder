@@ -10,12 +10,14 @@ from urllib.request import Request, urlopen
 
 import certifi
 
+from ....logging_config import redact_secrets, redact_value
+
 
 class RunPodClientError(RuntimeError):
     def __init__(self, message: str, *, status_code: int | None = None, payload: Any = None) -> None:
-        super().__init__(message)
+        super().__init__(redact_secrets(message))
         self.status_code = status_code
-        self.payload = payload
+        self.payload = redact_value(payload)
 
 
 @dataclass(slots=True)
@@ -142,7 +144,8 @@ class RunPodClient:
             )
             raise RunPodClientError(message, status_code=exc.code, payload=payload) from exc
         except URLError as exc:
-            raise RunPodClientError(f"RunPod request failed: {exc.reason}") from exc
+            reason = redact_secrets(str(exc.reason))
+            raise RunPodClientError(f"RunPod request failed: {reason}") from exc
         if not raw:
             return None
         try:
@@ -197,17 +200,4 @@ def _error_message(payload: Any) -> str | None:
 
 
 def _sanitize_error_payload(payload: Any) -> Any:
-    if isinstance(payload, dict):
-        sanitized: dict[str, Any] = {}
-        for key, value in payload.items():
-            key_lower = key.lower()
-            if "token" in key_lower or "api_key" in key_lower or "authorization" in key_lower:
-                sanitized[key] = "[redacted]"
-            else:
-                sanitized[key] = _sanitize_error_payload(value)
-        return sanitized
-    if isinstance(payload, list):
-        return [_sanitize_error_payload(item) for item in payload]
-    if isinstance(payload, str):
-        return payload.replace("Bearer ", "Bearer [redacted] ")
-    return payload
+    return redact_value(payload)

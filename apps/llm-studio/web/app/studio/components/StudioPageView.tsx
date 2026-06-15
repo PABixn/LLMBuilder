@@ -7,13 +7,13 @@ import type {
 import { useEffect } from "react";
 
 import type { ModelConfig } from "../../../lib/defaults";
+import { AppTopNav } from "../../shared/components/AppTopNav";
 
 import { BaseModelPanel } from "./page/BaseModelPanel";
 import { BackendAnalysisPanel } from "./page/BackendAnalysisPanel";
 import { DiagnosticsPanel } from "./page/DiagnosticsPanel";
 import { HeroSection } from "./page/HeroSection";
 import { JsonWorkspacePanels } from "./page/JsonWorkspacePanels";
-import { StudioTopNav } from "./page/StudioTopNav";
 import { BuilderPanel, type BuilderPanelProps } from "./builder/BuilderPanel";
 import type {
   BackendAnalysisState,
@@ -22,14 +22,11 @@ import type {
   Diagnostic,
   NoticeState,
   StudioDocument,
-  ThemeMode,
 } from "../types";
 
 export interface StudioPageViewProps extends BuilderPanelProps {
   fileInputRef: RefObject<HTMLInputElement | null>;
   importFromFile: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
-  theme: ThemeMode;
-  setTheme: Dispatch<SetStateAction<ThemeMode>>;
   addBlock: () => void;
   exportJson: () => void;
   resetDefaults: () => void;
@@ -130,8 +127,6 @@ function isEditableEventTarget(target: EventTarget | null): boolean {
 export function StudioPageView({
   fileInputRef,
   importFromFile,
-  theme,
-  setTheme,
   addBlock,
   exportJson,
   resetDefaults,
@@ -215,7 +210,7 @@ export function StudioPageView({
       onClickCapture={(event) => maybeSelectZeroNumberInput(event.target)}
       onChangeCapture={(event) => maybeSelectForcedZeroAfterEmpty(event.target)}
     >
-      <StudioTopNav theme={theme} setTheme={setTheme} />
+      <AppTopNav />
 
       <HeroSection
         fileInputRef={fileInputRef}

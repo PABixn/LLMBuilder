@@ -1,13 +1,23 @@
 from __future__ import annotations
 
+import logging
 import re
 import shutil
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from .config import get_settings, training_exports_dir
+from .dataset_credentials import strip_hf_tokens
+from .logging_config import (
+    clear_known_secrets,
+    known_secrets_for_scope,
+    redact_known_secrets,
+    redact_secrets,
+    register_known_secrets,
+)
 from .schemas import write_json
+from .storage_safety import ensure_free_space, require_managed_path
 from .tokenizer_storage import StudioStore as TokenizerStudioStore
 from .training_runs.schemas import (
     CreateTrainingJobRequest,
@@ -48,6 +58,8 @@ from .training_runs.runtime_files import (
 
 _JOB_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{6,64}$")
 _RUNPOD_REFRESH_CACHE_SECONDS = 1.5
+_MANAGED_TEXT_SUFFIXES = {".json", ".jsonl", ".log", ".md", ".txt"}
+logger = logging.getLogger("llm_studio.training_jobs")
 
 
 class TrainingRunManager:
@@ -73,6 +85,8 @@ class TrainingRunManager:
             interval_seconds=_RUNPOD_REFRESH_CACHE_SECONDS,
         )
         self._last_runpod_refresh_at = self._refresh_throttle.last_runpod_refresh_at
+        self._dataset_hf_tokens: dict[str, tuple[str, ...]] = {}
+        self._dataset_hf_tokens_lock = threading.RLock()
 
     def build_preflight(self, request: TrainingPreflightRequest) -> TrainingPreflightResponse:
         context = self._resolve_preflight_context(request)
@@ -103,6 +117,11 @@ class TrainingRunManager:
             raise ValueError("Training preflight failed. Resolve the reported issues before launching.")
         preflight_payload = self._preflight_response_from_context(context).model_dump(mode="json")
         settings = get_settings()
+        ensure_free_space(
+            settings.training_jobs_dir,
+            minimum_free_bytes=512 * 1024 * 1024,
+            operation="training job creation",
+        )
         tokenizer_source_path = self._require_tokenizer_artifact_path(request.tokenizer_job_id)
         prepared = prepare_training_job(
             request=request,
@@ -118,7 +137,19 @@ class TrainingRunManager:
         job_id = stored.id
         job_dir = prepared.job_dir
         self._store.create_job(stored)
+        self._remember_dataset_hf_tokens(
+            job_id,
+            bundle.manifest.get("dataset_hf_tokens", [])
+            if isinstance(bundle.manifest.get("dataset_hf_tokens"), list)
+            else [],
+        )
         executor = self._executor_for_kind(request.execution_target.kind.value)
+        _log_job_event(
+            "training.job.queued",
+            "Training job queued.",
+            stored,
+            TrainingJobStatus.pending,
+        )
 
         if executor.kind == self._runpod_executor.kind:
             started_at = utc_now()
@@ -129,6 +160,12 @@ class TrainingRunManager:
                 stage="Provisioning RunPod pod",
                 started_at=started_at,
                 executor_status="provisioning",
+            )
+            _log_job_event(
+                "training.job.remote_provisioning",
+                "Remote training job provisioning started.",
+                stored,
+                TrainingJobStatus.running,
             )
             thread = threading.Thread(
                 target=self._submit_remote_job,
@@ -159,10 +196,18 @@ class TrainingRunManager:
                 stored,
                 bundle,
             )
-        except Exception:
+        except Exception as exc:
+            sanitized_error = self._redact_job_secret(job_id, f"{type(exc).__name__}: {exc}")
+            _log_job_event(
+                "training.job.launch_failed",
+                "Training job launch failed.",
+                stored,
+                TrainingJobStatus.failed,
+            )
             self._store.delete_job(job_id)
             shutil.rmtree(job_dir, ignore_errors=True)
-            raise
+            self._forget_dataset_hf_tokens(job_id)
+            raise RuntimeError(sanitized_error) from None
 
         self._store.update_job(
             job_id,
@@ -173,12 +218,19 @@ class TrainingRunManager:
             process_id=handle.process_id,
             **handle.updates,
         )
+        _log_job_event(
+            "training.job.started",
+            "Training job started.",
+            stored,
+            TrainingJobStatus.running,
+        )
         return self.get_job(job_id)
 
     def _submit_remote_job(self, job_id: str, stored: StoredTrainingJob, bundle: TrainingJobBundle) -> None:
         try:
             handle = self._runpod_executor.submit(stored, bundle)
         except Exception as exc:
+            sanitized_error = self._redact_job_secret(job_id, str(exc))
             self._store.update_job(
                 job_id,
                 status=TrainingJobStatus.failed,
@@ -186,10 +238,18 @@ class TrainingRunManager:
                 stage="RunPod launch failed",
                 progress=1.0,
                 finished_at=utc_now(),
-                error=str(exc),
+                error=sanitized_error,
                 executor_status="failed",
-                remote_error=str(exc),
+                remote_error=sanitized_error,
             )
+            _log_job_event(
+                "training.job.remote_launch_failed",
+                "Remote training job launch failed.",
+                stored,
+                TrainingJobStatus.failed,
+            )
+            if self._scrub_job_text_files(stored):
+                self._forget_dataset_hf_tokens(job_id)
             return
 
         self._store.update_job(
@@ -200,6 +260,12 @@ class TrainingRunManager:
             started_at=handle.started_at or utc_now(),
             process_id=handle.process_id,
             **handle.updates,
+        )
+        _log_job_event(
+            "training.job.remote_started",
+            "Remote training job started.",
+            stored,
+            TrainingJobStatus.running,
         )
 
     def list_jobs(self) -> list[TrainingJobResponse]:
@@ -219,16 +285,28 @@ class TrainingRunManager:
         if job.status in {TrainingJobStatus.pending, TrainingJobStatus.running}:
             raise RuntimeError("Stop the training job before deleting it.")
 
-        artifact_dir = Path(job.artifact_dir)
+        settings = get_settings()
+        artifact_dir = require_managed_path(
+            Path(job.artifact_dir),
+            settings.training_jobs_dir,
+            description="training job deletion",
+        )
         if artifact_dir.exists():
             shutil.rmtree(artifact_dir, ignore_errors=False)
         if job.artifact_bundle_file:
-            bundle_path = training_exports_dir() / job.artifact_bundle_file
+            exports_root = training_exports_dir()
+            bundle_path = require_managed_path(
+                exports_root / job.artifact_bundle_file,
+                exports_root,
+                description="training artifact bundle deletion",
+            )
             if bundle_path.exists():
                 bundle_path.unlink()
         deleted = self._store.delete_job(job_id)
         if deleted is None:
             raise KeyError(job_id)
+        self._forget_dataset_hf_tokens(job_id)
+        _log_job_event("training.job.deleted", "Training job deleted.", job, job.status)
 
     def stop_job(self, job_id: str) -> TrainingJobResponse:
         job = self._refresh_job(job_id)
@@ -254,6 +332,14 @@ class TrainingRunManager:
             )
             write_json(runtime_state_path, runtime_state)
 
+        snapshot_updates = dict(snapshot.updates)
+        if isinstance(snapshot_updates.get("error"), str):
+            snapshot_updates["error"] = self._redact_job_secret(job_id, snapshot_updates["error"])
+        if isinstance(snapshot_updates.get("remote_error"), str):
+            snapshot_updates["remote_error"] = self._redact_job_secret(
+                job_id,
+                snapshot_updates["remote_error"],
+            )
         updated = self._store.update_job(
             job_id,
             status=snapshot.status or TrainingJobStatus.cancelled,
@@ -261,11 +347,17 @@ class TrainingRunManager:
             stage=snapshot.stage or "Cancelled",
             finished_at=snapshot.finished_at or finished_at,
             progress=1.0 if snapshot.progress is None else snapshot.progress,
-            error=snapshot.error or "Training was cancelled by the user.",
-            **snapshot.updates,
+            error=self._redact_job_secret(
+                job_id,
+                snapshot.error or "Training was cancelled by the user.",
+            ),
+            **snapshot_updates,
         )
         if updated is None:
             raise KeyError(job_id)
+        if self._scrub_job_text_files(updated):
+            self._forget_dataset_hf_tokens(job_id)
+        _log_job_event("training.job.stopped", "Training job stopped.", updated, updated.status)
         return self._to_response(updated)
 
     def get_metrics(self, job_id: str, *, limit: int | None = None) -> TrainingMetricsResponse:
@@ -291,10 +383,11 @@ class TrainingRunManager:
             executor_kind=job.executor_kind,
             lines=lines,
         )
+        secrets = self._known_dataset_hf_tokens(job_id)
         return TrainingLogsResponse(
             job_id=job_id,
-            stdout_lines=stdout_lines,
-            stderr_lines=stderr_lines,
+            stdout_lines=[redact_known_secrets(line, secrets) for line in stdout_lines],
+            stderr_lines=[redact_known_secrets(line, secrets) for line in stderr_lines],
         )
 
     def get_checkpoints(self, job_id: str) -> TrainingCheckpointsResponse:
@@ -306,15 +399,38 @@ class TrainingRunManager:
 
     def build_artifact_bundle(self, job_id: str) -> Path:
         job = self.get_job(job_id)
-        artifact_dir = Path(job.artifact_dir)
+        settings = get_settings()
+        artifact_dir = require_managed_path(
+            Path(job.artifact_dir),
+            settings.training_jobs_dir,
+            description="training artifact source",
+            must_exist=True,
+        )
+        if not self._scrub_job_text_files(job):
+            raise RuntimeError(
+                "Training artifact export was blocked because credential-bearing "
+                "managed output could not be scrubbed safely."
+            )
+        exports_root = training_exports_dir()
+        ensure_free_space(
+            exports_root,
+            minimum_free_bytes=max(64 * 1024 * 1024, directory_size(artifact_dir)),
+            operation="training artifact export",
+        )
         archive_path = build_artifact_archive(
             artifact_dir=artifact_dir,
-            exports_root=training_exports_dir(),
+            exports_root=exports_root,
             name=job.name,
             job_id=job.id,
         )
         bundle_name = Path(archive_path).name
         self._store.update_job(job_id, artifact_bundle_file=bundle_name)
+        _log_job_event(
+            "training.job.artifact_built",
+            "Training artifact bundle built.",
+            job,
+            job.status,
+        )
         return Path(archive_path)
 
     def resync_remote_job(self, job_id: str) -> TrainingJobResponse:
@@ -323,6 +439,7 @@ class TrainingRunManager:
             raise KeyError(job_id)
         if job.executor_kind != "runpod_pod":
             raise ValueError("Remote resync is only available for RunPod jobs.")
+        _log_job_event("training.job.remote_resynced", "Remote training job resynced.", job, job.status)
         return self._to_response(job)
 
     def cleanup_remote_job(self, job_id: str) -> TrainingJobResponse:
@@ -342,6 +459,12 @@ class TrainingRunManager:
             ),
         )
         updated = self._store.update_job(job_id, executor_status="cleaned_up") or job
+        _log_job_event(
+            "training.job.remote_cleaned_up",
+            "Remote training job resources cleaned up.",
+            updated,
+            updated.status,
+        )
         return self._to_response(updated)
 
     def reattach_remote_job(self, job_id: str) -> TrainingJobResponse:
@@ -358,10 +481,18 @@ class TrainingRunManager:
                 "persisted. Stop the Pod from RunPod or launch a new run."
             ),
         ) or job
+        _log_job_event(
+            "training.job.remote_reattach_unavailable",
+            "Remote training job reattach is unavailable.",
+            updated,
+            updated.status,
+        )
         return self._to_response(updated)
 
     def shutdown(self) -> None:
         self._local_executor.shutdown()
+        # Remote submission threads can still emit during process teardown.
+        # Their scopes remain until terminal handling or process-memory exit.
 
     def _refresh_job(self, job_id: str) -> StoredTrainingJob | None:
         validate_identifier(job_id, _JOB_ID_RE)
@@ -377,7 +508,7 @@ class TrainingRunManager:
         runtime_state = load_optional_json(Path(job.artifact_dir) / "runtime_state.json")
         metadata = load_optional_json(Path(job.artifact_dir) / "metadata.json")
         if runtime_state is not None:
-            runtime_updates = self._state_updates_from_runtime(runtime_state)
+            runtime_updates = self._state_updates_from_runtime(runtime_state, job_id=job_id)
             if job.status not in {TrainingJobStatus.pending, TrainingJobStatus.running}:
                 for key in ("status", "state", "stage", "progress", "started_at"):
                     runtime_updates.pop(key, None)
@@ -388,7 +519,7 @@ class TrainingRunManager:
             updates.update(runtime_updates)
         if metadata is not None:
             if isinstance(metadata.get("error"), str):
-                updates["error"] = metadata["error"]
+                updates["error"] = self._redact_job_secret(job_id, metadata["error"])
 
         snapshot = ExecutionSnapshot()
         if self._should_refresh_executor(job):
@@ -414,12 +545,34 @@ class TrainingRunManager:
         if snapshot.finished_at is not None:
             updates.setdefault("finished_at", snapshot.finished_at)
         updates.update(snapshot.updates)
+        if isinstance(updates.get("error"), str):
+            updates["error"] = self._redact_job_secret(job_id, updates["error"])
+        if isinstance(updates.get("remote_error"), str):
+            updates["remote_error"] = self._redact_job_secret(job_id, updates["remote_error"])
+        if isinstance(updates.get("dataloader_config"), dict):
+            updates["dataloader_config"] = strip_hf_tokens(updates["dataloader_config"])
 
         updates.update(latest_metric_updates(Path(job.stats_path)))
+        previous_status = job.status
+        next_status = updates.get("status", previous_status)
+        reached_terminal = (
+            previous_status not in _TERMINAL_TRAINING_STATUSES
+            and next_status in _TERMINAL_TRAINING_STATUSES
+        )
+        terminal_scrub_complete = not reached_terminal or self._scrub_job_text_files(job)
         updates["output_size_bytes"] = directory_size(Path(job.artifact_dir))
 
         if updates:
             job = self._store.update_job(job_id, **updates) or job
+        if reached_terminal and terminal_scrub_complete:
+            self._forget_dataset_hf_tokens(job_id)
+        if job.status != previous_status and job.status in _TERMINAL_TRAINING_STATUSES:
+            _log_job_event(
+                f"training.job.{job.status.value}",
+                "Training job reached a terminal state.",
+                job,
+                job.status,
+            )
         return job
 
     def _refresh_lock_for_job(self, job_id: str) -> threading.RLock:
@@ -450,7 +603,12 @@ class TrainingRunManager:
             self._last_runpod_refresh_at = throttle.last_runpod_refresh_at
         return throttle
 
-    def _state_updates_from_runtime(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def _state_updates_from_runtime(
+        self,
+        payload: dict[str, Any],
+        *,
+        job_id: str | None = None,
+    ) -> dict[str, Any]:
         updates: dict[str, Any] = {}
         if "status" in payload and isinstance(payload["status"], str):
             status = TrainingJobStatus(payload["status"])
@@ -492,8 +650,99 @@ class TrainingRunManager:
         if "memory_estimate" in payload and isinstance(payload["memory_estimate"], dict):
             updates["memory_estimate"] = payload["memory_estimate"]
         if "error" in payload and isinstance(payload["error"], str):
-            updates["error"] = payload["error"]
+            updates["error"] = (
+                redact_secrets(payload["error"])
+                if job_id is None
+                else self._redact_job_secret(job_id, payload["error"])
+            )
         return updates
+
+    def _remember_dataset_hf_tokens(
+        self,
+        job_id: str,
+        tokens: Iterable[str | None],
+    ) -> None:
+        normalized = register_known_secrets(_training_secret_scope(job_id), tokens)
+        with self._token_registry_lock():
+            if normalized:
+                self._token_registry()[job_id] = normalized
+            else:
+                self._token_registry().pop(job_id, None)
+
+    def _known_dataset_hf_tokens(self, job_id: str) -> tuple[str, ...]:
+        with self._token_registry_lock():
+            stored = self._token_registry().get(job_id)
+        return stored or known_secrets_for_scope(_training_secret_scope(job_id))
+
+    def _forget_dataset_hf_tokens(self, job_id: str) -> None:
+        with self._token_registry_lock():
+            self._token_registry().pop(job_id, None)
+        clear_known_secrets(_training_secret_scope(job_id))
+
+    def _redact_job_secret(self, job_id: str, value: str) -> str:
+        return redact_known_secrets(value, self._known_dataset_hf_tokens(job_id))
+
+    def _scrub_job_text_files(self, job: StoredTrainingJob) -> bool:
+        secrets = self._known_dataset_hf_tokens(job.id)
+        if not secrets:
+            return True
+        try:
+            artifact_dir = require_managed_path(
+                Path(job.artifact_dir),
+                get_settings().training_jobs_dir,
+                description="training credential scrub",
+                must_exist=True,
+            )
+        except (FileNotFoundError, ValueError):
+            return False
+
+        try:
+            candidates = list(artifact_dir.rglob("*"))
+        except OSError:
+            return False
+        complete = True
+        for path in candidates:
+            if path.is_symlink():
+                complete = False
+                continue
+            if not path.is_file() or path.suffix.lower() not in _MANAGED_TEXT_SUFFIXES:
+                continue
+            try:
+                original = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                complete = False
+                continue
+            sanitized = redact_known_secrets(original, secrets)
+            if sanitized == original:
+                continue
+            temporary = path.with_name(f".{path.name}.redacting.tmp")
+            if temporary.is_symlink():
+                complete = False
+                continue
+            try:
+                temporary.write_text(sanitized, encoding="utf-8")
+                temporary.replace(path)
+            except OSError:
+                complete = False
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+        return complete
+
+    def _token_registry(self) -> dict[str, tuple[str, ...]]:
+        registry = getattr(self, "_dataset_hf_tokens", None)
+        if registry is None:
+            registry = {}
+            self._dataset_hf_tokens = registry
+        return registry
+
+    def _token_registry_lock(self) -> threading.RLock:
+        lock = getattr(self, "_dataset_hf_tokens_lock", None)
+        if lock is None:
+            lock = threading.RLock()
+            self._dataset_hf_tokens_lock = lock
+        return lock
 
     def _resolve_preflight_context(self, request: TrainingPreflightRequest) -> ResolvedPreflightContext:
         return self._get_preflight_service().resolve_context(request)
@@ -531,3 +780,33 @@ class TrainingRunManager:
 def validate_identifier(value: str, pattern: re.Pattern[str]) -> None:
     if not pattern.fullmatch(value):
         raise KeyError(value)
+
+
+_TERMINAL_TRAINING_STATUSES = {
+    TrainingJobStatus.completed,
+    TrainingJobStatus.failed,
+    TrainingJobStatus.cancelled,
+}
+
+
+def _training_secret_scope(job_id: str) -> str:
+    return f"training:{job_id}"
+
+
+def _log_job_event(
+    event_id: str,
+    message: str,
+    job: StoredTrainingJob,
+    status: TrainingJobStatus,
+) -> None:
+    logger.info(
+        message,
+        extra={
+            "event_id": event_id,
+            "event_fields": {
+                "job_id": job.id,
+                "executor_kind": job.executor_kind,
+                "status": status.value,
+            },
+        },
+    )

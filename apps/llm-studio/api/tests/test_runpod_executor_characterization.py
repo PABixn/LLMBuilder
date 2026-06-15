@@ -118,7 +118,12 @@ def make_job(tmp_path: Path) -> StoredTrainingJob:
     )
 
 
-def make_bundle(tmp_path: Path, *, api_key: str = "ui-secret-api-key") -> TrainingJobBundle:
+def make_bundle(
+    tmp_path: Path,
+    *,
+    api_key: str = "ui-secret-api-key",
+    hf_token: str | None = None,
+) -> TrainingJobBundle:
     return TrainingJobBundle(
         job_id="job123456",
         job_dir=tmp_path,
@@ -141,7 +146,8 @@ def make_bundle(tmp_path: Path, *, api_key: str = "ui-secret-api-key") -> Traini
                 "data_center_id": "EU-RO-1",
                 "network_volume_size_gb": 123,
                 "cleanup_policy": {"pod": "delete_after_sync", "network_volume": "keep"},
-            }
+            },
+            "dataset_hf_tokens": [hf_token],
         },
     )
 
@@ -179,8 +185,9 @@ def test_runpod_submit_pod_request_defaults_and_secret_handling(monkeypatch, tmp
     monkeypatch.setattr("app.training_executors.runpod_pod.RemoteAgentClient", CapturingAgentClient)
     monkeypatch.setattr("app.training_executors.runpod_pod.build_remote_bundle", lambda _bundle: fake_bundle_result(tmp_path))
 
+    hf_token = "hf_0123456789abcdef0123456789abcdef"
     executor = RunPodPodExecutor()
-    handle = executor.submit(make_job(tmp_path), make_bundle(tmp_path))
+    handle = executor.submit(make_job(tmp_path), make_bundle(tmp_path, hf_token=hf_token))
     request = CapturingRunPodClient.create_requests[0]
     payload = request.to_payload()
 
@@ -195,10 +202,13 @@ def test_runpod_submit_pod_request_defaults_and_secret_handling(monkeypatch, tmp
     assert payload["env"]["LLM_STUDIO_REMOTE_AGENT_TOKEN"]
     assert payload["env"]["HF_HOME"].endswith("/cache/huggingface")
     assert payload["env"]["HF_DATASETS_CACHE"].endswith("/cache/huggingface/datasets")
+    assert hf_token in payload["env"]["LLM_STUDIO_HF_DATASET_TOKENS"]
     assert "ui-secret-api-key" not in str(payload["env"])
     assert handle.updates["runpod_agent_token_hash"]
     assert executor._agent_tokens["job123456"] == payload["env"]["LLM_STUDIO_REMOTE_AGENT_TOKEN"]
-    assert "ui-secret-api-key" not in (tmp_path / "runpod_lifecycle.jsonl").read_text(encoding="utf-8")
+    lifecycle = (tmp_path / "runpod_lifecycle.jsonl").read_text(encoding="utf-8")
+    assert "ui-secret-api-key" not in lifecycle
+    assert hf_token not in lifecycle
 
 
 def test_runpod_create_pod_auth_errors_do_not_retry(tmp_path: Path) -> None:

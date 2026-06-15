@@ -237,10 +237,10 @@ Training defaults:
 - Start from backend `training_config_template` and `dataloader_config_template`.
 - Clamp `seq_len` to the selected model context length.
 - Use backend preflight to validate compatibility, memory, local files, scheduler, and tokenizer tokens.
-- If preflight returns `batch_and_lr_recommendation`, Simple Mode should auto-select the recommended option.
+- If preflight returns `batch_and_lr_recommendation`, Simple Mode should auto-select the recommended batch and learning-rate option.
 - For `Quick check`, use a shorter safe run derived from the recommendation.
-- For `Balanced`, use the backend recommended option directly.
-- For `Longer run`, use the recommended batch and learning rate but extend max steps only within a conservative cap.
+- For `Balanced`, use the recommended batch and learning rate, then derive max steps from the model-scale token target: approximately `20 * total_parameters`.
+- For `Longer run`, use the same recommended batch and learning rate, then derive max steps from twice the balanced token target.
 - If preflight provides recommended fixes, Simple Mode should apply safe deterministic fixes automatically after explaining them in the step status.
 
 Training profile mapping:
@@ -250,13 +250,14 @@ Training profile mapping:
   - Set `sample_every` to `max(10, floor(max_steps / 4))`.
   - Set `save_every` to `max_steps` unless the backend requires an earlier checkpoint.
 - `Balanced`
-  - Use the backend recommended option exactly.
+  - Use backend `total_batch_size` exactly so model size, sequence length, memory, micro batch, and accumulation shape determine the optimizer step size.
+  - Set max steps to `ceil(parameter_scaled_run_token_target / total_batch_size)`, falling back to `ceil((20 * total_parameters) / total_batch_size)` if the explicit signal is absent.
   - Refit scheduler phases to max steps with the existing scheduler helper.
   - Keep `sample_every` and `save_every` from the template unless they exceed max steps, then clamp them.
 - `Longer run`
   - Use recommended total batch size and learning rate.
-  - Set max steps to `min(recommended_max_steps * 2, 2000)` unless the dataset is tiny.
-  - For tiny local datasets, cap at a conservative number of passes based on tokenizer/job stats or preflight signals.
+  - Set max steps to `ceil((2 * parameter_scaled_run_token_target) / total_batch_size)`.
+  - Do not let tiny local dataset pass caps collapse the model-scale run length; those caps are advisory context for expert mode, not the simple-mode balanced/longer budget.
   - Make the UI copy clear that longer runs are not guaranteed to improve output on small datasets.
 
 Cloud guardrail:
@@ -527,94 +528,96 @@ Potentially deleted files after migration:
 
 ## Implementation Checklist
 
-[ ] 1. Confirm and preserve the current expert baseline.
+[*] 1. Confirm and preserve the current expert baseline.
 Record the current expert routes, nav behavior, mode-independent theme behavior, localStorage keys, and core API flows before changing navigation.
 
-[ ] 2. Add this plan to the working checklist.
+[*] 2. Add this plan to the working checklist.
 Keep this file updated during implementation. Do not mark later tasks `[*]` unless their acceptance checks pass.
 
-[ ] 3. Create `useUiMode`.
+[*] 3. Create `useUiMode`.
 Implement storage, same-tab custom event sync, storage-event sync, SSR-safe defaulting, and a setter that accepts either a value or updater function.
 
-[ ] 4. Create shared `AppTopNav`.
+[*] 4. Create shared `AppTopNav`.
 Support active route, simple/expert mode switch, theme toggle, route labels, accessible names, and mobile-safe layout.
 
-[ ] 5. Replace duplicated nav components.
+[*] 5. Replace duplicated nav components.
 Update home, studio, tokenizer, training, and inference pages to use `AppTopNav`. Remove old nav components only after verifying no imports remain.
 
-[ ] 6. Add `/simple` route shell.
+[*] 6. Add `/simple` route shell.
 Create the route-local folders, `page.tsx`, `SimpleModePageView`, controller hook placeholder, and route CSS imports that fit the existing app style system.
 
-[ ] 7. Define Simple Mode state types and persistence.
+[*] 7. Define Simple Mode state types and persistence.
 Create versioned state parsing, migration-safe defaults, artifact ID persistence, and deletion recovery behavior.
 
-[ ] 8. Define model preset registry.
+[*] 8. Define model preset registry.
 Create typed preset definitions, repeated block builders, validation helper assertions, display metadata, and tests for every preset's structural constraints.
 
-[ ] 9. Implement backend-backed preset analysis.
+[*] 9. Implement backend-backed preset analysis.
 Use existing model validation and analysis APIs to show parameter estimates and errors. Do not rely on stale hard-coded parameter counts.
 
-[ ] 10. Build the stepper.
+[*] 10. Build the stepper.
 Implement ready, blocked, running, failed, and completed states. The stepper must derive status from real artifacts, not only local UI state.
 
-[ ] 11. Implement Architecture step.
+[*] 11. Implement Architecture step.
 Add template cards, model naming, target vocab/context controls where appropriate, create/update project calls, validation messages, and summary collapse after success.
 
-[ ] 12. Add model/tokenizer vocabulary synchronization.
+[*] 12. Add model/tokenizer vocabulary synchronization.
 After tokenizer completion, compare tokenizer vocab to saved model `vocab_size`. If they differ, update the project before enabling model training.
 
-[ ] 13. Implement Simple dataset picker.
+[*] 13. Implement Simple dataset picker.
 Support starter dataset, uploaded local files, and streaming template. Reuse existing upload/stat helpers and make duplicate file handling visible.
 
-[ ] 14. Implement Tokenizer step config generation.
+[*] 14. Implement Tokenizer step config generation.
 Build BPE byte-level config from defaults plus selected model target vocab. Keep advanced tokenizer fields hidden but available in an `Advanced details` disclosure for inspection.
 
-[ ] 15. Implement Tokenizer validation and training.
+[*] 15. Implement Tokenizer validation and training.
 Reuse existing validation and job creation APIs. Poll active tokenizer status and block Step 3 until the job is completed.
 
-[ ] 16. Implement Training profile mapping.
+[*] 16. Implement Training profile mapping.
 Map `Quick check`, `Balanced`, and `Longer run` to training config changes. Base them on backend templates and preflight recommendations, not arbitrary fixed values.
 
-[ ] 17. Implement Simple preflight orchestration.
+[*] 17. Implement Simple preflight orchestration.
 Run preflight after model, tokenizer, dataset, training profile, or execution target changes. Summarize only the important blockers and warnings in Simple Mode.
 
-[ ] 18. Implement safe automatic fixes.
+[*] 18. Implement safe automatic fixes.
 Apply deterministic preflight fixes when safe, such as scheduler step alignment or model vocab sync. Log the fix in the UI status so the user knows what changed.
 
-[ ] 19. Implement Training step launch.
+[*] 19. Implement Training step launch.
 Start training only when preflight is valid and execution target is confirmed. Store the returned training job ID and move the flow into running state.
 
-[ ] 20. Implement Simple training monitor.
+[*] 20. Implement Simple training monitor.
 Show stage, progress, elapsed/ETA when available, loss, learning rate, tokens/sec, sample count, checkpoint count, and the latest error if failed.
 
-[ ] 21. Implement Inference step.
+[*] 21. Implement Inference step.
 Auto-select the completed training run and latest checkpoint. Provide prompt, length preset, creativity preset, generate action, streaming output, and expert link.
 
-[ ] 22. Add expert escape hatches.
+[*] 22. Add expert escape hatches.
 From each Simple Mode step, add a small expert link to the corresponding route with the relevant artifact selected where possible.
 
-[ ] 23. Add home integration.
+[*] 23. Add home integration.
 When Simple Mode is active, home should emphasize the guided flow and workspace status. The existing asset manager should remain usable.
 
-[ ] 24. Handle empty workspace and recovery states.
+[*] 24. Handle empty workspace and recovery states.
 Cover no backend, no projects, no tokenizer jobs, deleted project, deleted tokenizer, failed tokenizer, failed training, no checkpoint, and generation failure.
 
-[ ] 25. Add focused unit tests.
+[*] 25. Add focused unit tests.
 Cover mode storage, Simple Mode state parsing, preset generation, vocabulary sync, training profile mapping, inference preset mapping, and step readiness derivation.
 
-[ ] 26. Add route-level regression checks.
+[*] 26. Add route-level regression checks.
 Verify `/`, `/simple`, `/studio`, `/tokenizer`, `/training`, and `/inference` render, preserve mode/theme, and keep expert route behavior intact.
 
-[ ] 27. Run frontend quality commands.
+[*] 27. Run frontend quality commands.
 From `apps/llm-studio/web`, run `npm run lint`, `npm run typecheck`, `npm run test:regression`, and `npm run build`.
 
-[ ] 28. Run backend/API compatibility checks if backend contracts changed.
+[*] 28. Run backend/API compatibility checks if backend contracts changed.
 If any API changes were required, run the relevant `apps/llm-studio/api` tests and update API models/types together.
 
 [ ] 29. Perform browser QA in both modes.
 Check desktop and mobile viewports. Verify the nav switch, the complete Simple Mode flow with a tiny local dataset, and all expert pages after switching back.
 
-[ ] 30. Final cleanup.
+Blocked in this execution environment: the Browser plugin's required Node REPL JavaScript tool was not exposed, Safari automation was unavailable, and Playwright is not installed in the project. Route-level local HTTP checks passed for `/`, `/simple`, `/studio`, `/tokenizer`, `/training`, and `/inference`.
+
+[*] 30. Final cleanup.
 Remove dead nav files, unused imports, stale CSS selectors, temporary debug UI, and any duplicated helper code introduced during the implementation.
 
 ## Acceptance Criteria

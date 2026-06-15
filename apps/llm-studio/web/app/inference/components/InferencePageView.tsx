@@ -1,9 +1,9 @@
+import { AppTopNav } from "../../shared/components/AppTopNav";
 import type { useInferenceController } from "../hooks/useInferenceController";
 import { InferenceCheckpointPickerDialog } from "./InferenceCheckpointPickerDialog";
 import { InferenceComposer } from "./InferenceComposer";
 import { InferenceModelPickerDialog } from "./InferenceModelPickerDialog";
 import { InferenceOutputPanel } from "./InferenceOutputPanel";
-import { InferenceTopNav } from "./InferenceTopNav";
 import { TrainingArtifactPanel } from "./TrainingArtifactPanel";
 
 type InferenceController = ReturnType<typeof useInferenceController>;
@@ -14,8 +14,6 @@ type InferencePageViewProps = {
 
 export function InferencePageView({ controller }: InferencePageViewProps) {
   const {
-    theme,
-    setTheme,
     error,
     loading,
     generating,
@@ -66,10 +64,7 @@ export function InferencePageView({ controller }: InferencePageViewProps) {
 
   return (
     <main className="studioRoot inferencePage">
-      <InferenceTopNav
-        theme={theme}
-        onToggleTheme={() => setTheme((previous) => (previous === "dark" ? "white" : "dark"))}
-      />
+      <AppTopNav />
 
       {error ? <div className="inlineNotice tone-error">Inference problem: {error}</div> : null}
 

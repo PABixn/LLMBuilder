@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import logging
 import re
-import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -10,6 +11,14 @@ from typing import Any, Iterable
 from uuid import uuid4
 
 from .config import tokenizer_max_job_workers, tokenizer_output_dir
+from .dataset_credentials import inject_dataset_hf_tokens, split_dataset_hf_tokens
+from .logging_config import (
+    clear_known_secrets,
+    known_secrets_for_scope,
+    redact_known_secrets,
+    register_known_secrets,
+)
+from .storage_safety import ensure_free_space, require_managed_path
 from .tokenizer_models import (
     EvaluationSource,
     JobState,
@@ -20,17 +29,17 @@ from .tokenizer_models import (
     TrainTokenizerRequest,
     TrainingJobResponse,
 )
+from .runtime_paths import ensure_source_root_on_path
 from .tokenizer_storage import StoredJob, StudioStore
 
-IMPORT_ROOT = Path(__file__).resolve().parents[4]
-if str(IMPORT_ROOT) not in sys.path:
-    sys.path.append(str(IMPORT_ROOT))
+IMPORT_ROOT = ensure_source_root_on_path()
 
 _FILENAME_SANITIZER = re.compile(r"[^a-zA-Z0-9._-]+")
 _TRAINING_DATASET_EVAL_SENTINEL = "__training_dataset__"
 _UNSET = object()
 _PROGRESS_MIN_DELTA = 0.02
 _PROGRESS_MIN_INTERVAL_SECONDS = 0.65
+logger = logging.getLogger("llm_studio.tokenizer_jobs")
 
 
 class TrainingJobManager:
@@ -41,13 +50,27 @@ class TrainingJobManager:
             max_workers=max_workers,
             thread_name_prefix="tokenizer-train",
         )
+        self._dataset_hf_tokens: dict[str, tuple[str, ...]] = {}
+        self._dataset_hf_tokens_lock = threading.RLock()
 
     def create_job(self, request: TrainTokenizerRequest) -> TrainingJobResponse:
         from tokenizer.dataloader_config import DataloaderConfig
         from tokenizer.loader import TokenizerConfig
 
+        ensure_free_space(
+            tokenizer_output_dir(),
+            minimum_free_bytes=256 * 1024 * 1024,
+            operation="tokenizer training and artifact creation",
+        )
         tokenizer_config = TokenizerConfig.model_validate(request.tokenizer_config)
-        dataloader_config = DataloaderConfig.model_validate(request.dataloader_config)
+        sanitized_dataloader_payload, dataset_hf_tokens = split_dataset_hf_tokens(
+            request.dataloader_config,
+            fallback_token=request.hf_token,
+        )
+        dataloader_config = DataloaderConfig.model_validate(sanitized_dataloader_payload)
+        execution_dataloader_config = DataloaderConfig.model_validate(
+            inject_dataset_hf_tokens(sanitized_dataloader_payload, dataset_hf_tokens)
+        )
 
         now = _utc_now()
         job_id = uuid4().hex
@@ -70,13 +93,15 @@ class TrainingJobManager:
         )
 
         self._store.create_job(managed)
+        self._remember_dataset_hf_tokens(job_id, dataset_hf_tokens)
+        _log_job_event("tokenizer.job.queued", "Tokenizer job queued.", job_id, JobStatus.pending)
 
         try:
             self._executor.submit(
                 self._run_training_job,
                 job_id,
                 tokenizer_config,
-                dataloader_config,
+                execution_dataloader_config,
                 request.evaluation_thresholds,
             )
         except Exception as exc:
@@ -104,7 +129,11 @@ class TrainingJobManager:
             raise RuntimeError("Only completed or failed jobs can be deleted")
 
         if job.artifact_path:
-            artifact_path = Path(job.artifact_path)
+            artifact_path = require_managed_path(
+                Path(job.artifact_path),
+                tokenizer_output_dir(),
+                description="tokenizer artifact deletion",
+            )
             if artifact_path.exists():
                 try:
                     artifact_path.unlink()
@@ -114,6 +143,8 @@ class TrainingJobManager:
         deleted = self._store.delete_job(job_id)
         if deleted is None:
             raise KeyError(job_id)
+        self._forget_dataset_hf_tokens(job_id)
+        _log_job_event("tokenizer.job.deleted", "Tokenizer job deleted.", job_id, job.status)
 
     def get_artifact_path(self, job_id: str) -> Path:
         job = self._store.get_job(job_id)
@@ -123,9 +154,15 @@ class TrainingJobManager:
         if job.artifact_path is None:
             raise FileNotFoundError("This job has not produced an artifact yet")
 
-        path = Path(job.artifact_path)
+        path = require_managed_path(
+            Path(job.artifact_path),
+            tokenizer_output_dir(),
+            description="tokenizer artifact",
+        )
         if not path.exists():
             raise FileNotFoundError(f"Artifact file does not exist: {path}")
+        if not path.is_file():
+            raise FileNotFoundError(f"Artifact path is not a file: {path}")
         return path
 
     def preview_tokens(self, job_id: str, text: str) -> TokenizerPreviewResponse:
@@ -172,6 +209,8 @@ class TrainingJobManager:
 
     def shutdown(self) -> None:
         self._executor.shutdown(wait=False, cancel_futures=False)
+        # Active workers can still emit during process teardown. Their scopes
+        # remain until terminal handling clears them or process memory exits.
 
     def _run_training_job(
         self,
@@ -213,7 +252,11 @@ class TrainingJobManager:
             configurable.tokenizer.train_from_iterator(training_stream, configurable.trainer)
 
             output = tokenizer_output_dir()
-            output.mkdir(parents=True, exist_ok=True)
+            ensure_free_space(
+                output,
+                minimum_free_bytes=64 * 1024 * 1024,
+                operation="tokenizer artifact save",
+            )
             artifact_file = self._artifact_filename(tokenizer_config.name, job_id)
             artifact_path = output / artifact_file
 
@@ -267,6 +310,7 @@ class TrainingJobManager:
             self._set_failed(job_id, f"{type(exc).__name__}: {exc}")
 
     def _set_running(self, job_id: str, stage: str, progress: float) -> None:
+        previous = self._store.get_job(job_id)
         self._update_job(
             job_id,
             status=JobStatus.running,
@@ -275,6 +319,13 @@ class TrainingJobManager:
             started_at=_utc_now(),
             error=None,
         )
+        if previous is not None and previous.status is not JobStatus.running:
+            _log_job_event(
+                "tokenizer.job.started",
+                "Tokenizer job started.",
+                job_id,
+                JobStatus.running,
+            )
 
     def _set_completed(
         self,
@@ -296,6 +347,13 @@ class TrainingJobManager:
             artifact_path=artifact_path,
             error=None,
         )
+        _log_job_event(
+            "tokenizer.job.completed",
+            "Tokenizer job completed.",
+            job_id,
+            JobStatus.completed,
+        )
+        self._forget_dataset_hf_tokens(job_id)
 
     def _set_failed(self, job_id: str, error: str) -> None:
         self._update_job(
@@ -304,8 +362,47 @@ class TrainingJobManager:
             stage="Failed",
             progress=1.0,
             finished_at=_utc_now(),
-            error=error,
+            error=redact_known_secrets(error, self._known_dataset_hf_tokens(job_id)),
         )
+        _log_job_event("tokenizer.job.failed", "Tokenizer job failed.", job_id, JobStatus.failed)
+        self._forget_dataset_hf_tokens(job_id)
+
+    def _remember_dataset_hf_tokens(
+        self,
+        job_id: str,
+        tokens: Iterable[str | None],
+    ) -> None:
+        scope = _tokenizer_secret_scope(job_id)
+        normalized = register_known_secrets(scope, tokens)
+        with self._token_registry_lock():
+            if normalized:
+                self._token_registry()[job_id] = normalized
+            else:
+                self._token_registry().pop(job_id, None)
+
+    def _known_dataset_hf_tokens(self, job_id: str) -> tuple[str, ...]:
+        with self._token_registry_lock():
+            stored = self._token_registry().get(job_id)
+        return stored or known_secrets_for_scope(_tokenizer_secret_scope(job_id))
+
+    def _forget_dataset_hf_tokens(self, job_id: str) -> None:
+        with self._token_registry_lock():
+            self._token_registry().pop(job_id, None)
+        clear_known_secrets(_tokenizer_secret_scope(job_id))
+
+    def _token_registry(self) -> dict[str, tuple[str, ...]]:
+        registry = getattr(self, "_dataset_hf_tokens", None)
+        if registry is None:
+            registry = {}
+            self._dataset_hf_tokens = registry
+        return registry
+
+    def _token_registry_lock(self) -> threading.RLock:
+        lock = getattr(self, "_dataset_hf_tokens_lock", None)
+        if lock is None:
+            lock = threading.RLock()
+            self._dataset_hf_tokens_lock = lock
+        return lock
 
     def _stream_with_budget_progress(
         self,
@@ -491,3 +588,17 @@ def _derive_job_state(status: JobStatus, stage: str) -> JobState:
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _tokenizer_secret_scope(job_id: str) -> str:
+    return f"tokenizer:{job_id}"
+
+
+def _log_job_event(event_id: str, message: str, job_id: str, status: JobStatus) -> None:
+    logger.info(
+        message,
+        extra={
+            "event_id": event_id,
+            "event_fields": {"job_id": job_id, "status": status.value},
+        },
+    )

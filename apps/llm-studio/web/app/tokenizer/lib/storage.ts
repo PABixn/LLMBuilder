@@ -1,39 +1,3 @@
-import type { TauriInvokeFn } from "../types";
-
-export function getTauriInvoke(): TauriInvokeFn | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const tauriWindow = window as Window & {
-    __TAURI__?: {
-      core?: {
-        invoke?: TauriInvokeFn;
-      };
-    };
-    __TAURI_INTERNALS__?: {
-      invoke?: TauriInvokeFn;
-    };
-  };
-
-  return tauriWindow.__TAURI__?.core?.invoke ?? tauriWindow.__TAURI_INTERNALS__?.invoke ?? null;
-}
-
-export function triggerBlobDownload(blob: Blob, fileName: string): void {
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = objectUrl;
-  link.download = fileName;
-  link.rel = "noreferrer";
-  link.style.display = "none";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => {
-    URL.revokeObjectURL(objectUrl);
-  }, 1_000);
-}
-
 export function readStoredValue(key: string): string | null {
   try {
     return window.localStorage.getItem(key);
@@ -63,6 +27,31 @@ export function readStoredStringArray(key: string): string[] {
     .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
     .filter((entry) => entry !== "");
   return Array.from(new Set(values));
+}
+
+export function migrateStoredValues(
+  migrations: ReadonlyArray<{
+    currentKey: string;
+    legacyKey: string;
+  }>
+): void {
+  for (const { currentKey, legacyKey } of migrations) {
+    try {
+      const current = window.localStorage.getItem(currentKey);
+      if (current !== null) {
+        window.localStorage.removeItem(legacyKey);
+        continue;
+      }
+      const legacy = window.localStorage.getItem(legacyKey);
+      if (legacy === null) {
+        continue;
+      }
+      window.localStorage.setItem(currentKey, legacy);
+      window.localStorage.removeItem(legacyKey);
+    } catch {
+      // Preserve legacy data when migration cannot complete safely.
+    }
+  }
 }
 
 export function writeStoredValue(key: string, value: string): void {

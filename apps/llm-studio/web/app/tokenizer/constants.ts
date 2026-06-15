@@ -11,13 +11,39 @@ export const FILTER_OPERATORS: FilterOperator[] = [
   "not in",
 ];
 
-export const LEGACY_TOKENIZER_THEME_STORAGE_KEY = "tokenizer-studio-theme";
-export const TOKENIZER_FORM_STORAGE_KEY = "tokenizer-studio-tokenizer-form";
-export const DATASET_FORM_STORAGE_KEY = "tokenizer-studio-dataset-form";
-export const TRAINING_FORM_STORAGE_KEY = "tokenizer-studio-training-form";
-export const ACTIVE_JOB_STORAGE_KEY = "tokenizer-studio-active-job-id";
-export const PREVIEW_TEXT_STORAGE_KEY = "tokenizer-studio-preview-text";
-export const HIDDEN_RECENT_JOB_IDS_STORAGE_KEY = "tokenizer-studio-hidden-recent-job-ids";
+export const TOKENIZER_FORM_STORAGE_KEY = "llm-studio-tokenizer-form";
+export const DATASET_FORM_STORAGE_KEY = "llm-studio-tokenizer-dataset-form";
+export const TRAINING_FORM_STORAGE_KEY = "llm-studio-tokenizer-training-form";
+export const ACTIVE_JOB_STORAGE_KEY = "llm-studio-tokenizer-active-job-id";
+export const PREVIEW_TEXT_STORAGE_KEY = "llm-studio-tokenizer-preview-text";
+export const HIDDEN_RECENT_JOB_IDS_STORAGE_KEY = "llm-studio-tokenizer-hidden-recent-job-ids";
+
+export const TOKENIZER_STORAGE_KEY_MIGRATIONS = [
+  {
+    currentKey: TOKENIZER_FORM_STORAGE_KEY,
+    legacyKey: "tokenizer-studio-tokenizer-form",
+  },
+  {
+    currentKey: DATASET_FORM_STORAGE_KEY,
+    legacyKey: "tokenizer-studio-dataset-form",
+  },
+  {
+    currentKey: TRAINING_FORM_STORAGE_KEY,
+    legacyKey: "tokenizer-studio-training-form",
+  },
+  {
+    currentKey: ACTIVE_JOB_STORAGE_KEY,
+    legacyKey: "tokenizer-studio-active-job-id",
+  },
+  {
+    currentKey: PREVIEW_TEXT_STORAGE_KEY,
+    legacyKey: "tokenizer-studio-preview-text",
+  },
+  {
+    currentKey: HIDDEN_RECENT_JOB_IDS_STORAGE_KEY,
+    legacyKey: "tokenizer-studio-hidden-recent-job-ids",
+  },
+] as const;
 
 export const SETTINGS_CATEGORY_HASH_MAP: Record<SettingsCategory, string> = {
   tokenizer: "#settings-tokenizer",

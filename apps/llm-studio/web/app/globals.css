@@ -6,4 +6,6 @@
 @import "./styles/builder.css";
 @import "./styles/training.css";
 @import "./styles/inference.css";
+@import "./styles/simple.css";
 @import "./styles/responsive.css";
+@import "./styles/runtime.css";

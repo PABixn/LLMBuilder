@@ -1,4 +1,7 @@
 apps/llm-studio/web/.next
 apps/llm-studio/web/node_modules
+apps/llm-studio/web/out
+apps/llm-studio/api/.venv
+build/desktop
 *.pyc
 /apps/llm-studio/api/artifacts

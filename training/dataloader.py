@@ -24,6 +24,23 @@ from training.dataloader_config import (
 )
 
 _WHITESPACE_RE = re.compile(r"\s+")
+_HF_DATASET_TOKENS_ENV = "LLM_STUDIO_HF_DATASET_TOKENS"
+
+
+def _hf_token_for_dataset(dataset_index: int, embedded_token: str | None) -> str | None:
+    if isinstance(embedded_token, str) and embedded_token.strip():
+        return embedded_token.strip()
+    raw = os.getenv(_HF_DATASET_TOKENS_ENV, "")
+    if not raw:
+        return None
+    try:
+        tokens = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(tokens, list) or dataset_index >= len(tokens):
+        return None
+    token = tokens[dataset_index]
+    return token.strip() if isinstance(token, str) and token.strip() else None
 
 
 class TextNormalizer:
@@ -308,8 +325,9 @@ class TrainingTokenDataset(IterableDataset):
                 kwargs["columns"] = spec.columns
             if spec.filters is not None:
                 kwargs["filters"] = [tuple(filt) for filt in spec.filters]
-            if spec.hf_token is not None:
-                kwargs["token"] = spec.hf_token
+            hf_token = _hf_token_for_dataset(dataset_index, spec.hf_token)
+            if hf_token is not None:
+                kwargs["token"] = hf_token
             if self.config.cache_dir is not None:
                 kwargs["cache_dir"] = self.config.cache_dir
             dataset = _load_hf_dataset(*args, **kwargs)

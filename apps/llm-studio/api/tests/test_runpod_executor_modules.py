@@ -120,19 +120,22 @@ def test_token_registry_keeps_raw_secrets_process_local() -> None:
 
 
 def test_lifecycle_sanitizer_recursively_redacts_secrets() -> None:
+    runpod_key = "rpa_0123456789abcdef0123456789abcdef"
     sanitized = sanitize_log_fields(
         {
             "api_key": "secret",
             "headers": {"Authorization": "Bearer secret"},
             "nested": [{"agent_token": "secret"}, {"hf_token": "secret"}],
+            "generic_error": f"provider echoed {runpod_key}",
             "safe": "value",
         }
     )
 
     assert sanitized == {
-        "api_key": "[redacted]",
-        "headers": {"Authorization": "[redacted]"},
-        "nested": [{"agent_token": "[redacted]"}, {"hf_token": "[redacted]"}],
+        "api_key": "[REDACTED]",
+        "headers": {"Authorization": "[REDACTED]"},
+        "nested": [{"agent_token": "[REDACTED]"}, {"hf_token": "[REDACTED]"}],
+        "generic_error": "provider echoed [REDACTED]",
         "safe": "value",
     }
 
@@ -148,6 +151,30 @@ def test_lifecycle_log_includes_correlation_id_category_and_is_parseable(tmp_pat
     assert events[0]["category"] == "cleanup_failure"
     assert is_standard_lifecycle_event(events[0]["event"]) is True
     assert lifecycle_error_category("create_pod_failed", {"error": "no instances currently available"}) == "no_capacity"
+
+
+def test_lifecycle_log_redacts_secrets_from_messages_fields_files_and_stdout(tmp_path, capsys) -> None:
+    runpod_key = "rpa_0123456789abcdef0123456789abcdef"
+    bearer = "opaque-bearer-value"
+    job = SimpleNamespace(id="job123456", artifact_dir=str(tmp_path))
+
+    log_lifecycle(
+        job,
+        "create_pod_failed",
+        f"Provider echoed {runpod_key}.",
+        error=f"Authorization: Bearer {bearer}",
+        nested=[f"retry used {runpod_key}"],
+    )
+
+    captured = capsys.readouterr().out
+    persisted = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (tmp_path / "runpod_lifecycle.jsonl", tmp_path / "runpod_lifecycle.log")
+    )
+    combined = f"{captured}\n{persisted}"
+    assert runpod_key not in combined
+    assert bearer not in combined
+    assert "[REDACTED]" in combined
 
 
 def test_runpod_status_labels_map_from_remote_state() -> None:
@@ -189,19 +216,31 @@ def test_runpod_client_extracts_list_and_object_response_shapes() -> None:
 
 
 def test_runpod_client_error_payloads_are_sanitized() -> None:
+    runpod_key = "rpa_0123456789abcdef0123456789abcdef"
+    bearer = "opaque-bearer-value"
     payload = _sanitize_error_payload(
         {
             "message": "capacity unavailable",
             "api_key": "secret",
             "nested": {"Authorization": "Bearer secret"},
+            "details": [
+                f"provider echoed {runpod_key}",
+                f"Authorization: Bearer {bearer}",
+            ],
         }
     )
 
     assert payload == {
         "message": "capacity unavailable",
-        "api_key": "[redacted]",
-        "nested": {"Authorization": "[redacted]"},
+        "api_key": "[REDACTED]",
+        "nested": {"Authorization": "[REDACTED]"},
+        "details": [
+            "provider echoed [REDACTED]",
+            "Authorization=[REDACTED]",
+        ],
     }
+    assert runpod_key not in str(payload)
+    assert bearer not in str(payload)
     assert _error_message(payload) == "capacity unavailable"
 
 

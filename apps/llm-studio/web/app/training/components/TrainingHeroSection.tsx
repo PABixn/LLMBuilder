@@ -9,7 +9,7 @@ import {
 } from "react-icons/fi";
 
 import type { ProjectDetail } from "../../../lib/api";
-import { trainingArtifactDownloadUrl } from "../../../lib/training/artifacts";
+import { downloadApiArtifact } from "../../../lib/downloads";
 import type { TrainingJob } from "../../../lib/training/types";
 import type { TrainingJob as TokenizerTrainingJob } from "../../../lib/tokenizerLegacyApi";
 import {
@@ -101,9 +101,20 @@ export function TrainingHeroSection({
             <FiLayers /> Open workspace
           </Link>
           {activeRunId ? (
-            <a className="buttonGhost" href={trainingArtifactDownloadUrl(activeRunId)}>
+            <button
+              type="button"
+              className="buttonGhost"
+              onClick={() =>
+                void downloadApiArtifact(
+                  `/training/jobs/${activeRunId}/artifact`,
+                  activeRun?.artifact_bundle_file || `training-${activeRunId}.tar.gz`
+                ).catch((error: unknown) =>
+                  alert(error instanceof Error ? error.message : "Could not download training bundle.")
+                )
+              }
+            >
               <FiDownload /> Download bundle
-            </a>
+            </button>
           ) : null}
         </div>
       </div>

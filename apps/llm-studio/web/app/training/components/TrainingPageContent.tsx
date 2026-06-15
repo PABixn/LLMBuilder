@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useThemeMode } from "../../../lib/theme";
+import { AppTopNav } from "../../shared/components/AppTopNav";
 import {
   createTrainingJob,
   deleteTrainingJob,
@@ -32,7 +32,6 @@ import { PreflightPanel } from "./PreflightPanel";
 import { TrainingHeroSection } from "./TrainingHeroSection";
 import { RecentRunsPanel } from "./RecentRunsPanel";
 import { SamplingPromptsPanel } from "./SamplingPromptsPanel";
-import { TrainingStudioNav } from "./TrainingStudioNav";
 import { TrainingPlanPanel } from "./TrainingPlanPanel";
 import { TrainingToastStack } from "./TrainingToastStack";
 import {
@@ -49,6 +48,7 @@ import {
   canStopTrainingRun,
   defaultRunName,
 } from "../lib/display";
+import { stripDataloaderCredentials } from "../lib/dataset";
 import { formatInteger } from "../lib/metrics";
 import {
   asNumber,
@@ -83,7 +83,6 @@ import type {
 
 export function TrainingPageContent() {
   const searchParams = useSearchParams();
-  const [theme, setTheme] = useThemeMode();
   const [trainingConfig, setTrainingConfig] = useState<Record<string, unknown> | null>(null);
   const [dataloaderConfig, setDataloaderConfig] = useState<Record<string, unknown> | null>(null);
   const [runName, setRunName] = useState("");
@@ -299,7 +298,9 @@ export function TrainingPageContent() {
       .then(([templates, jobs]) => {
         startTransition(() => {
           setTrainingConfig(storedTraining ?? templates.training_config_template);
-          setDataloaderConfig(storedDataloader ?? templates.dataloader_config_template);
+          setDataloaderConfig(
+            stripDataloaderCredentials(storedDataloader ?? templates.dataloader_config_template)
+          );
           setRecentRuns(jobs);
           if (initialSelection.shouldSelectMostRecentRun) {
             const nextRun = jobs[0] ?? null;
@@ -349,7 +350,7 @@ export function TrainingPageContent() {
 
   useEffect(() => {
     if (dataloaderConfig) {
-      writeStoredJson(DATALOADER_CONFIG_STORAGE_KEY, dataloaderConfig);
+      writeStoredJson(DATALOADER_CONFIG_STORAGE_KEY, stripDataloaderCredentials(dataloaderConfig));
     }
   }, [dataloaderConfig]);
 
@@ -484,6 +485,7 @@ export function TrainingPageContent() {
         tokenizer_job_id: selectedTokenizerJobId,
         training_config: trainingConfig,
         dataloader_config: dataloaderConfig,
+        hf_token: hfToken.trim() || undefined,
         execution_target: executionTarget,
       });
       startTransition(() => {
@@ -660,12 +662,7 @@ export function TrainingPageContent() {
 
   return (
     <main className="studioRoot trainingPage">
-      <TrainingStudioNav
-        theme={theme}
-        onToggleTheme={() =>
-          setTheme((current) => (current === "dark" ? "white" : "dark"))
-        }
-      />
+      <AppTopNav />
 
       <TrainingHeroSection
         selectedProject={selectedProject}

@@ -66,15 +66,9 @@
 }
 
 .statusCardTooltip {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 10px);
-  width: min(340px, calc(100vw - 34px));
-  transform: translate(-50%, 8px);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  z-index: 16;
+  position: fixed;
+  overflow: auto;
+  z-index: 5000;
   border-radius: 12px;
   border: 1px solid var(--line-strong);
   background: linear-gradient(180deg, var(--surface), var(--surface-soft));
@@ -84,7 +78,23 @@
   line-height: 1.45;
   letter-spacing: 0;
   text-transform: none;
-  transition: opacity 120ms ease, transform 120ms ease;
+  animation: statusCardTooltipIn 120ms ease both;
+}
+
+.statusCardTooltip.is-hidden {
+  visibility: hidden;
+}
+
+@keyframes statusCardTooltipIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .statusCardTooltip > * {
@@ -113,23 +123,23 @@
 .statusCardTooltip::after {
   content: "";
   position: absolute;
-  left: 50%;
-  top: 100%;
+  left: var(--status-card-tooltip-arrow-left, 50%);
   width: 10px;
   height: 10px;
-  border-left: 1px solid var(--line-strong);
-  border-bottom: 1px solid var(--line-strong);
   background: var(--surface-soft);
   transform: translateX(-50%) rotate(-45deg);
 }
 
-.statusCard.hasTooltip:hover .statusCardTooltip,
-.statusCard.hasTooltip:focus-within .statusCardTooltip,
-.statusCard.hasTooltip:focus-visible .statusCardTooltip {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translate(-50%, 0);
+.statusCardTooltip.is-top::after {
+  top: calc(100% - 4px);
+  border-left: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.statusCardTooltip.is-bottom::after {
+  bottom: calc(100% - 4px);
+  border-right: 1px solid var(--line-strong);
+  border-top: 1px solid var(--line-strong);
 }
 
 .statusCard.tone-good {

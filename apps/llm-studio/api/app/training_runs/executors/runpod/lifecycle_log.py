@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ....logging_config import redact_secrets, redact_value
 from ...store import StoredTrainingJob
 
 _LAST_LIFECYCLE_LOG_AT: dict[tuple[str, str, str], float] = {}
@@ -40,6 +41,7 @@ def log_lifecycle(
             return
         _LAST_LIFECYCLE_LOG_AT[key] = now_monotonic
 
+    sanitized_message = redact_secrets(message)
     payload = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "job_id": job.id,
@@ -47,7 +49,7 @@ def log_lifecycle(
         "executor": EXECUTOR_KIND,
         "event": event,
         "category": lifecycle_error_category(event, fields),
-        "message": message,
+        "message": sanitized_message,
         **sanitize_log_fields(fields),
     }
     line = json.dumps(payload, ensure_ascii=True, default=str, sort_keys=True)
@@ -59,7 +61,7 @@ def log_lifecycle(
             handle.write(line)
             handle.write("\n")
         with (artifact_dir / "runpod_lifecycle.log").open("a", encoding="utf-8") as handle:
-            handle.write(f"[runpod:{event}] {message}")
+            handle.write(f"[runpod:{event}] {sanitized_message}")
             detail = compact_log_detail(payload)
             if detail:
                 handle.write(f" | {detail}")
@@ -118,26 +120,12 @@ def is_standard_lifecycle_event(event: str) -> bool:
 
 
 def sanitize_log_fields(fields: dict[str, Any]) -> dict[str, Any]:
-    sanitized: dict[str, Any] = {}
-    for key, value in fields.items():
-        key_lower = key.lower()
-        if "token" in key_lower or "api_key" in key_lower or "authorization" in key_lower:
-            sanitized[key] = "[redacted]"
-        elif isinstance(value, dict):
-            sanitized[key] = sanitize_log_fields(value)
-        elif isinstance(value, list):
-            sanitized[key] = [sanitize_log_value(item) for item in value]
-        else:
-            sanitized[key] = sanitize_log_value(value)
-    return sanitized
+    sanitized = redact_value(fields)
+    return sanitized if isinstance(sanitized, dict) else {}
 
 
 def sanitize_log_value(value: Any) -> Any:
-    if isinstance(value, dict):
-        return sanitize_log_fields(value)
-    if isinstance(value, list):
-        return [sanitize_log_value(item) for item in value]
-    return value
+    return redact_value(value)
 
 
 def compact_log_detail(payload: dict[str, Any]) -> str:

@@ -1,0 +1,594 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import type { ProjectDetail } from "../../../lib/api";
+import type { TrainingJob as TokenizerJob } from "../../../lib/tokenizerLegacyApi";
+import type {
+  TrainingBatchLrRecommendation,
+  TrainingCheckpointEntry,
+  TrainingJob,
+} from "../../../lib/training/types";
+import {
+  DEFAULT_SIMPLE_FLOW_STATE,
+  SIMPLE_STREAMING_DATASET_FILTERS,
+} from "../constants";
+import { parseSimpleFlowState } from "../hooks/useSimpleFlowPersistence";
+import { buildInferenceSettings } from "./inferencePresets";
+import { buildArchitectureTemplateGuidance } from "./architectureGuidance";
+import {
+  SIMPLE_MODEL_PRESETS,
+  SIMPLE_PRESET_ARCHITECTURE_TYPES,
+  SIMPLE_PRESET_SIZE_GROUPS,
+  SIMPLE_PRESET_TRAINING_TARGETS,
+  assertPresetModelConfig,
+  estimatePresetParameterCount,
+  buildPresetModelConfig,
+  getSimpleModelPreset,
+  isSimpleModelPresetId,
+  shouldAnalyzePresetWithBackend,
+  targetVocabForPresetDataset,
+} from "./modelPresets";
+import { normalizeSimpleStreamingSelection } from "./streamingDatasets";
+import { deriveSimpleStepStatuses } from "./stepStatus";
+import {
+  applySimpleTrainingProfileGuardrails,
+  buildSimpleTrainingDataloaderConfig,
+  buildSimpleTrainingConfig,
+  selectRecommendedTrainingOption,
+} from "./trainingProfiles";
+import { buildSimpleTokenizerProgressState } from "./tokenizerProgress";
+import {
+  buildSimpleTokenizerDataloaderConfig,
+  tokenizerBudgetForDataset,
+} from "./tokenizerDefaults";
+import {
+  buildModelConfigWithSyncedVocab,
+  modelNeedsTokenizerVocabSync,
+  readTokenizerVocabSize,
+} from "./vocabularySync";
+
+function recommendation(recommendedMaxSteps = 120): TrainingBatchLrRecommendation {
+  return {
+    headline: "Balanced",
+    summary: "Use the balanced profile.",
+    confidence: "high",
+    current_total_batch_size: 16,
+    current_learning_rate: 0.0003,
+    current_micro_batch_size: null,
+    current_grad_accum_steps: null,
+    recommended_option_key: "balanced",
+    options: [
+      {
+        key: "balanced",
+        label: "Balanced",
+        description: "Recommended",
+        tone: "recommended",
+        total_batch_size: 64,
+        micro_batch_size: 4,
+        grad_accum_steps: 16,
+        learning_rate: 0.00025,
+        estimated_tokens_per_run: 2048,
+        recommended_max_steps: recommendedMaxSteps,
+        estimated_tokens_per_recommended_run: 7680,
+        estimated_local_passes_at_recommended_steps: null,
+        clear_manual_micro_batch: true,
+      },
+    ],
+    factors: [],
+    signals: {
+      device: "cpu",
+      device_type: "cpu",
+      total_parameters: 1000,
+      parameter_memory_bytes_bf16: 2000,
+      estimated_kv_cache_bytes_for_context_fp16: 3000,
+      block_count: 2,
+      attention_component_count: 2,
+      max_mlp_multiplier: 4,
+      dataset_count: 1,
+      local_dataset_count: 1,
+      streaming_dataset_count: 0,
+      local_file_count: 1,
+      local_total_size_bytes: 1000,
+      approx_local_tokens: 10_000,
+      dominant_dataset_weight: 1,
+      dataset_scale: "tiny",
+      schedule_peak_factor: 1,
+      warmup_fraction: 0.1,
+      max_memory_micro_batch_size: 4,
+      recommended_batch_target: 64,
+      recommended_run_token_budget: 7680,
+      parameter_scaled_run_token_target: 7680,
+    },
+  };
+}
+
+const trainingTemplate = {
+  seq_len: 4096,
+  max_steps: 500,
+  total_batch_size: 16,
+  micro_batch_size: 2,
+  optimizer: {
+    lr: 0.0003,
+  },
+  lr_scheduler: {
+    type: "sequential",
+    schedulers: [
+      { type: "linear", steps: 50, start_factor: 0.1, end_factor: 1 },
+      { type: "cosine_annealing", steps: 450, eta_min: 0.00001 },
+    ],
+  },
+  sample_every: 200,
+  save_every: 1000,
+};
+
+function assertTokenBudgetIsTight(
+  config: Record<string, unknown>,
+  targetRunTokens: number
+): void {
+  const maxSteps = config.max_steps as number;
+  const totalBatchSize = config.total_batch_size as number;
+  const actualRunTokens = maxSteps * totalBatchSize;
+
+  assert.equal(Number.isInteger(maxSteps), true);
+  assert.equal(Number.isInteger(totalBatchSize), true);
+  assert.equal(actualRunTokens >= targetRunTokens, true);
+  assert.equal(actualRunTokens < targetRunTokens + totalBatchSize, true);
+}
+
+test("simple flow parser migrates malformed state to safe defaults", () => {
+  assert.deepEqual(parseSimpleFlowState(null), DEFAULT_SIMPLE_FLOW_STATE);
+  assert.equal(parseSimpleFlowState({ datasetSource: "bad" }).datasetSource, "starter");
+  assert.equal(parseSimpleFlowState({ presetId: "bad" }).presetId, DEFAULT_SIMPLE_FLOW_STATE.presetId);
+  assert.equal(
+    parseSimpleFlowState({
+      presetId: "bad",
+      datasetSource: "streaming",
+      targetVocabSize: 16000,
+      targetContextLength: 2048,
+      trainingProfile: "balanced",
+      executionKind: "runpod_pod",
+    }).targetVocabSize,
+    DEFAULT_SIMPLE_FLOW_STATE.targetVocabSize
+  );
+  assert.equal(
+    parseSimpleFlowState({
+      presetId: DEFAULT_SIMPLE_FLOW_STATE.presetId,
+      trainingProfile: "longer",
+    }).trainingProfile,
+    "longer"
+  );
+  assert.deepEqual(
+    parseSimpleFlowState({
+      localTrainFiles: [{ id: "a", fileName: "a.txt", filePath: "datasets/a.txt" }],
+    }).localTrainFiles,
+    [{ id: "a", fileName: "a.txt", filePath: "datasets/a.txt", sizeBytes: null, sizeChars: null }]
+  );
+  const streamingState = parseSimpleFlowState({
+    streamingPrimaryDatasetId: "the-stack",
+    streamingAdditionalDatasetIds: ["the-stack", "tinystories", "bad", "tinystories"],
+  });
+  assert.equal(streamingState.streamingPrimaryDatasetId, "the-stack");
+  assert.deepEqual(streamingState.streamingAdditionalDatasetIds, ["tinystories"]);
+});
+
+test("model presets satisfy local structural constraints", () => {
+  for (const preset of SIMPLE_MODEL_PRESETS) {
+    const config = buildPresetModelConfig(preset.id);
+    assert.doesNotThrow(() => assertPresetModelConfig(config));
+    assert.equal(
+      preset.trainingTarget === "runpod",
+      preset.defaultExecutionKind === "runpod_pod"
+    );
+    assert.equal(Number.isFinite(estimatePresetParameterCount(preset)), true);
+    assert.equal(estimatePresetParameterCount(preset) > 0, true);
+  }
+});
+
+test("model presets provide production-grade catalog coverage", () => {
+  assert.equal(SIMPLE_MODEL_PRESETS.length >= 20, true);
+
+  for (const group of SIMPLE_PRESET_SIZE_GROUPS) {
+    const presets = SIMPLE_MODEL_PRESETS.filter((preset) => preset.relativeSize === group.id);
+    assert.equal(
+      presets.length >= 3,
+      true,
+      `${group.label} should have several architecture choices`
+    );
+  }
+
+  for (const option of SIMPLE_PRESET_ARCHITECTURE_TYPES) {
+    const presets = SIMPLE_MODEL_PRESETS.filter(
+      (preset) => preset.architectureType === option.id
+    );
+    assert.equal(
+      presets.length >= 3,
+      true,
+      `${option.label} should have several architecture choices`
+    );
+  }
+
+  for (const option of SIMPLE_PRESET_TRAINING_TARGETS) {
+    const presets = SIMPLE_MODEL_PRESETS.filter(
+      (preset) => preset.trainingTarget === option.id
+    );
+    assert.equal(
+      presets.length >= 3,
+      true,
+      `${option.label} should have several architecture choices`
+    );
+  }
+
+  assert.equal(shouldAnalyzePresetWithBackend("nano-gpt-quick"), true);
+  assert.equal(shouldAnalyzePresetWithBackend("runpod-wide-480m"), false);
+});
+
+test("model presets provide concise beginner guidance", () => {
+  for (const preset of SIMPLE_MODEL_PRESETS) {
+    const guidance = buildArchitectureTemplateGuidance(preset);
+
+    assert.equal(guidance.title, preset.name);
+    assert.equal(guidance.highlights.length, 5);
+    assert.equal(guidance.highlights[0].startsWith("Best for:"), true);
+    assert.equal(guidance.highlights.some((item) => item.startsWith("Expect:")), true);
+    assert.equal(guidance.highlights.some((item) => item.startsWith("Why this shape:")), true);
+    assert.equal(guidance.highlights.some((item) => item.startsWith("Next step:")), true);
+    assert.equal(guidance.highlights.some((item) => item.startsWith("Watch:")), true);
+    assert.equal(guidance.summary.length <= 150, true, `${preset.id} summary is too long`);
+
+    for (const highlight of guidance.highlights) {
+      assert.equal(
+        highlight.length <= 190,
+        true,
+        `${preset.id} guidance bullet is too long: ${highlight}`
+      );
+    }
+  }
+});
+
+test("model presets carry coordinated simple-mode defaults", () => {
+  const quickstart = getSimpleModelPreset(DEFAULT_SIMPLE_FLOW_STATE.presetId);
+  assert.equal(isSimpleModelPresetId(quickstart.id), true);
+  assert.equal(isSimpleModelPresetId("missing"), false);
+  assert.equal(quickstart.defaultDatasetSource, "starter");
+  assert.equal(quickstart.defaultTrainingProfile, "quick");
+  assert.equal(quickstart.defaultExecutionKind, "local");
+});
+
+test("preset tokenizer targets stay small for starter data", () => {
+  assert.equal(targetVocabForPresetDataset("nano-gpt-quick", "starter"), 1000);
+  assert.equal(targetVocabForPresetDataset("gqa-balanced", "upload"), 16000);
+  assert.equal(targetVocabForPresetDataset("gqa-balanced", "streaming"), 32000);
+});
+
+test("vocabulary sync reads tokenizer stats and updates model config", () => {
+  const tokenizer = {
+    stats: { vocab_size: 2048 },
+    tokenizer_config: { vocab_size: 1000 },
+  } as unknown as TokenizerJob;
+  const project = {
+    model_config: buildPresetModelConfig("nano-gpt-quick", { vocabSize: 1000 }),
+  } as ProjectDetail;
+
+  assert.equal(readTokenizerVocabSize(tokenizer), 2048);
+  assert.equal(modelNeedsTokenizerVocabSync(project, tokenizer), true);
+  assert.equal(buildModelConfigWithSyncedVocab(project.model_config, 2048).vocab_size, 2048);
+});
+
+test("training profiles apply backend token-budget recommendations", () => {
+  const rec = recommendation();
+  assert.equal(selectRecommendedTrainingOption(rec)?.key, "balanced");
+
+  const quick = buildSimpleTrainingConfig(trainingTemplate, "quick", 1024, rec);
+  assert.equal(quick.config.max_steps, 120);
+  assert.equal(quick.config.seq_len, 256);
+  assert.equal(quick.config.total_batch_size, 2048);
+  assert.equal((quick.config.optimizer as Record<string, unknown>).lr, 0.00025);
+  assert.equal("micro_batch_size" in quick.config, false);
+  assert.equal(quick.config.save_every, 12);
+
+  const balanced = buildSimpleTrainingConfig(trainingTemplate, "balanced", 1024, rec);
+  assert.equal(balanced.config.max_steps, 4);
+  assert.equal(balanced.config.seq_len, 512);
+  assert.equal(balanced.config.total_batch_size, 2048);
+  assert.equal(balanced.targetRunTokens, 7680);
+  assert.equal((balanced.config.optimizer as Record<string, unknown>).lr, 0.00025);
+  assert.equal(balanced.config.save_every, 1);
+
+  const longer = buildSimpleTrainingConfig(trainingTemplate, "longer", 2048, rec);
+  assert.equal(longer.config.max_steps, 4);
+  assert.equal(longer.config.seq_len, 1024);
+  assert.equal(longer.config.total_batch_size, 4096);
+  assert.equal(longer.targetRunTokens, 15360);
+  assert.equal((longer.config.optimizer as Record<string, unknown>).lr, 0.00025);
+  assert.equal(longer.config.save_every, 1);
+});
+
+test("balanced and longer ignore tiny local step caps and use model-scale token targets", () => {
+  const rec = recommendation(4);
+  rec.options[0] = {
+    ...rec.options[0],
+    total_batch_size: 512,
+    micro_batch_size: 1,
+    grad_accum_steps: 1,
+    learning_rate: 0.0003,
+    recommended_max_steps: 4,
+    estimated_tokens_per_recommended_run: 2_048,
+  };
+  rec.signals.total_parameters = 3_000_000;
+  rec.signals.max_memory_micro_batch_size = 4;
+  rec.signals.recommended_batch_target = 512;
+  rec.signals.recommended_run_token_budget = 2_048;
+  rec.signals.parameter_scaled_run_token_target = 60_000_000;
+
+  const quick = buildSimpleTrainingConfig(trainingTemplate, "quick", 1024, rec);
+  const balanced = buildSimpleTrainingConfig(trainingTemplate, "balanced", 1024, rec);
+  const longer = buildSimpleTrainingConfig(trainingTemplate, "longer", 1024, rec);
+
+  assert.equal(quick.config.max_steps, 100);
+  assert.equal(balanced.config.max_steps, Math.ceil(60_000_000 / 32768));
+  assert.equal(longer.config.max_steps, Math.ceil(120_000_000 / 32768));
+  assert.equal(quick.config.total_batch_size, 2048);
+  assert.equal(balanced.config.total_batch_size, 32768);
+  assert.equal(longer.config.total_batch_size, 32768);
+  assert.equal(balanced.targetRunTokens, 60_000_000);
+  assert.equal(longer.targetRunTokens, 120_000_000);
+  assert.equal(balanced.targetTotalBatchTokens, 32768);
+  assert.equal(longer.targetTotalBatchTokens, 32768);
+  assertTokenBudgetIsTight(balanced.config, 60_000_000);
+  assertTokenBudgetIsTight(longer.config, 120_000_000);
+  assert.equal((quick.config.optimizer as Record<string, unknown>).lr, 0.0003);
+  assert.equal((balanced.config.optimizer as Record<string, unknown>).lr, 0.0003);
+  assert.equal((longer.config.optimizer as Record<string, unknown>).lr, 0.0003);
+});
+
+test("balanced and longer keep model-sized backend batch recommendations without profile caps", () => {
+  const rec = recommendation(120);
+  const targetRunTokens = 2_480_000_000;
+  rec.options[0] = {
+    ...rec.options[0],
+    total_batch_size: 131_072,
+    micro_batch_size: 8,
+    grad_accum_steps: 32,
+    learning_rate: 0.0003,
+    recommended_max_steps: 120,
+    estimated_tokens_per_recommended_run: 15_728_640,
+  };
+  rec.signals.total_parameters = 124_000_000;
+  rec.signals.recommended_batch_target = 131_072;
+  rec.signals.recommended_run_token_budget = 15_728_640;
+  rec.signals.parameter_scaled_run_token_target = targetRunTokens;
+
+  const balanced = buildSimpleTrainingConfig(trainingTemplate, "balanced", 1024, rec);
+  const longer = buildSimpleTrainingConfig(trainingTemplate, "longer", 2048, rec);
+
+  assert.equal(balanced.config.total_batch_size, 131_072);
+  assert.equal(longer.config.total_batch_size, 131_072);
+  assert.equal(balanced.targetTotalBatchTokens, 131_072);
+  assert.equal(longer.targetTotalBatchTokens, 131_072);
+  assert.equal(balanced.config.max_steps, Math.ceil(targetRunTokens / 131_072));
+  assert.equal(longer.config.max_steps, Math.ceil((targetRunTokens * 2) / 131_072));
+  assertTokenBudgetIsTight(balanced.config, targetRunTokens);
+  assertTokenBudgetIsTight(longer.config, targetRunTokens * 2);
+});
+
+test("post-fix guardrails preserve backend token budget for recommendation-backed profiles", () => {
+  const rec = recommendation(1831);
+  rec.options[0] = {
+    ...rec.options[0],
+    total_batch_size: 32768,
+    learning_rate: 0.0003,
+    recommended_max_steps: 1831,
+    estimated_tokens_per_recommended_run: 59_998_208,
+  };
+  rec.signals.total_parameters = 3_000_000;
+  rec.signals.recommended_run_token_budget = 60_000_000;
+  rec.signals.parameter_scaled_run_token_target = 60_000_000;
+
+  const balanced = buildSimpleTrainingConfig(trainingTemplate, "balanced", 1024, rec);
+  const guarded = applySimpleTrainingProfileGuardrails(
+    balanced.config,
+    "balanced",
+    balanced.appliedRecommendation,
+    balanced.targetRunTokens,
+    balanced.targetTotalBatchTokens
+  );
+
+  assert.equal(guarded.max_steps, 1832);
+  assert.equal(guarded.total_batch_size, 32768);
+  assertTokenBudgetIsTight(guarded, 60_000_000);
+
+  const staleBatchFix = applySimpleTrainingProfileGuardrails(
+    {
+      ...balanced.config,
+      total_batch_size: 1024,
+    },
+    "balanced",
+    balanced.appliedRecommendation,
+    balanced.targetRunTokens,
+    balanced.targetTotalBatchTokens
+  );
+  assert.equal(staleBatchFix.max_steps, 1832);
+  assert.equal(staleBatchFix.total_batch_size, 32768);
+  assertTokenBudgetIsTight(staleBatchFix, 60_000_000);
+});
+
+test("safe preflight fixes cannot collapse simple training guardrails", () => {
+  const fixed = applySimpleTrainingProfileGuardrails(
+    {
+      ...trainingTemplate,
+      max_steps: 8,
+      total_batch_size: 512,
+      optimizer: { lr: 0.000001 },
+    },
+    "balanced"
+  );
+
+  assert.equal(fixed.max_steps, 500);
+  assert.equal(fixed.total_batch_size, 8192);
+  assert.equal((fixed.optimizer as Record<string, unknown>).lr, 0.00008);
+  assert.equal(fixed.save_every, 50);
+});
+
+test("inference preset mapping hides numeric sampling controls behind stable choices", () => {
+  assert.deepEqual(buildInferenceSettings("short", "precise"), {
+    max_tokens: 48,
+    temperature: 0.2,
+    top_k: 20,
+    repetition_penalty: 1.12,
+  });
+  assert.deepEqual(buildInferenceSettings("long", "creative"), {
+    max_tokens: 160,
+    temperature: 0.95,
+    top_k: 80,
+    repetition_penalty: 1.04,
+  });
+});
+
+test("streaming data templates keep quality filters and tokenizer schema compatibility", () => {
+  assert.deepEqual(
+    normalizeSimpleStreamingSelection("the-stack", ["the-stack", "tinystories", "bad"]),
+    {
+      primaryId: "the-stack",
+      additionalIds: ["tinystories"],
+    }
+  );
+
+  const tokenizerDataloader = buildSimpleTokenizerDataloaderConfig({
+    datasetSource: "streaming",
+    localTrainFiles: [],
+    streamingPrimaryDatasetId: "fineweb-edu",
+    streamingAdditionalDatasetIds: ["tinystories", "the-stack"],
+    budgetLimit: tokenizerBudgetForDataset("streaming", 32000),
+  });
+  const tokenizerDatasets = tokenizerDataloader.datasets as Record<string, unknown>[];
+  const tokenizerDataset = tokenizerDatasets[0];
+  assert.equal(tokenizerDatasets.length, 3);
+  assert.equal(tokenizerDataset.name, "HuggingFaceFW/fineweb-edu");
+  assert.equal(tokenizerDataset.weight, 0.8);
+  assert.deepEqual(
+    tokenizerDataset.filters,
+    SIMPLE_STREAMING_DATASET_FILTERS.map((filter) => [...filter])
+  );
+  assert.equal(tokenizerDatasets[1].name, "roneneldan/TinyStories");
+  assert.equal(tokenizerDatasets[1].weight, 0.1);
+  assert.equal(tokenizerDatasets[2].name, "bigcode/the-stack");
+  assert.deepEqual(tokenizerDatasets[2].text_columns, ["content"]);
+  assert.equal(tokenizerDatasets.some((dataset) => "streaming" in dataset), false);
+  assert.equal((tokenizerDataloader.budget as Record<string, unknown>).limit, 16_000_000);
+
+  const trainingDataloader = buildSimpleTrainingDataloaderConfig(
+    {},
+    "streaming",
+    [],
+    "fineweb-edu",
+    ["tinystories", "the-stack"]
+  );
+  const trainingDatasets = trainingDataloader.datasets as Record<string, unknown>[];
+  const trainingDataset = trainingDatasets[0];
+  assert.equal(trainingDatasets.length, 3);
+  assert.deepEqual(
+    trainingDataset.filters,
+    SIMPLE_STREAMING_DATASET_FILTERS.map((filter) => [...filter])
+  );
+  assert.equal(trainingDatasets.every((dataset) => dataset.streaming === true), true);
+});
+
+test("tokenizer progress state makes validation, running, and completed jobs visible", () => {
+  const checking = buildSimpleTokenizerProgressState({
+    job: null,
+    starting: false,
+    validating: true,
+  });
+  assert.equal(checking?.pillLabel, "Checking");
+  assert.equal(checking?.headline, "Checking tokenizer inputs");
+  assert.equal(checking?.progressLabel, "4%");
+
+  const running = buildSimpleTokenizerProgressState({
+    job: {
+      status: "running",
+      state: "training",
+      stage: "Training BPE merges",
+      progress: 0.34,
+      stats: null,
+    } as unknown as TokenizerJob,
+    starting: false,
+    validating: false,
+  });
+  assert.equal(running?.pillLabel, "Training");
+  assert.equal(running?.pillState, "running");
+  assert.equal(running?.progressLabel, "34%");
+  assert.equal(running?.recordsLabel, "Pending");
+  assert.equal(running?.tokensLabel, "Pending");
+
+  const completed = buildSimpleTokenizerProgressState({
+    job: {
+      status: "completed",
+      state: "completed",
+      stage: "Saved",
+      progress: 0.84,
+      stats: {
+        num_records: 12,
+        num_tokens: 3456,
+        vocab_size: 1024,
+      },
+    } as unknown as TokenizerJob,
+    starting: false,
+    validating: false,
+  });
+  assert.equal(completed?.pillLabel, "Tokenizer ready");
+  assert.equal(completed?.pillState, "completed");
+  assert.equal(completed?.progressLabel, "100%");
+  assert.equal(completed?.recordsLabel, "12");
+  assert.equal(completed?.tokensLabel, "3,456");
+  assert.equal(completed?.vocabLabel, "1,024");
+});
+
+test("step readiness derives from artifacts instead of only persisted state", () => {
+  const project = {
+    valid: true,
+    name: "model",
+    artifact_file: "model.json",
+  } as ProjectDetail;
+  const tokenizer = {
+    id: "tok",
+    status: "completed",
+    stats: { vocab_size: 1000 },
+    tokenizer_config: { name: "tok", vocab_size: 1000 },
+  } as unknown as TokenizerJob;
+  const run = {
+    id: "run",
+    name: "run",
+    status: "completed",
+    checkpoint_count: 1,
+  } as TrainingJob;
+  const checkpoint = { step: 10 } as TrainingCheckpointEntry;
+  const statuses = deriveSimpleStepStatuses({
+    flow: {
+      ...DEFAULT_SIMPLE_FLOW_STATE,
+      projectId: "project",
+      tokenizerJobId: "tok",
+      trainingJobId: "run",
+    },
+    project,
+    projectLoading: false,
+    projectError: null,
+    tokenizerJob: tokenizer,
+    tokenizerError: null,
+    datasetReady: true,
+    datasetBlocker: null,
+    tokenizerValidationError: null,
+    trainingRun: run,
+    trainingCheckpoints: [checkpoint],
+    preflightValid: true,
+    preflightError: null,
+    trainingLaunching: false,
+    inferenceGenerating: false,
+    generationSucceeded: false,
+    checkpointError: null,
+  });
+
+  assert.deepEqual(
+    statuses.map((status) => status.state),
+    ["completed", "completed", "completed", "ready"]
+  );
+});

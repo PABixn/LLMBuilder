@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import math
-import sys
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
-IMPORT_ROOT = Path(__file__).resolve().parents[6]
-if str(IMPORT_ROOT) not in sys.path:
-    sys.path.append(str(IMPORT_ROOT))
+from ...runtime_paths import ensure_source_root_on_path
+
+IMPORT_ROOT = ensure_source_root_on_path()
 
 from training.local_text_data import is_local_text_dataset, resolve_local_data_files
 from model.loader import ActivationComponent, AttentionComponent, LLMConfig, MLPComponent, NormComponent
@@ -39,6 +37,7 @@ _REFERENCE_PARAMETER_COUNT = 124_000_000
 _REFERENCE_TOTAL_BATCH_SIZE = 524_288
 _REFERENCE_LEARNING_RATE = 3e-4
 _REFERENCE_TOKENS_PER_PARAMETER = 20.0
+_MIN_RECOMMENDED_UPDATES_FOR_SMALL_MODELS = 1500
 _DEFAULT_BYTES_PER_TOKEN = 4.0
 _STABILITY_PROFILE_LR_MULTIPLIER = 0.68
 _THROUGHPUT_PROFILE_LR_MULTIPLIER = 1.28
@@ -608,11 +607,26 @@ def _model_target_total_batch_size(
     raw_target = _REFERENCE_TOTAL_BATCH_SIZE * (model_scale ** 0.25)
     lower_bound = seq_len * max(1, min(max_memory_micro_batch_size, 4))
     upper_bound = seq_len * max_memory_micro_batch_size * max_grad_accum
+    prefer_downward = False
+    if total_parameters < 30_000_000:
+        min_update_batch_cap = max(
+            seq_len,
+            int(
+                round(
+                    _parameter_scaled_run_token_target(total_parameters=total_parameters)
+                    / _MIN_RECOMMENDED_UPDATES_FOR_SMALL_MODELS
+                )
+            ),
+        )
+        if min_update_batch_cap < raw_target:
+            raw_target = min_update_batch_cap
+            prefer_downward = True
     target = _normalize_total_batch_size_target(
         int(round(raw_target)),
         seq_len=seq_len,
         lower_bound=lower_bound,
         upper_bound=upper_bound,
+        prefer_downward=prefer_downward,
     )
     if dataset_cap_tokens is not None:
         target = _normalize_total_batch_size_target(

@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from ....config import get_settings
+from ....dataset_credentials import HF_DATASET_TOKENS_ENV, encode_dataset_hf_tokens
+from ....logging_config import redact_secrets
 from ...schemas import TrainingJobState, TrainingJobStatus
 from ...store import StoredTrainingJob
 from ..base import CleanupPolicy, ExecutionHandle, ExecutionSnapshot, TrainingJobBundle
@@ -69,6 +71,11 @@ class RunPodPodExecutor:
         )
 
         client = RunPodClient(resolved_target.api_key)
+        encoded_hf_tokens = encode_dataset_hf_tokens(
+            bundle.manifest.get("dataset_hf_tokens", [])
+            if isinstance(bundle.manifest.get("dataset_hf_tokens"), list)
+            else []
+        )
         pod_id = ""
         agent_base_url = ""
         started_monotonic = time.monotonic()
@@ -93,6 +100,7 @@ class RunPodPodExecutor:
                     "HF_DATASETS_CACHE": f"{resolved_target.volume_mount_path.rstrip('/')}/llm-studio/cache/huggingface/datasets",
                     "LLM_STUDIO_RUNPOD_AGENT_PORT": str(resolved_target.agent_port),
                     "PYTHONUNBUFFERED": "1",
+                    **({HF_DATASET_TOKENS_ENV: encoded_hf_tokens} if encoded_hf_tokens is not None else {}),
                 },
                 interruptible=resolved_target.interruptible,
             )
@@ -233,7 +241,7 @@ class RunPodPodExecutor:
                 error=str(exc),
                 throttle_seconds=30,
             )
-            return ExecutionSnapshot(updates={"remote_error": str(exc)})
+            return ExecutionSnapshot(updates={"remote_error": redact_secrets(str(exc))})
         updates = {
             "runpod_last_heartbeat_at": _utc_now(),
             "runpod_last_sync_at": _utc_now(),
@@ -247,7 +255,7 @@ class RunPodPodExecutor:
             state=coerce_state(state.get("state")),
             stage=state.get("stage") if isinstance(state.get("stage"), str) else None,
             progress=float(state["progress"]) if isinstance(state.get("progress"), (int, float)) else None,
-            error=state.get("error") if isinstance(state.get("error"), str) else None,
+            error=redact_secrets(state["error"]) if isinstance(state.get("error"), str) else None,
             updates=updates,
         )
         if status in {TrainingJobStatus.completed, TrainingJobStatus.failed, TrainingJobStatus.cancelled}:
@@ -267,7 +275,9 @@ class RunPodPodExecutor:
                         error=str(exc),
                     )
                     snapshot.updates["executor_status"] = "syncing"
-                    snapshot.updates["remote_error"] = f"Training finished, but final artifact sync is incomplete: {exc}"
+                    snapshot.updates["remote_error"] = redact_secrets(
+                        f"Training finished, but final artifact sync is incomplete: {exc}"
+                    )
                     return snapshot
             try:
                 log_lifecycle(job, "cleanup_start", "Applying RunPod cleanup policy.", policy=policy_payload(policy))
@@ -282,7 +292,9 @@ class RunPodPodExecutor:
                     "Training finished, but RunPod cleanup failed.",
                     error=f"{type(exc).__name__}: {exc}",
                 )
-                snapshot.updates["remote_error"] = f"Training finished, but cleanup failed: {exc}"
+                snapshot.updates["remote_error"] = redact_secrets(
+                    f"Training finished, but cleanup failed: {exc}"
+                )
         return snapshot
 
     def _refresh_terminal_job(self, job: StoredTrainingJob) -> ExecutionSnapshot:
@@ -315,7 +327,9 @@ class RunPodPodExecutor:
                     updates["runpod_last_sync_at"] = _utc_now()
                 except RemoteAgentError as exc:
                     updates["executor_status"] = "syncing"
-                    updates["remote_error"] = f"Training finished, but final artifact sync is incomplete: {exc}"
+                    updates["remote_error"] = redact_secrets(
+                        f"Training finished, but final artifact sync is incomplete: {exc}"
+                    )
                     return ExecutionSnapshot(updates=updates)
             log_lifecycle(
                 job,
@@ -338,7 +352,7 @@ class RunPodPodExecutor:
                 "Terminal RunPod job cleanup failed.",
                 error=f"{type(exc).__name__}: {exc}",
             )
-            updates["remote_error"] = f"Training finished, but cleanup failed: {exc}"
+            updates["remote_error"] = redact_secrets(f"Training finished, but cleanup failed: {exc}")
         return ExecutionSnapshot(updates=updates)
 
     def stop(self, job: StoredTrainingJob) -> ExecutionSnapshot:

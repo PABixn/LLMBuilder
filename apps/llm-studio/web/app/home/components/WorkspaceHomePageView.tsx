@@ -1,7 +1,10 @@
+import Link from "next/link";
+
 import { WorkspaceAssetManager } from "../../components/WorkspaceAssetManager";
+import { AppTopNav } from "../../shared/components/AppTopNav";
+import { useUiMode } from "../../shared/hooks/useUiMode";
 import styles from "../../workspace-home.module.css";
 import { HomeHero } from "./HomeHero";
-import { HomeNavigation } from "./HomeNavigation";
 import { HomeSyncStatus } from "./HomeSyncStatus";
 import type { useWorkspaceHomeController } from "../hooks/useWorkspaceHomeController";
 
@@ -12,9 +15,8 @@ type WorkspaceHomePageViewProps = {
 };
 
 export function WorkspaceHomePageView({ controller }: WorkspaceHomePageViewProps) {
+  const [uiMode] = useUiMode();
   const {
-    theme,
-    setTheme,
     inventory,
     showInitialWorkspaceLoading,
     syncLabel,
@@ -22,10 +24,7 @@ export function WorkspaceHomePageView({ controller }: WorkspaceHomePageViewProps
 
   return (
     <main className={styles.homeRoot}>
-      <HomeNavigation
-        theme={theme}
-        onToggleTheme={() => setTheme((previous) => (previous === "dark" ? "white" : "dark"))}
-      />
+      <AppTopNav />
 
       {inventory.error ? (
         <div
@@ -44,6 +43,23 @@ export function WorkspaceHomePageView({ controller }: WorkspaceHomePageViewProps
       ) : null}
 
       <HomeHero />
+
+      {uiMode === "simple" ? (
+        <section className={styles.simpleGuideCard}>
+          <div>
+            <span>Simple Mode</span>
+            <h2>Continue the guided flow</h2>
+            <p>
+              Models: {inventory.counts.modelCount} · Tokenizers:{" "}
+              {inventory.counts.tokenizerCompletedCount} complete · Training runs:{" "}
+              {inventory.counts.trainingCompletedCount} complete
+            </p>
+          </div>
+          <Link className={styles.primaryButton} href="/simple">
+            Open guide
+          </Link>
+        </section>
+      ) : null}
 
       <WorkspaceAssetManager
         inventory={inventory}

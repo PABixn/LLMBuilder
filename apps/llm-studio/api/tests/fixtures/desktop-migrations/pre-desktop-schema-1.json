@@ -1,0 +1,69 @@
+{
+  "fixture_schema_version": 1,
+  "data_schema_version": 1,
+  "legacy_source_tree": {
+    "artifacts": [
+      {
+        "name": "golden-tokenizer.json",
+        "content": "{\"fixture\":\"golden-source-tree-tokenizer\"}\n"
+      }
+    ],
+    "uploads": [
+      {
+        "name": "golden-upload.txt",
+        "content": "golden source-tree upload\n"
+      }
+    ]
+  },
+  "tokenizer_database": {
+    "training_jobs": [
+      {
+        "evaluation_text_path": "__training_dataset__",
+        "artifact_path": "{DATA_ROOT}/artifacts/tokenizers/golden-tokenizer.json"
+      }
+    ],
+    "uploaded_files": [
+      {
+        "file_path": "{DATA_ROOT}/uploads/golden-upload.txt"
+      },
+      {
+        "file_path": "{EXTERNAL_ROOT}/external.txt"
+      }
+    ]
+  },
+  "training_database": {
+    "llm_training_jobs": [
+      {
+        "artifact_dir": "{DATA_ROOT}/training/jobs/golden-job",
+        "stats_path": "{DATA_ROOT}/training/jobs/golden-job/stats.jsonl",
+        "samples_path": "{DATA_ROOT}/training/jobs/golden-job/samples.jsonl",
+        "stdout_path": "{DATA_ROOT}/training/jobs/golden-job/stdout.log",
+        "stderr_path": "{DATA_ROOT}/training/jobs/golden-job/stderr.log",
+        "remote_workspace_path": "/workspace/llm-studio/jobs/golden-job"
+      }
+    ]
+  },
+  "expected": {
+    "managed_paths_migrated": 7,
+    "legacy_import": {
+      "artifacts": 1,
+      "uploads": 1
+    },
+    "tokenizer_training_job": [
+      "__training_dataset__",
+      "llm-studio-data:v1/artifacts/tokenizers/golden-tokenizer.json"
+    ],
+    "uploaded_files": [
+      "llm-studio-data:v1/uploads/golden-upload.txt",
+      "{EXTERNAL_ROOT}/external.txt"
+    ],
+    "training_job": [
+      "llm-studio-data:v1/training/jobs/golden-job",
+      "llm-studio-data:v1/training/jobs/golden-job/stats.jsonl",
+      "llm-studio-data:v1/training/jobs/golden-job/samples.jsonl",
+      "llm-studio-data:v1/training/jobs/golden-job/stdout.log",
+      "llm-studio-data:v1/training/jobs/golden-job/stderr.log",
+      "/workspace/llm-studio/jobs/golden-job"
+    ]
+  }
+}

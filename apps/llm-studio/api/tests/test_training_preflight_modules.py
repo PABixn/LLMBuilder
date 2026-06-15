@@ -168,9 +168,10 @@ def test_compatibility_helpers_report_token_and_shape_issues() -> None:
 
 
 def test_asset_and_device_small_helpers(monkeypatch) -> None:
-    monkeypatch.setattr("app.training_runs.preflight.runtime_summary.torch.cuda.is_available", lambda: False)
+    monkeypatch.delenv("LLM_STUDIO_TRAINING_DEVICE", raising=False)
+    monkeypatch.setattr("training.utils.torch.cuda.is_available", lambda: False)
     if hasattr(torch.backends, "mps"):
-        monkeypatch.setattr("app.training_runs.preflight.runtime_summary.torch.backends.mps.is_available", lambda: False)
+        monkeypatch.setattr("training.utils.torch.backends.mps.is_available", lambda: False)
 
     assert tokenizer_display_name({"name": "  Tokenizer Name  "}, "job123456", None) == "Tokenizer Name"
     assert tokenizer_display_name({}, "job123456", "tokenizer.json") == "tokenizer.json"

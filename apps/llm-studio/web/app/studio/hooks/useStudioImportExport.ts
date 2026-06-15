@@ -1,10 +1,10 @@
 import { startTransition, type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 
 import type { ModelConfig } from "../../../lib/defaults";
+import { downloadTextFile } from "../../../lib/downloads";
 
 import type { StudioDocument } from "../types";
 import { studioDocumentFromConfig, studioDocumentToConfig } from "../utils/document";
-import { downloadTextFile } from "../utils/format";
 import { parseImportedModelConfig } from "../utils/validation";
 
 type SetNoticeMessage = (tone: "info" | "success" | "error", message: string) => void;
@@ -69,8 +69,18 @@ export function useStudioImportExport({
 
   function exportJson(): void {
     const modelConfig = studioDocumentToConfig(documentState);
-    downloadTextFile("model_config.json", JSON.stringify(modelConfig, null, 2));
-    setNoticeMessage("success", "Downloaded model JSON.");
+    void downloadTextFile("model_config.json", JSON.stringify(modelConfig, null, 2))
+      .then((result) => {
+        if (result !== "cancelled") {
+          setNoticeMessage("success", result === "native" ? "Saved model JSON." : "Downloaded model JSON.");
+        }
+      })
+      .catch((error: unknown) => {
+        setNoticeMessage(
+          "error",
+          error instanceof Error ? error.message : "Could not export model JSON."
+        );
+      });
   }
 
   async function copyJson(): Promise<void> {

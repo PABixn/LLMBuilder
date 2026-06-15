@@ -1,15 +1,25 @@
 from __future__ import annotations
 
+import ipaddress
 import os
 import platform
+import shutil
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from .runtime_paths import api_root, source_root, template_dir
+from .storage_safety import (
+    InsufficientStorageError,
+    ManagedStorageError,
+    ensure_directory,
+    ensure_writable_directory,
+)
+
 APP_NAME = "LLMStudio"
-API_ROOT = Path(__file__).resolve().parents[1]
-TEMPLATE_DIR = API_ROOT / "templates"
-REPO_ROOT = Path(__file__).resolve().parents[4]
+API_ROOT = api_root()
+TEMPLATE_DIR = template_dir()
+REPO_ROOT = source_root()
 
 MODEL_CONFIG_TEMPLATE_PATH = TEMPLATE_DIR / "model_config.json"
 MODEL_SCHEMA_PATH = TEMPLATE_DIR / "model_config_schema.json"
@@ -25,7 +35,11 @@ TRAINING_DATALOADER_SCHEMA_PATH = REPO_ROOT / "training" / "dataloader_config_sc
 
 @dataclass(frozen=True)
 class RuntimeSettings:
+    desktop_mode: bool
+    source_root: Path
     data_dir: Path
+    cache_dir: Path
+    log_dir: Path
     projects_dir: Path
     tokenizer_cache_dir: Path
     tokenizer_output_dir: Path
@@ -61,6 +75,8 @@ class RuntimeSettings:
     cors_allowed_origins: tuple[str, ...]
     cors_allow_origin_regex: str | None
     runtime_token: str | None
+    runtime_version: str
+    startup_handshake_path: Path | None
 
     @property
     def web_index_path(self) -> Path:
@@ -73,6 +89,7 @@ def reset_settings_cache() -> None:
 
 @lru_cache(maxsize=1)
 def get_settings() -> RuntimeSettings:
+    desktop_mode = _read_bool("LLM_STUDIO_DESKTOP", default=False)
     data_dir = _resolve_env_path(
         "LLM_STUDIO_DATA_DIR",
         _default_data_dir(),
@@ -97,19 +114,19 @@ def get_settings() -> RuntimeSettings:
     tokenizer_output_dir = _resolve_compat_env_path(
         preferred_var_name="LLM_STUDIO_TOKENIZER_OUTPUT_DIR",
         fallback_var_name="TOKENIZER_STUDIO_OUTPUT_DIR",
-        default_path=API_ROOT / "artifacts" / "tokenizers",
+        default_path=data_dir / "artifacts" / "tokenizers",
         relative_base=data_dir,
     )
     tokenizer_upload_dir = _resolve_compat_env_path(
         preferred_var_name="LLM_STUDIO_TOKENIZER_UPLOAD_DIR",
         fallback_var_name="TOKENIZER_STUDIO_UPLOAD_DIR",
-        default_path=API_ROOT / "datasets" / "uploads",
+        default_path=data_dir / "uploads",
         relative_base=data_dir,
     )
     tokenizer_database_path = _resolve_compat_env_path(
         preferred_var_name="LLM_STUDIO_TOKENIZER_DB_PATH",
         fallback_var_name="TOKENIZER_STUDIO_DB_PATH",
-        default_path=data_dir / "db" / "tokenizer_studio.db",
+        default_path=data_dir / "db" / "llm_studio_tokenizer.db",
         relative_base=data_dir,
     )
     tokenizer_logs_dir = _resolve_compat_env_path(
@@ -149,7 +166,7 @@ def get_settings() -> RuntimeSettings:
     training_database_path = _resolve_compat_env_path(
         preferred_var_name="LLM_STUDIO_TRAINING_DB_PATH",
         fallback_var_name="TOKENIZER_STUDIO_TRAINING_DB_PATH",
-        default_path=data_dir / "db" / "training_studio.db",
+        default_path=data_dir / "db" / "llm_studio_training.db",
         relative_base=data_dir,
     )
     training_database_url = _read_first_non_empty_env(
@@ -188,11 +205,43 @@ def get_settings() -> RuntimeSettings:
     runpod_auto_delete_volume = _read_bool("LLM_STUDIO_RUNPOD_AUTO_DELETE_VOLUME", default=False)
 
     host = _read_first_non_empty_env("LLM_STUDIO_HOST", "TOKENIZER_STUDIO_HOST") or "127.0.0.1"
-    port = _read_port(("LLM_STUDIO_PORT", "TOKENIZER_STUDIO_PORT"), default=8000)
-    serve_web = _read_bool(("LLM_STUDIO_SERVE_WEB", "TOKENIZER_STUDIO_SERVE_WEB"), default=True)
+    if desktop_mode and not _is_loopback_host(host):
+        raise RuntimeError(
+            f"Desktop mode requires a loopback bind address; received {host!r}."
+        )
+    port = _read_port(
+        ("LLM_STUDIO_PORT", "TOKENIZER_STUDIO_PORT"),
+        default=0 if desktop_mode else 8000,
+    )
+    serve_web = _read_bool(
+        ("LLM_STUDIO_SERVE_WEB", "TOKENIZER_STUDIO_SERVE_WEB"),
+        default=not desktop_mode,
+    )
     runtime_token = _read_first_non_empty_env(
         "LLM_STUDIO_RUNTIME_TOKEN",
         "TOKENIZER_STUDIO_RUNTIME_TOKEN",
+    )
+    if desktop_mode and runtime_token is None:
+        raise RuntimeError("Desktop mode requires LLM_STUDIO_RUNTIME_TOKEN.")
+    cache_dir = _resolve_env_path(
+        "LLM_STUDIO_CACHE_DIR",
+        _default_cache_dir(),
+        relative_base=data_dir,
+    )
+    log_dir = _resolve_env_path(
+        "LLM_STUDIO_LOG_DIR",
+        data_dir / "logs" / "backend",
+        relative_base=data_dir,
+    )
+    runtime_version = _read_first_non_empty_env("LLM_STUDIO_RUNTIME_VERSION") or "source-tree"
+    startup_handshake_path = (
+        _resolve_env_path(
+            "LLM_STUDIO_STARTUP_HANDSHAKE_PATH",
+            data_dir / "startup-handshake.json",
+            relative_base=data_dir,
+        )
+        if _read_first_non_empty_env("LLM_STUDIO_STARTUP_HANDSHAKE_PATH") is not None
+        else None
     )
     tokenizer_max_workers = _read_positive_int(
         ("LLM_STUDIO_TOKENIZER_MAX_WORKERS", "TOKENIZER_STUDIO_MAX_WORKERS"),
@@ -200,7 +249,11 @@ def get_settings() -> RuntimeSettings:
     )
 
     return RuntimeSettings(
+        desktop_mode=desktop_mode,
+        source_root=REPO_ROOT,
         data_dir=data_dir,
+        cache_dir=cache_dir,
+        log_dir=log_dir,
         projects_dir=projects_dir,
         tokenizer_cache_dir=tokenizer_cache_dir,
         tokenizer_output_dir=tokenizer_output_dir,
@@ -233,9 +286,11 @@ def get_settings() -> RuntimeSettings:
         port=port,
         serve_web=serve_web,
         web_dist_dir=web_dist_dir,
-        cors_allowed_origins=_read_origins(),
-        cors_allow_origin_regex=_read_origin_regex(),
+        cors_allowed_origins=_read_origins(desktop_mode=desktop_mode),
+        cors_allow_origin_regex=_read_origin_regex(desktop_mode=desktop_mode),
         runtime_token=runtime_token,
+        runtime_version=runtime_version,
+        startup_handshake_path=startup_handshake_path,
     )
 
 
@@ -243,6 +298,8 @@ def ensure_runtime_directories(settings: RuntimeSettings | None = None) -> None:
     selected = settings or get_settings()
     for path in (
         selected.data_dir,
+        selected.cache_dir,
+        selected.log_dir,
         selected.projects_dir,
         selected.tokenizer_cache_dir,
         selected.tokenizer_output_dir,
@@ -255,7 +312,38 @@ def ensure_runtime_directories(settings: RuntimeSettings | None = None) -> None:
         selected.training_exports_dir,
         selected.training_database_path.parent,
     ):
-        path.mkdir(parents=True, exist_ok=True)
+        ensure_directory(path, operation="desktop runtime initialization")
+
+
+def validate_runtime_storage(
+    settings: RuntimeSettings | None = None,
+    *,
+    minimum_free_bytes: int = 64 * 1024 * 1024,
+) -> None:
+    selected = settings or get_settings()
+    failures: list[str] = []
+    for path in (selected.data_dir, selected.cache_dir, selected.log_dir):
+        try:
+            ensure_writable_directory(path, operation="desktop runtime startup")
+        except ManagedStorageError as exc:
+            failures.append(str(exc))
+            continue
+        try:
+            free = shutil.disk_usage(path).free
+        except OSError:
+            failures.append(f"{path}: could not inspect available disk space")
+            continue
+        if free < minimum_free_bytes:
+            failures.append(
+                f"{path}: insufficient free space ({free} bytes available, "
+                f"{minimum_free_bytes} required)"
+            )
+    if failures:
+        if any("insufficient free space" in failure for failure in failures):
+            error_type = InsufficientStorageError
+        else:
+            error_type = ManagedStorageError
+        raise error_type("Desktop runtime storage validation failed:\n- " + "\n- ".join(failures))
 
 
 def apply_runtime_environment(settings: RuntimeSettings | None = None) -> None:
@@ -395,9 +483,11 @@ def _read_choice(var_name: str | tuple[str, ...], *, choices: set[str], default:
     return normalized if normalized in choices else default
 
 
-def _read_origins() -> tuple[str, ...]:
+def _read_origins(*, desktop_mode: bool = False) -> tuple[str, ...]:
     raw = _read_first_non_empty_env("LLM_STUDIO_CORS_ORIGINS", "TOKENIZER_STUDIO_CORS_ORIGINS")
     if raw is None:
+        if desktop_mode:
+            return ("tauri://localhost", "https://tauri.localhost")
         return (
             "http://localhost:3000",
             "http://127.0.0.1:3000",
@@ -408,14 +498,26 @@ def _read_origins() -> tuple[str, ...]:
     return tuple(values)
 
 
-def _read_origin_regex() -> str | None:
+def _read_origin_regex(*, desktop_mode: bool = False) -> str | None:
     raw = _read_first_non_empty_env(
         "LLM_STUDIO_CORS_ORIGIN_REGEX",
         "TOKENIZER_STUDIO_CORS_ORIGIN_REGEX",
     )
     if raw is not None:
         return raw
+    if desktop_mode:
+        return None
     return r"http://(localhost|127\\.0\\.0\\.1)(:\\d+)?"
+
+
+def _is_loopback_host(host: str) -> bool:
+    normalized = host.strip().lower()
+    if normalized == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
 
 
 def _default_data_dir() -> Path:

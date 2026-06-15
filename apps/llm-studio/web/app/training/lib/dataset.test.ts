@@ -7,6 +7,7 @@ import {
   makeLocalTrainFileEntry,
   makeStreamingDatasetEntry,
   normalizeStreamingDatasetWeights,
+  stripDataloaderCredentials,
 } from "./dataset";
 
 test("training dataset UI builds a local file dataloader with normalized file paths", () => {
@@ -21,7 +22,6 @@ test("training dataset UI builds a local file dataloader with normalized file pa
           filePath: "/data/train-b.txt",
         }),
       ],
-      "",
       []
     ),
     [
@@ -39,7 +39,7 @@ test("training dataset UI builds a local file dataloader with normalized file pa
   );
 });
 
-test("training dataset UI hydrates streaming datasets with filters and token", () => {
+test("training dataset UI never hydrates a persisted token", () => {
   const hydrated = hydrateDatasetUiFromConfig({
     datasets: [
       {
@@ -61,10 +61,32 @@ test("training dataset UI hydrates streaming datasets with filters and token", (
   });
 
   assert.equal(hydrated.sourceMode, "streaming_hf");
-  assert.equal(hydrated.hfToken, "hf_test");
+  assert.equal(hydrated.hfToken, "");
   assert.equal(hydrated.streamingDatasets[0].name, "roneneldan/TinyStories");
   assert.equal(hydrated.streamingDatasets[0].textColumns, "text, summary");
   assert.equal(hydrated.streamingDatasets[0].filters[0].value, "en");
+});
+
+test("training dataset configs never contain UI or legacy HF credentials", () => {
+  const datasets = buildDatasetsFromUi(
+    "streaming_hf",
+    [],
+    [makeStreamingDatasetEntry({ name: "private-dataset" })]
+  );
+  const sanitized = stripDataloaderCredentials({
+    datasets: [
+      {
+        ...datasets[0],
+        hf_token: "secret",
+        nested: { "HF-TOKEN": "also-secret", safe: true },
+      },
+    ],
+  });
+
+  assert.equal(JSON.stringify(datasets).includes("token"), false);
+  assert.deepEqual(sanitized, {
+    datasets: [{ ...datasets[0], nested: { safe: true } }],
+  });
 });
 
 test("training dataset weight normalization keeps a valid locked weight", () => {
