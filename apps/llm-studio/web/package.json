@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:desktop": "LLM_STUDIO_DESKTOP_BUILD=1 next build && npm run validate:desktop-output",
+    "build:desktop": "next build && npm run validate:desktop-output",
     "validate:desktop-output": "node scripts/validate-desktop-output.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",

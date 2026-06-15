@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 import importlib.util
 import json
 from pathlib import Path
@@ -36,7 +37,7 @@ def test_frozen_api_contract_catalog_matches_authoritative_openapi() -> None:
 
 
 def test_api_contract_catalog_rejects_unclassified_operation_and_concrete_secret() -> None:
-    openapi = app.openapi()
+    openapi = deepcopy(app.openapi())
     openapi["paths"]["/api/v1/unclassified"] = {
         "get": {
             "responses": {

@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
-const isDesktopBuild = process.env.LLM_STUDIO_DESKTOP_BUILD === "1";
+import { isDesktopBuildEnvironment } from "./desktop-build-mode";
+
+const isDesktopBuild = isDesktopBuildEnvironment(process.env);
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

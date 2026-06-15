@@ -234,7 +234,8 @@ The analyzed frontend contains roughly 35,691 TypeScript/TSX lines, and the API 
 The repository already contains several useful desktop-oriented foundations:
 
 - `apps/llm-studio/web/package.json` defines `build:desktop`.
-- `apps/llm-studio/web/next.config.ts` switches to Next static export when `LLM_STUDIO_DESKTOP_BUILD=1`.
+- `apps/llm-studio/web/next.config.ts` switches to Next static export for the cross-platform
+  `build:desktop` npm lifecycle or when `LLM_STUDIO_DESKTOP_BUILD=1` is set explicitly.
 - `apps/llm-studio/Makefile` describes the web build as a desktop embedding/static export flow.
 - `apps/llm-studio/api/app/config.py` already resolves OS-specific application-data and cache roots.
 - `apps/llm-studio/api/app/main.py` can serve a built frontend and has `/health` plus `/api/v1/health`.
@@ -526,7 +527,7 @@ The approved RFC may refine names, but the shell/backend boundary must remain ex
 - [*] Record the full/offline installer decision as the required first release channel; document thin-runtime delivery as deferred unless all optional-channel gates are completed. Evidence: ADR/RFC/release pipeline.
 - [*] Create a dedicated reproducible Python development/test environment and install `apps/llm-studio/api/requirements-dev.txt`. Evidence: API `.venv` runs the full suite/runtime tooling and `pip check` passes.
 - [*] Run and capture the API baseline with `python -m pytest -q` from `apps/llm-studio/api`. Evidence: current full suite passes 262 tests.
-- [*] Run and capture `npm run lint`, `npm run typecheck`, `npm run test:regression`, and `npm run build:desktop` from `apps/llm-studio/web`. Evidence: all passed; 66 regression tests and six validated routes.
+- [*] Run and capture `npm run lint`, `npm run typecheck`, `npm run test:regression`, and `npm run build:desktop` from `apps/llm-studio/web`. Evidence: all passed; 69 regression tests and six validated routes.
 - [*] Create an offline desktop-build baseline test and capture the current Google Fonts failure as a tracked issue. Evidence: remote Google fonts removed; offline/static build command and CI gate pass.
 - [ ] Capture baseline screenshots and interaction recordings for all six user routes using `docs/llm-studio-web-route-parity-checklist.md`. EXPLICITLY EXCLUDED: browser-driven checks per product-owner direction.
 - [*] Capture representative API request/response fixtures for every API group in the parity matrix, excluding secrets and sensitive data. Evidence: `docs/llm-studio-desktop-api-contract-fixtures.json` freezes 55 sanitized OpenAPI request/response contracts across all eight groups; `validate_api_contract_fixtures.py` validates classification, representative keys/evidence, secret absence, and reviewed drift in tests, Make, and CI.
@@ -634,7 +635,7 @@ The approved RFC may refine names, but the shell/backend boundary must remain ex
 - [ ] Verify clipboard, file input, drag/drop, browser confirm behavior, keyboard shortcuts, custom events, and streamed responses in desktop webviews. EXPLICITLY EXCLUDED: browser/webview checks.
 - [*] Add unit tests for web runtime defaults, desktop runtime bootstrap, token injection, runtime failure, and authenticated download behavior. Evidence: source-level regressions cover narrow bootstrap/retry contracts, URL normalization, fail-closed stale-token clearing/recovery, header-only token injection, no persistence, native cancellation, authenticated native download/reveal, and browser Blob fallback.
 - [ ] Add tests proving secret tokens are not rendered, persisted to localStorage, included in URLs, or logged. PARTIAL: header-only URL tests, explicit no-localStorage bootstrap/retry source tests, Hugging Face form/config non-persistence regressions, log redaction tests, and static/release-output scans that reject secret-bearing localStorage/sessionStorage keys pass; live webview persistence inspection is excluded.
-- [ ] Run web lint, typecheck, regression tests, and route-parity tests. PARTIAL: lint/typecheck/66 regressions/static build pass; browser route-parity tests are explicitly excluded.
+- [ ] Run web lint, typecheck, regression tests, and route-parity tests. PARTIAL: lint/typecheck/69 regressions/static build pass; browser route-parity tests are explicitly excluded.
 - [ ] Phase 4 exit gate: one runtime-config path serves every API, streaming, and artifact workflow while the normal web edition remains behaviorally unchanged. PARTIAL: source/static/non-browser tests pass; behavioral webview/browser parity is explicitly excluded.
 
 ## Phase 5: Make the Static Frontend Deterministic and Tauri-Compatible

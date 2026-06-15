@@ -7,7 +7,6 @@ import logging
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from fastapi.routing import APIRoute
 
 from app.main import app
 from app.training_runs.executors.runpod.client import RunPodClientError
@@ -17,10 +16,13 @@ from app.training_models import TrainingExecutorKind, TrainingJobResponse, Train
 
 
 def test_training_public_routes_are_registered() -> None:
+    http_methods = {"DELETE", "GET", "PATCH", "POST", "PUT"}
     routes = {
-        (next(iter(route.methods - {"HEAD", "OPTIONS"})), route.path)
-        for route in app.routes
-        if isinstance(route, APIRoute) and route.path.startswith("/api/v1/training")
+        (method.upper(), path)
+        for path, operations in app.openapi()["paths"].items()
+        if path.startswith("/api/v1/training")
+        for method in operations
+        if method.upper() in http_methods
     }
 
     expected = {
