@@ -188,6 +188,9 @@ staging; broad path or vulnerability ignores are prohibited.
 Windows x64, and Linux x64 quality/runtime smoke checks. Default RunPod checks
 must use fakes and must never create billable resources. It also compiles the
 target-native release shell without bundling an unsafe characterization runtime.
+The Windows shell owns its kill-on-close Job Object through Rust's
+`OwnedHandle`, so the handle is safe in Tauri's shared supervisor state and
+closes on every drop path, including unexpected backend removal.
 Each target-native characterization runtime is scanned with pip-audit after its
 build-only package manager is removed, and the Rust lock is scanned with
 Cargo Audit. The target-native release shell is built with pinned

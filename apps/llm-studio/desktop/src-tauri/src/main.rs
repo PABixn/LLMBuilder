@@ -35,6 +35,8 @@ const RETRY_COOLDOWN: Duration = Duration::from_secs(2);
 
 type SharedSupervisor = Arc<Mutex<Supervisor>>;
 type StartupCancellation = Arc<AtomicBool>;
+#[cfg(windows)]
+type WindowsJob = std::os::windows::io::OwnedHandle;
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -64,7 +66,8 @@ struct Supervisor {
 struct BackendProcess {
     child: Child,
     #[cfg(windows)]
-    job: windows_sys::Win32::Foundation::HANDLE,
+    // The option permits consuming the owned handle exactly once during shutdown.
+    job: Option<WindowsJob>,
     bootstrap: RuntimeBootstrap,
     manifest: RuntimeManifest,
 }
@@ -894,7 +897,7 @@ fn start_backend_inner(
     Ok(BackendProcess {
         child,
         #[cfg(windows)]
-        job,
+        job: Some(job),
         bootstrap: RuntimeBootstrap {
             environment: "desktop",
             api_base_url: format!("{}/api/v1", startup.base_url),
@@ -1225,11 +1228,17 @@ fn stop_supervisor(state: &SharedSupervisor) -> Result<(), String> {
 }
 
 fn terminate_backend(backend: &mut BackendProcess) {
-    terminate_child(
-        &mut backend.child,
-        #[cfg(windows)]
-        backend.job,
-    );
+    #[cfg(unix)]
+    terminate_child(&mut backend.child);
+    #[cfg(windows)]
+    match backend.job.take() {
+        Some(job) => terminate_child(&mut backend.child, job),
+        None => {
+            let _ = backend.child.kill();
+            let _ = backend.child.wait_timeout(SHUTDOWN_GRACE);
+            let _ = backend.child.wait();
+        }
+    }
 }
 
 #[cfg(unix)]
@@ -1287,39 +1296,41 @@ fn unix_process_group_exists(group: i32) -> bool {
 }
 
 #[cfg(windows)]
-fn terminate_child(child: &mut Child, job: windows_sys::Win32::Foundation::HANDLE) {
+fn terminate_child(child: &mut Child, job: WindowsJob) {
+    use std::os::windows::io::AsRawHandle;
+
     unsafe {
-        windows_sys::Win32::System::JobObjects::TerminateJobObject(job, 1);
-        windows_sys::Win32::Foundation::CloseHandle(job);
+        windows_sys::Win32::System::JobObjects::TerminateJobObject(job.as_raw_handle() as _, 1);
     }
+    drop(job);
     let _ = child.wait_timeout(SHUTDOWN_GRACE);
     let _ = child.wait();
 }
 
 #[cfg(windows)]
-fn assign_windows_job(child: &Child) -> Result<windows_sys::Win32::Foundation::HANDLE, String> {
-    use std::os::windows::io::AsRawHandle;
+fn assign_windows_job(child: &Child) -> Result<WindowsJob, String> {
+    use std::os::windows::io::{AsRawHandle, FromRawHandle};
     use windows_sys::Win32::System::JobObjects::{
         AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
         SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
         JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
     };
     unsafe {
-        let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
-        if job.is_null() {
+        let raw_job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+        if raw_job.is_null() {
             return Err("Failed to create Windows Job Object.".to_string());
         }
+        let job = WindowsJob::from_raw_handle(raw_job as _);
         let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
         limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
         if SetInformationJobObject(
-            job,
+            job.as_raw_handle() as _,
             JobObjectExtendedLimitInformation,
             &limits as *const _ as *const _,
             std::mem::size_of_val(&limits) as u32,
         ) == 0
-            || AssignProcessToJobObject(job, child.as_raw_handle() as _) == 0
+            || AssignProcessToJobObject(job.as_raw_handle() as _, child.as_raw_handle() as _) == 0
         {
-            windows_sys::Win32::Foundation::CloseHandle(job);
             return Err("Failed to assign backend to Windows Job Object.".to_string());
         }
         Ok(job)
@@ -1327,9 +1338,7 @@ fn assign_windows_job(child: &Child) -> Result<windows_sys::Win32::Foundation::H
 }
 
 #[cfg(windows)]
-fn assign_windows_job_or_terminate(
-    child: &mut Child,
-) -> Result<windows_sys::Win32::Foundation::HANDLE, String> {
+fn assign_windows_job_or_terminate(child: &mut Child) -> Result<WindowsJob, String> {
     match assign_windows_job(child) {
         Ok(job) => Ok(job),
         Err(error) => {
@@ -2375,6 +2384,15 @@ mod tests {
             .contains("cancelled"));
         cancellation.store(false, Ordering::SeqCst);
         assert!(ensure_startup_not_cancelled(&cancellation).is_ok());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_supervisor_state_is_send_and_sync() {
+        fn assert_send_and_sync<T: Send + Sync>() {}
+
+        assert_send_and_sync::<WindowsJob>();
+        assert_send_and_sync::<SharedSupervisor>();
     }
 
     #[test]

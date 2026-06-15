@@ -127,7 +127,12 @@ and are not represented as complete.
   preserve the intended assertions without weakening production timeouts.
   Review also corrected the stale shell data-schema-2 declaration to canonical
   schema 3 and fixed Windows child leakage if Job Object assignment fails. A
-  fresh post-fix target-native CI rerun remains required evidence.
+  fresh post-fix target-native CI rerun then exposed that the Job Object shell
+  path did not compile: `CreateJobObjectW` lacked its required Windows Security
+  API feature, and the raw pointer `HANDLE` made Tauri's shared supervisor state
+  non-`Send`. Job Objects are now held as `OwnedHandle`, which restores
+  thread-safe state and guarantees kill-on-close cleanup when any backend owner
+  is dropped; target-native Windows rerun evidence remains required.
 - Release audit generation produced a path-redacted `release-manifest.json` and
   `SHA256SUMS`; focused tests cover hashes, symlinks, duplicate names, unsafe
   output paths, and atomic output.
