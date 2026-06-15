@@ -18,7 +18,7 @@ This document is an executable checklist. The executor must maintain it while im
 - A phase exit gate may be marked `[*]` only when every required item in that phase is `[*]`.
 - “Same functionality” means functional parity with the web edition, not merely that every route renders. All parity checks in this plan are release-blocking unless explicitly labeled optional.
 
-## Execution Record: 2026-06-12 through 2026-06-14
+## Execution Record: 2026-06-12 through 2026-06-15
 
 This execution implemented and verified every locally feasible source/runtime
 step on a macOS arm64 development host. Items that require external credentials,
@@ -30,11 +30,10 @@ and are not represented as complete.
 
 - Authoritative local command: `make -C apps/llm-studio
   desktop-verify-nonbrowser` passed after the final source changes.
-- API: `python -m pytest -q` passed, **268 tests**, with one upstream
-  Starlette/httpx deprecation warning.
+- API: `python -m pytest -q` passed, **280 tests**.
 - Frontend: `npm run lint`, `npm run typecheck`, and `npm run build:desktop`
   passed; static-output validation found all six routes and no configured
-  secrets/developer paths. `npm run test:regression` passed, **66 tests**.
+  secrets/developer paths. `npm run test:regression` passed, **69 tests**.
 - Browser-driven checks were not run and Chromium was not installed, by explicit
   product-owner direction on 2026-06-13. Every browser/webview visual/parity gate
   remains open.
@@ -47,7 +46,7 @@ and are not represented as complete.
   **97 files / 13,866,302 bytes**, with no secret, developer-path, cache, or
   unintended-file findings.
 - Runtime: linked-development runtime built with **107 hashed files plus
-  manifest**, reported **0.8 MiB**, and passed imports, authenticated real-sidecar
+  manifest**, reported **0.9 MiB**, and passed imports, authenticated real-sidecar
   startup, missing-token rejection, Unicode/space paths, model validation and
   analysis, project CRUD/artifact, tokenizer managed upload/stats/validation,
   tokenizer validation/training/history/preview/artifact/delete, training
@@ -94,7 +93,9 @@ and are not represented as complete.
   and artifact ZIPs.
 - Runtime staging correctly rejected the linked-development runtime as
   nonportable. Focused tests also cover checksum mismatch, unsafe manifest paths,
-  release symlinks, and target metadata checks.
+  release symlinks, target metadata, and incompatible runtime-manifest/API/data
+  schema contracts. Runtime smoke verifies that backend readiness reports the
+  same API, data, runtime, and manifest schema versions as the built manifest.
 - A full macOS arm64 portable-unlocked characterization runtime passed the same
   authenticated smoke and Python dependency audit. Build sanitization reduced it
   to **18,234 hashed files plus manifest / 602.4 MiB**, with no `pip`, console or
@@ -110,14 +111,24 @@ and are not represented as complete.
   through the same validated device resolvers used by preflight, local
   inference, and the training subprocess, while Windows/Linux unlocked
   characterization builds select the official CPU-only PyTorch wheel channel
-  and record it in provenance. A fresh target-native CI rerun remains required
-  evidence.
+  and record it in provenance. The June 15 rerun proved full Windows/Linux
+  CPU-only portable-unlocked runtime builds and smoke, then exposed pip-audit's
+  inability to audit the official `torch==...+cpu` local version. The dependency
+  audit now derives and verifies a complete exact installed inventory, audits
+  only policy/provenance-approved local versions under their public version, and
+  fails closed for unknown local versions, manifest drift, or incomplete scanner
+  coverage. The same rerun exposed macOS cold-runner races in fake-sidecar crash
+  and invalid-handshake tests; test-specific startup budgets and cleanup now
+  preserve the intended assertions without weakening production timeouts.
+  Review also corrected the stale shell data-schema-2 declaration to canonical
+  schema 3 and fixed Windows child leakage if Job Object assignment fails. A
+  fresh post-fix target-native CI rerun remains required evidence.
 - Release audit generation produced a path-redacted `release-manifest.json` and
   `SHA256SUMS`; focused tests cover hashes, symlinks, duplicate names, unsafe
   output paths, and atomic output.
 - Dependency audit: web and desktop `npm audit --audit-level=high` each reported
   **0 vulnerabilities**. The reviewed audit gate reports zero blocking findings
-  across 85 development Python packages and 65 portable-runtime packages, zero
+  across 88 development Python packages and the target runtime inventories, zero
   Rust vulnerabilities across 538 locked crates, one narrowly documented
   pip-audit/PyTorch affected-range mismatch, and 19 visible transitive Rust
   maintenance/unsoundness warnings requiring release review. Release shell

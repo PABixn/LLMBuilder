@@ -10,6 +10,9 @@ from pathlib import Path
 import platform
 
 ROOT = Path(__file__).resolve().parents[2]
+RUNTIME_MANIFEST_SCHEMA_VERSION = "1"
+API_CONTRACT_VERSION = "1"
+DATA_SCHEMA_VERSION = "3"
 
 
 def main() -> None:
@@ -23,9 +26,9 @@ def main() -> None:
         "shell_version": desktop["version"],
         "web_version": web["version"],
         "backend_version": "0.1.0",
-        "api_contract_version": "1",
-        "data_schema_version": "3",
-        "runtime_manifest_schema_version": "1",
+        "api_contract_version": API_CONTRACT_VERSION,
+        "data_schema_version": DATA_SCHEMA_VERSION,
+        "runtime_manifest_schema_version": RUNTIME_MANIFEST_SCHEMA_VERSION,
         "python_version": platform.python_version(),
         "torch_version": package_version("torch"),
         "platform": platform.system().lower(),

@@ -12,5 +12,17 @@
       "vulnerability_id": "CVE-2025-3000"
     }
   ],
+  "pip_audit_local_version_normalizations": [
+    {
+      "local_version": "cpu",
+      "package": "torch",
+      "rationale": "PyPI vulnerability records identify official PyTorch CPU wheels by their public release version rather than the PEP 440 +cpu local version published on the official CPU wheel channel.",
+      "required_runtime_provenance": {
+        "build_mode": "portable-unlocked-development",
+        "development_torch_channel": "pytorch-cpu"
+      },
+      "source": "https://download.pytorch.org/whl/cpu"
+    }
+  ],
   "schema_version": 1
 }

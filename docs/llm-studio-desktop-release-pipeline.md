@@ -92,6 +92,15 @@ behavior:
    vulnerabilities fail; transitive maintenance warnings remain visible and
    require release review.
 
+Python runtime audits derive a complete exact-version requirements inventory
+from the target interpreter, disable dependency resolution, and reject scanner
+output that does not cover every installed package. PEP 440 local versions fail
+closed unless a narrow reviewed policy matches both the package/local version
+and the runtime manifest provenance. The current policy permits only official
+`torch==...+cpu` wheels from unlocked Windows/Linux characterization runtimes,
+auditing them under the corresponding public PyTorch version while preserving
+the installed local version in the report.
+
 The current policy records one narrow pip-audit scanner mismatch:
 `CVE-2025-3000` is accepted only for `torch` versions strictly newer than
 `2.6.0`, because the linked OSV record identifies `2.6.0` as the last affected
@@ -158,7 +167,10 @@ channel is recorded in runtime provenance. This keeps characterization aligned
 with the v1 Windows/Linux CPU support promise without weakening the requirement
 for reviewed target locks and wheelhouses.
 `stage_runtime.py` rejects linked-development runtimes, release symlinks, target
-mismatches, unsafe manifest paths, missing files, and checksum mismatches.
+mismatches, incompatible manifest/API/data schema contracts, unsafe manifest
+paths, missing files, and checksum mismatches. Runtime smoke also verifies that
+the backend readiness contract reports the same API, data, runtime, and manifest
+schema versions recorded in the built runtime manifest.
 
 The current macOS arm64 unlocked characterization build proves this sanitizer
 and the full smoke/audit flow, but it is not releasable: the extracted payload

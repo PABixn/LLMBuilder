@@ -12,6 +12,9 @@ import shutil
 
 ROOT = Path(__file__).resolve().parents[2]
 DESTINATION = ROOT / "apps" / "llm-studio" / "desktop" / "src-tauri" / "resources" / "runtime"
+SUPPORTED_RUNTIME_MANIFEST_SCHEMA = 1
+SUPPORTED_API_CONTRACT = "1"
+SUPPORTED_DATA_SCHEMA = "3"
 
 
 def main() -> None:
@@ -50,6 +53,7 @@ def validate_runtime_for_staging(runtime: Path, *, allow_development_runtime: bo
             f"Refusing to stage non-portable runtime ({build_mode!r}) for packaging. "
             "Build a target-native portable runtime first."
         )
+    validate_runtime_contract(manifest)
     if normalize_platform(str(manifest.get("platform", ""))) != normalize_platform(
         platform.system()
     ):
@@ -87,6 +91,24 @@ def validate_runtime_for_staging(runtime: Path, *, allow_development_runtime: bo
         failures.append(f"release runtime contains symlinks: {', '.join(symlinks[:5])}")
     if failures:
         raise SystemExit("Runtime staging validation failed:\n- " + "\n- ".join(failures))
+
+
+def validate_runtime_contract(manifest: dict[str, object]) -> None:
+    expected = {
+        "schema_version": SUPPORTED_RUNTIME_MANIFEST_SCHEMA,
+        "api_contract_version": SUPPORTED_API_CONTRACT,
+        "data_schema_version": SUPPORTED_DATA_SCHEMA,
+    }
+    mismatches = [
+        f"{name}: expected {value!r}, got {manifest.get(name)!r}"
+        for name, value in expected.items()
+        if manifest.get(name) != value
+    ]
+    if mismatches:
+        raise SystemExit(
+            "Runtime contract is incompatible with the desktop shell:\n- "
+            + "\n- ".join(mismatches)
+        )
 
 
 def validate_runtime_size(

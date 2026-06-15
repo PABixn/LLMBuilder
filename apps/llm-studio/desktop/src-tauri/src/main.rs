@@ -21,7 +21,7 @@ use wait_timeout::ChildExt;
 const SHELL_VERSION: &str = env!("CARGO_PKG_VERSION");
 const SUPPORTED_MANIFEST_SCHEMA: u32 = 1;
 const SUPPORTED_API_CONTRACT: &str = "1";
-const SUPPORTED_DATA_SCHEMA: &str = "2";
+const SUPPORTED_DATA_SCHEMA: &str = "3";
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
 const HEALTH_INTERVAL: Duration = Duration::from_millis(300);
 const SHUTDOWN_GRACE: Duration = Duration::from_secs(8);
@@ -854,7 +854,13 @@ fn start_backend_inner(
         .spawn()
         .map_err(|error| format!("Failed to spawn packaged backend: {error}"))?;
     #[cfg(windows)]
-    let job = assign_windows_job(&child)?;
+    let job = match assign_windows_job_or_terminate(&mut child) {
+        Ok(job) => job,
+        Err(error) => {
+            let _ = fs::remove_file(&handshake);
+            return Err(error);
+        }
+    };
 
     let startup =
         match wait_for_handshake_and_readiness(app, &mut child, &handshake, &token, cancellation) {
@@ -1317,6 +1323,21 @@ fn assign_windows_job(child: &Child) -> Result<windows_sys::Win32::Foundation::H
             return Err("Failed to assign backend to Windows Job Object.".to_string());
         }
         Ok(job)
+    }
+}
+
+#[cfg(windows)]
+fn assign_windows_job_or_terminate(
+    child: &mut Child,
+) -> Result<windows_sys::Win32::Foundation::HANDLE, String> {
+    match assign_windows_job(child) {
+        Ok(job) => Ok(job),
+        Err(error) => {
+            // The process is not safely owned until it belongs to the kill-on-close job.
+            let _ = child.kill();
+            let _ = child.wait();
+            Err(error)
+        }
     }
 }
 
@@ -2380,7 +2401,7 @@ mod tests {
         let mut manifest = compatible_manifest();
         assert!(validate_manifest_compatibility(&manifest, false).is_ok());
 
-        manifest.data_schema_version = "3".to_string();
+        manifest.data_schema_version = "4".to_string();
         assert!(validate_manifest_compatibility(&manifest, false)
             .unwrap_err()
             .contains("data schema"));
@@ -2413,37 +2434,60 @@ mod tests {
             &cancellation,
             Duration::from_secs(3),
             |stage, _message| stages.push(stage),
-        )
-        .unwrap();
-
-        assert_eq!(result.pid, child.id());
-        assert!(stages.contains(&"backend_bind"));
+        );
+        let child_pid = child.id();
         terminate_child_for_test(&mut child);
         let _ = fs::remove_file(handshake);
+        let result = result.unwrap();
+
+        assert_eq!(result.pid, child_pid);
+        assert!(stages.contains(&"backend_bind"));
     }
 
     #[test]
     fn fake_sidecar_crash_is_reported() {
         let (mut child, handshake) = spawn_fake_sidecar("crash", "test-token");
-        let error = wait_for_fake_sidecar(&mut child, &handshake, "test-token").unwrap_err();
-
-        assert!(error.contains("exited during startup"));
+        let result =
+            wait_for_fake_sidecar(&mut child, &handshake, "test-token", Duration::from_secs(3));
         terminate_child_for_test(&mut child);
         let _ = fs::remove_file(handshake);
+        let error = result.unwrap_err();
+
+        assert!(error.contains("exited during startup"), "{error}");
     }
 
     #[test]
     fn fake_sidecar_timeout_and_bad_token_fail_closed() {
-        for (mode, token, expected) in [
-            ("timeout", "test-token", "timed out"),
-            ("bad_token", "wrong-token", "timed out"),
-        ] {
-            let (mut child, handshake) = spawn_fake_sidecar(mode, "test-token");
-            let error = wait_for_fake_sidecar(&mut child, &handshake, token).unwrap_err();
-            assert!(error.contains(expected), "{error}");
-            terminate_child_for_test(&mut child);
-            let _ = fs::remove_file(handshake);
-        }
+        let (mut child, handshake) = spawn_fake_sidecar("timeout", "test-token");
+        let result = wait_for_fake_sidecar(
+            &mut child,
+            &handshake,
+            "test-token",
+            Duration::from_millis(350),
+        );
+        terminate_child_for_test(&mut child);
+        let _ = fs::remove_file(handshake);
+        let error = result.unwrap_err();
+        assert!(error.contains("timed out"), "{error}");
+
+        let (mut child, handshake) = spawn_fake_sidecar("bad_token", "test-token");
+        let mut stages = Vec::new();
+        let result = wait_for_handshake_and_readiness_with_progress(
+            &mut child,
+            &handshake,
+            "wrong-token",
+            &Arc::new(AtomicBool::new(false)),
+            Duration::from_secs(3),
+            |stage, _message| stages.push(stage),
+        );
+        terminate_child_for_test(&mut child);
+        let _ = fs::remove_file(handshake);
+        let error = result.unwrap_err();
+        assert!(error.contains("timed out"), "{error}");
+        assert!(
+            stages.contains(&"backend_bind"),
+            "bad-token test never reached authenticated readiness checks"
+        );
     }
 
     #[test]
@@ -2453,10 +2497,12 @@ mod tests {
             ("invalid_port", "invalid startup URL"),
         ] {
             let (mut child, handshake) = spawn_fake_sidecar(mode, "test-token");
-            let error = wait_for_fake_sidecar(&mut child, &handshake, "test-token").unwrap_err();
-            assert!(error.contains(expected), "{error}");
+            let result =
+                wait_for_fake_sidecar(&mut child, &handshake, "test-token", Duration::from_secs(3));
             terminate_child_for_test(&mut child);
             let _ = fs::remove_file(handshake);
+            let error = result.unwrap_err();
+            assert!(error.contains(expected), "{error}");
         }
     }
 
@@ -2675,13 +2721,14 @@ mod tests {
         child: &mut Child,
         handshake: &Path,
         token: &str,
+        timeout: Duration,
     ) -> Result<StartupHandshake, String> {
         wait_for_handshake_and_readiness_with_progress(
             child,
             handshake,
             token,
             &Arc::new(AtomicBool::new(false)),
-            Duration::from_millis(350),
+            timeout,
             |_stage, _message| {},
         )
     }
@@ -2708,8 +2755,12 @@ mod tests {
 
     #[cfg(windows)]
     fn terminate_child_for_test(child: &mut Child) {
-        let job = assign_windows_job(child).unwrap();
-        terminate_child(child, job);
+        if child.try_wait().ok().flatten().is_some() {
+            return;
+        }
+        if let Ok(job) = assign_windows_job_or_terminate(child) {
+            terminate_child(child, job);
+        }
     }
 
     fn compatible_manifest() -> RuntimeManifest {

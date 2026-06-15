@@ -22,6 +22,9 @@ DEFAULT_BUILD_ROOT = ROOT / "build" / "desktop" / "runtime"
 DEFAULT_SIZE_POLICY = ROOT / "scripts" / "desktop" / "runtime-size-policy.json"
 PYTORCH_CPU_INDEX_URL = "https://download.pytorch.org/whl/cpu"
 PYTORCH_RUNTIME_REQUIREMENT = "torch>=2.2.0"
+RUNTIME_MANIFEST_SCHEMA_VERSION = 1
+API_CONTRACT_VERSION = "1"
+DATA_SCHEMA_VERSION = "3"
 SOURCE_TREES = (
     (API_DIR / "app", Path("source/apps/llm-studio/api/app")),
     (API_DIR / "templates", Path("source/apps/llm-studio/api/templates")),
@@ -161,14 +164,14 @@ def main() -> None:
         if path.is_file() and path.name != "manifest.json"
     }
     manifest = {
-        "schema_version": 1,
+        "schema_version": RUNTIME_MANIFEST_SCHEMA_VERSION,
         "runtime_version": args.runtime_version,
         "shell_compatibility": {
             "minimum": "0.1.0",
             "maximum_exclusive": "0.2.0",
         },
-        "api_contract_version": "1",
-        "data_schema_version": "3",
+        "api_contract_version": API_CONTRACT_VERSION,
+        "data_schema_version": DATA_SCHEMA_VERSION,
         "platform": normalized_platform(),
         "architecture": normalized_architecture(),
         "python_version": python_version(runtime_python),

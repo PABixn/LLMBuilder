@@ -10,13 +10,16 @@ from pathlib import Path
 import subprocess
 import sys
 import sysconfig
+import tempfile
 from typing import Any
 
+from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_POLICY = Path(__file__).with_name("dependency-audit-policy.json")
 DEFAULT_CARGO_LOCK = ROOT / "apps" / "llm-studio" / "desktop" / "src-tauri" / "Cargo.lock"
+SUPPORTED_RUNTIME_MANIFEST_SCHEMA = 1
 
 
 def parse_args() -> argparse.Namespace:
@@ -107,6 +110,28 @@ def load_policy(path: Path) -> dict[str, Any]:
             raise SystemExit(f"Dependency audit policy entry is missing: {', '.join(missing)}")
         if not str(entry["source"]).startswith("https://api.osv.dev/v1/vulns/"):
             raise SystemExit("Accepted pip-audit findings require a direct OSV vulnerability source.")
+    for entry in policy.get("pip_audit_local_version_normalizations", []):
+        required = {
+            "package",
+            "local_version",
+            "rationale",
+            "required_runtime_provenance",
+            "source",
+        }
+        missing = sorted(required - entry.keys())
+        if missing:
+            raise SystemExit(
+                "Dependency audit local-version policy entry is missing: "
+                + ", ".join(missing)
+            )
+        if not isinstance(entry["required_runtime_provenance"], dict) or not entry[
+            "required_runtime_provenance"
+        ]:
+            raise SystemExit(
+                "Dependency audit local-version policy requires non-empty runtime provenance."
+            )
+        if not str(entry["source"]).startswith("https://"):
+            raise SystemExit("Dependency audit local-version policy requires an HTTPS source.")
     return policy
 
 
@@ -117,21 +142,38 @@ def audit_python(python: Path, policy: dict[str, Any]) -> dict[str, Any]:
     if not python.is_file():
         raise SystemExit(f"Python audit target does not exist: {python}")
     site_packages = python_site_packages(python)
-    command = [
-        sys.executable,
-        "-m",
-        "pip_audit",
-        "--path",
-        str(site_packages),
-        "--strict",
-        "--progress-spinner",
-        "off",
-        "--desc",
-        "off",
-        "--format",
-        "json",
-    ]
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    inventory = python_dependency_inventory(python)
+    requirements, normalized, manifest_path = prepare_python_audit_inventory(
+        python,
+        inventory,
+        policy,
+    )
+    with tempfile.TemporaryDirectory(prefix="llm-studio-pip-audit-") as temporary:
+        requirements_path = Path(temporary) / "requirements.txt"
+        requirements_path.write_text(
+            "".join(
+                f"{package['name']}=={package['audited_version']}\n"
+                for package in requirements.values()
+            ),
+            encoding="utf-8",
+        )
+        command = [
+            sys.executable,
+            "-m",
+            "pip_audit",
+            "--requirement",
+            str(requirements_path),
+            "--no-deps",
+            "--disable-pip",
+            "--strict",
+            "--progress-spinner",
+            "off",
+            "--desc",
+            "off",
+            "--format",
+            "json",
+        ]
+        result = subprocess.run(command, capture_output=True, text=True, check=False)
     if result.returncode not in {0, 1}:
         raise SystemExit(f"pip-audit failed ({result.returncode}): {result.stderr.strip()}")
     try:
@@ -139,11 +181,17 @@ def audit_python(python: Path, policy: dict[str, Any]) -> dict[str, Any]:
     except json.JSONDecodeError as error:
         detail = result.stderr.strip() or result.stdout.strip() or "no scanner output"
         raise SystemExit(f"pip-audit returned invalid JSON: {error}; {detail}") from error
+    if not isinstance(payload, dict):
+        raise SystemExit("pip-audit JSON output must be an object.")
+    validate_python_audit_coverage(payload, requirements)
+    restore_installed_versions(payload, normalized)
     accepted, blocking = classify_python_findings(payload, policy)
     return {
         "target_python": display_path(python),
         "site_packages": display_path(site_packages),
-        "dependency_count": len(payload.get("dependencies", [])),
+        "runtime_manifest": display_path(manifest_path) if manifest_path is not None else None,
+        "dependency_count": len(requirements),
+        "normalized_local_versions": normalized,
         "accepted_findings": accepted,
         "blocking_findings": blocking,
     }
@@ -162,6 +210,210 @@ def python_site_packages(python: Path) -> Path:
     if not path.is_dir():
         raise SystemExit(f"Python audit target site-packages does not exist: {path}")
     return path
+
+
+def python_dependency_inventory(python: Path) -> dict[str, str]:
+    script = (
+        "import importlib.metadata,json;"
+        "print(json.dumps([[d.metadata['Name'],d.version] "
+        "for d in importlib.metadata.distributions() if d.metadata.get('Name')]))"
+    )
+    result = subprocess.run(
+        [str(python), "-c", script],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
+    )
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise SystemExit(f"Python dependency inventory returned invalid JSON: {error}") from error
+    if not isinstance(payload, list):
+        raise SystemExit("Python dependency inventory must be a list.")
+
+    inventory: dict[str, str] = {}
+    canonical_names: dict[str, str] = {}
+    for item in payload:
+        if (
+            not isinstance(item, list)
+            or len(item) != 2
+            or not all(isinstance(value, str) and value for value in item)
+        ):
+            raise SystemExit("Python dependency inventory contains an invalid package entry.")
+        name, version = item
+        canonical = canonicalize_name(name)
+        if canonical in canonical_names:
+            raise SystemExit(
+                "Python dependency inventory contains duplicate package identities: "
+                f"{canonical_names[canonical]!r} and {name!r}."
+            )
+        canonical_names[canonical] = name
+        inventory[name] = version
+    return dict(sorted(inventory.items(), key=lambda item: canonicalize_name(item[0])))
+
+
+def prepare_python_audit_inventory(
+    python: Path,
+    inventory: dict[str, str],
+    policy: dict[str, Any],
+) -> tuple[dict[str, dict[str, str]], list[dict[str, str]], Path | None]:
+    manifest_path, manifest = runtime_manifest_for_python(python, inventory)
+    requirements: dict[str, dict[str, str]] = {}
+    normalized: list[dict[str, str]] = []
+    for name, installed_version in sorted(
+        inventory.items(),
+        key=lambda item: canonicalize_name(item[0]),
+    ):
+        canonical = canonicalize_name(name)
+        if canonical in requirements:
+            raise SystemExit(f"Python dependency inventory contains duplicate package: {canonical}.")
+        try:
+            parsed = Version(installed_version)
+        except InvalidVersion as error:
+            raise SystemExit(
+                f"Python dependency {name!r} has an invalid installed version: {installed_version!r}."
+            ) from error
+
+        audited_version = installed_version
+        if parsed.local is not None:
+            entry = approved_local_version_normalization(
+                name,
+                parsed,
+                manifest,
+                policy,
+            )
+            audited_version = parsed.public
+            normalized.append(
+                {
+                    "package": name,
+                    "installed_version": installed_version,
+                    "audited_version": audited_version,
+                    "local_version": parsed.local,
+                    "rationale": str(entry["rationale"]),
+                    "source": str(entry["source"]),
+                }
+            )
+        requirements[canonical] = {
+            "name": canonical,
+            "installed_version": installed_version,
+            "audited_version": audited_version,
+        }
+    return requirements, normalized, manifest_path
+
+
+def runtime_manifest_for_python(
+    python: Path,
+    inventory: dict[str, str],
+) -> tuple[Path | None, dict[str, Any] | None]:
+    for runtime_root in list(python.parents)[:4]:
+        manifest_path = runtime_root / "manifest.json"
+        if not manifest_path.is_file():
+            continue
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise SystemExit(
+                f"Runtime manifest is unavailable or invalid: {manifest_path}: {error}"
+            ) from error
+        if (
+            not isinstance(manifest, dict)
+            or manifest.get("schema_version") != SUPPORTED_RUNTIME_MANIFEST_SCHEMA
+        ):
+            raise SystemExit(f"Runtime manifest has an unsupported schema: {manifest_path}")
+        expected_python = python.relative_to(runtime_root).as_posix()
+        if manifest.get("python_executable") != expected_python:
+            raise SystemExit(
+                "Runtime manifest Python executable does not match audit target: "
+                f"{manifest.get('python_executable')!r} != {expected_python!r}."
+            )
+        if manifest.get("dependency_versions") != inventory:
+            raise SystemExit(
+                "Runtime manifest dependency inventory does not match the installed audit target."
+            )
+        return manifest_path, manifest
+    return None, None
+
+
+def approved_local_version_normalization(
+    package: str,
+    version: Version,
+    manifest: dict[str, Any] | None,
+    policy: dict[str, Any],
+) -> dict[str, Any]:
+    provenance = manifest.get("provenance", {}) if manifest is not None else {}
+    for entry in policy.get("pip_audit_local_version_normalizations", []):
+        if canonicalize_name(package) != canonicalize_name(str(entry["package"])):
+            continue
+        if version.local != str(entry["local_version"]):
+            continue
+        required = entry["required_runtime_provenance"]
+        if all(provenance.get(key) == value for key, value in required.items()):
+            return entry
+    raise SystemExit(
+        "Python dependency audit refuses unreviewed local version "
+        f"{package}=={version}; no matching runtime provenance policy exists."
+    )
+
+
+def validate_python_audit_coverage(
+    payload: dict[str, Any],
+    requirements: dict[str, dict[str, str]],
+) -> None:
+    dependencies = payload.get("dependencies")
+    if not isinstance(dependencies, list):
+        raise SystemExit("pip-audit JSON does not contain a dependency list.")
+    audited: dict[str, str] = {}
+    for dependency in dependencies:
+        if not isinstance(dependency, dict):
+            raise SystemExit("pip-audit JSON contains an invalid dependency entry.")
+        name = str(dependency.get("name", ""))
+        version = str(dependency.get("version", ""))
+        canonical = canonicalize_name(name)
+        if not name or not version or canonical in audited:
+            raise SystemExit("pip-audit JSON contains an invalid or duplicate dependency entry.")
+        audited[canonical] = version
+
+    missing = sorted(requirements.keys() - audited.keys())
+    unexpected = sorted(audited.keys() - requirements.keys())
+    mismatched = sorted(
+        package
+        for package in requirements.keys() & audited.keys()
+        if not versions_equal(audited[package], requirements[package]["audited_version"])
+    )
+    if missing or unexpected or mismatched:
+        details = []
+        if missing:
+            details.append(f"missing={','.join(missing)}")
+        if unexpected:
+            details.append(f"unexpected={','.join(unexpected)}")
+        if mismatched:
+            details.append(f"version_mismatch={','.join(mismatched)}")
+        raise SystemExit(
+            "pip-audit did not cover the exact installed dependency inventory: "
+            + "; ".join(details)
+        )
+
+
+def versions_equal(left: str, right: str) -> bool:
+    try:
+        return Version(left) == Version(right)
+    except InvalidVersion:
+        return left == right
+
+
+def restore_installed_versions(
+    payload: dict[str, Any],
+    normalized: list[dict[str, str]],
+) -> None:
+    installed = {
+        canonicalize_name(item["package"]): item["installed_version"]
+        for item in normalized
+    }
+    for dependency in payload.get("dependencies", []):
+        canonical = canonicalize_name(str(dependency.get("name", "")))
+        if canonical in installed:
+            dependency["version"] = installed[canonical]
 
 
 def classify_python_findings(

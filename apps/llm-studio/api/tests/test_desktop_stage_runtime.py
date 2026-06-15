@@ -23,6 +23,9 @@ def make_runtime(tmp_path: Path, *, build_mode: str = "portable") -> Path:
     source.write_text("required", encoding="utf-8")
     digest = hashlib.sha256(source.read_bytes()).hexdigest()
     manifest = {
+        "schema_version": stage_runtime.SUPPORTED_RUNTIME_MANIFEST_SCHEMA,
+        "api_contract_version": stage_runtime.SUPPORTED_API_CONTRACT,
+        "data_schema_version": stage_runtime.SUPPORTED_DATA_SCHEMA,
         "platform": stage_runtime.normalize_platform(platform.system()),
         "architecture": stage_runtime.normalize_architecture(platform.machine()),
         "required_files": ["source/required.txt"],
@@ -118,4 +121,27 @@ def test_stage_validation_rejects_size_threshold_for_different_target(
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
     with pytest.raises(SystemExit, match="size threshold target mismatch"):
+        stage_runtime.validate_runtime_for_staging(runtime, allow_development_runtime=False)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("schema_version", 2),
+        ("api_contract_version", "2"),
+        ("data_schema_version", "4"),
+    ],
+)
+def test_stage_validation_rejects_incompatible_runtime_contract(
+    tmp_path: Path,
+    field: str,
+    value: object,
+) -> None:
+    runtime = make_runtime(tmp_path)
+    manifest_path = runtime / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest[field] = value
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match=field):
         stage_runtime.validate_runtime_for_staging(runtime, allow_development_runtime=False)

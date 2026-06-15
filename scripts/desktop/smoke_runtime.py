@@ -123,6 +123,8 @@ def smoke_built_runtime(runtime: Path, timeout: float) -> dict[str, object]:
             health = request_json(f"{base}/api/v1/health", token)
             assert health["ready"] is True
             assert health["api_contract_version"] == manifest["api_contract_version"]
+            assert health["data_schema_version"] == manifest["data_schema_version"]
+            assert health["runtime_manifest_schema_version"] == str(manifest["schema_version"])
             assert health["runtime_version"] == manifest["runtime_version"]
             assert health["startup_timing"]["ready_in_ms"] is not None
             assert health["startup_timing"]["ready_in_ms"] >= 0
