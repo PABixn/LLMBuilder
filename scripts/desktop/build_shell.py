@@ -46,7 +46,7 @@ def write_auditable_cargo_runner(directory: Path, *, windows: bool | None = None
     directory.mkdir(parents=True, exist_ok=True)
     if windows:
         runner = directory / "cargo-auditable-runner.cmd"
-        runner.write_text("@echo off\r\ncargo auditable %*\r\n", encoding="ascii")
+        runner.write_bytes(b"@echo off\r\ncargo auditable %*\r\n")
         return runner
     runner = directory / "cargo-auditable-runner"
     runner.write_text('#!/bin/sh\nexec cargo auditable "$@"\n', encoding="ascii")

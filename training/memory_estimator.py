@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import math
 import os
 import re
@@ -659,10 +660,7 @@ def _resolve_token_dtype(dtype: torch.dtype | str) -> torch.dtype:
 
 def _cpu_memory_info() -> tuple[int, int]:
     try:
-        import psutil  # type: ignore
-
-        vm = psutil.virtual_memory()
-        return int(vm.total), int(vm.available)
+        return _psutil_memory_info()
     except Exception:
         pass
 
@@ -673,6 +671,12 @@ def _cpu_memory_info() -> tuple[int, int]:
             total_kib = _parse_meminfo_kib(meminfo, "MemTotal")
             avail_kib = _parse_meminfo_kib(meminfo, "MemAvailable")
             return total_kib * 1024, avail_kib * 1024
+        except Exception:
+            pass
+
+    if sys.platform == "win32":
+        try:
+            return _windows_memory_info()
         except Exception:
             pass
 
@@ -708,6 +712,38 @@ def _cpu_memory_info() -> tuple[int, int]:
         return total_pages * page_size, avail_pages * page_size
     except Exception:
         return 0, 0
+
+
+def _psutil_memory_info() -> tuple[int, int]:
+    import psutil  # type: ignore
+
+    vm = psutil.virtual_memory()
+    return int(vm.total), int(vm.available)
+
+
+def _windows_memory_info() -> tuple[int, int]:
+    class MemoryStatus(ctypes.Structure):
+        _fields_ = [
+            ("length", ctypes.c_ulong),
+            ("memory_load", ctypes.c_ulong),
+            ("total_physical", ctypes.c_ulonglong),
+            ("available_physical", ctypes.c_ulonglong),
+            ("total_page_file", ctypes.c_ulonglong),
+            ("available_page_file", ctypes.c_ulonglong),
+            ("total_virtual", ctypes.c_ulonglong),
+            ("available_virtual", ctypes.c_ulonglong),
+            ("available_extended_virtual", ctypes.c_ulonglong),
+        ]
+
+    status = MemoryStatus()
+    status.length = ctypes.sizeof(status)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    global_memory_status = kernel32.GlobalMemoryStatusEx
+    global_memory_status.argtypes = [ctypes.POINTER(MemoryStatus)]
+    global_memory_status.restype = ctypes.c_int
+    if not global_memory_status(ctypes.byref(status)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    return int(status.total_physical), int(status.available_physical)
 
 
 def _parse_meminfo_kib(text: str, key: str) -> int:

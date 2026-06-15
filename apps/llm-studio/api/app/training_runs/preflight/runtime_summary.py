@@ -17,6 +17,7 @@ from model.model import ConfigurableGPT
 from training.dataloader_config import TrainingDataloaderConfig
 from training.memory_estimator import MemoryEstimator, StepSizeEstimate
 from training.training_config import BatchRuntimePlan, TrainingConfig, derive_batch_runtime_plan
+from training.utils import resolve_training_device_type
 
 
 @dataclass(slots=True)
@@ -113,8 +114,4 @@ def build_runtime_summary(
 
 
 def default_training_device() -> torch.device:
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
+    return torch.device(resolve_training_device_type())

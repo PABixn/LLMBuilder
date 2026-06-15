@@ -1,0 +1,1845 @@
+﻿2026-06-15T08:19:32.7954360Z Current runner version: '2.335.1'
+2026-06-15T08:19:32.7968700Z ##[group]Runner Image Provisioner
+2026-06-15T08:19:32.7969240Z Hosted Compute Agent
+2026-06-15T08:19:32.7969650Z Version: 20260527.539
+2026-06-15T08:19:32.7970050Z Commit: a891dd388383b896fa6ac04a82c0b75cec981078
+2026-06-15T08:19:32.7970520Z Build Date: 2026-05-27T21:39:57Z
+2026-06-15T08:19:32.7970970Z Worker ID: {9e7c570d-85dc-4db6-8650-49bf6ab101d6}
+2026-06-15T08:19:32.7971440Z Azure Region: westus
+2026-06-15T08:19:32.7971890Z ##[endgroup]
+2026-06-15T08:19:32.7972740Z ##[group]Operating System
+2026-06-15T08:19:32.7973130Z macOS
+2026-06-15T08:19:32.7973460Z 14.8.7
+2026-06-15T08:19:32.7973780Z 23J520
+2026-06-15T08:19:32.7974110Z ##[endgroup]
+2026-06-15T08:19:32.7974520Z ##[group]Runner Image
+2026-06-15T08:19:32.7974900Z Image: macos-14-arm64
+2026-06-15T08:19:32.7975270Z Version: 20260608.0118.1
+2026-06-15T08:19:32.7976070Z Included Software: https://github.com/actions/runner-images/blob/macos-14-arm64/20260608.0118/images/macos/macos-14-arm64-Readme.md
+2026-06-15T08:19:32.7977090Z Image Release: https://github.com/actions/runner-images/releases/tag/macos-14-arm64%2F20260608.0118
+2026-06-15T08:19:32.7977750Z ##[endgroup]
+2026-06-15T08:19:32.7978460Z ##[group]GITHUB_TOKEN Permissions
+2026-06-15T08:19:32.7979520Z Contents: read
+2026-06-15T08:19:32.7979900Z Metadata: read
+2026-06-15T08:19:32.7980390Z ##[endgroup]
+2026-06-15T08:19:32.7981710Z Secret source: Actions
+2026-06-15T08:19:32.7982200Z Prepare workflow directory
+2026-06-15T08:19:32.8187080Z Prepare all required actions
+2026-06-15T08:19:32.8213840Z Getting action download info
+2026-06-15T08:19:33.4119650Z Download action repository 'actions/checkout@v6' (SHA:df4cb1c069e1874edd31b4311f1884172cec0e10)
+2026-06-15T08:19:34.1368940Z Download action repository 'actions/setup-node@v6' (SHA:48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e)
+2026-06-15T08:19:34.2156030Z Download action repository 'actions/setup-python@v6' (SHA:a309ff8b426b58ec0e2a45f0f869d46889d02405)
+2026-06-15T08:19:34.2870770Z Download action repository 'dtolnay/rust-toolchain@stable' (SHA:29eef336d9b2848a0b548edc03f92a220660cdb8)
+2026-06-15T08:19:34.5386480Z Download action repository 'actions/upload-artifact@v7' (SHA:043fb46d1a93c77aae656e7c1c64a875d1fc6a0a)
+2026-06-15T08:19:34.7163720Z Complete job name: desktop-quality (macos-14, macos-aarch64, apps/llm-studio/desktop/src-tauri/target/release/llm_st...
+2026-06-15T08:19:34.7708790Z ##[group]Run actions/checkout@v6
+2026-06-15T08:19:34.7709620Z with:
+2026-06-15T08:19:34.7710170Z   repository: PABixn/LLMBuilder
+2026-06-15T08:19:34.7716790Z   token: ***
+2026-06-15T08:19:34.7717380Z   ssh-strict: true
+2026-06-15T08:19:34.7718030Z   ssh-user: git
+2026-06-15T08:19:34.7718600Z   persist-credentials: true
+2026-06-15T08:19:34.7719220Z   clean: true
+2026-06-15T08:19:34.7719790Z   sparse-checkout-cone-mode: true
+2026-06-15T08:19:34.7720450Z   fetch-depth: 1
+2026-06-15T08:19:34.7721010Z   fetch-tags: false
+2026-06-15T08:19:34.7721570Z   show-progress: true
+2026-06-15T08:19:34.7722140Z   lfs: false
+2026-06-15T08:19:34.7722700Z   submodules: false
+2026-06-15T08:19:34.7723260Z   set-safe-directory: true
+2026-06-15T08:19:34.7724160Z ##[endgroup]
+2026-06-15T08:19:35.0811110Z Syncing repository: PABixn/LLMBuilder
+2026-06-15T08:19:35.0812980Z ##[group]Getting Git version info
+2026-06-15T08:19:35.0813880Z Working directory is '/Users/runner/work/LLMBuilder/LLMBuilder'
+2026-06-15T08:19:35.0815280Z [command]/opt/homebrew/bin/git version
+2026-06-15T08:19:35.1014150Z git version 2.54.0
+2026-06-15T08:19:35.1028550Z ##[endgroup]
+2026-06-15T08:19:35.1035080Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/6047f3c8-109e-401a-930b-5e1fc4496859/.gitconfig'
+2026-06-15T08:19:35.1041410Z Temporarily overriding HOME='/Users/runner/work/_temp/6047f3c8-109e-401a-930b-5e1fc4496859' before making global git config changes
+2026-06-15T08:19:35.1043170Z Adding repository directory to the temporary git global config as a safe directory
+2026-06-15T08:19:35.1044780Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/LLMBuilder/LLMBuilder
+2026-06-15T08:19:35.1132250Z Deleting the contents of '/Users/runner/work/LLMBuilder/LLMBuilder'
+2026-06-15T08:19:35.1134720Z ##[group]Determining repository object format
+2026-06-15T08:19:35.1135870Z ##[endgroup]
+2026-06-15T08:19:35.1136840Z ##[group]Initializing the repository
+2026-06-15T08:19:35.1139390Z [command]/opt/homebrew/bin/git init /Users/runner/work/LLMBuilder/LLMBuilder
+2026-06-15T08:19:35.1313130Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-06-15T08:19:35.1314460Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-06-15T08:19:35.1315770Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-06-15T08:19:35.1316840Z hint: call:
+2026-06-15T08:19:35.1317380Z hint:
+2026-06-15T08:19:35.1318090Z hint: 	git config --global init.defaultBranch <name>
+2026-06-15T08:19:35.1318930Z hint:
+2026-06-15T08:19:35.1319670Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-06-15T08:19:35.1320940Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-06-15T08:19:35.1321950Z hint:
+2026-06-15T08:19:35.1322500Z hint: 	git branch -m <name>
+2026-06-15T08:19:35.1323120Z hint:
+2026-06-15T08:19:35.1323930Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-06-15T08:19:35.1325270Z Initialized empty Git repository in /Users/runner/work/LLMBuilder/LLMBuilder/.git/
+2026-06-15T08:19:35.1327570Z [command]/opt/homebrew/bin/git remote add origin https://github.com/PABixn/LLMBuilder
+2026-06-15T08:19:35.1378010Z ##[endgroup]
+2026-06-15T08:19:35.1379080Z ##[group]Disabling automatic garbage collection
+2026-06-15T08:19:35.1380360Z [command]/opt/homebrew/bin/git config --local gc.auto 0
+2026-06-15T08:19:35.1420910Z ##[endgroup]
+2026-06-15T08:19:35.1421860Z ##[group]Setting up auth
+2026-06-15T08:19:35.1422550Z Removing SSH command configuration
+2026-06-15T08:19:35.1424780Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-06-15T08:19:35.1464530Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-06-15T08:19:35.2188950Z Removing HTTP extra header
+2026-06-15T08:19:35.2192840Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-06-15T08:19:35.2232500Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-06-15T08:19:35.2710830Z Removing includeIf entries pointing to credentials config files
+2026-06-15T08:19:35.2713730Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-06-15T08:19:35.2753380Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-06-15T08:19:35.3240960Z [command]/opt/homebrew/bin/git config --file /Users/runner/work/_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-06-15T08:19:35.3287670Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/Users/runner/work/LLMBuilder/LLMBuilder/.git.path /Users/runner/work/_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:19:35.3326910Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/Users/runner/work/LLMBuilder/LLMBuilder/.git/worktrees/*.path /Users/runner/work/_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:19:35.3366100Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:19:35.3406800Z [command]/opt/homebrew/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:19:35.3447690Z ##[endgroup]
+2026-06-15T08:19:35.3448680Z ##[group]Fetching the repository
+2026-06-15T08:19:35.3452210Z [command]/opt/homebrew/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +0a2d2222d7df6b85ff5b5fb11710347a874aa504:refs/remotes/pull/1/merge
+2026-06-15T08:19:36.0185960Z From https://github.com/PABixn/LLMBuilder
+2026-06-15T08:19:36.0187360Z  * [new ref]         0a2d2222d7df6b85ff5b5fb11710347a874aa504 -> pull/1/merge
+2026-06-15T08:19:36.0241370Z ##[endgroup]
+2026-06-15T08:19:36.0242380Z ##[group]Determining the checkout info
+2026-06-15T08:19:36.0243430Z ##[endgroup]
+2026-06-15T08:19:36.0245680Z [command]/opt/homebrew/bin/git sparse-checkout disable
+2026-06-15T08:19:36.0307360Z [command]/opt/homebrew/bin/git config --local --unset-all extensions.worktreeConfig
+2026-06-15T08:19:36.0349030Z ##[group]Checking out the ref
+2026-06-15T08:19:36.0351750Z [command]/opt/homebrew/bin/git checkout --progress --force refs/remotes/pull/1/merge
+2026-06-15T08:19:36.1675500Z HEAD is now at 0a2d222 Merge b9af92dd1bfa3133340b58e8718c5b3c0830a6a5 into 0b1895657345fa8b9289c5de777bfd3a050c0d29
+2026-06-15T08:19:36.1688890Z ##[endgroup]
+2026-06-15T08:19:36.1751860Z [command]/opt/homebrew/bin/git log -1 --format=%H
+2026-06-15T08:19:36.1793400Z 0a2d2222d7df6b85ff5b5fb11710347a874aa504
+2026-06-15T08:19:36.2031610Z ##[group]Run actions/setup-node@v6
+2026-06-15T08:19:36.2032290Z with:
+2026-06-15T08:19:36.2032800Z   node-version: 24
+2026-06-15T08:19:36.2033350Z   cache: npm
+2026-06-15T08:19:36.2034390Z   cache-dependency-path: apps/llm-studio/web/package-lock.json
+apps/llm-studio/desktop/package-lock.json
+
+2026-06-15T08:19:36.2035590Z   check-latest: false
+2026-06-15T08:19:36.2041680Z   token: ***
+2026-06-15T08:19:36.2042240Z   package-manager-cache: true
+2026-06-15T08:19:36.2042870Z ##[endgroup]
+2026-06-15T08:19:36.3324040Z Found in cache @ /Users/runner/hostedtoolcache/node/24.16.0/arm64
+2026-06-15T08:19:36.3326280Z ##[group]Environment details
+2026-06-15T08:19:36.8792830Z node: v24.16.0
+2026-06-15T08:19:36.8832990Z npm: 11.13.0
+2026-06-15T08:19:36.8837570Z yarn: 1.22.22
+2026-06-15T08:19:36.8856550Z ##[endgroup]
+2026-06-15T08:19:36.8857380Z [command]/Users/runner/hostedtoolcache/node/24.16.0/arm64/bin/npm config get cache
+2026-06-15T08:19:37.0696660Z /Users/runner/.npm
+2026-06-15T08:19:37.3654470Z npm cache is not found
+2026-06-15T08:19:37.3758900Z ##[group]Run actions/setup-python@v6
+2026-06-15T08:19:37.3769810Z with:
+2026-06-15T08:19:37.3769970Z   python-version: 3.12
+2026-06-15T08:19:37.3770170Z   cache: pip
+2026-06-15T08:19:37.3770420Z   cache-dependency-path: apps/llm-studio/api/requirements-dev.txt
+2026-06-15T08:19:37.3770760Z   check-latest: false
+2026-06-15T08:19:37.3772900Z   token: ***
+2026-06-15T08:19:37.3773040Z   update-environment: true
+2026-06-15T08:19:37.3773260Z   allow-prereleases: false
+2026-06-15T08:19:37.3773520Z   freethreaded: false
+2026-06-15T08:19:37.3773750Z ##[endgroup]
+2026-06-15T08:19:37.4867510Z ##[group]Installed versions
+2026-06-15T08:19:37.4940580Z Successfully set up CPython (3.12.10)
+2026-06-15T08:19:37.4941590Z ##[endgroup]
+2026-06-15T08:19:37.5027150Z [command]/Users/runner/hostedtoolcache/Python/3.12.10/arm64/bin/pip cache dir
+2026-06-15T08:19:38.0779730Z /Users/runner/Library/Caches/pip
+2026-06-15T08:19:38.3457110Z pip cache is not found
+2026-06-15T08:19:38.3708130Z ##[group]Run dtolnay/rust-toolchain@stable
+2026-06-15T08:19:38.3708370Z with:
+2026-06-15T08:19:38.3708520Z   toolchain: 1.88.0
+2026-06-15T08:19:38.3708680Z   components: rustfmt, clippy
+2026-06-15T08:19:38.3708860Z env:
+2026-06-15T08:19:38.3709080Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.3709500Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:38.3709880Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.3710450Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.3710810Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.3711110Z ##[endgroup]
+2026-06-15T08:19:38.3814080Z ##[group]Run : parse toolchain version
+2026-06-15T08:19:38.3814370Z [36;1m: parse toolchain version[0m
+2026-06-15T08:19:38.3814580Z [36;1mif [[ -z $toolchain ]]; then[0m
+2026-06-15T08:19:38.3815020Z [36;1m  # GitHub does not enforce `required: true` inputs itself. https://github.com/actions/runner/issues/1070[0m
+2026-06-15T08:19:38.3815430Z [36;1m  echo "'toolchain' is a required input" >&2[0m
+2026-06-15T08:19:38.3815640Z [36;1m  exit 1[0m
+2026-06-15T08:19:38.3815890Z [36;1melif [[ $toolchain =~ ^stable' '[0-9]+' '(year|month|week|day)s?' 'ago$ ]]; then[0m
+2026-06-15T08:19:38.3816200Z [36;1m  if [[ macOS == macOS ]]; then[0m
+2026-06-15T08:19:38.3816590Z [36;1m    echo "toolchain=1.$((($(date -v-$(sed 's/stable \([0-9]*\) \(.\).*/\1\2/' <<< $toolchain) +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-06-15T08:19:38.3816990Z [36;1m  else[0m
+2026-06-15T08:19:38.3817290Z [36;1m    echo "toolchain=1.$((($(date --date "${toolchain#stable }" +%s)/60/60/24-16569)/7/6))" >> $GITHUB_OUTPUT[0m
+2026-06-15T08:19:38.3817650Z [36;1m  fi[0m
+2026-06-15T08:19:38.3817890Z [36;1melif [[ $toolchain =~ ^stable' 'minus' '[0-9]+' 'releases?$ ]]; then[0m
+2026-06-15T08:19:38.3818300Z [36;1m  echo "toolchain=1.$((($(date +%s)/60/60/24-16569)/7/6-${toolchain//[^0-9]/}))" >> $GITHUB_OUTPUT[0m
+2026-06-15T08:19:38.3818660Z [36;1melif [[ $toolchain =~ ^1\.[0-9]+$ ]]; then[0m
+2026-06-15T08:19:38.3819060Z [36;1m  echo "toolchain=1.$((i=${toolchain#1.}, c=($(date +%s)/60/60/24-16569)/7/6, i+9*i*(10*i<=c)+90*i*(100*i<=c)))" >> $GITHUB_OUTPUT[0m
+2026-06-15T08:19:38.3819420Z [36;1melse[0m
+2026-06-15T08:19:38.3819600Z [36;1m  echo "toolchain=$toolchain" >> $GITHUB_OUTPUT[0m
+2026-06-15T08:19:38.3819810Z [36;1mfi[0m
+2026-06-15T08:19:38.3884810Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:38.3885100Z env:
+2026-06-15T08:19:38.3885330Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.3885720Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:38.3886100Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.3886450Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.3886790Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.3887040Z   toolchain: 1.88.0
+2026-06-15T08:19:38.3887190Z ##[endgroup]
+2026-06-15T08:19:38.4133300Z ##[group]Run : construct rustup command line
+2026-06-15T08:19:38.4133720Z [36;1m: construct rustup command line[0m
+2026-06-15T08:19:38.4134080Z [36;1mecho "targets=$(for t in ${targets//,/ }; do echo -n ' --target' $t; done)" >> $GITHUB_OUTPUT[0m
+2026-06-15T08:19:38.4134580Z [36;1mecho "components=$(for c in ${components//,/ }; do echo -n ' --component' $c; done)" >> $GITHUB_OUTPUT[0m
+2026-06-15T08:19:38.4134980Z [36;1mecho "downgrade=" >> $GITHUB_OUTPUT[0m
+2026-06-15T08:19:38.4184260Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:38.4184500Z env:
+2026-06-15T08:19:38.4184740Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4185480Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:38.4185890Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4186240Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4186600Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4186870Z   targets: 
+2026-06-15T08:19:38.4187020Z   components: rustfmt, clippy
+2026-06-15T08:19:38.4187210Z ##[endgroup]
+2026-06-15T08:19:38.4393470Z ##[group]Run : set $CARGO_HOME
+2026-06-15T08:19:38.4393920Z [36;1m: set $CARGO_HOME[0m
+2026-06-15T08:19:38.4394190Z [36;1mecho CARGO_HOME=${CARGO_HOME:-"$HOME/.cargo"} >> $GITHUB_ENV[0m
+2026-06-15T08:19:38.4443570Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:38.4443830Z env:
+2026-06-15T08:19:38.4444070Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4444470Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:38.4444900Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4445250Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4445600Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4446060Z ##[endgroup]
+2026-06-15T08:19:38.4658700Z ##[group]Run : install rustup if needed
+2026-06-15T08:19:38.4658970Z [36;1m: install rustup if needed[0m
+2026-06-15T08:19:38.4659210Z [36;1mif ! command -v rustup &>/dev/null; then[0m
+2026-06-15T08:19:38.4659840Z [36;1m  curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y[0m
+2026-06-15T08:19:38.4660380Z [36;1m  echo "$CARGO_HOME/bin" >> $GITHUB_PATH[0m
+2026-06-15T08:19:38.4660600Z [36;1mfi[0m
+2026-06-15T08:19:38.4711300Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:38.4711550Z env:
+2026-06-15T08:19:38.4711770Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4712160Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:38.4712540Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4712890Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4713220Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4713500Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:19:38.4713690Z ##[endgroup]
+2026-06-15T08:19:38.4915810Z ##[group]Run rustup toolchain install 1.88.0 --component rustfmt --component clippy --profile minimal --no-self-update
+2026-06-15T08:19:38.4916480Z [36;1mrustup toolchain install 1.88.0 --component rustfmt --component clippy --profile minimal --no-self-update[0m
+2026-06-15T08:19:38.4966120Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:38.4966370Z env:
+2026-06-15T08:19:38.4966630Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4967030Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:38.4967430Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4967780Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4968140Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:38.4968430Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:19:38.4968660Z   RUSTUP_PERMIT_COPY_RENAME: 1
+2026-06-15T08:19:38.4968850Z ##[endgroup]
+2026-06-15T08:19:38.5500130Z info: syncing channel updates for 1.88.0-aarch64-apple-darwin
+2026-06-15T08:19:38.6624600Z info: latest update on 2025-06-26 for version 1.88.0 (6b00bc388 2025-06-23)
+2026-06-15T08:19:38.6628840Z info: downloading 5 components
+2026-06-15T08:19:45.4548140Z 
+2026-06-15T08:19:45.4889580Z info: self-update is disabled for this build of rustup
+2026-06-15T08:19:45.4898490Z info: any updates to rustup will need to be fetched with your system package manager
+2026-06-15T08:19:45.4899250Z   1.88.0-aarch64-apple-darwin installed - rustc 1.88.0 (6b00bc388 2025-06-23)
+2026-06-15T08:19:45.4900790Z 
+2026-06-15T08:19:45.4990030Z ##[group]Run rustup default 1.88.0
+2026-06-15T08:19:45.4990300Z [36;1mrustup default 1.88.0[0m
+2026-06-15T08:19:45.5091070Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:45.5091340Z env:
+2026-06-15T08:19:45.5091610Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.5092610Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:45.5093090Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.5093460Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.5093850Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.5094170Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:19:45.5094370Z ##[endgroup]
+2026-06-15T08:19:45.5531260Z info: using existing install for 1.88.0-aarch64-apple-darwin
+2026-06-15T08:19:45.5572770Z info: default toolchain set to 1.88.0-aarch64-apple-darwin
+2026-06-15T08:19:45.5573070Z 
+2026-06-15T08:19:45.5653950Z   1.88.0-aarch64-apple-darwin unchanged - rustc 1.88.0 (6b00bc388 2025-06-23)
+2026-06-15T08:19:45.5654340Z 
+2026-06-15T08:19:45.5655980Z info: note that the toolchain '1.88.0-aarch64-apple-darwin' is currently in use (overridden by '/Users/runner/work/LLMBuilder/LLMBuilder/rust-toolchain.toml')
+2026-06-15T08:19:45.5696610Z ##[group]Run : create cachekey
+2026-06-15T08:19:45.5696890Z [36;1m: create cachekey[0m
+2026-06-15T08:19:45.5697330Z [36;1mDATE=$(rustc +1.88.0 --version --verbose | sed -ne 's/^commit-date: \(20[0-9][0-9]\)-\([01][0-9]\)-\([0-3][0-9]\)$/\1\2\3/p')[0m
+2026-06-15T08:19:45.5697830Z [36;1mHASH=$(rustc +1.88.0 --version --verbose | sed -ne 's/^commit-hash: //p')[0m
+2026-06-15T08:19:45.5698240Z [36;1mecho "cachekey=$(echo $DATE$HASH | head -c12)" >> $GITHUB_OUTPUT[0m
+2026-06-15T08:19:45.5750710Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:45.5750960Z env:
+2026-06-15T08:19:45.5751200Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.5751590Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:45.5751970Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.5752330Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.5752700Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.5752970Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:19:45.5753170Z ##[endgroup]
+2026-06-15T08:19:45.6371390Z ##[group]Run : disable incremental compilation
+2026-06-15T08:19:45.6371810Z [36;1m: disable incremental compilation[0m
+2026-06-15T08:19:45.6372100Z [36;1mif [ -z "${CARGO_INCREMENTAL+set}" ]; then[0m
+2026-06-15T08:19:45.6372380Z [36;1m  echo CARGO_INCREMENTAL=0 >> $GITHUB_ENV[0m
+2026-06-15T08:19:45.6372650Z [36;1mfi[0m
+2026-06-15T08:19:45.6423000Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:45.6423250Z env:
+2026-06-15T08:19:45.6423490Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6423890Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:45.6424310Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6424710Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6425080Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6425380Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:19:45.6425580Z ##[endgroup]
+2026-06-15T08:19:45.6635530Z ##[group]Run : enable colors in Cargo output
+2026-06-15T08:19:45.6636180Z [36;1m: enable colors in Cargo output[0m
+2026-06-15T08:19:45.6636440Z [36;1mif [ -z "${CARGO_TERM_COLOR+set}" ]; then[0m
+2026-06-15T08:19:45.6636750Z [36;1m  echo CARGO_TERM_COLOR=always >> $GITHUB_ENV[0m
+2026-06-15T08:19:45.6636990Z [36;1mfi[0m
+2026-06-15T08:19:45.6686370Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:45.6686620Z env:
+2026-06-15T08:19:45.6686840Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6687250Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:45.6687910Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6688280Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6688650Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6688940Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:19:45.6689150Z   CARGO_INCREMENTAL: 0
+2026-06-15T08:19:45.6689330Z ##[endgroup]
+2026-06-15T08:19:45.6922470Z ##[group]Run : enable Cargo sparse registry
+2026-06-15T08:19:45.6922750Z [36;1m: enable Cargo sparse registry[0m
+2026-06-15T08:19:45.6923020Z [36;1m# implemented in 1.66, stabilized in 1.68, made default in 1.70[0m
+2026-06-15T08:19:45.6923580Z [36;1mif [ -z "${CARGO_REGISTRIES_CRATES_IO_PROTOCOL+set}" -o -f "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol ]; then[0m
+2026-06-15T08:19:45.6924130Z [36;1m  if rustc +1.88.0 --version --verbose | grep -q '^release: 1\.6[89]\.'; then[0m
+2026-06-15T08:19:45.6924600Z [36;1m    touch "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-06-15T08:19:45.6925020Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse >> $GITHUB_ENV[0m
+2026-06-15T08:19:45.6925410Z [36;1m  elif rustc +1.88.0 --version --verbose | grep -q '^release: 1\.6[67]\.'; then[0m
+2026-06-15T08:19:45.6925860Z [36;1m    touch "/Users/runner/work/_temp"/.implicit_cargo_registries_crates_io_protocol || true[0m
+2026-06-15T08:19:45.6926280Z [36;1m    echo CARGO_REGISTRIES_CRATES_IO_PROTOCOL=git >> $GITHUB_ENV[0m
+2026-06-15T08:19:45.6926550Z [36;1m  fi[0m
+2026-06-15T08:19:45.6926680Z [36;1mfi[0m
+2026-06-15T08:19:45.6976040Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:45.6976270Z env:
+2026-06-15T08:19:45.6976500Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6976890Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:45.6977280Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6977610Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6977940Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.6978200Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:19:45.6978390Z   CARGO_INCREMENTAL: 0
+2026-06-15T08:19:45.6978550Z   CARGO_TERM_COLOR: always
+2026-06-15T08:19:45.6978710Z ##[endgroup]
+2026-06-15T08:19:45.7485270Z ##[group]Run : work around spurious network errors in curl 8.0
+2026-06-15T08:19:45.7485690Z [36;1m: work around spurious network errors in curl 8.0[0m
+2026-06-15T08:19:45.7486120Z [36;1m# https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation[0m
+2026-06-15T08:19:45.7486580Z [36;1mif rustc +1.88.0 --version --verbose | grep -q '^release: 1\.7[01]\.'; then[0m
+2026-06-15T08:19:45.7486970Z [36;1m  echo CARGO_HTTP_MULTIPLEXING=false >> $GITHUB_ENV[0m
+2026-06-15T08:19:45.7487240Z [36;1mfi[0m
+2026-06-15T08:19:45.7535550Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:45.7535800Z env:
+2026-06-15T08:19:45.7536020Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.7536420Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:45.7536810Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.7537370Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.7537720Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.7538000Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:19:45.7538190Z   CARGO_INCREMENTAL: 0
+2026-06-15T08:19:45.7538640Z   CARGO_TERM_COLOR: always
+2026-06-15T08:19:45.7538820Z ##[endgroup]
+2026-06-15T08:19:45.7895880Z ##[group]Run rustc +1.88.0 --version --verbose
+2026-06-15T08:19:45.7896210Z [36;1mrustc +1.88.0 --version --verbose[0m
+2026-06-15T08:19:45.7947230Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:19:45.7947480Z env:
+2026-06-15T08:19:45.7947720Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.7948130Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:45.7948540Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.7948930Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.7949300Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.7949590Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:19:45.7949800Z   CARGO_INCREMENTAL: 0
+2026-06-15T08:19:45.7949980Z   CARGO_TERM_COLOR: always
+2026-06-15T08:19:45.7950150Z ##[endgroup]
+2026-06-15T08:19:45.8267860Z rustc 1.88.0 (6b00bc388 2025-06-23)
+2026-06-15T08:19:45.8268390Z binary: rustc
+2026-06-15T08:19:45.8268900Z commit-hash: 6b00bc3880198600130e1cf62b8f8a93494488cc
+2026-06-15T08:19:45.8269340Z commit-date: 2025-06-23
+2026-06-15T08:19:45.8269740Z host: aarch64-apple-darwin
+2026-06-15T08:19:45.8269970Z release: 1.88.0
+2026-06-15T08:19:45.8271710Z LLVM version: 20.1.5
+2026-06-15T08:19:45.8339220Z ##[group]Run python -m pip install -r apps/llm-studio/api/requirements-dev.txt
+2026-06-15T08:19:45.8339750Z [36;1mpython -m pip install -r apps/llm-studio/api/requirements-dev.txt[0m
+2026-06-15T08:19:45.8340110Z [36;1mcargo install cargo-audit --locked --version 0.22.1[0m
+2026-06-15T08:19:45.8340430Z [36;1mcargo install cargo-auditable --locked --version 0.7.4[0m
+2026-06-15T08:19:45.8340720Z [36;1mnpm ci --prefix apps/llm-studio/web[0m
+2026-06-15T08:19:45.8340950Z [36;1mnpm ci --prefix apps/llm-studio/desktop[0m
+2026-06-15T08:19:45.8390120Z shell: /bin/bash -e {0}
+2026-06-15T08:19:45.8390300Z env:
+2026-06-15T08:19:45.8390520Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.8390930Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:19:45.8391340Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.8391720Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.8392080Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:19:45.8392350Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:19:45.8392560Z   CARGO_INCREMENTAL: 0
+2026-06-15T08:19:45.8392710Z   CARGO_TERM_COLOR: always
+2026-06-15T08:19:45.8392900Z ##[endgroup]
+2026-06-15T08:19:46.4025830Z WARNING: Cache entry deserialization failed, entry ignored
+2026-06-15T08:19:46.5292320Z Collecting fastapi<1.0.0,>=0.111.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 1))
+2026-06-15T08:19:46.5792220Z   Downloading fastapi-0.137.0-py3-none-any.whl.metadata (26 kB)
+2026-06-15T08:19:46.6022360Z Collecting uvicorn<1.0.0,>=0.30.0 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:19:46.6053490Z   Downloading uvicorn-0.49.0-py3-none-any.whl.metadata (6.7 kB)
+2026-06-15T08:19:46.6682030Z Collecting pydantic<3.0.0,>=2.7.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 3))
+2026-06-15T08:19:46.6721830Z   Downloading pydantic-2.13.4-py3-none-any.whl.metadata (109 kB)
+2026-06-15T08:19:46.6891930Z Collecting python-multipart<1.0.0,>=0.0.9 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 4))
+2026-06-15T08:19:46.6921480Z   Downloading python_multipart-0.0.32-py3-none-any.whl.metadata (2.1 kB)
+2026-06-15T08:19:46.8245330Z Collecting sqlalchemy<3.0.0,>=2.0.30 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 5))
+2026-06-15T08:19:46.8273670Z   Downloading sqlalchemy-2.0.50-cp312-cp312-macosx_11_0_arm64.whl.metadata (9.5 kB)
+2026-06-15T08:19:46.8630750Z Requirement already satisfied: certifi>=2024.8.30 in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 6)) (2026.5.20)
+2026-06-15T08:19:46.8780500Z Collecting datasets>=2.20.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:46.8810150Z   Downloading datasets-5.0.0-py3-none-any.whl.metadata (23 kB)
+2026-06-15T08:19:46.9602300Z Collecting tokenizers>=0.20.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 8))
+2026-06-15T08:19:46.9646020Z   Downloading tokenizers-0.23.1-cp310-abi3-macosx_11_0_arm64.whl.metadata (9.8 kB)
+2026-06-15T08:19:46.9921250Z Collecting torch>=2.2.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:19:46.9969410Z   Downloading torch-2.12.0-cp312-cp312-macosx_14_0_arm64.whl.metadata (31 kB)
+2026-06-15T08:19:47.0337450Z Collecting zstandard<1.0.0,>=0.23.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 10))
+2026-06-15T08:19:47.0378870Z   Downloading zstandard-0.25.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (3.3 kB)
+2026-06-15T08:19:47.0543480Z Collecting pytest<10.0.0,>=9.0.3 (from -r apps/llm-studio/api/requirements-dev.txt (line 2))
+2026-06-15T08:19:47.0576410Z   Downloading pytest-9.1.0-py3-none-any.whl.metadata (7.6 kB)
+2026-06-15T08:19:47.0667210Z Collecting httpx2<3.0.0,>=2.0.0 (from -r apps/llm-studio/api/requirements-dev.txt (line 3))
+2026-06-15T08:19:47.0697190Z   Downloading httpx2-2.4.0-py3-none-any.whl.metadata (8.6 kB)
+2026-06-15T08:19:47.0809540Z Collecting pip-audit==2.10.1 (from -r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.0839160Z   Downloading pip_audit-2.10.1-py3-none-any.whl.metadata (28 kB)
+2026-06-15T08:19:47.0948230Z Collecting CacheControl>=0.13.0 (from CacheControl[filecache]>=0.13.0->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.0976860Z   Downloading cachecontrol-0.14.4-py3-none-any.whl.metadata (3.1 kB)
+2026-06-15T08:19:47.1141860Z Collecting cyclonedx-python-lib<12,>=5 (from pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.1172330Z   Downloading cyclonedx_python_lib-11.10.0-py3-none-any.whl.metadata (6.9 kB)
+2026-06-15T08:19:47.1377830Z Collecting packaging>=23.0.0 (from pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.1409190Z   Downloading packaging-26.2-py3-none-any.whl.metadata (3.5 kB)
+2026-06-15T08:19:47.1501240Z Collecting pip-api>=0.0.28 (from pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.1536970Z   Downloading pip_api-0.0.34-py3-none-any.whl.metadata (6.6 kB)
+2026-06-15T08:19:47.1629510Z Collecting pip-requirements-parser>=32.0.0 (from pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.1658270Z   Downloading pip_requirements_parser-32.0.1-py3-none-any.whl.metadata (9.3 kB)
+2026-06-15T08:19:47.1786360Z Collecting requests>=2.31.0 (from pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.1815720Z   Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+2026-06-15T08:19:47.1986150Z Collecting rich>=12.4 (from pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.2018260Z   Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+2026-06-15T08:19:47.2158160Z Collecting tomli>=2.2.1 (from pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.2196980Z   Downloading tomli-2.4.1-cp312-cp312-macosx_11_0_arm64.whl.metadata (10 kB)
+2026-06-15T08:19:47.2276790Z Collecting tomli-w>=1.2.0 (from pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.2306170Z   Downloading tomli_w-1.2.0-py3-none-any.whl.metadata (5.7 kB)
+2026-06-15T08:19:47.2417550Z Collecting platformdirs>=4.2.0 (from pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.2447230Z   Downloading platformdirs-4.10.0-py3-none-any.whl.metadata (5.5 kB)
+2026-06-15T08:19:47.2639630Z Collecting starlette>=0.46.0 (from fastapi<1.0.0,>=0.111.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 1))
+2026-06-15T08:19:47.2670020Z   Downloading starlette-1.3.1-py3-none-any.whl.metadata (6.4 kB)
+2026-06-15T08:19:47.2911810Z Collecting typing-extensions>=4.8.0 (from fastapi<1.0.0,>=0.111.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 1))
+2026-06-15T08:19:47.2942220Z   Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+2026-06-15T08:19:47.3026900Z Collecting typing-inspection>=0.4.2 (from fastapi<1.0.0,>=0.111.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 1))
+2026-06-15T08:19:47.3055610Z   Downloading typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+2026-06-15T08:19:47.3160040Z Collecting annotated-doc>=0.0.2 (from fastapi<1.0.0,>=0.111.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 1))
+2026-06-15T08:19:47.3192180Z   Downloading annotated_doc-0.0.4-py3-none-any.whl.metadata (6.6 kB)
+2026-06-15T08:19:47.3309880Z Collecting click>=7.0 (from uvicorn<1.0.0,>=0.30.0->uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:19:47.3338990Z   Downloading click-8.4.1-py3-none-any.whl.metadata (2.6 kB)
+2026-06-15T08:19:47.3427650Z Collecting h11>=0.8 (from uvicorn<1.0.0,>=0.30.0->uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:19:47.3455290Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-06-15T08:19:47.3537850Z Collecting annotated-types>=0.6.0 (from pydantic<3.0.0,>=2.7.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 3))
+2026-06-15T08:19:47.3566210Z   Downloading annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+2026-06-15T08:19:47.7085620Z Collecting pydantic-core==2.46.4 (from pydantic<3.0.0,>=2.7.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 3))
+2026-06-15T08:19:47.7129780Z   Downloading pydantic_core-2.46.4-cp312-cp312-macosx_11_0_arm64.whl.metadata (6.6 kB)
+2026-06-15T08:19:47.7249660Z Collecting iniconfig>=1.0.1 (from pytest<10.0.0,>=9.0.3->-r apps/llm-studio/api/requirements-dev.txt (line 2))
+2026-06-15T08:19:47.7282320Z   Downloading iniconfig-2.3.0-py3-none-any.whl.metadata (2.5 kB)
+2026-06-15T08:19:47.7392560Z Collecting pluggy<2,>=1.5 (from pytest<10.0.0,>=9.0.3->-r apps/llm-studio/api/requirements-dev.txt (line 2))
+2026-06-15T08:19:47.7431510Z   Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+2026-06-15T08:19:47.7569720Z Collecting pygments>=2.7.2 (from pytest<10.0.0,>=9.0.3->-r apps/llm-studio/api/requirements-dev.txt (line 2))
+2026-06-15T08:19:47.7602280Z   Downloading pygments-2.20.0-py3-none-any.whl.metadata (2.5 kB)
+2026-06-15T08:19:47.7741770Z Collecting anyio (from httpx2<3.0.0,>=2.0.0->-r apps/llm-studio/api/requirements-dev.txt (line 3))
+2026-06-15T08:19:47.7780900Z   Downloading anyio-4.13.0-py3-none-any.whl.metadata (4.5 kB)
+2026-06-15T08:19:47.7881430Z Collecting httpcore2==2.4.0 (from httpx2<3.0.0,>=2.0.0->-r apps/llm-studio/api/requirements-dev.txt (line 3))
+2026-06-15T08:19:47.7915230Z   Downloading httpcore2-2.4.0-py3-none-any.whl.metadata (23 kB)
+2026-06-15T08:19:47.8036260Z Collecting idna>=3.18 (from httpx2<3.0.0,>=2.0.0->-r apps/llm-studio/api/requirements-dev.txt (line 3))
+2026-06-15T08:19:47.8067940Z   Downloading idna-3.18-py3-none-any.whl.metadata (6.1 kB)
+2026-06-15T08:19:47.8184180Z Collecting truststore>=0.10 (from httpx2<3.0.0,>=2.0.0->-r apps/llm-studio/api/requirements-dev.txt (line 3))
+2026-06-15T08:19:47.8221790Z   Downloading truststore-0.10.4-py3-none-any.whl.metadata (4.4 kB)
+2026-06-15T08:19:47.8361230Z Collecting license-expression<31,>=30 (from cyclonedx-python-lib<12,>=5->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.8403310Z   Downloading license_expression-30.4.4-py3-none-any.whl.metadata (11 kB)
+2026-06-15T08:19:47.8758690Z Collecting packageurl-python<2,>=0.11 (from cyclonedx-python-lib<12,>=5->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.8805490Z   Downloading packageurl_python-0.17.6-py3-none-any.whl.metadata (5.1 kB)
+2026-06-15T08:19:47.9012350Z Collecting py-serializable<3.0.0,>=2.1.0 (from cyclonedx-python-lib<12,>=5->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.9049890Z   Downloading py_serializable-2.1.0-py3-none-any.whl.metadata (4.3 kB)
+2026-06-15T08:19:47.9175330Z Collecting sortedcontainers<3.0.0,>=2.4.0 (from cyclonedx-python-lib<12,>=5->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.9217270Z   Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl.metadata (10 kB)
+2026-06-15T08:19:47.9356310Z Collecting boolean.py>=4.0 (from license-expression<31,>=30->cyclonedx-python-lib<12,>=5->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.9409390Z   Downloading boolean_py-5.0-py3-none-any.whl.metadata (2.3 kB)
+2026-06-15T08:19:47.9574700Z Collecting defusedxml<0.8.0,>=0.7.1 (from py-serializable<3.0.0,>=2.1.0->cyclonedx-python-lib<12,>=5->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:47.9624020Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+2026-06-15T08:19:47.9899930Z Collecting httptools>=0.8.0 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:19:47.9942380Z   Downloading httptools-0.8.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (3.5 kB)
+2026-06-15T08:19:48.0092960Z Collecting python-dotenv>=0.13 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:19:48.0130670Z   Downloading python_dotenv-1.2.2-py3-none-any.whl.metadata (27 kB)
+2026-06-15T08:19:48.0378650Z Collecting pyyaml>=5.1 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:19:48.0423430Z   Downloading pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl.metadata (2.4 kB)
+2026-06-15T08:19:48.0663040Z Collecting uvloop>=0.15.1 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:19:48.0709240Z   Downloading uvloop-0.22.1-cp312-cp312-macosx_10_13_universal2.whl.metadata (4.9 kB)
+2026-06-15T08:19:48.1142940Z Collecting watchfiles>=0.20 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:19:48.1188670Z   Downloading watchfiles-1.2.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (4.9 kB)
+2026-06-15T08:19:48.1662250Z Collecting websockets>=10.4 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:19:48.1710810Z   Downloading websockets-16.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (6.8 kB)
+2026-06-15T08:19:48.1883320Z Collecting filelock (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.1919990Z   Downloading filelock-3.29.4-py3-none-any.whl.metadata (2.0 kB)
+2026-06-15T08:19:48.2917600Z Collecting numpy>=1.17 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.2960680Z   Downloading numpy-2.4.6-cp312-cp312-macosx_14_0_arm64.whl.metadata (6.6 kB)
+2026-06-15T08:19:48.3397750Z Collecting pyarrow>=21.0.0 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.3443630Z   Downloading pyarrow-24.0.0-cp312-cp312-macosx_12_0_arm64.whl.metadata (3.0 kB)
+2026-06-15T08:19:48.3554840Z Collecting dill<0.4.2,>=0.3.0 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.3589710Z   Downloading dill-0.4.1-py3-none-any.whl.metadata (10 kB)
+2026-06-15T08:19:48.4377100Z Collecting pandas (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.4419160Z   Downloading pandas-3.0.3-cp312-cp312-macosx_11_0_arm64.whl.metadata (79 kB)
+2026-06-15T08:19:48.4706280Z Collecting httpx<1.0.0 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.4735050Z   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+2026-06-15T08:19:48.4948340Z Collecting tqdm>=4.66.3 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.4979830Z   Downloading tqdm-4.68.2-py3-none-any.whl.metadata (58 kB)
+2026-06-15T08:19:48.5533720Z Collecting xxhash (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.5574300Z   Downloading xxhash-3.7.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (13 kB)
+2026-06-15T08:19:48.5715050Z Collecting multiprocess<0.70.20 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.5744530Z   Downloading multiprocess-0.70.19-py312-none-any.whl.metadata (7.5 kB)
+2026-06-15T08:19:48.5865950Z Collecting fsspec<=2026.4.0,>=2023.1.0 (from fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.5896570Z   Downloading fsspec-2026.4.0-py3-none-any.whl.metadata (10 kB)
+2026-06-15T08:19:48.6201370Z Collecting huggingface-hub<2.0,>=0.25.0 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.6239490Z   Downloading huggingface_hub-1.19.0-py3-none-any.whl.metadata (14 kB)
+2026-06-15T08:19:48.8953710Z Collecting aiohttp!=4.0.0a0,!=4.0.0a1 (from fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.8998340Z   Downloading aiohttp-3.14.1-cp312-cp312-macosx_11_0_arm64.whl.metadata (8.3 kB)
+2026-06-15T08:19:48.9143220Z Collecting httpcore==1.* (from httpx<1.0.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.9192790Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-06-15T08:19:48.9435230Z Collecting hf-xet<2.0.0,>=1.5.1 (from huggingface-hub<2.0,>=0.25.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.9475160Z   Downloading hf_xet-1.5.1-cp37-abi3-macosx_11_0_arm64.whl.metadata (4.9 kB)
+2026-06-15T08:19:48.9634440Z Collecting typer<0.26.0,>=0.20.0 (from huggingface-hub<2.0,>=0.25.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:48.9673260Z   Downloading typer-0.25.1-py3-none-any.whl.metadata (15 kB)
+2026-06-15T08:19:49.0025470Z Collecting shellingham>=1.3.0 (from typer<0.26.0,>=0.20.0->huggingface-hub<2.0,>=0.25.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:49.0057930Z   Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+2026-06-15T08:19:49.0644190Z Collecting setuptools<82 (from torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:19:49.0679720Z   Downloading setuptools-81.0.0-py3-none-any.whl.metadata (6.6 kB)
+2026-06-15T08:19:49.0819140Z Collecting sympy>=1.13.3 (from torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:19:49.0852300Z   Downloading sympy-1.14.0-py3-none-any.whl.metadata (12 kB)
+2026-06-15T08:19:49.0999430Z Collecting networkx>=2.5.1 (from torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:19:49.1029660Z   Downloading networkx-3.6.1-py3-none-any.whl.metadata (6.8 kB)
+2026-06-15T08:19:49.1161980Z Collecting jinja2 (from torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:19:49.1196070Z   Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+2026-06-15T08:19:49.1317500Z Collecting aiohappyeyeballs>=2.5.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:49.1350140Z   Downloading aiohappyeyeballs-2.6.2-py3-none-any.whl.metadata (5.9 kB)
+2026-06-15T08:19:49.1446920Z Collecting aiosignal>=1.4.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:49.1476310Z   Downloading aiosignal-1.4.0-py3-none-any.whl.metadata (3.7 kB)
+2026-06-15T08:19:49.1580580Z Collecting attrs>=17.3.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:49.1614430Z   Downloading attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+2026-06-15T08:19:49.2020900Z Collecting frozenlist>=1.1.1 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:49.2058720Z   Downloading frozenlist-1.8.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (20 kB)
+2026-06-15T08:19:49.3477180Z Collecting multidict<7.0,>=4.5 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:49.3520560Z   Downloading multidict-6.7.1-cp312-cp312-macosx_11_0_arm64.whl.metadata (5.3 kB)
+2026-06-15T08:19:49.3839890Z Collecting propcache>=0.2.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:49.3879390Z   Downloading propcache-0.5.2-cp312-cp312-macosx_11_0_arm64.whl.metadata (16 kB)
+2026-06-15T08:19:49.5468160Z Collecting yarl<2.0,>=1.17.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:49.5515390Z   Downloading yarl-1.24.2-cp312-cp312-macosx_11_0_arm64.whl.metadata (94 kB)
+2026-06-15T08:19:49.6011280Z Collecting msgpack<2.0.0,>=0.5.2 (from CacheControl>=0.13.0->CacheControl[filecache]>=0.13.0->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:49.6041800Z   Downloading msgpack-1.2.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (8.1 kB)
+2026-06-15T08:19:49.6155080Z Requirement already satisfied: pip in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (from pip-api>=0.0.28->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4)) (26.1.2)
+2026-06-15T08:19:49.6283920Z Collecting pyparsing (from pip-requirements-parser>=32.0.0->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:49.6316900Z   Downloading pyparsing-3.3.2-py3-none-any.whl.metadata (5.8 kB)
+2026-06-15T08:19:49.6844900Z Collecting charset_normalizer<4,>=2 (from requests>=2.31.0->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:49.6879950Z   Downloading charset_normalizer-3.4.7-cp312-cp312-macosx_10_13_universal2.whl.metadata (40 kB)
+2026-06-15T08:19:49.7035650Z Collecting urllib3<3,>=1.26 (from requests>=2.31.0->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:49.7067630Z   Downloading urllib3-2.7.0-py3-none-any.whl.metadata (6.9 kB)
+2026-06-15T08:19:49.7192620Z Collecting markdown-it-py>=2.2.0 (from rich>=12.4->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:49.7222650Z   Downloading markdown_it_py-4.2.0-py3-none-any.whl.metadata (7.4 kB)
+2026-06-15T08:19:49.7337510Z Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=12.4->pip-audit==2.10.1->-r apps/llm-studio/api/requirements-dev.txt (line 4))
+2026-06-15T08:19:49.7368370Z   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-06-15T08:19:49.7510680Z Collecting mpmath<1.4,>=1.1.0 (from sympy>=1.13.3->torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:19:49.7540110Z   Downloading mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+2026-06-15T08:19:49.7891860Z Collecting MarkupSafe>=2.0 (from jinja2->torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:19:49.7935060Z   Downloading markupsafe-3.0.3-cp312-cp312-macosx_11_0_arm64.whl.metadata (2.7 kB)
+2026-06-15T08:19:49.8066880Z Collecting python-dateutil>=2.8.2 (from pandas->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:49.8098080Z   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+2026-06-15T08:19:49.8202740Z Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:19:49.8234850Z   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-06-15T08:19:49.8324420Z Downloading pip_audit-2.10.1-py3-none-any.whl (62 kB)
+2026-06-15T08:19:49.8376470Z Downloading fastapi-0.137.0-py3-none-any.whl (121 kB)
+2026-06-15T08:19:49.8423420Z Downloading uvicorn-0.49.0-py3-none-any.whl (71 kB)
+2026-06-15T08:19:49.8473120Z Downloading pydantic-2.13.4-py3-none-any.whl (472 kB)
+2026-06-15T08:19:49.8573460Z Downloading pydantic_core-2.46.4-cp312-cp312-macosx_11_0_arm64.whl (2.0 MB)
+2026-06-15T08:19:49.8760180Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 127.8 MB/s  0:00:00
+2026-06-15T08:19:49.8793380Z Downloading python_multipart-0.0.32-py3-none-any.whl (30 kB)
+2026-06-15T08:19:49.8851930Z Downloading sqlalchemy-2.0.50-cp312-cp312-macosx_11_0_arm64.whl (2.2 MB)
+2026-06-15T08:19:49.9013540Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.2/2.2 MB 168.0 MB/s  0:00:00
+2026-06-15T08:19:49.9059400Z Downloading zstandard-0.25.0-cp312-cp312-macosx_11_0_arm64.whl (640 kB)
+2026-06-15T08:19:49.9117790Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 640.4/640.4 kB 81.6 MB/s  0:00:00
+2026-06-15T08:19:49.9199400Z Downloading pytest-9.1.0-py3-none-any.whl (386 kB)
+2026-06-15T08:19:49.9282810Z Downloading httpx2-2.4.0-py3-none-any.whl (74 kB)
+2026-06-15T08:19:49.9339030Z Downloading httpcore2-2.4.0-py3-none-any.whl (80 kB)
+2026-06-15T08:19:49.9400840Z Downloading cyclonedx_python_lib-11.10.0-py3-none-any.whl (527 kB)
+2026-06-15T08:19:49.9494670Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 527.8/527.8 kB 73.5 MB/s  0:00:00
+2026-06-15T08:19:49.9529790Z Downloading license_expression-30.4.4-py3-none-any.whl (120 kB)
+2026-06-15T08:19:49.9587140Z Downloading packageurl_python-0.17.6-py3-none-any.whl (36 kB)
+2026-06-15T08:19:49.9639430Z Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+2026-06-15T08:19:49.9690940Z Downloading py_serializable-2.1.0-py3-none-any.whl (23 kB)
+2026-06-15T08:19:49.9749450Z Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-06-15T08:19:50.0039290Z Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl (29 kB)
+2026-06-15T08:19:50.0090090Z Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+2026-06-15T08:19:50.0139720Z Downloading datasets-5.0.0-py3-none-any.whl (555 kB)
+2026-06-15T08:19:50.0200760Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 555.1/555.1 kB 87.0 MB/s  0:00:00
+2026-06-15T08:19:50.0235340Z Downloading dill-0.4.1-py3-none-any.whl (120 kB)
+2026-06-15T08:19:50.0288500Z Downloading fsspec-2026.4.0-py3-none-any.whl (203 kB)
+2026-06-15T08:19:50.0348420Z Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+2026-06-15T08:19:50.0400210Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-06-15T08:19:50.0449220Z Downloading huggingface_hub-1.19.0-py3-none-any.whl (693 kB)
+2026-06-15T08:19:50.0519820Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 693.4/693.4 kB 105.1 MB/s  0:00:00
+2026-06-15T08:19:50.0560050Z Downloading hf_xet-1.5.1-cp37-abi3-macosx_11_0_arm64.whl (3.8 MB)
+2026-06-15T08:19:50.0760160Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.8/3.8 MB 193.3 MB/s  0:00:00
+2026-06-15T08:19:50.0827150Z Downloading multiprocess-0.70.19-py312-none-any.whl (150 kB)
+2026-06-15T08:19:50.0877190Z Downloading typer-0.25.1-py3-none-any.whl (58 kB)
+2026-06-15T08:19:50.0939250Z Downloading tokenizers-0.23.1-cp310-abi3-macosx_11_0_arm64.whl (3.1 MB)
+2026-06-15T08:19:50.1076670Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.1/3.1 MB 224.7 MB/s  0:00:00
+2026-06-15T08:19:50.1117610Z Downloading torch-2.12.0-cp312-cp312-macosx_14_0_arm64.whl (88.0 MB)
+2026-06-15T08:19:50.5929370Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 88.0/88.0 MB 188.7 MB/s  0:00:00
+2026-06-15T08:19:50.5971650Z Downloading setuptools-81.0.0-py3-none-any.whl (1.1 MB)
+2026-06-15T08:19:50.6093080Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.1/1.1 MB 117.5 MB/s  0:00:00
+2026-06-15T08:19:50.6134370Z Downloading aiohttp-3.14.1-cp312-cp312-macosx_11_0_arm64.whl (512 kB)
+2026-06-15T08:19:50.6208770Z Downloading multidict-6.7.1-cp312-cp312-macosx_11_0_arm64.whl (43 kB)
+2026-06-15T08:19:50.6281260Z Downloading yarl-1.24.2-cp312-cp312-macosx_11_0_arm64.whl (91 kB)
+2026-06-15T08:19:50.6332490Z Downloading aiohappyeyeballs-2.6.2-py3-none-any.whl (15 kB)
+2026-06-15T08:19:50.6385020Z Downloading aiosignal-1.4.0-py3-none-any.whl (7.5 kB)
+2026-06-15T08:19:50.6429620Z Downloading annotated_doc-0.0.4-py3-none-any.whl (5.3 kB)
+2026-06-15T08:19:50.6475740Z Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+2026-06-15T08:19:50.6529060Z Downloading attrs-26.1.0-py3-none-any.whl (67 kB)
+2026-06-15T08:19:50.6584090Z Downloading boolean_py-5.0-py3-none-any.whl (26 kB)
+2026-06-15T08:19:50.6630460Z Downloading cachecontrol-0.14.4-py3-none-any.whl (22 kB)
+2026-06-15T08:19:50.6682550Z Downloading msgpack-1.2.0-cp312-cp312-macosx_11_0_arm64.whl (82 kB)
+2026-06-15T08:19:50.6733360Z Downloading click-8.4.1-py3-none-any.whl (116 kB)
+2026-06-15T08:19:50.6877140Z Downloading filelock-3.29.4-py3-none-any.whl (42 kB)
+2026-06-15T08:19:50.7112650Z Downloading frozenlist-1.8.0-cp312-cp312-macosx_11_0_arm64.whl (50 kB)
+2026-06-15T08:19:50.7161890Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2026-06-15T08:19:50.7214670Z Downloading httptools-0.8.0-cp312-cp312-macosx_11_0_arm64.whl (113 kB)
+2026-06-15T08:19:50.7270170Z Downloading idna-3.18-py3-none-any.whl (65 kB)
+2026-06-15T08:19:50.7321660Z Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+2026-06-15T08:19:50.7371240Z Downloading networkx-3.6.1-py3-none-any.whl (2.1 MB)
+2026-06-15T08:19:50.7486470Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 212.8 MB/s  0:00:00
+2026-06-15T08:19:50.7549720Z Downloading numpy-2.4.6-cp312-cp312-macosx_14_0_arm64.whl (5.2 MB)
+2026-06-15T08:19:50.7832180Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.2/5.2 MB 182.9 MB/s  0:00:00
+2026-06-15T08:19:50.7869030Z Downloading packaging-26.2-py3-none-any.whl (100 kB)
+2026-06-15T08:19:50.7923650Z Downloading pip_api-0.0.34-py3-none-any.whl (120 kB)
+2026-06-15T08:19:50.7977470Z Downloading pip_requirements_parser-32.0.1-py3-none-any.whl (35 kB)
+2026-06-15T08:19:50.8028940Z Downloading platformdirs-4.10.0-py3-none-any.whl (22 kB)
+2026-06-15T08:19:50.8080610Z Downloading propcache-0.5.2-cp312-cp312-macosx_11_0_arm64.whl (55 kB)
+2026-06-15T08:19:50.8128880Z Downloading pyarrow-24.0.0-cp312-cp312-macosx_12_0_arm64.whl (35.0 MB)
+2026-06-15T08:19:51.0821120Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 35.0/35.0 MB 131.4 MB/s  0:00:00
+2026-06-15T08:19:51.0857960Z Downloading pygments-2.20.0-py3-none-any.whl (1.2 MB)
+2026-06-15T08:19:51.0933340Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 170.9 MB/s  0:00:00
+2026-06-15T08:19:51.0969520Z Downloading python_dotenv-1.2.2-py3-none-any.whl (22 kB)
+2026-06-15T08:19:51.1031390Z Downloading pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl (173 kB)
+2026-06-15T08:19:51.1095280Z Downloading requests-2.34.2-py3-none-any.whl (73 kB)
+2026-06-15T08:19:51.1163540Z Downloading charset_normalizer-3.4.7-cp312-cp312-macosx_10_13_universal2.whl (311 kB)
+2026-06-15T08:19:51.1226820Z Downloading urllib3-2.7.0-py3-none-any.whl (131 kB)
+2026-06-15T08:19:51.1277040Z Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+2026-06-15T08:19:51.1341920Z Downloading markdown_it_py-4.2.0-py3-none-any.whl (91 kB)
+2026-06-15T08:19:51.1396790Z Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-06-15T08:19:51.1447600Z Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+2026-06-15T08:19:51.1498690Z Downloading starlette-1.3.1-py3-none-any.whl (73 kB)
+2026-06-15T08:19:51.1549150Z Downloading anyio-4.13.0-py3-none-any.whl (114 kB)
+2026-06-15T08:19:51.1603490Z Downloading sympy-1.14.0-py3-none-any.whl (6.3 MB)
+2026-06-15T08:19:51.1944870Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 198.5 MB/s  0:00:00
+2026-06-15T08:19:51.1986860Z Downloading mpmath-1.3.0-py3-none-any.whl (536 kB)
+2026-06-15T08:19:51.2036180Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 kB 73.6 MB/s  0:00:00
+2026-06-15T08:19:51.2083380Z Downloading tomli-2.4.1-cp312-cp312-macosx_11_0_arm64.whl (150 kB)
+2026-06-15T08:19:51.2176620Z Downloading tomli_w-1.2.0-py3-none-any.whl (6.7 kB)
+2026-06-15T08:19:51.2232960Z Downloading tqdm-4.68.2-py3-none-any.whl (78 kB)
+2026-06-15T08:19:51.2315390Z Downloading truststore-0.10.4-py3-none-any.whl (18 kB)
+2026-06-15T08:19:51.2366390Z Downloading typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+2026-06-15T08:19:51.2424270Z Downloading uvloop-0.22.1-cp312-cp312-macosx_10_13_universal2.whl (1.4 MB)
+2026-06-15T08:19:51.2494180Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 206.6 MB/s  0:00:00
+2026-06-15T08:19:51.2536050Z Downloading watchfiles-1.2.0-cp312-cp312-macosx_11_0_arm64.whl (393 kB)
+2026-06-15T08:19:51.2632890Z Downloading websockets-16.0-cp312-cp312-macosx_11_0_arm64.whl (175 kB)
+2026-06-15T08:19:51.2692080Z Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)
+2026-06-15T08:19:51.2753470Z Downloading markupsafe-3.0.3-cp312-cp312-macosx_11_0_arm64.whl (12 kB)
+2026-06-15T08:19:51.2809040Z Downloading pandas-3.0.3-cp312-cp312-macosx_11_0_arm64.whl (9.9 MB)
+2026-06-15T08:19:51.3229420Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 9.9/9.9 MB 238.3 MB/s  0:00:00
+2026-06-15T08:19:51.3273590Z Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+2026-06-15T08:19:51.3337550Z Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+2026-06-15T08:19:51.3389700Z Downloading pyparsing-3.3.2-py3-none-any.whl (122 kB)
+2026-06-15T08:19:51.3457300Z Downloading xxhash-3.7.0-cp312-cp312-macosx_11_0_arm64.whl (30 kB)
+2026-06-15T08:19:51.6870720Z Installing collected packages: sortedcontainers, mpmath, boolean.py, zstandard, xxhash, websockets, uvloop, urllib3, typing-extensions, truststore, tqdm, tomli-w, tomli, sympy, six, shellingham, setuptools, pyyaml, python-multipart, python-dotenv, pyparsing, pygments, pyarrow, propcache, pluggy, platformdirs, pip-api, packaging, packageurl-python, numpy, networkx, multidict, msgpack, mdurl, MarkupSafe, license-expression, iniconfig, idna, httptools, hf-xet, h11, fsspec, frozenlist, filelock, dill, defusedxml, click, charset_normalizer, attrs, annotated-types, annotated-doc, aiohappyeyeballs, yarl, uvicorn, typing-inspection, sqlalchemy, requests, python-dateutil, pytest, pydantic-core, py-serializable, pip-requirements-parser, multiprocess, markdown-it-py, jinja2, httpcore2, httpcore, anyio, aiosignal, watchfiles, torch, starlette, rich, pydantic, pandas, httpx2, httpx, cyclonedx-python-lib, CacheControl, aiohttp, typer, fastapi, pip-audit, huggingface-hub, tokenizers, datasets
+2026-06-15T08:20:15.6645650Z 
+2026-06-15T08:20:15.6687930Z Successfully installed CacheControl-0.14.4 MarkupSafe-3.0.3 aiohappyeyeballs-2.6.2 aiohttp-3.14.1 aiosignal-1.4.0 annotated-doc-0.0.4 annotated-types-0.7.0 anyio-4.13.0 attrs-26.1.0 boolean.py-5.0 charset_normalizer-3.4.7 click-8.4.1 cyclonedx-python-lib-11.10.0 datasets-5.0.0 defusedxml-0.7.1 dill-0.4.1 fastapi-0.137.0 filelock-3.29.4 frozenlist-1.8.0 fsspec-2026.4.0 h11-0.16.0 hf-xet-1.5.1 httpcore-1.0.9 httpcore2-2.4.0 httptools-0.8.0 httpx-0.28.1 httpx2-2.4.0 huggingface-hub-1.19.0 idna-3.18 iniconfig-2.3.0 jinja2-3.1.6 license-expression-30.4.4 markdown-it-py-4.2.0 mdurl-0.1.2 mpmath-1.3.0 msgpack-1.2.0 multidict-6.7.1 multiprocess-0.70.19 networkx-3.6.1 numpy-2.4.6 packageurl-python-0.17.6 packaging-26.2 pandas-3.0.3 pip-api-0.0.34 pip-audit-2.10.1 pip-requirements-parser-32.0.1 platformdirs-4.10.0 pluggy-1.6.0 propcache-0.5.2 py-serializable-2.1.0 pyarrow-24.0.0 pydantic-2.13.4 pydantic-core-2.46.4 pygments-2.20.0 pyparsing-3.3.2 pytest-9.1.0 python-dateutil-2.9.0.post0 python-dotenv-1.2.2 python-multipart-0.0.32 pyyaml-6.0.3 requests-2.34.2 rich-15.0.0 setuptools-81.0.0 shellingham-1.5.4 six-1.17.0 sortedcontainers-2.4.0 sqlalchemy-2.0.50 starlette-1.3.1 sympy-1.14.0 tokenizers-0.23.1 tomli-2.4.1 tomli-w-1.2.0 torch-2.12.0 tqdm-4.68.2 truststore-0.10.4 typer-0.25.1 typing-extensions-4.15.0 typing-inspection-0.4.2 urllib3-2.7.0 uvicorn-0.49.0 uvloop-0.22.1 watchfiles-1.2.0 websockets-16.0 xxhash-3.7.0 yarl-1.24.2 zstandard-0.25.0
+2026-06-15T08:20:15.9938590Z [1m[32m    Updating[0m crates.io index
+2026-06-15T08:20:16.0374620Z [1m[32m Downloading[0m crates ...
+2026-06-15T08:20:16.0693210Z [1m[32m  Downloaded[0m cargo-audit v0.22.1
+2026-06-15T08:20:16.1124920Z [1m[32m  Installing[0m cargo-audit v0.22.1
+2026-06-15T08:20:16.1188980Z [1m[32m    Updating[0m crates.io index
+2026-06-15T08:20:16.9077680Z [1m[32m    Updating[0m crates.io index
+2026-06-15T08:20:17.0596870Z [1m[32m Downloading[0m crates ...
+2026-06-15T08:20:17.1012330Z [1m[32m  Downloaded[0m auditable-info v0.10.0
+2026-06-15T08:20:17.1055270Z [1m[32m  Downloaded[0m gix-credentials v0.35.0
+2026-06-15T08:20:17.1121300Z [1m[32m  Downloaded[0m async-compression v0.4.37
+2026-06-15T08:20:17.1458000Z [1m[32m  Downloaded[0m gix-pathspec v0.15.0
+2026-06-15T08:20:17.1670090Z [1m[32m  Downloaded[0m writeable v0.6.2
+2026-06-15T08:20:17.1849650Z [1m[32m  Downloaded[0m gix-prompt v0.13.0
+2026-06-15T08:20:17.2254380Z [1m[32m  Downloaded[0m httparse v1.10.1
+2026-06-15T08:20:17.2386840Z [1m[32m  Downloaded[0m gix-revwalk v0.26.0
+2026-06-15T08:20:17.2475720Z [1m[32m  Downloaded[0m jobserver v0.1.34
+2026-06-15T08:20:17.2564770Z [1m[32m  Downloaded[0m gix-hashtable v0.12.0
+2026-06-15T08:20:17.2631460Z [1m[32m  Downloaded[0m gix-ignore v0.19.0
+2026-06-15T08:20:17.2689920Z [1m[32m  Downloaded[0m gix-lock v21.0.0
+2026-06-15T08:20:17.2744380Z [1m[32m  Downloaded[0m gix-index v0.46.0
+2026-06-15T08:20:17.2829250Z [1m[32m  Downloaded[0m zerotrie v0.2.3
+2026-06-15T08:20:17.2903880Z [1m[32m  Downloaded[0m zerofrom v0.1.6
+2026-06-15T08:20:17.2927150Z [1m[32m  Downloaded[0m zerovec v0.11.5
+2026-06-15T08:20:17.3323300Z [1m[32m  Downloaded[0m platforms v3.8.0
+2026-06-15T08:20:17.3364290Z [1m[32m  Downloaded[0m parking_lot v0.12.5
+2026-06-15T08:20:17.3411710Z [1m[32m  Downloaded[0m num-conv v0.1.0
+2026-06-15T08:20:17.3429410Z [1m[32m  Downloaded[0m zlib-rs v0.5.5
+2026-06-15T08:20:17.3518930Z [1m[32m  Downloaded[0m zeroize v1.8.2
+2026-06-15T08:20:17.3543900Z [1m[32m  Downloaded[0m lru-slab v0.1.2
+2026-06-15T08:20:17.3560860Z [1m[32m  Downloaded[0m memmap2 v0.9.9
+2026-06-15T08:20:17.3591640Z [1m[32m  Downloaded[0m zerofrom-derive v0.1.6
+2026-06-15T08:20:17.3612240Z [1m[32m  Downloaded[0m nu-ansi-term v0.50.3
+2026-06-15T08:20:17.3659220Z [1m[32m  Downloaded[0m mio v1.1.1
+2026-06-15T08:20:17.4028690Z [1m[32m  Downloaded[0m mime v0.3.17
+2026-06-15T08:20:17.4048820Z [1m[32m  Downloaded[0m tokio v1.49.0
+2026-06-15T08:20:17.5481660Z [1m[32m  Downloaded[0m petgraph v0.8.3
+2026-06-15T08:20:17.5816560Z [1m[32m  Downloaded[0m color-eyre v0.6.5
+2026-06-15T08:20:17.6246830Z [1m[32m  Downloaded[0m yoke-derive v0.8.1
+2026-06-15T08:20:17.6266340Z [1m[32m  Downloaded[0m pin-project-lite v0.2.16
+2026-06-15T08:20:17.6366600Z [1m[32m  Downloaded[0m percent-encoding v2.3.2
+2026-06-15T08:20:17.6385330Z [1m[32m  Downloaded[0m ring v0.17.14
+2026-06-15T08:20:17.7320010Z [1m[32m  Downloaded[0m zerocopy v0.8.38
+2026-06-15T08:20:17.7984900Z [1m[32m  Downloaded[0m parking_lot_core v0.9.12
+2026-06-15T08:20:17.8020790Z [1m[32m  Downloaded[0m owo-colors v4.2.3
+2026-06-15T08:20:17.8080550Z [1m[32m  Downloaded[0m once_cell v1.21.3
+2026-06-15T08:20:17.8136680Z [1m[32m  Downloaded[0m miniz_oxide v0.8.9
+2026-06-15T08:20:17.8206060Z [1m[32m  Downloaded[0m object v0.37.3
+2026-06-15T08:20:17.8684330Z [1m[32m  Downloaded[0m memchr v2.7.6
+2026-06-15T08:20:17.8821210Z [1m[32m  Downloaded[0m maybe-async v0.2.10
+2026-06-15T08:20:17.8897960Z [1m[32m  Downloaded[0m matchers v0.2.0
+2026-06-15T08:20:17.8918520Z [1m[32m  Downloaded[0m libc v0.2.180
+2026-06-15T08:20:17.9522070Z [1m[32m  Downloaded[0m jiff v0.2.18
+2026-06-15T08:20:17.9775750Z [1m[32m  Downloaded[0m icu_properties_data v2.1.2
+2026-06-15T08:20:17.9933310Z [1m[32m  Downloaded[0m sha1-checked v0.10.0
+2026-06-15T08:20:18.0028290Z [1m[32m  Downloaded[0m pin-utils v0.1.0
+2026-06-15T08:20:18.0048620Z [1m[32m  Downloaded[0m iri-string v0.7.10
+2026-06-15T08:20:18.0172860Z [1m[32m  Downloaded[0m idna v1.1.0
+2026-06-15T08:20:18.0229550Z [1m[32m  Downloaded[0m regex-automata v0.4.14
+2026-06-15T08:20:18.0461680Z [1m[32m  Downloaded[0m gix-filter v0.25.0
+2026-06-15T08:20:18.0525060Z [1m[32m  Downloaded[0m log v0.4.29
+2026-06-15T08:20:18.0584540Z [1m[32m  Downloaded[0m lazy_static v1.5.0
+2026-06-15T08:20:18.0612510Z [1m[32m  Downloaded[0m kstring v2.0.2
+2026-06-15T08:20:18.0637690Z [1m[32m  Downloaded[0m tracing v0.1.44
+2026-06-15T08:20:18.0880750Z [1m[32m  Downloaded[0m gix-hash v0.22.0
+2026-06-15T08:20:18.0917140Z [1m[32m  Downloaded[0m gix-fs v0.19.0
+2026-06-15T08:20:18.0951240Z [1m[32m  Downloaded[0m encoding_rs v0.8.35
+2026-06-15T08:20:18.1308630Z [1m[32m  Downloaded[0m gix-features v0.46.0
+2026-06-15T08:20:18.1352470Z [1m[32m  Downloaded[0m zmij v1.0.19
+2026-06-15T08:20:18.1383730Z [1m[32m  Downloaded[0m zerovec-derive v0.11.2
+2026-06-15T08:20:18.1414880Z [1m[32m  Downloaded[0m lock_api v0.4.14
+2026-06-15T08:20:18.1438250Z [1m[32m  Downloaded[0m litemap v0.8.1
+2026-06-15T08:20:18.1479840Z [1m[32m  Downloaded[0m indexmap v2.13.0
+2026-06-15T08:20:18.1553370Z [1m[32m  Downloaded[0m rustls v0.23.36
+2026-06-15T08:20:18.1752960Z [1m[32m  Downloaded[0m rustix v1.1.3
+2026-06-15T08:20:18.2191600Z [1m[32m  Downloaded[0m gix-glob v0.24.0
+2026-06-15T08:20:18.2211200Z [1m[32m  Downloaded[0m jiff-static v0.2.18
+2026-06-15T08:20:18.2258170Z [1m[32m  Downloaded[0m icu_normalizer v2.1.1
+2026-06-15T08:20:18.2310380Z [1m[32m  Downloaded[0m icu_locale_core v2.1.1
+2026-06-15T08:20:18.2414630Z [1m[32m  Downloaded[0m syn v2.0.114
+2026-06-15T08:20:18.2591340Z [1m[32m  Downloaded[0m regex-syntax v0.8.9
+2026-06-15T08:20:18.2694140Z [1m[32m  Downloaded[0m icu_provider v2.1.1
+2026-06-15T08:20:18.2734060Z [1m[32m  Downloaded[0m icu_properties v2.1.2
+2026-06-15T08:20:18.2764600Z [1m[32m  Downloaded[0m icu_collections v2.1.1
+2026-06-15T08:20:18.2865930Z [1m[32m  Downloaded[0m gix-trace v0.1.17
+2026-06-15T08:20:18.2881500Z [1m[32m  Downloaded[0m gix-tempfile v21.0.0
+2026-06-15T08:20:18.2900020Z [1m[32m  Downloaded[0m gix-revision v0.40.0
+2026-06-15T08:20:18.2925770Z [1m[32m  Downloaded[0m gix-path v0.11.0
+2026-06-15T08:20:18.2953850Z [1m[32m  Downloaded[0m gix-pack v0.65.0
+2026-06-15T08:20:18.3058510Z [1m[32m  Downloaded[0m hyper-util v0.1.20
+2026-06-15T08:20:18.3159610Z [1m[32m  Downloaded[0m hyper v1.8.1
+2026-06-15T08:20:18.3262060Z [1m[32m  Downloaded[0m hashbrown v0.16.1
+2026-06-15T08:20:18.3460400Z [1m[32m  Downloaded[0m winnow v0.7.14
+2026-06-15T08:20:18.3619530Z [1m[32m  Downloaded[0m wasmparser v0.207.0
+2026-06-15T08:20:18.3715790Z [1m[32m  Downloaded[0m tracing-subscriber v0.3.22
+2026-06-15T08:20:18.3854410Z [1m[32m  Downloaded[0m time v0.3.45
+2026-06-15T08:20:18.4057760Z [1m[32m  Downloaded[0m itoa v1.0.17
+2026-06-15T08:20:18.4081990Z [1m[32m  Downloaded[0m is_terminal_polyfill v1.70.2
+2026-06-15T08:20:18.4094660Z [1m[32m  Downloaded[0m ipnet v2.11.0
+2026-06-15T08:20:18.4127600Z [1m[32m  Downloaded[0m io-close v0.3.7
+2026-06-15T08:20:18.4144480Z [1m[32m  Downloaded[0m indenter v0.3.4
+2026-06-15T08:20:18.4163210Z [1m[32m  Downloaded[0m idna_adapter v1.2.1
+2026-06-15T08:20:18.4176270Z [1m[32m  Downloaded[0m ident_case v1.0.1
+2026-06-15T08:20:18.4187810Z [1m[32m  Downloaded[0m icu_normalizer_data v2.1.1
+2026-06-15T08:20:18.4216680Z [1m[32m  Downloaded[0m gix-submodule v0.25.0
+2026-06-15T08:20:18.4264400Z [1m[32m  Downloaded[0m gix-shallow v0.8.0
+2026-06-15T08:20:18.4264910Z [1m[32m  Downloaded[0m gix-sec v0.13.0
+2026-06-15T08:20:18.4280940Z [1m[32m  Downloaded[0m gix-refspec v0.36.0
+2026-06-15T08:20:18.4304320Z [1m[32m  Downloaded[0m gix-ref v0.58.0
+2026-06-15T08:20:18.4379690Z [1m[32m  Downloaded[0m gix-quote v0.6.1
+2026-06-15T08:20:18.4406370Z [1m[32m  Downloaded[0m gix-packetline v0.21.0
+2026-06-15T08:20:18.4441760Z [1m[32m  Downloaded[0m gix-odb v0.75.0
+2026-06-15T08:20:18.4501950Z [1m[32m  Downloaded[0m gix-object v0.55.0
+2026-06-15T08:20:18.4578430Z [1m[32m  Downloaded[0m http v1.4.0
+2026-06-15T08:20:18.4624110Z [1m[32m  Downloaded[0m hashbrown v0.15.5
+2026-06-15T08:20:18.4714140Z [1m[32m  Downloaded[0m h2 v0.4.13
+2026-06-15T08:20:18.4837570Z [1m[32m  Downloaded[0m tower-http v0.6.8
+2026-06-15T08:20:18.5001700Z [1m[32m  Downloaded[0m tokio-util v0.7.18
+2026-06-15T08:20:18.5162990Z [1m[32m  Downloaded[0m reqwest v0.13.1
+2026-06-15T08:20:18.5283110Z [1m[32m  Downloaded[0m regex v1.12.3
+2026-06-15T08:20:18.5387770Z [1m[32m  Downloaded[0m rayon v1.11.0
+2026-06-15T08:20:18.5572600Z [1m[32m  Downloaded[0m gix-negotiate v0.26.0
+2026-06-15T08:20:18.5590950Z [1m[32m  Downloaded[0m hyper-rustls v0.27.7
+2026-06-15T08:20:18.5649840Z [1m[32m  Downloaded[0m heapless v0.8.0
+2026-06-15T08:20:18.5741720Z [1m[32m  Downloaded[0m hash32 v0.3.1
+2026-06-15T08:20:18.5778490Z [1m[32m  Downloaded[0m gix-worktree-state v0.25.0
+2026-06-15T08:20:18.5829400Z [1m[32m  Downloaded[0m gix-worktree v0.47.0
+2026-06-15T08:20:18.5856060Z [1m[32m  Downloaded[0m gix-url v0.35.0
+2026-06-15T08:20:18.5877890Z [1m[32m  Downloaded[0m gix-traverse v0.52.0
+2026-06-15T08:20:18.5906890Z [1m[32m  Downloaded[0m gix-transport v0.53.0
+2026-06-15T08:20:18.5960700Z [1m[32m  Downloaded[0m unicode-normalization v0.1.25
+2026-06-15T08:20:18.6009760Z [1m[32m  Downloaded[0m tower v0.5.3
+2026-06-15T08:20:18.6215480Z [1m[32m  Downloaded[0m serde_json v1.0.149
+2026-06-15T08:20:18.6377820Z [1m[32m  Downloaded[0m rustsec v0.32.0
+2026-06-15T08:20:18.6719350Z [1m[32m  Downloaded[0m rand v0.9.2
+2026-06-15T08:20:18.6836480Z [1m[32m  Downloaded[0m gix v0.78.0
+2026-06-15T08:20:18.7234350Z [1m[32m  Downloaded[0m gimli v0.32.3
+2026-06-15T08:20:18.7380230Z [1m[32m  Downloaded[0m http-body-util v0.1.3
+2026-06-15T08:20:18.7419160Z [1m[32m  Downloaded[0m http-body v1.0.1
+2026-06-15T08:20:18.7434340Z [1m[32m  Downloaded[0m home v0.5.11
+2026-06-15T08:20:18.7456780Z [1m[32m  Downloaded[0m heck v0.5.0
+2026-06-15T08:20:18.7504400Z [1m[32m  Downloaded[0m gix-validate v0.11.0
+2026-06-15T08:20:18.7537680Z [1m[32m  Downloaded[0m gix-utils v0.3.1
+2026-06-15T08:20:18.7562640Z [1m[32m  Downloaded[0m gix-protocol v0.56.0
+2026-06-15T08:20:18.7583860Z [1m[32m  Downloaded[0m quinn v0.11.9
+2026-06-15T08:20:18.7639970Z [1m[32m  Downloaded[0m prodash v31.0.0
+2026-06-15T08:20:18.7708010Z [1m[32m  Downloaded[0m proc-macro2 v1.0.106
+2026-06-15T08:20:18.7764910Z [1m[32m  Downloaded[0m url v2.5.8
+2026-06-15T08:20:18.7810620Z [1m[32m  Downloaded[0m typenum v1.19.0
+2026-06-15T08:20:18.7868720Z [1m[32m  Downloaded[0m tracing-core v0.1.36
+2026-06-15T08:20:18.7907760Z [1m[32m  Downloaded[0m toml v0.9.11+spec-1.1.0
+2026-06-15T08:20:18.7977810Z [1m[32m  Downloaded[0m tempfile v3.24.0
+2026-06-15T08:20:18.8019700Z [1m[32m  Downloaded[0m tame-index v0.26.0
+2026-06-15T08:20:18.8096580Z [1m[32m  Downloaded[0m serde_derive v1.0.228
+2026-06-15T08:20:18.8180420Z [1m[32m  Downloaded[0m serde v1.0.228
+2026-06-15T08:20:18.8502420Z [1m[32m  Downloaded[0m rayon-core v1.13.0
+2026-06-15T08:20:18.8571910Z [1m[32m  Downloaded[0m gix-config v0.51.0
+2026-06-15T08:20:18.8649870Z [1m[32m  Downloaded[0m futures-util v0.3.31
+2026-06-15T08:20:18.8898280Z [1m[32m  Downloaded[0m flate2 v1.1.9
+2026-06-15T08:20:18.8993090Z [1m[32m  Downloaded[0m borsh v1.6.0
+2026-06-15T08:20:18.9163780Z [1m[32m  Downloaded[0m yoke v0.8.1
+2026-06-15T08:20:18.9212370Z [1m[32m  Downloaded[0m ppv-lite86 v0.2.21
+2026-06-15T08:20:18.9237220Z [1m[32m  Downloaded[0m powerfmt v0.2.0
+2026-06-15T08:20:18.9267710Z [1m[32m  Downloaded[0m potential_utf v0.1.4
+2026-06-15T08:20:18.9283100Z [1m[32m  Downloaded[0m walkdir v2.5.0
+2026-06-15T08:20:18.9320290Z [1m[32m  Downloaded[0m utf8_iter v1.0.4
+2026-06-15T08:20:18.9337570Z [1m[32m  Downloaded[0m unicode-ident v1.0.22
+2026-06-15T08:20:18.9392990Z [1m[32m  Downloaded[0m twox-hash v2.1.2
+2026-06-15T08:20:18.9439900Z [1m[32m  Downloaded[0m tracing-log v0.2.0
+2026-06-15T08:20:18.9463830Z [1m[32m  Downloaded[0m tracing-attributes v0.1.31
+2026-06-15T08:20:18.9514360Z [1m[32m  Downloaded[0m toml_writer v1.0.6+spec-1.1.0
+2026-06-15T08:20:18.9615680Z [1m[32m  Downloaded[0m toml_parser v1.0.6+spec-1.1.0
+2026-06-15T08:20:18.9698360Z [1m[32m  Downloaded[0m toml_datetime v0.7.5+spec-1.1.0
+2026-06-15T08:20:18.9698970Z [1m[32m  Downloaded[0m toml-span v0.6.0
+2026-06-15T08:20:18.9699500Z [1m[32m  Downloaded[0m tokio-rustls v0.26.4
+2026-06-15T08:20:18.9700020Z [1m[32m  Downloaded[0m tinyvec v1.10.0
+2026-06-15T08:20:19.0011170Z [1m[32m  Downloaded[0m tinystr v0.8.2
+2026-06-15T08:20:19.0045960Z [1m[32m  Downloaded[0m time-macros v0.2.25
+2026-06-15T08:20:19.0082710Z [1m[32m  Downloaded[0m thread_local v1.1.9
+2026-06-15T08:20:19.0106810Z [1m[32m  Downloaded[0m thiserror-impl v2.0.18
+2026-06-15T08:20:19.0129250Z [1m[32m  Downloaded[0m thiserror v2.0.18
+2026-06-15T08:20:19.0258450Z [1m[32m  Downloaded[0m termcolor v1.4.1
+2026-06-15T08:20:19.0277060Z [1m[32m  Downloaded[0m synstructure v0.13.2
+2026-06-15T08:20:19.0298090Z [1m[32m  Downloaded[0m subtle v2.6.1
+2026-06-15T08:20:19.0320620Z [1m[32m  Downloaded[0m strsim v0.11.1
+2026-06-15T08:20:19.0632410Z [1m[32m  Downloaded[0m socket2 v0.6.2
+2026-06-15T08:20:19.0678160Z [1m[32m  Downloaded[0m smol_str v0.3.2
+2026-06-15T08:20:19.0712140Z [1m[32m  Downloaded[0m smallvec v1.15.1
+2026-06-15T08:20:19.0757610Z [1m[32m  Downloaded[0m serde_core v1.0.228
+2026-06-15T08:20:19.0809750Z [1m[32m  Downloaded[0m semver v1.0.27
+2026-06-15T08:20:19.0855220Z [1m[32m  Downloaded[0m rand_core v0.9.5
+2026-06-15T08:20:19.0890970Z [1m[32m  Downloaded[0m gix-discover v0.46.0
+2026-06-15T08:20:19.0916160Z [1m[32m  Downloaded[0m gix-diff v0.58.0
+2026-06-15T08:20:19.0960860Z [1m[32m  Downloaded[0m gix-date v0.13.0
+2026-06-15T08:20:19.0992700Z [1m[32m  Downloaded[0m gix-config-value v0.17.0
+2026-06-15T08:20:19.1016190Z [1m[32m  Downloaded[0m gix-commitgraph v0.32.0
+2026-06-15T08:20:19.1044830Z [1m[32m  Downloaded[0m gix-command v0.7.0
+2026-06-15T08:20:19.1064650Z [1m[32m  Downloaded[0m gix-bitmap v0.2.15
+2026-06-15T08:20:19.1384250Z [1m[32m  Downloaded[0m gix-attributes v0.30.0
+2026-06-15T08:20:19.1414700Z [1m[32m  Downloaded[0m gix-actor v0.38.0
+2026-06-15T08:20:19.1443170Z [1m[32m  Downloaded[0m getrandom v0.3.4
+2026-06-15T08:20:19.1530690Z [1m[32m  Downloaded[0m getrandom v0.2.17
+2026-06-15T08:20:19.1632120Z [1m[32m  Downloaded[0m futures-task v0.3.31
+2026-06-15T08:20:19.1735450Z [1m[32m  Downloaded[0m futures-io v0.3.31
+2026-06-15T08:20:19.1838150Z [1m[32m  Downloaded[0m futures-channel v0.3.31
+2026-06-15T08:20:19.1922620Z [1m[32m  Downloaded[0m fs_extra v1.3.0
+2026-06-15T08:20:19.1923180Z [1m[32m  Downloaded[0m fs-err v3.2.2
+2026-06-15T08:20:19.1956880Z [1m[32m  Downloaded[0m form_urlencoded v1.2.2
+2026-06-15T08:20:19.1958430Z [1m[32m  Downloaded[0m foldhash v0.2.0
+2026-06-15T08:20:19.1961040Z [1m[32m  Downloaded[0m foldhash v0.1.5
+2026-06-15T08:20:19.1963350Z [1m[32m  Downloaded[0m fixedbitset v0.5.7
+2026-06-15T08:20:19.1964460Z [1m[32m  Downloaded[0m filetime v0.2.27
+2026-06-15T08:20:19.1967250Z [1m[32m  Downloaded[0m faster-hex v0.10.0
+2026-06-15T08:20:19.1967870Z [1m[32m  Downloaded[0m eyre v0.6.12
+2026-06-15T08:20:19.2184460Z [1m[32m  Downloaded[0m equivalent v1.0.2
+2026-06-15T08:20:19.2288970Z [1m[32m  Downloaded[0m dunce v1.0.5
+2026-06-15T08:20:19.2396870Z [1m[32m  Downloaded[0m displaydoc v0.2.5
+2026-06-15T08:20:19.2500150Z [1m[32m  Downloaded[0m digest v0.10.7
+2026-06-15T08:20:19.2604360Z [1m[32m  Downloaded[0m deranged v0.5.5
+2026-06-15T08:20:19.2711180Z [1m[32m  Downloaded[0m crossbeam-epoch v0.9.18
+2026-06-15T08:20:19.2827590Z [1m[32m  Downloaded[0m cpufeatures v0.2.17
+2026-06-15T08:20:19.2898420Z [1m[32m  Downloaded[0m core-foundation v0.10.1
+2026-06-15T08:20:19.2899750Z [1m[32m  Downloaded[0m clap_builder v4.5.57
+2026-06-15T08:20:19.3314040Z [1m[32m  Downloaded[0m clap v4.5.57
+2026-06-15T08:20:19.3984650Z [1m[32m  Downloaded[0m cc v1.2.55
+2026-06-15T08:20:19.4115160Z [1m[32m  Downloaded[0m bstr v1.12.1
+2026-06-15T08:20:19.4323150Z [1m[32m  Downloaded[0m want v0.3.1
+2026-06-15T08:20:19.4451680Z [1m[32m  Downloaded[0m wait-timeout v0.2.1
+2026-06-15T08:20:19.4477360Z [1m[32m  Downloaded[0m version_check v0.9.5
+2026-06-15T08:20:19.4492960Z [1m[32m  Downloaded[0m utf8parse v0.2.2
+2026-06-15T08:20:19.4548500Z [1m[32m  Downloaded[0m untrusted v0.9.0
+2026-06-15T08:20:19.4611170Z [1m[32m  Downloaded[0m unicode-bom v2.0.3
+2026-06-15T08:20:19.4706940Z [1m[32m  Downloaded[0m uluru v3.1.0
+2026-06-15T08:20:19.4707670Z [1m[32m  Downloaded[0m try-lock v0.2.5
+2026-06-15T08:20:19.4710690Z [1m[32m  Downloaded[0m tower-service v0.3.3
+2026-06-15T08:20:19.4711180Z [1m[32m  Downloaded[0m tower-layer v0.3.3
+2026-06-15T08:20:19.4711640Z [1m[32m  Downloaded[0m topological-sort v0.2.2
+2026-06-15T08:20:19.4712760Z [1m[32m  Downloaded[0m tinyvec_macros v0.1.1
+2026-06-15T08:20:19.4960620Z [1m[32m  Downloaded[0m time-core v0.1.7
+2026-06-15T08:20:19.4979910Z [1m[32m  Downloaded[0m sync_wrapper v1.0.2
+2026-06-15T08:20:19.4992950Z [1m[32m  Downloaded[0m stable_deref_trait v1.2.1
+2026-06-15T08:20:19.5011210Z [1m[32m  Downloaded[0m slab v0.4.12
+2026-06-15T08:20:19.5038310Z [1m[32m  Downloaded[0m simd-adler32 v0.3.8
+2026-06-15T08:20:19.5070340Z [1m[32m  Downloaded[0m shlex v1.3.0
+2026-06-15T08:20:19.5091430Z [1m[32m  Downloaded[0m sha1 v0.10.6
+2026-06-15T08:20:19.5120630Z [1m[32m  Downloaded[0m serde_spanned v1.0.4
+2026-06-15T08:20:19.5144520Z [1m[32m  Downloaded[0m security-framework v3.5.1
+2026-06-15T08:20:19.5223600Z [1m[32m  Downloaded[0m secrecy v0.10.3
+2026-06-15T08:20:19.5239090Z [1m[32m  Downloaded[0m rustversion v1.0.22
+2026-06-15T08:20:19.5295840Z [1m[32m  Downloaded[0m rustls-webpki v0.103.9
+2026-06-15T08:20:19.5364030Z [1m[32m  Downloaded[0m rustc-stable-hash v0.1.2
+2026-06-15T08:20:19.5417620Z [1m[32m  Downloaded[0m rustc-hash v2.1.1
+2026-06-15T08:20:19.5475760Z [1m[32m  Downloaded[0m rustc-demangle v0.1.27
+2026-06-15T08:20:19.5493550Z [1m[32m  Downloaded[0m rand_chacha v0.9.0
+2026-06-15T08:20:19.5515890Z [1m[32m  Downloaded[0m quote v1.0.44
+2026-06-15T08:20:19.5564210Z [1m[32m  Downloaded[0m gix-chunk v0.5.0
+2026-06-15T08:20:19.5608780Z [1m[32m  Downloaded[0m futures-core v0.3.31
+2026-06-15T08:20:19.5664410Z [1m[32m  Downloaded[0m fnv v1.0.7
+2026-06-15T08:20:19.5664960Z [1m[32m  Downloaded[0m find-msvc-tools v0.1.9
+2026-06-15T08:20:19.5714410Z [1m[32m  Downloaded[0m fastrand v2.3.0
+2026-06-15T08:20:19.5729120Z [1m[32m  Downloaded[0m display-error-chain v0.2.2
+2026-06-15T08:20:19.5749050Z [1m[32m  Downloaded[0m cvss v2.2.0
+2026-06-15T08:20:19.6403740Z [1m[32m  Downloaded[0m crossbeam-channel v0.5.15
+2026-06-15T08:20:19.6470120Z [1m[32m  Downloaded[0m crc32fast v1.5.0
+2026-06-15T08:20:19.6494270Z [1m[32m  Downloaded[0m core-foundation-sys v0.8.7
+2026-06-15T08:20:19.6547200Z [1m[32m  Downloaded[0m compression-core v0.4.31
+2026-06-15T08:20:19.6567990Z [1m[32m  Downloaded[0m compression-codecs v0.4.36
+2026-06-15T08:20:19.7154560Z [1m[32m  Downloaded[0m colorchoice v1.0.4
+2026-06-15T08:20:19.7169500Z [1m[32m  Downloaded[0m cmake v0.1.57
+2026-06-15T08:20:19.7199550Z [1m[32m  Downloaded[0m clap_lex v0.7.7
+2026-06-15T08:20:19.7219780Z [1m[32m  Downloaded[0m clap_derive v4.5.55
+2026-06-15T08:20:19.7783580Z [1m[32m  Downloaded[0m cfg_aliases v0.2.1
+2026-06-15T08:20:19.7852130Z [1m[32m  Downloaded[0m cargo-lock v11.0.1
+2026-06-15T08:20:19.7904570Z [1m[32m  Downloaded[0m canonical-path v2.0.2
+2026-06-15T08:20:19.7919470Z [1m[32m  Downloaded[0m bytes v1.11.1
+2026-06-15T08:20:19.8023470Z [1m[32m  Downloaded[0m block-buffer v0.10.4
+2026-06-15T08:20:19.8041420Z [1m[32m  Downloaded[0m bitflags v2.10.0
+2026-06-15T08:20:19.8124450Z [1m[32m  Downloaded[0m base64 v0.22.1
+2026-06-15T08:20:19.8201230Z [1m[32m  Downloaded[0m autocfg v1.5.0
+2026-06-15T08:20:19.8234580Z [1m[32m  Downloaded[0m auditable-serde v0.9.0
+2026-06-15T08:20:19.8246550Z [1m[32m  Downloaded[0m auditable-extract v0.3.5
+2026-06-15T08:20:19.8266390Z [1m[32m  Downloaded[0m atomic-waker v1.1.2
+2026-06-15T08:20:19.8296400Z [1m[32m  Downloaded[0m arrayvec v0.7.6
+2026-06-15T08:20:19.8898420Z [1m[32m  Downloaded[0m arc-swap v1.8.1
+2026-06-15T08:20:19.8969880Z [1m[32m  Downloaded[0m anstyle-query v1.1.5
+2026-06-15T08:20:19.8986020Z [1m[32m  Downloaded[0m anstyle-parse v0.2.7
+2026-06-15T08:20:19.9009810Z [1m[32m  Downloaded[0m anstyle v1.0.13
+2026-06-15T08:20:19.9032000Z [1m[32m  Downloaded[0m anstream v0.6.21
+2026-06-15T08:20:19.9067070Z [1m[32m  Downloaded[0m allocator-api2 v0.2.21
+2026-06-15T08:20:19.9110060Z [1m[32m  Downloaded[0m adler2 v2.0.1
+2026-06-15T08:20:19.9134990Z [1m[32m  Downloaded[0m addr2line v0.25.1
+2026-06-15T08:20:19.9162490Z [1m[32m  Downloaded[0m quinn-proto v0.11.13
+2026-06-15T08:20:19.9276530Z [1m[32m  Downloaded[0m static_assertions v1.1.0
+2026-06-15T08:20:19.9574530Z [1m[32m  Downloaded[0m shell-words v1.1.1
+2026-06-15T08:20:19.9725120Z [1m[32m  Downloaded[0m sharded-slab v0.1.7
+2026-06-15T08:20:19.9805180Z [1m[32m  Downloaded[0m security-framework-sys v2.15.0
+2026-06-15T08:20:19.9862230Z [1m[32m  Downloaded[0m scopeguard v1.2.0
+2026-06-15T08:20:19.9892580Z [1m[32m  Downloaded[0m same-file v1.0.6
+2026-06-15T08:20:19.9908790Z [1m[32m  Downloaded[0m rustls-platform-verifier v0.6.2
+2026-06-15T08:20:19.9981200Z [1m[32m  Downloaded[0m rustls-pki-types v1.14.0
+2026-06-15T08:20:20.0026310Z [1m[32m  Downloaded[0m quitters v0.1.0
+2026-06-15T08:20:20.0040550Z [1m[32m  Downloaded[0m quinn-udp v0.5.14
+2026-06-15T08:20:20.0066750Z [1m[32m  Downloaded[0m gix-error v0.0.0
+2026-06-15T08:20:20.0091860Z [1m[32m  Downloaded[0m crypto-common v0.1.7
+2026-06-15T08:20:20.0108620Z [1m[32m  Downloaded[0m crossbeam-deque v0.8.6
+2026-06-15T08:20:20.0132310Z [1m[32m  Downloaded[0m clru v0.6.2
+2026-06-15T08:20:20.0152500Z [1m[32m  Downloaded[0m cfg-if v1.0.4
+2026-06-15T08:20:20.0176600Z [1m[32m  Downloaded[0m byteorder v1.5.0
+2026-06-15T08:20:20.0200160Z [1m[32m  Downloaded[0m binfarce v0.2.1
+2026-06-15T08:20:20.0236990Z [1m[32m  Downloaded[0m backtrace v0.3.76
+2026-06-15T08:20:20.0329160Z [1m[32m  Downloaded[0m aws-lc-rs v1.15.4
+2026-06-15T08:20:20.0804750Z [1m[32m  Downloaded[0m aho-corasick v1.1.4
+2026-06-15T08:20:20.0886450Z [1m[32m  Downloaded[0m abscissa_core v0.9.0
+2026-06-15T08:20:20.0951970Z [1m[32m  Downloaded[0m generic-array v0.14.7
+2026-06-15T08:20:20.0976140Z [1m[32m  Downloaded[0m futures-sink v0.3.31
+2026-06-15T08:20:20.0988540Z [1m[32m  Downloaded[0m errno v0.3.14
+2026-06-15T08:20:20.1012910Z [1m[32m  Downloaded[0m either v1.15.0
+2026-06-15T08:20:20.1042690Z [1m[32m  Downloaded[0m crossbeam-utils v0.8.21
+2026-06-15T08:20:20.1091840Z [1m[32m  Downloaded[0m camino v1.2.2
+2026-06-15T08:20:20.1121180Z [1m[32m  Downloaded[0m abscissa_derive v0.9.0
+2026-06-15T08:20:20.1338510Z [1m[32m  Downloaded[0m aws-lc-sys v0.37.0
+2026-06-15T08:20:20.7104650Z [1m[32m   Compiling[0m proc-macro2 v1.0.106
+2026-06-15T08:20:20.7105060Z [1m[32m   Compiling[0m unicode-ident v1.0.22
+2026-06-15T08:20:20.7105390Z [1m[32m   Compiling[0m quote v1.0.44
+2026-06-15T08:20:21.2721440Z [1m[32m   Compiling[0m libc v0.2.180
+2026-06-15T08:20:23.0383850Z [1m[32m   Compiling[0m memchr v2.7.6
+2026-06-15T08:20:23.5613220Z [1m[32m   Compiling[0m cfg-if v1.0.4
+2026-06-15T08:20:23.5812540Z [1m[32m   Compiling[0m syn v2.0.114
+2026-06-15T08:20:23.6111850Z [1m[32m   Compiling[0m aho-corasick v1.1.4
+2026-06-15T08:20:23.7135820Z [1m[32m   Compiling[0m smallvec v1.15.1
+2026-06-15T08:20:23.8377420Z [1m[32m   Compiling[0m regex-syntax v0.8.9
+2026-06-15T08:20:26.6060160Z [1m[32m   Compiling[0m regex-automata v0.4.14
+2026-06-15T08:20:27.0753230Z [1m[32m   Compiling[0m once_cell v1.21.3
+2026-06-15T08:20:27.1726100Z [1m[32m   Compiling[0m bytes v1.11.1
+2026-06-15T08:20:27.7364140Z [1m[32m   Compiling[0m thiserror v2.0.18
+2026-06-15T08:20:27.9287030Z [1m[32m   Compiling[0m thiserror-impl v2.0.18
+2026-06-15T08:20:28.6723480Z [1m[32m   Compiling[0m stable_deref_trait v1.2.1
+2026-06-15T08:20:28.6916350Z [1m[32m   Compiling[0m crossbeam-utils v0.8.21
+2026-06-15T08:20:28.8039110Z [1m[32m   Compiling[0m bstr v1.12.1
+2026-06-15T08:20:29.4546630Z [1m[32m   Compiling[0m crc32fast v1.5.0
+2026-06-15T08:20:29.6441260Z [1m[32m   Compiling[0m tinyvec_macros v0.1.1
+2026-06-15T08:20:29.6882280Z [1m[32m   Compiling[0m tinyvec v1.10.0
+2026-06-15T08:20:30.1115140Z [1m[32m   Compiling[0m fastrand v2.3.0
+2026-06-15T08:20:30.2574980Z [1m[32m   Compiling[0m gix-trace v0.1.17
+2026-06-15T08:20:30.6944760Z [1m[32m   Compiling[0m unicode-normalization v0.1.25
+2026-06-15T08:20:30.7965010Z [1m[32m   Compiling[0m gix-validate v0.11.0
+2026-06-15T08:20:31.0414040Z [1m[32m   Compiling[0m parking_lot_core v0.9.12
+2026-06-15T08:20:31.1331200Z [1m[32m   Compiling[0m bitflags v2.10.0
+2026-06-15T08:20:31.2342710Z [1m[32m   Compiling[0m gix-utils v0.3.1
+2026-06-15T08:20:31.3431440Z [1m[32m   Compiling[0m gix-path v0.11.0
+2026-06-15T08:20:31.8487190Z [1m[32m   Compiling[0m scopeguard v1.2.0
+2026-06-15T08:20:31.8758160Z [1m[32m   Compiling[0m itoa v1.0.17
+2026-06-15T08:20:31.8969160Z [1m[32m   Compiling[0m lock_api v0.4.14
+2026-06-15T08:20:32.0031750Z [1m[32m   Compiling[0m crossbeam-channel v0.5.15
+2026-06-15T08:20:32.2132070Z [1m[32m   Compiling[0m parking_lot v0.12.5
+2026-06-15T08:20:32.4328170Z [1m[32m   Compiling[0m same-file v1.0.6
+2026-06-15T08:20:32.4915670Z [1m[32m   Compiling[0m walkdir v2.5.0
+2026-06-15T08:20:32.8654720Z [1m[32m   Compiling[0m prodash v31.0.0
+2026-06-15T08:20:33.0027360Z [1m[32m   Compiling[0m zlib-rs v0.5.5
+2026-06-15T08:20:34.2787210Z [1m[32m   Compiling[0m typenum v1.19.0
+2026-06-15T08:20:34.4227970Z [1m[32m   Compiling[0m allocator-api2 v0.2.21
+2026-06-15T08:20:34.6864480Z [1m[32m   Compiling[0m version_check v0.9.5
+2026-06-15T08:20:34.8134920Z [1m[32m   Compiling[0m gix-features v0.46.0
+2026-06-15T08:20:35.7423090Z [1m[32m   Compiling[0m equivalent v1.0.2
+2026-06-15T08:20:35.7728910Z [1m[32m   Compiling[0m foldhash v0.2.0
+2026-06-15T08:20:35.9146230Z [1m[32m   Compiling[0m hashbrown v0.16.1
+2026-06-15T08:20:36.5580820Z [1m[32m   Compiling[0m generic-array v0.14.7
+2026-06-15T08:20:36.7218470Z [1m[32m   Compiling[0m heapless v0.8.0
+2026-06-15T08:20:36.8789400Z [1m[32m   Compiling[0m byteorder v1.5.0
+2026-06-15T08:20:36.9908320Z [1m[32m   Compiling[0m hash32 v0.3.1
+2026-06-15T08:20:37.4919970Z [1m[32m   Compiling[0m faster-hex v0.10.0
+2026-06-15T08:20:37.5987240Z [1m[32m   Compiling[0m block-buffer v0.10.4
+2026-06-15T08:20:37.6762500Z [1m[32m   Compiling[0m crypto-common v0.1.7
+2026-06-15T08:20:37.7055300Z [1m[32m   Compiling[0m gix-error v0.0.0
+2026-06-15T08:20:37.7465270Z [1m[32m   Compiling[0m digest v0.10.7
+2026-06-15T08:20:37.8582820Z [1m[32m   Compiling[0m cpufeatures v0.2.17
+2026-06-15T08:20:37.9166350Z [1m[32m   Compiling[0m serde_core v1.0.228
+2026-06-15T08:20:38.0988060Z [1m[32m   Compiling[0m sha1 v0.10.6
+2026-06-15T08:20:38.1074840Z [1m[32m   Compiling[0m synstructure v0.13.2
+2026-06-15T08:20:38.3160740Z [1m[32m   Compiling[0m winnow v0.7.14
+2026-06-15T08:20:38.5012820Z [1m[32m   Compiling[0m sha1-checked v0.10.0
+2026-06-15T08:20:39.9841110Z [1m[32m   Compiling[0m jiff v0.2.18
+2026-06-15T08:20:40.5848070Z [1m[32m   Compiling[0m gix-hash v0.22.0
+2026-06-15T08:20:41.1545830Z [1m[32m   Compiling[0m zerofrom-derive v0.1.6
+2026-06-15T08:20:41.2044010Z [1m[32m   Compiling[0m rustix v1.1.3
+2026-06-15T08:20:41.3921660Z [1m[32m   Compiling[0m pin-project-lite v0.2.16
+2026-06-15T08:20:42.1315760Z [1m[32m   Compiling[0m zerofrom v0.1.6
+2026-06-15T08:20:42.1523250Z [1m[32m   Compiling[0m gix-hashtable v0.12.0
+2026-06-15T08:20:42.2083430Z [1m[32m   Compiling[0m yoke-derive v0.8.1
+2026-06-15T08:20:42.2282110Z [1m[32m   Compiling[0m errno v0.3.14
+2026-06-15T08:20:42.8622980Z [1m[32m   Compiling[0m yoke v0.8.1
+2026-06-15T08:20:42.9541650Z [1m[32m   Compiling[0m jobserver v0.1.34
+2026-06-15T08:20:43.1552890Z [1m[32m   Compiling[0m shlex v1.3.0
+2026-06-15T08:20:43.2497110Z [1m[32m   Compiling[0m find-msvc-tools v0.1.9
+2026-06-15T08:20:43.3687000Z [1m[32m   Compiling[0m cc v1.2.55
+2026-06-15T08:20:44.3480500Z [1m[32m   Compiling[0m gix-date v0.13.0
+2026-06-15T08:20:44.8228820Z [1m[32m   Compiling[0m gix-actor v0.38.0
+2026-06-15T08:20:45.1503580Z [1m[32m   Compiling[0m gix-object v0.55.0
+2026-06-15T08:20:46.9927610Z [1m[32m   Compiling[0m zerovec-derive v0.11.2
+2026-06-15T08:20:47.8703660Z [1m[32m   Compiling[0m memmap2 v0.9.9
+2026-06-15T08:20:48.0388610Z [1m[32m   Compiling[0m getrandom v0.3.4
+2026-06-15T08:20:48.2579810Z [1m[32m   Compiling[0m zerovec v0.11.5
+2026-06-15T08:20:48.6916500Z [1m[32m   Compiling[0m cmake v0.1.57
+2026-06-15T08:20:48.9123870Z [1m[32m   Compiling[0m displaydoc v0.2.5
+2026-06-15T08:20:49.3345930Z [1m[32m   Compiling[0m futures-core v0.3.31
+2026-06-15T08:20:49.3492700Z [1m[32m   Compiling[0m serde v1.0.228
+2026-06-15T08:20:49.4032300Z [1m[32m   Compiling[0m dunce v1.0.5
+2026-06-15T08:20:49.4770610Z [1m[32m   Compiling[0m fs_extra v1.3.0
+2026-06-15T08:20:49.6952640Z [1m[32m   Compiling[0m aws-lc-sys v0.37.0
+2026-06-15T08:20:49.7113360Z [1m[32m   Compiling[0m serde_derive v1.0.228
+2026-06-15T08:20:50.3509420Z [1m[32m   Compiling[0m mio v1.1.1
+2026-06-15T08:20:51.1767190Z [1m[32m   Compiling[0m socket2 v0.6.2
+2026-06-15T08:20:51.9967810Z [1m[32m   Compiling[0m tokio v1.49.0
+2026-06-15T08:20:53.4380250Z [1m[32m   Compiling[0m tempfile v3.24.0
+2026-06-15T08:20:54.3277100Z [1m[32m   Compiling[0m gix-chunk v0.5.0
+2026-06-15T08:20:54.5793730Z [1m[32m   Compiling[0m gix-fs v0.19.0
+2026-06-15T08:20:55.1516110Z [1m[32m   Compiling[0m simd-adler32 v0.3.8
+2026-06-15T08:20:55.9673940Z [1m[32m   Compiling[0m adler2 v2.0.1
+2026-06-15T08:20:56.0270120Z [1m[32m   Compiling[0m futures-sink v0.3.31
+2026-06-15T08:20:56.0596630Z [1m[32m   Compiling[0m zeroize v1.8.2
+2026-06-15T08:20:56.1298410Z [1m[32m   Compiling[0m miniz_oxide v0.8.9
+2026-06-15T08:20:57.4698850Z [1m[32m   Compiling[0m gix-tempfile v21.0.0
+2026-06-15T08:20:58.0278100Z [1m[32m   Compiling[0m tinystr v0.8.2
+2026-06-15T08:20:58.1466080Z [1m[32m   Compiling[0m gix-quote v0.6.1
+2026-06-15T08:20:58.4264950Z [1m[32m   Compiling[0m tracing-core v0.1.36
+2026-06-15T08:20:59.1581280Z [1m[32m   Compiling[0m percent-encoding v2.3.2
+2026-06-15T08:20:59.2937030Z [1m[32m   Compiling[0m writeable v0.6.2
+2026-06-15T08:20:59.4188800Z [1m[32m   Compiling[0m aws-lc-rs v1.15.4
+2026-06-15T08:20:59.5398200Z [1m[32m   Compiling[0m litemap v0.8.1
+2026-06-15T08:20:59.6380660Z [1m[32m   Compiling[0m icu_locale_core v2.1.1
+2026-06-15T08:21:00.5564150Z [1m[32m   Compiling[0m zerotrie v0.2.3
+2026-06-15T08:21:00.8285020Z [1m[32m   Compiling[0m potential_utf v0.1.4
+2026-06-15T08:21:00.9038840Z [1m[32m   Compiling[0m http v1.4.0
+2026-06-15T08:21:01.6802450Z [1m[32m   Compiling[0m tracing-attributes v0.1.31
+2026-06-15T08:21:02.5131980Z [1m[32m   Compiling[0m slab v0.4.12
+2026-06-15T08:21:02.6389320Z [1m[32m   Compiling[0m fnv v1.0.7
+2026-06-15T08:21:02.6613750Z [1m[32m   Compiling[0m icu_normalizer_data v2.1.1
+2026-06-15T08:21:02.6811870Z [1m[32m   Compiling[0m icu_properties_data v2.1.2
+2026-06-15T08:21:02.8091650Z [1m[32m   Compiling[0m tracing v0.1.44
+2026-06-15T08:21:02.8145070Z [1m[32m   Compiling[0m icu_collections v2.1.1
+2026-06-15T08:21:03.0676670Z [1m[32m   Compiling[0m icu_provider v2.1.1
+2026-06-15T08:21:03.3426970Z [1m[32m   Compiling[0m gix-commitgraph v0.32.0
+2026-06-15T08:21:03.3701080Z [1m[32m   Compiling[0m indexmap v2.13.0
+2026-06-15T08:21:03.9106710Z [1m[32m   Compiling[0m gix-glob v0.24.0
+2026-06-15T08:21:04.0759700Z [1m[32m   Compiling[0m pin-utils v0.1.0
+2026-06-15T08:21:04.1058860Z [1m[32m   Compiling[0m gix-revwalk v0.26.0
+2026-06-15T08:21:04.3972280Z [1m[32m   Compiling[0m http-body v1.0.1
+2026-06-15T08:21:04.4899630Z [1m[32m   Compiling[0m gix-lock v21.0.0
+2026-06-15T08:21:04.6271560Z [1m[32m   Compiling[0m rustls-pki-types v1.14.0
+2026-06-15T08:21:05.0211360Z [1m[32m   Compiling[0m tokio-util v0.7.18
+2026-06-15T08:21:05.3353350Z [1m[32m   Compiling[0m untrusted v0.9.0
+2026-06-15T08:21:05.3961590Z [1m[32m   Compiling[0m futures-task v0.3.31
+2026-06-15T08:21:05.4988260Z [1m[32m   Compiling[0m rustls v0.23.36
+2026-06-15T08:21:05.5820520Z [1m[32m   Compiling[0m httparse v1.10.1
+2026-06-15T08:21:05.8190540Z [1m[32m   Compiling[0m futures-io v0.3.31
+2026-06-15T08:21:05.9563770Z [1m[32m   Compiling[0m futures-util v0.3.31
+2026-06-15T08:21:06.1603250Z [1m[32m   Compiling[0m icu_normalizer v2.1.1
+2026-06-15T08:21:07.5431700Z [1m[32m   Compiling[0m icu_properties v2.1.2
+2026-06-15T08:21:08.5559900Z [1m[32m   Compiling[0m core-foundation-sys v0.8.7
+2026-06-15T08:21:08.7144330Z [1m[32m   Compiling[0m tower-service v0.3.3
+2026-06-15T08:21:08.7532160Z [1m[32m   Compiling[0m atomic-waker v1.1.2
+2026-06-15T08:21:08.8162720Z [1m[32m   Compiling[0m subtle v2.6.1
+2026-06-15T08:21:08.9108540Z [1m[32m   Compiling[0m unicode-bom v2.0.3
+2026-06-15T08:21:09.0522020Z [1m[32m   Compiling[0m log v0.4.29
+2026-06-15T08:21:09.1816890Z [1m[32m   Compiling[0m try-lock v0.2.5
+2026-06-15T08:21:09.2097100Z [1m[32m   Compiling[0m h2 v0.4.13
+2026-06-15T08:21:09.2294970Z [1m[32m   Compiling[0m want v0.3.1
+2026-06-15T08:21:09.3284610Z [1m[32m   Compiling[0m idna_adapter v1.2.1
+2026-06-15T08:21:09.8332720Z [1m[32m   Compiling[0m flate2 v1.1.9
+2026-06-15T08:21:10.4151060Z [1m[32m   Compiling[0m futures-channel v0.3.31
+2026-06-15T08:21:10.5853950Z [1m[32m   Compiling[0m gix-config-value v0.17.0
+2026-06-15T08:21:11.3293370Z [1m[32m   Compiling[0m compression-core v0.4.31
+2026-06-15T08:21:11.4529600Z [1m[32m   Compiling[0m shell-words v1.1.1
+2026-06-15T08:21:11.6604560Z [1m[32m   Compiling[0m static_assertions v1.1.0
+2026-06-15T08:21:11.7008270Z [1m[32m   Compiling[0m utf8_iter v1.0.4
+2026-06-15T08:21:11.8215810Z [1m[32m   Compiling[0m idna v1.1.0
+2026-06-15T08:21:14.3648710Z [1m[32m   Compiling[0m hyper v1.8.1
+2026-06-15T08:21:16.8061560Z [1m[32m   Compiling[0m kstring v2.0.2
+2026-06-15T08:21:16.9812180Z [1m[32m   Compiling[0m gix-command v0.7.0
+2026-06-15T08:21:17.6534310Z [1m[32m   Compiling[0m compression-codecs v0.4.36
+2026-06-15T08:21:17.8945800Z [1m[32m   Compiling[0m core-foundation v0.10.1
+2026-06-15T08:21:18.2002160Z [1m[32m   Compiling[0m security-framework-sys v2.15.0
+2026-06-15T08:21:18.2919370Z [1m[32m   Compiling[0m form_urlencoded v1.2.2
+2026-06-15T08:21:18.3166790Z [1m[32m   Compiling[0m sync_wrapper v1.0.2
+2026-06-15T08:21:18.3497290Z [1m[32m   Compiling[0m gix-sec v0.13.0
+2026-06-15T08:21:18.4204030Z [1m[32m   Compiling[0m encoding_rs v0.8.35
+2026-06-15T08:21:18.5459110Z [1m[32m   Compiling[0m base64 v0.22.1
+2026-06-15T08:21:18.8857260Z [1m[32m   Compiling[0m ipnet v2.11.0
+2026-06-15T08:21:19.8958180Z [1m[32m   Compiling[0m tower-layer v0.3.3
+2026-06-15T08:21:20.0004390Z [1m[32m   Compiling[0m tower v0.5.3
+2026-06-15T08:21:20.3423620Z [1m[32m   Compiling[0m hyper-util v0.1.20
+2026-06-15T08:21:22.1694060Z [1m[32m   Compiling[0m url v2.5.8
+2026-06-15T08:21:22.5746160Z [1m[32m   Compiling[0m security-framework v3.5.1
+2026-06-15T08:21:24.8060440Z [1m[32m   Compiling[0m async-compression v0.4.37
+2026-06-15T08:21:25.2533520Z [1m[32m   Compiling[0m gix-attributes v0.30.0
+2026-06-15T08:21:26.3079140Z [1m[32m   Compiling[0m http-body-util v0.1.3
+2026-06-15T08:21:26.5323880Z [1m[32m   Compiling[0m semver v1.0.27
+2026-06-15T08:21:27.1541230Z [1m[32m   Compiling[0m rustversion v1.0.22
+2026-06-15T08:21:27.4206800Z [1m[32m   Compiling[0m iri-string v0.7.10
+2026-06-15T08:21:28.1033680Z [1m[32m   Compiling[0m zmij v1.0.19
+2026-06-15T08:21:28.3524210Z [1m[32m   Compiling[0m gix-ref v0.58.0
+2026-06-15T08:21:30.0615270Z [1m[32m   Compiling[0m tower-http v0.6.8
+2026-06-15T08:21:31.8331730Z [1m[32m   Compiling[0m gix-url v0.35.0
+2026-06-15T08:21:33.6414580Z [1m[32m   Compiling[0m gix-packetline v0.21.0
+2026-06-15T08:21:34.0675520Z [1m[32m   Compiling[0m mime v0.3.17
+2026-06-15T08:21:34.5854670Z [1m[32m   Compiling[0m serde_json v1.0.149
+2026-06-15T08:21:35.5611530Z [1m[32m   Compiling[0m gix-prompt v0.13.0
+2026-06-15T08:21:35.6528360Z [1m[32m   Compiling[0m gix-traverse v0.52.0
+2026-06-15T08:21:36.0712230Z [1m[32m   Compiling[0m gix-revision v0.40.0
+2026-06-15T08:21:36.8116670Z [1m[32m   Compiling[0m crossbeam-epoch v0.9.18
+2026-06-15T08:21:37.3605160Z [1m[32m   Compiling[0m gix-bitmap v0.2.15
+2026-06-15T08:21:37.4638830Z [1m[32m   Compiling[0m filetime v0.2.27
+2026-06-15T08:21:37.6389500Z [1m[32m   Compiling[0m autocfg v1.5.0
+2026-06-15T08:21:37.9161980Z [1m[32m   Compiling[0m rayon-core v1.13.0
+2026-06-15T08:21:38.0554500Z [1m[32m   Compiling[0m object v0.37.3
+2026-06-15T08:21:38.2269220Z [1m[32m   Compiling[0m utf8parse v0.2.2
+2026-06-15T08:21:38.2822210Z [1m[32m   Compiling[0m arrayvec v0.7.6
+2026-06-15T08:21:38.4474270Z [1m[32m   Compiling[0m uluru v3.1.0
+2026-06-15T08:21:38.5235080Z [1m[32m   Compiling[0m anstyle-parse v0.2.7
+2026-06-15T08:21:38.7083180Z [1m[32m   Compiling[0m fs-err v3.2.2
+2026-06-15T08:21:38.8462240Z [1m[32m   Compiling[0m gix-index v0.46.0
+2026-06-15T08:21:38.9107400Z [1m[32m   Compiling[0m crossbeam-deque v0.8.6
+2026-06-15T08:21:39.0861880Z [1m[32m   Compiling[0m gix-refspec v0.36.0
+2026-06-15T08:21:41.9019860Z [1m[32m   Compiling[0m gix-credentials v0.35.0
+2026-06-15T08:21:45.6078880Z [1m[32m   Compiling[0m arc-swap v1.8.1
+2026-06-15T08:21:46.0921710Z [1m[32m   Compiling[0m gix-ignore v0.19.0
+2026-06-15T08:21:46.7363880Z [1m[32m   Compiling[0m serde_spanned v1.0.4
+2026-06-15T08:21:46.8574890Z [1m[32m   Compiling[0m toml_datetime v0.7.5+spec-1.1.0
+2026-06-15T08:21:47.3830460Z [1m[32m   Compiling[0m toml_parser v1.0.6+spec-1.1.0
+2026-06-15T08:21:47.7516950Z [1m[32m   Compiling[0m foldhash v0.1.5
+2026-06-15T08:21:47.9936840Z [1m[32m   Compiling[0m colorchoice v1.0.4
+2026-06-15T08:21:48.0943930Z [1m[32m   Compiling[0m eyre v0.6.12
+2026-06-15T08:21:48.4845510Z [1m[32m   Compiling[0m clru v0.6.2
+2026-06-15T08:21:48.7403630Z [1m[32m   Compiling[0m toml_writer v1.0.6+spec-1.1.0
+2026-06-15T08:21:49.0355330Z [1m[32m   Compiling[0m is_terminal_polyfill v1.70.2
+2026-06-15T08:21:49.0994860Z [1m[32m   Compiling[0m anstyle v1.0.13
+2026-06-15T08:21:49.4632510Z [1m[32m   Compiling[0m camino v1.2.2
+2026-06-15T08:21:49.8641600Z [1m[32m   Compiling[0m gimli v0.32.3
+2026-06-15T08:21:50.0659030Z [1m[32m   Compiling[0m owo-colors v4.2.3
+2026-06-15T08:21:50.3605760Z [1m[32m   Compiling[0m anstyle-query v1.1.5
+2026-06-15T08:21:50.4564730Z [1m[32m   Compiling[0m anstream v0.6.21
+2026-06-15T08:21:51.0500250Z [1m[32m   Compiling[0m toml v0.9.11+spec-1.1.0
+2026-06-15T08:21:54.4750750Z [1m[32m   Compiling[0m addr2line v0.25.1
+2026-06-15T08:21:55.0879720Z [1m[32m   Compiling[0m gix-pack v0.65.0
+2026-06-15T08:21:57.2851710Z [1m[32m   Compiling[0m hashbrown v0.15.5
+2026-06-15T08:21:57.8428860Z [1m[32m   Compiling[0m gix-worktree v0.47.0
+2026-06-15T08:22:05.1857650Z [1m[32m   Compiling[0m gix-filter v0.25.0
+2026-06-15T08:22:05.6507570Z [1m[32m   Compiling[0m gix-config v0.51.0
+2026-06-15T08:22:09.1919480Z [1m[32m   Compiling[0m gix-pathspec v0.15.0
+2026-06-15T08:22:10.8947040Z [1m[32m   Compiling[0m gix-shallow v0.8.0
+2026-06-15T08:22:11.4232450Z [1m[32m   Compiling[0m gix-negotiate v0.26.0
+2026-06-15T08:22:11.5756610Z [1m[32m   Compiling[0m wasmparser v0.207.0
+2026-06-15T08:22:12.6938430Z [1m[32m   Compiling[0m regex v1.12.3
+2026-06-15T08:22:14.3932080Z [1m[32m   Compiling[0m maybe-async v0.2.10
+2026-06-15T08:22:15.0013710Z [1m[32m   Compiling[0m io-close v0.3.7
+2026-06-15T08:22:15.1044720Z [1m[32m   Compiling[0m binfarce v0.2.1
+2026-06-15T08:22:17.3988530Z [1m[32m   Compiling[0m lazy_static v1.5.0
+2026-06-15T08:22:17.4419940Z [1m[32m   Compiling[0m heck v0.5.0
+2026-06-15T08:22:17.5707700Z [1m[32m   Compiling[0m strsim v0.11.1
+2026-06-15T08:22:17.7963300Z [1m[32m   Compiling[0m topological-sort v0.2.2
+2026-06-15T08:22:17.8684460Z [1m[32m   Compiling[0m powerfmt v0.2.0
+2026-06-15T08:22:18.0032770Z [1m[32m   Compiling[0m fixedbitset v0.5.7
+2026-06-15T08:22:18.2688440Z [1m[32m   Compiling[0m either v1.15.0
+2026-06-15T08:22:18.3577160Z [1m[32m   Compiling[0m indenter v0.3.4
+2026-06-15T08:22:18.3644410Z [1m[32m   Compiling[0m rustc-demangle v0.1.27
+2026-06-15T08:22:18.4151750Z [1m[32m   Compiling[0m clap_lex v0.7.7
+2026-06-15T08:22:18.6581010Z [1m[32m   Compiling[0m backtrace v0.3.76
+2026-06-15T08:22:19.2441650Z [1m[32m   Compiling[0m clap_builder v4.5.57
+2026-06-15T08:22:23.7113860Z [1m[32m   Compiling[0m rayon v1.11.0
+2026-06-15T08:22:25.4277460Z [1m[32m   Compiling[0m petgraph v0.8.3
+2026-06-15T08:22:27.6664930Z [1m[32m   Compiling[0m deranged v0.5.5
+2026-06-15T08:22:28.8339890Z [1m[32m   Compiling[0m auditable-serde v0.9.0
+2026-06-15T08:22:29.7442130Z [1m[32m   Compiling[0m clap_derive v4.5.55
+2026-06-15T08:22:30.4057110Z [1m[32m   Compiling[0m sharded-slab v0.1.7
+2026-06-15T08:22:31.1386310Z [1m[32m   Compiling[0m auditable-extract v0.3.5
+2026-06-15T08:22:31.3649230Z [1m[32m   Compiling[0m gix-worktree-state v0.25.0
+2026-06-15T08:22:31.4309660Z [1m[32m   Compiling[0m gix-submodule v0.25.0
+2026-06-15T08:22:32.4584030Z [1m[32m   Compiling[0m gix-odb v0.75.0
+2026-06-15T08:22:34.8918040Z [1m[32m   Compiling[0m gix-discover v0.46.0
+2026-06-15T08:22:36.2589290Z [1m[32m   Compiling[0m tracing-log v0.2.0
+2026-06-15T08:22:36.6006840Z [1m[32m   Compiling[0m smol_str v0.3.2
+2026-06-15T08:22:36.8507390Z [1m[32m   Compiling[0m gix-diff v0.58.0
+2026-06-15T08:22:37.0628180Z [1m[32m   Compiling[0m matchers v0.2.0
+2026-06-15T08:22:37.1277390Z [1m[32m   Compiling[0m toml-span v0.6.0
+2026-06-15T08:22:38.0189950Z [1m[32m   Compiling[0m thread_local v1.1.9
+2026-06-15T08:22:38.1693650Z [1m[32m   Compiling[0m ident_case v1.0.1
+2026-06-15T08:22:38.2033880Z [1m[32m   Compiling[0m twox-hash v2.1.2
+2026-06-15T08:22:38.2538900Z [1m[32m   Compiling[0m num-conv v0.1.0
+2026-06-15T08:22:38.3059060Z [1m[32m   Compiling[0m nu-ansi-term v0.50.3
+2026-06-15T08:22:38.6586420Z [1m[32m   Compiling[0m rustc-stable-hash v0.1.2
+2026-06-15T08:22:38.7421810Z [1m[32m   Compiling[0m home v0.5.11
+2026-06-15T08:22:38.8007780Z [1m[32m   Compiling[0m time-core v0.1.7
+2026-06-15T08:22:38.8693600Z [1m[32m   Compiling[0m time v0.3.45
+2026-06-15T08:22:39.7420450Z [1m[32m   Compiling[0m tracing-subscriber v0.3.22
+2026-06-15T08:22:41.4986460Z [1m[32m   Compiling[0m abscissa_derive v0.9.0
+2026-06-15T08:22:41.7690760Z [1m[32m   Compiling[0m color-eyre v0.6.5
+2026-06-15T08:22:43.2823830Z [1m[32m   Compiling[0m rustls-webpki v0.103.9
+2026-06-15T08:22:45.3288110Z [1m[32m   Compiling[0m clap v4.5.57
+2026-06-15T08:22:45.3793460Z [1m[32m   Compiling[0m auditable-info v0.10.0
+2026-06-15T08:22:45.7424220Z [1m[32m   Compiling[0m cargo-lock v11.0.1
+2026-06-15T08:22:46.4450630Z [1m[32m   Compiling[0m quitters v0.1.0
+2026-06-15T08:22:47.2035940Z [1m[32m   Compiling[0m secrecy v0.10.3
+2026-06-15T08:22:47.2982760Z [1m[32m   Compiling[0m platforms v3.8.0
+2026-06-15T08:22:47.7024770Z [1m[32m   Compiling[0m cvss v2.2.0
+2026-06-15T08:22:50.4302310Z [1m[32m   Compiling[0m tokio-rustls v0.26.4
+2026-06-15T08:22:50.7311750Z [1m[32m   Compiling[0m hyper-rustls v0.27.7
+2026-06-15T08:22:51.2018370Z [1m[32m   Compiling[0m rustls-platform-verifier v0.6.2
+2026-06-15T08:22:51.7198330Z [1m[32m   Compiling[0m reqwest v0.13.1
+2026-06-15T08:22:52.9463640Z [1m[32m   Compiling[0m wait-timeout v0.2.1
+2026-06-15T08:22:53.3926550Z [1m[32m   Compiling[0m canonical-path v2.0.2
+2026-06-15T08:22:53.5739230Z [1m[32m   Compiling[0m termcolor v1.4.1
+2026-06-15T08:22:54.0107190Z [1m[32m   Compiling[0m gix-transport v0.53.0
+2026-06-15T08:23:00.2220810Z [1m[32m   Compiling[0m gix-protocol v0.56.0
+2026-06-15T08:23:03.7146760Z [1m[32m   Compiling[0m gix v0.78.0
+2026-06-15T08:23:08.1816290Z [1m[32m   Compiling[0m tame-index v0.26.0
+2026-06-15T08:23:15.7522240Z [1m[32m   Compiling[0m rustsec v0.32.0
+2026-06-15T08:23:18.5121990Z [1m[32m   Compiling[0m abscissa_core v0.9.0
+2026-06-15T08:23:22.3776110Z [1m[32m   Compiling[0m display-error-chain v0.2.2
+2026-06-15T08:23:22.4652340Z [1m[32m   Compiling[0m cargo-audit v0.22.1
+2026-06-15T08:23:45.7456570Z [1m[32m    Finished[0m `release` profile [optimized] target(s) in 3m 29s
+2026-06-15T08:23:45.8241080Z [1m[32m  Installing[0m /Users/runner/.cargo/bin/cargo-audit
+2026-06-15T08:23:45.8259090Z [1m[32m   Installed[0m package `cargo-audit v0.22.1` (executable `cargo-audit`)
+2026-06-15T08:23:46.1328620Z [1m[32m    Updating[0m crates.io index
+2026-06-15T08:23:46.1808980Z [1m[32m Downloading[0m crates ...
+2026-06-15T08:23:46.2186310Z [1m[32m  Downloaded[0m cargo-auditable v0.7.4
+2026-06-15T08:23:46.2630220Z [1m[32m  Installing[0m cargo-auditable v0.7.4
+2026-06-15T08:23:46.2667960Z [1m[32m    Updating[0m crates.io index
+2026-06-15T08:23:46.4163420Z [1m[32m    Updating[0m crates.io index
+2026-06-15T08:23:46.4601400Z [1m[32m Downloading[0m crates ...
+2026-06-15T08:23:46.5124610Z [1m[32m  Downloaded[0m pico-args v0.5.0
+2026-06-15T08:23:46.5180890Z [1m[32m  Downloaded[0m ryu v1.0.20
+2026-06-15T08:23:46.5350020Z [1m[32m  Downloaded[0m wasm-gen v0.1.4
+2026-06-15T08:23:46.5392510Z [1m[32m  Downloaded[0m thiserror-impl v2.0.17
+2026-06-15T08:23:46.5464580Z [1m[32m  Downloaded[0m byteorder v0.5.3
+2026-06-15T08:23:46.5994210Z [1m[32m  Downloaded[0m proc-macro2 v1.0.103
+2026-06-15T08:23:46.6083600Z [1m[32m  Downloaded[0m indexmap v2.12.0
+2026-06-15T08:23:46.6176750Z [1m[32m  Downloaded[0m camino v1.2.1
+2026-06-15T08:23:46.6208790Z [1m[32m  Downloaded[0m quote v1.0.42
+2026-06-15T08:23:46.6257900Z [1m[32m  Downloaded[0m serde_json v1.0.145
+2026-06-15T08:23:46.6381130Z [1m[32m  Downloaded[0m hashbrown v0.16.0
+2026-06-15T08:23:46.6459640Z [1m[32m  Downloaded[0m cargo_metadata v0.23.0
+2026-06-15T08:23:46.6495620Z [1m[32m  Downloaded[0m thiserror v2.0.17
+2026-06-15T08:23:46.6670680Z [1m[32m  Downloaded[0m itoa v1.0.15
+2026-06-15T08:23:46.6696840Z [1m[32m  Downloaded[0m cargo-platform v0.3.1
+2026-06-15T08:23:46.6714870Z [1m[32m  Downloaded[0m leb128 v0.2.5
+2026-06-15T08:23:46.6738230Z [1m[32m  Downloaded[0m syn v2.0.109
+2026-06-15T08:23:46.7062650Z [1m[32m   Compiling[0m proc-macro2 v1.0.103
+2026-06-15T08:23:46.7064860Z [1m[32m   Compiling[0m unicode-ident v1.0.22
+2026-06-15T08:23:46.7065330Z [1m[32m   Compiling[0m quote v1.0.42
+2026-06-15T08:23:46.7656460Z [1m[32m   Compiling[0m serde_core v1.0.228
+2026-06-15T08:23:46.8700450Z [1m[32m   Compiling[0m serde v1.0.228
+2026-06-15T08:23:47.1421050Z [1m[32m   Compiling[0m memchr v2.7.6
+2026-06-15T08:23:47.8499650Z [1m[32m   Compiling[0m syn v2.0.109
+2026-06-15T08:23:48.0887740Z [1m[32m   Compiling[0m serde_json v1.0.145
+2026-06-15T08:23:48.2844580Z [1m[32m   Compiling[0m thiserror v2.0.17
+2026-06-15T08:23:48.5517730Z [1m[32m   Compiling[0m itoa v1.0.15
+2026-06-15T08:23:48.6466260Z [1m[32m   Compiling[0m camino v1.2.1
+2026-06-15T08:23:48.8291250Z [1m[32m   Compiling[0m ryu v1.0.20
+2026-06-15T08:23:49.0858960Z [1m[32m   Compiling[0m crc32fast v1.5.0
+2026-06-15T08:23:49.2847940Z [1m[32m   Compiling[0m semver v1.0.27
+2026-06-15T08:23:50.0548550Z [1m[32m   Compiling[0m object v0.37.3
+2026-06-15T08:23:50.2053590Z [1m[32m   Compiling[0m serde_derive v1.0.228
+2026-06-15T08:23:50.2252000Z [1m[32m   Compiling[0m thiserror-impl v2.0.17
+2026-06-15T08:23:51.3936450Z [1m[32m   Compiling[0m hashbrown v0.16.0
+2026-06-15T08:23:51.7681460Z [1m[32m   Compiling[0m foldhash v0.1.5
+2026-06-15T08:23:51.8798410Z [1m[32m   Compiling[0m equivalent v1.0.2
+2026-06-15T08:23:51.9049260Z [1m[32m   Compiling[0m cfg-if v1.0.4
+2026-06-15T08:23:52.0701620Z [1m[32m   Compiling[0m indexmap v2.12.0
+2026-06-15T08:23:52.0913040Z [1m[32m   Compiling[0m hashbrown v0.15.5
+2026-06-15T08:23:52.7281100Z [1m[32m   Compiling[0m byteorder v0.5.3
+2026-06-15T08:23:52.7623880Z [1m[32m   Compiling[0m adler2 v2.0.1
+2026-06-15T08:23:52.8275900Z [1m[32m   Compiling[0m cargo-platform v0.3.1
+2026-06-15T08:23:52.9153180Z [1m[32m   Compiling[0m leb128 v0.2.5
+2026-06-15T08:23:52.9749320Z [1m[32m   Compiling[0m topological-sort v0.2.2
+2026-06-15T08:23:53.0563090Z [1m[32m   Compiling[0m auditable-serde v0.9.0
+2026-06-15T08:23:53.1393580Z [1m[32m   Compiling[0m cargo_metadata v0.23.0
+2026-06-15T08:23:53.2873080Z [1m[32m   Compiling[0m wasm-gen v0.1.4
+2026-06-15T08:23:53.8634410Z [1m[32m   Compiling[0m miniz_oxide v0.8.9
+2026-06-15T08:23:55.3447140Z [1m[32m   Compiling[0m pico-args v0.5.0
+2026-06-15T08:23:57.2947360Z [1m[32m   Compiling[0m cargo-auditable v0.7.4
+2026-06-15T08:24:01.2778270Z [1m[32m    Finished[0m `release` profile [optimized] target(s) in 15.16s
+2026-06-15T08:24:01.2819840Z [1m[32m  Installing[0m /Users/runner/.cargo/bin/cargo-auditable
+2026-06-15T08:24:01.2822160Z [1m[32m   Installed[0m package `cargo-auditable v0.7.4` (executable `cargo-auditable`)
+2026-06-15T08:24:12.6617890Z 
+2026-06-15T08:24:12.6619570Z added 164 packages, and audited 165 packages in 11s
+2026-06-15T08:24:12.6619990Z 
+2026-06-15T08:24:12.6620180Z 39 packages are looking for funding
+2026-06-15T08:24:12.6620440Z   run `npm fund` for details
+2026-06-15T08:24:12.6622310Z 
+2026-06-15T08:24:12.6622520Z found 0 vulnerabilities
+2026-06-15T08:24:13.3488160Z 
+2026-06-15T08:24:13.3491510Z added 2 packages, and audited 3 packages in 526ms
+2026-06-15T08:24:13.3492280Z 
+2026-06-15T08:24:13.3492450Z 1 package is looking for funding
+2026-06-15T08:24:13.3494130Z   run `npm fund` for details
+2026-06-15T08:24:13.3502840Z 
+2026-06-15T08:24:13.3504270Z found 0 vulnerabilities
+2026-06-15T08:24:13.3706400Z ##[group]Run npm audit --audit-level=high --prefix apps/llm-studio/web
+2026-06-15T08:24:13.3708270Z [36;1mnpm audit --audit-level=high --prefix apps/llm-studio/web[0m
+2026-06-15T08:24:13.3708830Z [36;1mnpm audit --audit-level=high --prefix apps/llm-studio/desktop[0m
+2026-06-15T08:24:13.4925280Z shell: /bin/bash -e {0}
+2026-06-15T08:24:13.4925550Z env:
+2026-06-15T08:24:13.4925910Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:13.4926390Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:24:13.4926900Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:13.4927310Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:13.4927790Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:13.4928180Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:24:13.4928430Z   CARGO_INCREMENTAL: 0
+2026-06-15T08:24:13.4928820Z   CARGO_TERM_COLOR: always
+2026-06-15T08:24:13.4929040Z ##[endgroup]
+2026-06-15T08:24:13.8874030Z found 0 vulnerabilities
+2026-06-15T08:24:14.1985510Z found 0 vulnerabilities
+2026-06-15T08:24:14.2166070Z ##[group]Run npm run lint --prefix apps/llm-studio/web
+2026-06-15T08:24:14.2166530Z [36;1mnpm run lint --prefix apps/llm-studio/web[0m
+2026-06-15T08:24:14.2166930Z [36;1mnpm run typecheck --prefix apps/llm-studio/web[0m
+2026-06-15T08:24:14.2167340Z [36;1mnpm run test:regression --prefix apps/llm-studio/web[0m
+2026-06-15T08:24:14.2167720Z [36;1mnpm run build:desktop --prefix apps/llm-studio/web[0m
+2026-06-15T08:24:14.2168210Z [36;1mpython scripts/desktop/audit_release_payload.py apps/llm-studio/web/out[0m
+2026-06-15T08:24:14.2223300Z shell: /bin/bash -e {0}
+2026-06-15T08:24:14.2223600Z env:
+2026-06-15T08:24:14.2223900Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:14.2224470Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:24:14.2224990Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:14.2225510Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:14.2225860Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:14.2226230Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:24:14.2226510Z   CARGO_INCREMENTAL: 0
+2026-06-15T08:24:14.2226790Z   CARGO_TERM_COLOR: always
+2026-06-15T08:24:14.2227010Z   npm_config_offline: true
+2026-06-15T08:24:14.2227280Z ##[endgroup]
+2026-06-15T08:24:14.3499030Z 
+2026-06-15T08:24:14.3499400Z > llm-studio-web@0.1.0 lint
+2026-06-15T08:24:14.3499800Z > eslint . --max-warnings=0
+2026-06-15T08:24:14.3499990Z 
+2026-06-15T08:24:18.4558270Z 
+2026-06-15T08:24:18.4660720Z > llm-studio-web@0.1.0 typecheck
+2026-06-15T08:24:18.4761000Z > tsc --noEmit
+2026-06-15T08:24:18.4861780Z 
+2026-06-15T08:24:25.0560610Z 
+2026-06-15T08:24:25.0597290Z > llm-studio-web@0.1.0 test:regression
+2026-06-15T08:24:25.0610820Z > tsx --test "app/**/*.test.ts"
+2026-06-15T08:24:25.0611120Z 
+2026-06-15T08:24:25.4403880Z ✔ inference job and checkpoint search covers identifiers, metadata, and files (3.488042ms)
+2026-06-15T08:24:25.4503790Z ✔ inference model artifact step is displayed as a completed step count (0.224541ms)
+2026-06-15T08:24:25.4640480Z ✔ ui mode parser accepts only supported modes (0.828541ms)
+2026-06-15T08:24:25.5232790Z ✔ config number helpers preserve decimal and scientific editing behavior (1.257792ms)
+2026-06-15T08:24:25.5897850Z ✔ desktop build mode accepts an explicit environment opt-in (1.027709ms)
+2026-06-15T08:24:25.6001540Z ✔ desktop build mode recognizes the cross-platform npm lifecycle (1.386209ms)
+2026-06-15T08:24:25.6049770Z ✔ desktop build command is portable across npm host shells (0.875417ms)
+2026-06-15T08:24:25.6947770Z ✔ desktop artifact downloads use the narrow native streaming command (1.245875ms)
+2026-06-15T08:24:25.6955530Z ✔ desktop artifact reveal uses the narrow native metadata command (0.196792ms)
+2026-06-15T08:24:25.6959550Z ✔ desktop text save reports native cancellation without browser fallback (0.306ms)
+2026-06-15T08:24:25.6961450Z ✔ web artifact download preserves authenticated browser fallback (14.705166ms)
+2026-06-15T08:24:25.7419810Z ✔ runtime config injects desktop token through headers only (12.42475ms)
+2026-06-15T08:24:25.7424900Z ✔ runtime config preserves explicit caller headers (0.205333ms)
+2026-06-15T08:24:25.7427790Z ✔ runtime request normalizes validation errors and preserves domain status (1.759292ms)
+2026-06-15T08:24:25.7432890Z ✔ runtime request normalizes abort and network failures (0.226375ms)
+2026-06-15T08:24:25.7436570Z ✔ desktop runtime bootstrap and retry use narrow commands without persistence (0.590209ms)
+2026-06-15T08:24:25.7440200Z ✔ failed desktop retry clears stale runtime connectivity and can recover (0.320166ms)
+2026-06-15T08:24:25.8409750Z ✔ theme migration copies the Tokenizer Studio preference into the shared key (0.557875ms)
+2026-06-15T08:24:25.8415230Z ✔ theme migration keeps a current preference and removes stale legacy state (0.095208ms)
+2026-06-15T08:24:25.8425060Z ✔ theme migration preserves and applies legacy state when current storage cannot be written (0.092917ms)
+2026-06-15T08:24:25.8429540Z ✔ theme bootstrap migrates the preference before first paint (0.694208ms)
+2026-06-15T08:24:26.0027520Z ✔ simple flow parser migrates malformed state to safe defaults (3.257041ms)
+2026-06-15T08:24:26.0123110Z ✔ model presets satisfy local structural constraints (2.128333ms)
+2026-06-15T08:24:26.0149040Z ✔ model presets provide production-grade catalog coverage (0.458541ms)
+2026-06-15T08:24:26.0150230Z ✔ model presets provide concise beginner guidance (0.47325ms)
+2026-06-15T08:24:26.0150900Z ✔ model presets carry coordinated simple-mode defaults (0.086958ms)
+2026-06-15T08:24:26.0151490Z ✔ preset tokenizer targets stay small for starter data (0.059541ms)
+2026-06-15T08:24:26.0252790Z ✔ vocabulary sync reads tokenizer stats and updates model config (0.15575ms)
+2026-06-15T08:24:26.0307390Z ✔ training profiles apply backend token-budget recommendations (20.985916ms)
+2026-06-15T08:24:26.0308750Z ✔ balanced and longer ignore tiny local step caps and use model-scale token targets (1.4475ms)
+2026-06-15T08:24:26.0310020Z ✔ balanced and longer keep model-sized backend batch recommendations without profile caps (0.313417ms)
+2026-06-15T08:24:26.0310880Z ✔ post-fix guardrails preserve backend token budget for recommendation-backed profiles (0.257542ms)
+2026-06-15T08:24:26.0311630Z ✔ safe preflight fixes cannot collapse simple training guardrails (0.105042ms)
+2026-06-15T08:24:26.0312390Z ✔ inference preset mapping hides numeric sampling controls behind stable choices (0.101ms)
+2026-06-15T08:24:26.0313210Z ✔ streaming data templates keep quality filters and tokenizer schema compatibility (0.349833ms)
+2026-06-15T08:24:26.0314000Z ✔ tokenizer progress state makes validation, running, and completed jobs visible (1.237541ms)
+2026-06-15T08:24:26.0314700Z ✔ step readiness derives from artifacts instead of only persisted state (0.322ms)
+2026-06-15T08:24:26.0315430Z ✔ tokenizer streaming weights normalize without changing storage/API shape (0.663584ms)
+2026-06-15T08:24:26.0316130Z ✔ tokenizer dataloader filters serialize as legacy tuple filters (1.274625ms)
+2026-06-15T08:24:26.0316760Z ✔ tokenizer dataloader config never embeds the UI HF token (0.174542ms)
+2026-06-15T08:24:26.1339840Z ✔ active tokenizer persistence keys use the LLM Studio namespace (1.572125ms)
+2026-06-15T08:24:26.1440180Z ✔ tokenizer persistence migration copies legacy values before removing them (0.37775ms)
+2026-06-15T08:24:26.1542360Z ✔ tokenizer persistence migration never overwrites current values (0.289667ms)
+2026-06-15T08:24:26.1544700Z ✔ preflight recommendation key keeps a still-valid manual selection (0.509167ms)
+2026-06-15T08:24:26.1646110Z ✔ preflight recommendation key falls back to the recommended option (0.069375ms)
+2026-06-15T08:24:26.1747540Z ✔ preflight recommendation key clears when no options are available (0.088667ms)
+2026-06-15T08:24:26.2761270Z ✔ initial training selection prefers URL parameters over stored values (0.992209ms)
+2026-06-15T08:24:26.2864130Z ✔ initial training selection uses stored IDs and selects the latest run when no run is stored (0.130875ms)
+2026-06-15T08:24:26.2964490Z ✔ reselecting the same saved project requests a fresh project/preflight pass (0.087458ms)
+2026-06-15T08:24:26.3065070Z ✔ asset picker query normalization trims and lowercases search text (1.168333ms)
+2026-06-15T08:24:26.3166550Z ✔ asset picker projects are newest first and match identifiers or artifact metadata (1.386125ms)
+2026-06-15T08:24:26.3268110Z ✔ asset picker tokenizers only show completed jobs and match tokenizer names (0.473917ms)
+2026-06-15T08:24:26.4148160Z ✔ batch LR advisor falls back to the recommended option (13.213333ms)
+2026-06-15T08:24:26.4153220Z ✔ batch LR advisor explains alternate LR and batch profiles (0.224333ms)
+2026-06-15T08:24:26.4274810Z ✔ training dataset UI builds a local file dataloader with normalized file paths (0.974ms)
+2026-06-15T08:24:26.4275980Z ✔ training dataset UI never hydrates a persisted token (0.417209ms)
+2026-06-15T08:24:26.4277360Z ✔ training dataset configs never contain UI or legacy HF credentials (0.236792ms)
+2026-06-15T08:24:26.4385700Z ✔ training dataset weight normalization keeps a valid locked weight (0.200834ms)
+2026-06-15T08:24:26.5381710Z ✔ completed training progress displays the configured max step count (0.524458ms)
+2026-06-15T08:24:26.5392510Z ✔ running training progress preserves the reported runtime step (0.0845ms)
+2026-06-15T08:24:26.5422790Z ✔ training metric helpers filter invalid values and preserve chart domains (0.972833ms)
+2026-06-15T08:24:26.6401710Z ✔ training polling continues only for non-terminal statuses (0.469583ms)
+2026-06-15T08:24:26.6416020Z ✔ runpod execution target preserves launch settings and trims optional strings (0.417833ms)
+2026-06-15T08:24:26.6418680Z ✔ runpod execution target sends null for blank optional strings (0.069833ms)
+2026-06-15T08:24:26.6419370Z ✔ training execution target keeps local launches minimal (0.074292ms)
+2026-06-15T08:24:26.6420070Z ✔ runpod GPU catalog helpers preserve selected configured defaults (0.10825ms)
+2026-06-15T08:24:26.6420720Z ✔ runpod launch confirmations match current warning behavior (0.0935ms)
+2026-06-15T08:24:26.6422390Z ✔ runpod launch confirmation short-circuits when the user rejects a warning (0.06975ms)
+2026-06-15T08:24:26.6424580Z ✔ runpod readiness allows local runs and requires either configured status or typed key for pods (0.076958ms)
+2026-06-15T08:24:26.6478140Z ℹ tests 69
+2026-06-15T08:24:26.6478350Z ℹ suites 0
+2026-06-15T08:24:26.6478550Z ℹ pass 69
+2026-06-15T08:24:26.6478710Z ℹ fail 0
+2026-06-15T08:24:26.6478870Z ℹ cancelled 0
+2026-06-15T08:24:26.6479060Z ℹ skipped 0
+2026-06-15T08:24:26.6479220Z ℹ todo 0
+2026-06-15T08:24:26.6479430Z ℹ duration_ms 1459.021916
+2026-06-15T08:24:26.7462380Z 
+2026-06-15T08:24:26.7462710Z > llm-studio-web@0.1.0 build:desktop
+2026-06-15T08:24:26.7463120Z > next build && npm run validate:desktop-output
+2026-06-15T08:24:26.7463310Z 
+2026-06-15T08:24:27.2701410Z ⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+2026-06-15T08:24:27.3085270Z Attention: Next.js now collects completely anonymous telemetry regarding usage.
+2026-06-15T08:24:27.3086070Z This information is used to shape Next.js' roadmap and prioritize features.
+2026-06-15T08:24:27.3091310Z You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+2026-06-15T08:24:27.3091820Z https://nextjs.org/telemetry
+2026-06-15T08:24:27.3091950Z 
+2026-06-15T08:24:27.3212320Z ▲ Next.js 16.2.9 (Turbopack)
+2026-06-15T08:24:27.3212770Z 
+2026-06-15T08:24:27.3469310Z   Creating an optimized production build ...
+2026-06-15T08:24:31.4594450Z ✓ Compiled successfully in 4.0s
+2026-06-15T08:24:31.4716670Z   Running TypeScript ...
+2026-06-15T08:24:37.8837680Z   Finished TypeScript in 6.4s ...
+2026-06-15T08:24:37.8937450Z   Collecting page data using 2 workers ...
+2026-06-15T08:24:38.2566620Z   Generating static pages using 2 workers (0/8) ...
+2026-06-15T08:24:38.5764030Z   Generating static pages using 2 workers (2/8) 
+2026-06-15T08:24:38.5768990Z   Generating static pages using 2 workers (4/8) 
+2026-06-15T08:24:38.5770640Z   Generating static pages using 2 workers (6/8) 
+2026-06-15T08:24:38.5772490Z ✓ Generating static pages using 2 workers (8/8) in 321ms
+2026-06-15T08:24:38.5821100Z   Finalizing page optimization ...
+2026-06-15T08:24:39.1395140Z 
+2026-06-15T08:24:39.1485700Z Route (app)
+2026-06-15T08:24:39.1489960Z ┌ ○ /
+2026-06-15T08:24:39.1510240Z ├ ○ /_not-found
+2026-06-15T08:24:39.1510770Z ├ ○ /inference
+2026-06-15T08:24:39.1511230Z ├ ○ /simple
+2026-06-15T08:24:39.1511610Z ├ ○ /studio
+2026-06-15T08:24:39.1512030Z ├ ○ /tokenizer
+2026-06-15T08:24:39.1512400Z └ ○ /training
+2026-06-15T08:24:39.1513180Z 
+2026-06-15T08:24:39.1513270Z 
+2026-06-15T08:24:39.1513690Z ○  (Static)  prerendered as static content
+2026-06-15T08:24:39.1514060Z 
+2026-06-15T08:24:39.3239120Z 
+2026-06-15T08:24:39.3239570Z > llm-studio-web@0.1.0 validate:desktop-output
+2026-06-15T08:24:39.3243310Z > node scripts/validate-desktop-output.mjs
+2026-06-15T08:24:39.3244100Z 
+2026-06-15T08:24:39.3797660Z Validated desktop static output with 6 routes.
+2026-06-15T08:24:39.6944690Z Release payload audit passed: 96 files, 2231758 bytes.
+2026-06-15T08:24:39.7160490Z ##[group]Run python -m pytest -q
+2026-06-15T08:24:39.7161560Z [36;1mpython -m pytest -q[0m
+2026-06-15T08:24:39.7362230Z shell: /bin/bash -e {0}
+2026-06-15T08:24:39.7362600Z env:
+2026-06-15T08:24:39.7362930Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:39.7363340Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:24:39.7363720Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:39.7364250Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:39.7364660Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:24:39.7365070Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:24:39.7365350Z   CARGO_INCREMENTAL: 0
+2026-06-15T08:24:39.7365670Z   CARGO_TERM_COLOR: always
+2026-06-15T08:24:39.7365840Z ##[endgroup]
+2026-06-15T08:24:56.0627930Z ........................................................................ [ 27%]
+2026-06-15T08:25:00.2874340Z ........................................................................ [ 54%]
+2026-06-15T08:25:02.6031600Z ........................................................................ [ 82%]
+2026-06-15T08:25:03.2284130Z ..............................................                           [100%]
+2026-06-15T08:25:03.2386830Z 262 passed in 22.66s
+2026-06-15T08:25:04.2848170Z ##[group]Run python scripts/desktop/validate_api_contract_fixtures.py
+2026-06-15T08:25:04.2849030Z [36;1mpython scripts/desktop/validate_api_contract_fixtures.py[0m
+2026-06-15T08:25:04.3049110Z shell: /bin/bash -e {0}
+2026-06-15T08:25:04.3049850Z env:
+2026-06-15T08:25:04.3050570Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:25:04.3051850Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:25:04.3052980Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:25:04.3057120Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:25:04.3058380Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:25:04.3059440Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:25:04.3060100Z   CARGO_INCREMENTAL: 0
+2026-06-15T08:25:04.3060850Z   CARGO_TERM_COLOR: always
+2026-06-15T08:25:04.3061420Z ##[endgroup]
+2026-06-15T08:25:06.1564080Z Frozen desktop API contract catalog passed: 55 operations across 8 groups.
+2026-06-15T08:25:06.5499650Z ##[group]Run python scripts/desktop/build_runtime.py --portable --install-dependencies --allow-unlocked-development --output "build/desktop/runtime/macos-aarch64"
+2026-06-15T08:25:06.5500800Z [36;1mpython scripts/desktop/build_runtime.py --portable --install-dependencies --allow-unlocked-development --output "build/desktop/runtime/macos-aarch64"[0m
+2026-06-15T08:25:06.5501890Z [36;1mpython scripts/desktop/smoke_runtime.py "build/desktop/runtime/macos-aarch64" --performance-report "build/desktop/release/performance-characterization-macos-aarch64.json"[0m
+2026-06-15T08:25:06.5502820Z [36;1mpython scripts/desktop/audit_dependencies.py --python "build/desktop/runtime/macos-aarch64/python/bin/python"[0m
+2026-06-15T08:25:06.5503810Z [36;1mpython scripts/desktop/release_manifest.py "build/desktop/runtime/macos-aarch64/manifest.json" --output "build/desktop/release/macos-aarch64"[0m
+2026-06-15T08:25:06.5587270Z shell: /bin/bash --noprofile --norc -e -o pipefail {0}
+2026-06-15T08:25:06.5587600Z env:
+2026-06-15T08:25:06.5609630Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:25:06.5610160Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.12.10/arm64/lib/pkgconfig
+2026-06-15T08:25:06.5610640Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:25:06.5611110Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:25:06.5611570Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.12.10/arm64
+2026-06-15T08:25:06.5611940Z   CARGO_HOME: /Users/runner/.cargo
+2026-06-15T08:25:06.5612160Z   CARGO_INCREMENTAL: 0
+2026-06-15T08:25:06.5612410Z   CARGO_TERM_COLOR: always
+2026-06-15T08:25:06.5612580Z ##[endgroup]
+2026-06-15T08:25:08.8807610Z Collecting fastapi<1.0.0,>=0.111.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 1))
+2026-06-15T08:25:08.8833310Z   Using cached fastapi-0.137.0-py3-none-any.whl.metadata (26 kB)
+2026-06-15T08:25:08.9124000Z Collecting uvicorn<1.0.0,>=0.30.0 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:25:08.9140420Z   Using cached uvicorn-0.49.0-py3-none-any.whl.metadata (6.7 kB)
+2026-06-15T08:25:08.9802130Z Collecting pydantic<3.0.0,>=2.7.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 3))
+2026-06-15T08:25:08.9817840Z   Using cached pydantic-2.13.4-py3-none-any.whl.metadata (109 kB)
+2026-06-15T08:25:08.9941460Z Collecting python-multipart<1.0.0,>=0.0.9 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 4))
+2026-06-15T08:25:08.9960200Z   Using cached python_multipart-0.0.32-py3-none-any.whl.metadata (2.1 kB)
+2026-06-15T08:25:09.1218520Z Collecting sqlalchemy<3.0.0,>=2.0.30 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 5))
+2026-06-15T08:25:09.1282030Z   Using cached sqlalchemy-2.0.50-cp312-cp312-macosx_11_0_arm64.whl.metadata (9.5 kB)
+2026-06-15T08:25:09.1480400Z Collecting certifi>=2024.8.30 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 6))
+2026-06-15T08:25:09.1500650Z   Using cached certifi-2026.5.20-py3-none-any.whl.metadata (2.5 kB)
+2026-06-15T08:25:09.1656740Z Collecting datasets>=2.20.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:09.1673700Z   Using cached datasets-5.0.0-py3-none-any.whl.metadata (23 kB)
+2026-06-15T08:25:09.2492280Z Collecting tokenizers>=0.20.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 8))
+2026-06-15T08:25:09.2512830Z   Using cached tokenizers-0.23.1-cp310-abi3-macosx_11_0_arm64.whl.metadata (9.8 kB)
+2026-06-15T08:25:09.2792670Z Collecting torch>=2.2.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:25:09.2811520Z   Using cached torch-2.12.0-cp312-cp312-macosx_14_0_arm64.whl.metadata (31 kB)
+2026-06-15T08:25:09.3202460Z Collecting zstandard<1.0.0,>=0.23.0 (from -r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 10))
+2026-06-15T08:25:09.3217660Z   Using cached zstandard-0.25.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (3.3 kB)
+2026-06-15T08:25:09.3397700Z Collecting starlette>=0.46.0 (from fastapi<1.0.0,>=0.111.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 1))
+2026-06-15T08:25:09.3498600Z   Using cached starlette-1.3.1-py3-none-any.whl.metadata (6.4 kB)
+2026-06-15T08:25:09.3671840Z Collecting typing-extensions>=4.8.0 (from fastapi<1.0.0,>=0.111.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 1))
+2026-06-15T08:25:09.3689700Z   Using cached typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+2026-06-15T08:25:09.3789020Z Collecting typing-inspection>=0.4.2 (from fastapi<1.0.0,>=0.111.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 1))
+2026-06-15T08:25:09.3806680Z   Using cached typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+2026-06-15T08:25:09.3886200Z Collecting annotated-doc>=0.0.2 (from fastapi<1.0.0,>=0.111.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 1))
+2026-06-15T08:25:09.3903600Z   Using cached annotated_doc-0.0.4-py3-none-any.whl.metadata (6.6 kB)
+2026-06-15T08:25:09.4170750Z Collecting click>=7.0 (from uvicorn<1.0.0,>=0.30.0->uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:25:09.4185730Z   Using cached click-8.4.1-py3-none-any.whl.metadata (2.6 kB)
+2026-06-15T08:25:09.4256400Z Collecting h11>=0.8 (from uvicorn<1.0.0,>=0.30.0->uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:25:09.4272120Z   Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-06-15T08:25:09.4350000Z Collecting annotated-types>=0.6.0 (from pydantic<3.0.0,>=2.7.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 3))
+2026-06-15T08:25:09.4362380Z   Using cached annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+2026-06-15T08:25:09.7858760Z Collecting pydantic-core==2.46.4 (from pydantic<3.0.0,>=2.7.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 3))
+2026-06-15T08:25:09.7886600Z   Using cached pydantic_core-2.46.4-cp312-cp312-macosx_11_0_arm64.whl.metadata (6.6 kB)
+2026-06-15T08:25:09.8039880Z Collecting filelock (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:09.8053500Z   Using cached filelock-3.29.4-py3-none-any.whl.metadata (2.0 kB)
+2026-06-15T08:25:09.9388040Z Collecting numpy>=1.17 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:09.9489070Z   Using cached numpy-2.4.6-cp312-cp312-macosx_14_0_arm64.whl.metadata (6.6 kB)
+2026-06-15T08:25:10.0017980Z Collecting pyarrow>=21.0.0 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.0046780Z   Using cached pyarrow-24.0.0-cp312-cp312-macosx_12_0_arm64.whl.metadata (3.0 kB)
+2026-06-15T08:25:10.0182850Z Collecting dill<0.4.2,>=0.3.0 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.0200200Z   Using cached dill-0.4.1-py3-none-any.whl.metadata (10 kB)
+2026-06-15T08:25:10.0911650Z Collecting pandas (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.0932120Z   Using cached pandas-3.0.3-cp312-cp312-macosx_11_0_arm64.whl.metadata (79 kB)
+2026-06-15T08:25:10.1339860Z Collecting requests>=2.32.2 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.1360550Z   Using cached requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+2026-06-15T08:25:10.1492440Z Collecting httpx<1.0.0 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.1510530Z   Using cached httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+2026-06-15T08:25:10.1732110Z Collecting tqdm>=4.66.3 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.1756350Z   Using cached tqdm-4.68.2-py3-none-any.whl.metadata (58 kB)
+2026-06-15T08:25:10.2315680Z Collecting xxhash (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.2331140Z   Using cached xxhash-3.7.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (13 kB)
+2026-06-15T08:25:10.2470060Z Collecting multiprocess<0.70.20 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.2487500Z   Using cached multiprocess-0.70.19-py312-none-any.whl.metadata (7.5 kB)
+2026-06-15T08:25:10.2639570Z Collecting fsspec<=2026.4.0,>=2023.1.0 (from fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.2654510Z   Using cached fsspec-2026.4.0-py3-none-any.whl.metadata (10 kB)
+2026-06-15T08:25:10.3096070Z Collecting huggingface-hub<2.0,>=0.25.0 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.3112130Z   Using cached huggingface_hub-1.19.0-py3-none-any.whl.metadata (14 kB)
+2026-06-15T08:25:10.3309430Z Collecting packaging (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.3328490Z   Using cached packaging-26.2-py3-none-any.whl.metadata (3.5 kB)
+2026-06-15T08:25:10.3512890Z Collecting pyyaml>=5.1 (from datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:10.3526160Z   Using cached pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl.metadata (2.4 kB)
+2026-06-15T08:25:10.4616860Z Collecting setuptools<82 (from torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:25:10.4681990Z   Using cached setuptools-81.0.0-py3-none-any.whl.metadata (6.6 kB)
+2026-06-15T08:25:10.5039610Z Collecting sympy>=1.13.3 (from torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:25:10.5051920Z   Using cached sympy-1.14.0-py3-none-any.whl.metadata (12 kB)
+2026-06-15T08:25:10.5197660Z Collecting networkx>=2.5.1 (from torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:25:10.5209600Z   Using cached networkx-3.6.1-py3-none-any.whl.metadata (6.8 kB)
+2026-06-15T08:25:10.5331730Z Collecting jinja2 (from torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:25:10.5345320Z   Using cached jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+2026-06-15T08:25:10.5587290Z Collecting httptools>=0.8.0 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:25:10.5601550Z   Using cached httptools-0.8.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (3.5 kB)
+2026-06-15T08:25:10.5708940Z Collecting python-dotenv>=0.13 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:25:10.5720130Z   Using cached python_dotenv-1.2.2-py3-none-any.whl.metadata (27 kB)
+2026-06-15T08:25:10.5943890Z Collecting uvloop>=0.15.1 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:25:10.5957480Z   Using cached uvloop-0.22.1-cp312-cp312-macosx_10_13_universal2.whl.metadata (4.9 kB)
+2026-06-15T08:25:10.6345520Z Collecting watchfiles>=0.20 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:25:10.6361260Z   Using cached watchfiles-1.2.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (4.9 kB)
+2026-06-15T08:25:10.6772370Z Collecting websockets>=10.4 (from uvicorn[standard]<1.0.0,>=0.30.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 2))
+2026-06-15T08:25:10.6784500Z   Using cached websockets-16.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (6.8 kB)
+2026-06-15T08:25:11.0411880Z Collecting aiohttp!=4.0.0a0,!=4.0.0a1 (from fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.0513260Z   Using cached aiohttp-3.14.1-cp312-cp312-macosx_11_0_arm64.whl.metadata (8.3 kB)
+2026-06-15T08:25:11.0522970Z Collecting anyio (from httpx<1.0.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.0536380Z   Using cached anyio-4.13.0-py3-none-any.whl.metadata (4.5 kB)
+2026-06-15T08:25:11.0660050Z Collecting httpcore==1.* (from httpx<1.0.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.0675320Z   Using cached httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-06-15T08:25:11.0778370Z Collecting idna (from httpx<1.0.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.0792580Z   Using cached idna-3.18-py3-none-any.whl.metadata (6.1 kB)
+2026-06-15T08:25:11.1049800Z Collecting hf-xet<2.0.0,>=1.5.1 (from huggingface-hub<2.0,>=0.25.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.1062110Z   Using cached hf_xet-1.5.1-cp37-abi3-macosx_11_0_arm64.whl.metadata (4.9 kB)
+2026-06-15T08:25:11.1292720Z Collecting typer<0.26.0,>=0.20.0 (from huggingface-hub<2.0,>=0.25.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.1305800Z   Using cached typer-0.25.1-py3-none-any.whl.metadata (15 kB)
+2026-06-15T08:25:11.1885880Z Collecting charset_normalizer<4,>=2 (from requests>=2.32.2->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.1900670Z   Using cached charset_normalizer-3.4.7-cp312-cp312-macosx_10_13_universal2.whl.metadata (40 kB)
+2026-06-15T08:25:11.2089510Z Collecting urllib3<3,>=1.26 (from requests>=2.32.2->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.2103040Z   Using cached urllib3-2.7.0-py3-none-any.whl.metadata (6.9 kB)
+2026-06-15T08:25:11.2318470Z Collecting mpmath<1.4,>=1.1.0 (from sympy>=1.13.3->torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:25:11.2331850Z   Using cached mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+2026-06-15T08:25:11.2720200Z Collecting MarkupSafe>=2.0 (from jinja2->torch>=2.2.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 9))
+2026-06-15T08:25:11.2735170Z   Using cached markupsafe-3.0.3-cp312-cp312-macosx_11_0_arm64.whl.metadata (2.7 kB)
+2026-06-15T08:25:11.2887680Z Collecting python-dateutil>=2.8.2 (from pandas->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.2899800Z   Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+2026-06-15T08:25:11.3019370Z Collecting aiohappyeyeballs>=2.5.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.3029590Z   Using cached aiohappyeyeballs-2.6.2-py3-none-any.whl.metadata (5.9 kB)
+2026-06-15T08:25:11.3093180Z Collecting aiosignal>=1.4.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.3101840Z   Using cached aiosignal-1.4.0-py3-none-any.whl.metadata (3.7 kB)
+2026-06-15T08:25:11.3196630Z Collecting attrs>=17.3.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.3208680Z   Using cached attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+2026-06-15T08:25:11.3538100Z Collecting frozenlist>=1.1.1 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.3550170Z   Using cached frozenlist-1.8.0-cp312-cp312-macosx_11_0_arm64.whl.metadata (20 kB)
+2026-06-15T08:25:11.5014920Z Collecting multidict<7.0,>=4.5 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.5020580Z   Using cached multidict-6.7.1-cp312-cp312-macosx_11_0_arm64.whl.metadata (5.3 kB)
+2026-06-15T08:25:11.5270500Z Collecting propcache>=0.2.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.5288870Z   Using cached propcache-0.5.2-cp312-cp312-macosx_11_0_arm64.whl.metadata (16 kB)
+2026-06-15T08:25:11.6610910Z Collecting yarl<2.0,>=1.17.0 (from aiohttp!=4.0.0a0,!=4.0.0a1->fsspec[http]<=2026.4.0,>=2023.1.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.6710770Z   Using cached yarl-1.24.2-cp312-cp312-macosx_11_0_arm64.whl.metadata (94 kB)
+2026-06-15T08:25:11.6894990Z Collecting six>=1.5 (from python-dateutil>=2.8.2->pandas->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.6930220Z   Using cached six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-06-15T08:25:11.7117430Z Collecting shellingham>=1.3.0 (from typer<0.26.0,>=0.20.0->huggingface-hub<2.0,>=0.25.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.7121410Z   Using cached shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+2026-06-15T08:25:11.7382850Z Collecting rich>=13.8.0 (from typer<0.26.0,>=0.20.0->huggingface-hub<2.0,>=0.25.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.7394680Z   Using cached rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+2026-06-15T08:25:11.7622850Z Collecting markdown-it-py>=2.2.0 (from rich>=13.8.0->typer<0.26.0,>=0.20.0->huggingface-hub<2.0,>=0.25.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.7633420Z   Using cached markdown_it_py-4.2.0-py3-none-any.whl.metadata (7.4 kB)
+2026-06-15T08:25:11.7769040Z Collecting pygments<3.0.0,>=2.13.0 (from rich>=13.8.0->typer<0.26.0,>=0.20.0->huggingface-hub<2.0,>=0.25.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.7791530Z   Using cached pygments-2.20.0-py3-none-any.whl.metadata (2.5 kB)
+2026-06-15T08:25:11.8008190Z Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=13.8.0->typer<0.26.0,>=0.20.0->huggingface-hub<2.0,>=0.25.0->datasets>=2.20.0->-r /Users/runner/work/LLMBuilder/LLMBuilder/apps/llm-studio/api/requirements.txt (line 7))
+2026-06-15T08:25:11.8017470Z   Using cached mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-06-15T08:25:11.8088210Z Using cached fastapi-0.137.0-py3-none-any.whl (121 kB)
+2026-06-15T08:25:11.8112040Z Using cached uvicorn-0.49.0-py3-none-any.whl (71 kB)
+2026-06-15T08:25:11.8133540Z Using cached pydantic-2.13.4-py3-none-any.whl (472 kB)
+2026-06-15T08:25:11.8163710Z Using cached pydantic_core-2.46.4-cp312-cp312-macosx_11_0_arm64.whl (2.0 MB)
+2026-06-15T08:25:11.8216410Z Using cached python_multipart-0.0.32-py3-none-any.whl (30 kB)
+2026-06-15T08:25:11.8235380Z Using cached sqlalchemy-2.0.50-cp312-cp312-macosx_11_0_arm64.whl (2.2 MB)
+2026-06-15T08:25:11.8301990Z Using cached certifi-2026.5.20-py3-none-any.whl (134 kB)
+2026-06-15T08:25:11.8350030Z Using cached datasets-5.0.0-py3-none-any.whl (555 kB)
+2026-06-15T08:25:11.8403560Z Using cached tokenizers-0.23.1-cp310-abi3-macosx_11_0_arm64.whl (3.1 MB)
+2026-06-15T08:25:11.8485500Z Using cached torch-2.12.0-cp312-cp312-macosx_14_0_arm64.whl (88.0 MB)
+2026-06-15T08:25:11.9265060Z Using cached zstandard-0.25.0-cp312-cp312-macosx_11_0_arm64.whl (640 kB)
+2026-06-15T08:25:11.9326420Z Using cached annotated_doc-0.0.4-py3-none-any.whl (5.3 kB)
+2026-06-15T08:25:11.9365720Z Using cached annotated_types-0.7.0-py3-none-any.whl (13 kB)
+2026-06-15T08:25:11.9388850Z Using cached click-8.4.1-py3-none-any.whl (116 kB)
+2026-06-15T08:25:11.9409490Z Using cached dill-0.4.1-py3-none-any.whl (120 kB)
+2026-06-15T08:25:11.9428940Z Using cached fsspec-2026.4.0-py3-none-any.whl (203 kB)
+2026-06-15T08:25:11.9454250Z Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+2026-06-15T08:25:11.9472940Z Using cached httptools-0.8.0-cp312-cp312-macosx_11_0_arm64.whl (113 kB)
+2026-06-15T08:25:11.9497840Z Using cached httpx-0.28.1-py3-none-any.whl (73 kB)
+2026-06-15T08:25:11.9514050Z Using cached httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-06-15T08:25:11.9529280Z Using cached huggingface_hub-1.19.0-py3-none-any.whl (693 kB)
+2026-06-15T08:25:11.9556320Z Using cached filelock-3.29.4-py3-none-any.whl (42 kB)
+2026-06-15T08:25:11.9570650Z Using cached multiprocess-0.70.19-py312-none-any.whl (150 kB)
+2026-06-15T08:25:11.9592870Z Using cached networkx-3.6.1-py3-none-any.whl (2.1 MB)
+2026-06-15T08:25:11.9650810Z Using cached numpy-2.4.6-cp312-cp312-macosx_14_0_arm64.whl (5.2 MB)
+2026-06-15T08:25:11.9764720Z Using cached packaging-26.2-py3-none-any.whl (100 kB)
+2026-06-15T08:25:11.9799330Z Using cached pyarrow-24.0.0-cp312-cp312-macosx_12_0_arm64.whl (35.0 MB)
+2026-06-15T08:25:12.0100680Z Using cached python_dotenv-1.2.2-py3-none-any.whl (22 kB)
+2026-06-15T08:25:12.0128540Z Using cached pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl (173 kB)
+2026-06-15T08:25:12.0155940Z Using cached requests-2.34.2-py3-none-any.whl (73 kB)
+2026-06-15T08:25:12.0180700Z Using cached setuptools-81.0.0-py3-none-any.whl (1.1 MB)
+2026-06-15T08:25:12.0234650Z Using cached starlette-1.3.1-py3-none-any.whl (73 kB)
+2026-06-15T08:25:12.0263750Z Using cached sympy-1.14.0-py3-none-any.whl (6.3 MB)
+2026-06-15T08:25:12.0381450Z Using cached tqdm-4.68.2-py3-none-any.whl (78 kB)
+2026-06-15T08:25:12.0408330Z Using cached typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+2026-06-15T08:25:12.0425520Z Using cached typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+2026-06-15T08:25:12.0439460Z Using cached uvloop-0.22.1-cp312-cp312-macosx_10_13_universal2.whl (1.4 MB)
+2026-06-15T08:25:12.0484380Z Using cached watchfiles-1.2.0-cp312-cp312-macosx_11_0_arm64.whl (393 kB)
+2026-06-15T08:25:12.0516730Z Using cached websockets-16.0-cp312-cp312-macosx_11_0_arm64.whl (175 kB)
+2026-06-15T08:25:12.0539410Z Using cached jinja2-3.1.6-py3-none-any.whl (134 kB)
+2026-06-15T08:25:12.0569260Z Using cached pandas-3.0.3-cp312-cp312-macosx_11_0_arm64.whl (9.9 MB)
+2026-06-15T08:25:12.0772430Z Using cached xxhash-3.7.0-cp312-cp312-macosx_11_0_arm64.whl (30 kB)
+2026-06-15T08:25:12.0803510Z Using cached aiohttp-3.14.1-cp312-cp312-macosx_11_0_arm64.whl (512 kB)
+2026-06-15T08:25:12.0850220Z Using cached anyio-4.13.0-py3-none-any.whl (114 kB)
+2026-06-15T08:25:12.0870780Z Using cached charset_normalizer-3.4.7-cp312-cp312-macosx_10_13_universal2.whl (311 kB)
+2026-06-15T08:25:12.0895210Z Using cached hf_xet-1.5.1-cp37-abi3-macosx_11_0_arm64.whl (3.8 MB)
+2026-06-15T08:25:12.1007400Z Using cached idna-3.18-py3-none-any.whl (65 kB)
+2026-06-15T08:25:12.1049170Z Using cached markupsafe-3.0.3-cp312-cp312-macosx_11_0_arm64.whl (12 kB)
+2026-06-15T08:25:12.1077700Z Using cached mpmath-1.3.0-py3-none-any.whl (536 kB)
+2026-06-15T08:25:12.1121280Z Using cached python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+2026-06-15T08:25:12.1135260Z Using cached typer-0.25.1-py3-none-any.whl (58 kB)
+2026-06-15T08:25:12.1155300Z Using cached urllib3-2.7.0-py3-none-any.whl (131 kB)
+2026-06-15T08:25:12.1173290Z Using cached aiohappyeyeballs-2.6.2-py3-none-any.whl (15 kB)
+2026-06-15T08:25:12.1187870Z Using cached aiosignal-1.4.0-py3-none-any.whl (7.5 kB)
+2026-06-15T08:25:12.1201960Z Using cached attrs-26.1.0-py3-none-any.whl (67 kB)
+2026-06-15T08:25:12.1214600Z Using cached frozenlist-1.8.0-cp312-cp312-macosx_11_0_arm64.whl (50 kB)
+2026-06-15T08:25:12.1228910Z Using cached multidict-6.7.1-cp312-cp312-macosx_11_0_arm64.whl (43 kB)
+2026-06-15T08:25:12.1244490Z Using cached propcache-0.5.2-cp312-cp312-macosx_11_0_arm64.whl (55 kB)
+2026-06-15T08:25:12.1260600Z Using cached rich-15.0.0-py3-none-any.whl (310 kB)
+2026-06-15T08:25:12.1286640Z Using cached shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+2026-06-15T08:25:12.1301420Z Using cached six-1.17.0-py2.py3-none-any.whl (11 kB)
+2026-06-15T08:25:12.1315580Z Using cached yarl-1.24.2-cp312-cp312-macosx_11_0_arm64.whl (91 kB)
+2026-06-15T08:25:12.1334510Z Using cached markdown_it_py-4.2.0-py3-none-any.whl (91 kB)
+2026-06-15T08:25:12.1351310Z Using cached pygments-2.20.0-py3-none-any.whl (1.2 MB)
+2026-06-15T08:25:12.1391720Z Using cached mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-06-15T08:25:12.5814090Z Installing collected packages: mpmath, zstandard, xxhash, websockets, uvloop, urllib3, typing-extensions, tqdm, sympy, six, shellingham, setuptools, pyyaml, python-multipart, python-dotenv, pygments, pyarrow, propcache, packaging, numpy, networkx, multidict, mdurl, MarkupSafe, idna, httptools, hf-xet, h11, fsspec, frozenlist, filelock, dill, click, charset_normalizer, certifi, attrs, annotated-types, annotated-doc, aiohappyeyeballs, yarl, uvicorn, typing-inspection, sqlalchemy, requests, python-dateutil, pydantic-core, multiprocess, markdown-it-py, jinja2, httpcore, anyio, aiosignal, watchfiles, torch, starlette, rich, pydantic, pandas, httpx, aiohttp, typer, fastapi, huggingface-hub, tokenizers, datasets
+2026-06-15T08:25:17.9653050Z Successfully installed MarkupSafe-3.0.3 aiohappyeyeballs-2.6.2 aiohttp-3.14.1 aiosignal-1.4.0 annotated-doc-0.0.4 annotated-types-0.7.0 anyio-4.13.0 attrs-26.1.0 certifi-2026.5.20 charset_normalizer-3.4.7 click-8.4.1 datasets-5.0.0 dill-0.4.1 fastapi-0.137.0 filelock-3.29.4 frozenlist-1.8.0 fsspec-2026.4.0 h11-0.16.0 hf-xet-1.5.1 httpcore-1.0.9 httptools-0.8.0 httpx-0.28.1 huggingface-hub-1.19.0 idna-3.18 jinja2-3.1.6 markdown-it-py-4.2.0 mdurl-0.1.2 mpmath-1.3.0 multidict-6.7.1 multiprocess-0.70.19 networkx-3.6.1 numpy-2.4.6 packaging-26.2 pandas-3.0.3 propcache-0.5.2 pyarrow-24.0.0 pydantic-2.13.4 pydantic-core-2.46.4 pygments-2.20.0 python-dateutil-2.9.0.post0 python-dotenv-1.2.2 python-multipart-0.0.32 pyyaml-6.0.3 requests-2.34.2 rich-15.0.0 setuptools-81.0.0 shellingham-1.5.4 six-1.17.0 sqlalchemy-2.0.50 starlette-1.3.1 sympy-1.14.0 tokenizers-0.23.1 torch-2.12.0 tqdm-4.68.2 typer-0.25.1 typing-extensions-4.15.0 typing-inspection-0.4.2 urllib3-2.7.0 uvicorn-0.49.0 uvloop-0.22.1 watchfiles-1.2.0 websockets-16.0 xxhash-3.7.0 yarl-1.24.2 zstandard-0.25.0
+2026-06-15T08:25:18.7466050Z No broken requirements found.
+2026-06-15T08:25:19.0889200Z Found existing installation: pip 25.0.1
+2026-06-15T08:25:19.1109660Z Uninstalling pip-25.0.1:
+2026-06-15T08:25:19.1165750Z   Successfully uninstalled pip-25.0.1
+2026-06-15T08:25:25.0295770Z Built portable-unlocked-development runtime: /Users/runner/work/LLMBuilder/LLMBuilder/build/desktop/runtime/macos-aarch64
+2026-06-15T08:25:25.0369800Z Files: 18236; size: 602.5 MiB
+2026-06-15T08:25:35.2145230Z Runtime imports passed
+2026-06-15T08:25:55.5610760Z Traceback (most recent call last):
+2026-06-15T08:25:55.5612620Z Runtime startup timing: {"elapsed_ms": 3439.007, "ready_in_ms": 3439.007, "stage_ms": {"initializing": 0.143, "initializing_data": 23.823, "migrating_data": 207.678, "process_imports": 3207.188, "validating_runtime": 0.175}}
+2026-06-15T08:25:55.5645510Z   File "/Users/runner/work/LLMBuilder/LLMBuilder/scripts/desktop/smoke_runtime.py", line 1165, in <module>
+2026-06-15T08:25:55.5646380Z INFO:     Started server process [17711]
+2026-06-15T08:25:55.5659120Z     main()
+2026-06-15T08:25:55.5659540Z INFO:     Waiting for application startup.
+2026-06-15T08:25:55.5662380Z   File "/Users/runner/work/LLMBuilder/LLMBuilder/scripts/desktop/smoke_runtime.py", line 48, in main
+2026-06-15T08:25:55.5664110Z INFO:     Application startup complete.
+2026-06-15T08:25:55.5665750Z     report = smoke_built_runtime(runtime, args.timeout)
+2026-06-15T08:25:55.5666700Z 
+2026-06-15T08:25:55.5667810Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-06-15T08:25:55.5668560Z 
+2026-06-15T08:25:55.5669270Z   File "/Users/runner/work/LLMBuilder/LLMBuilder/scripts/desktop/smoke_runtime.py", line 182, in smoke_built_runtime
+2026-06-15T08:25:55.5669710Z 
+2026-06-15T08:25:55.5671120Z [llm-studio-runpod] {"category": null, "correlation_id": "9a867ae930e840cc99a5c1d4aaf1f4cc", "event": "refresh_waiting_for_agent_url", "executor": "runpod_pod", "job_id": "9a867ae930e840cc99a5c1d4aaf1f4cc", "message": "RunPod refresh is waiting for the agent URL.", "timestamp": "2026-06-15T08:25:44.661396+00:00"}
+2026-06-15T08:25:55.5672210Z INFO:     Shutting down
+2026-06-15T08:25:55.5672550Z INFO:     Waiting for application shutdown.
+2026-06-15T08:25:55.5673340Z     persistent = exercise_core_workflows(base, token, temp, workflow_timings)
+2026-06-15T08:25:55.5673820Z                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-06-15T08:25:55.5674520Z   File "/Users/runner/work/LLMBuilder/LLMBuilder/scripts/desktop/smoke_runtime.py", line 809, in exercise_core_workflows
+2026-06-15T08:25:55.5675170Z     assert training_job["status"] == "completed", training_job
+2026-06-15T08:25:55.5675520Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-06-15T08:25:55.5732430Z AssertionError: {'id': '80dde6bc419c477780e9e5a7d4cd598a', 'name': 'Desktop runtime smoke', 'status': 'failed', 'state': 'failed', 'stage': 'Failed', 'progress': 1.0, 'created_at': '2026-06-15T08:25:44.715819Z', 'started_at': '2026-06-15T08:25:47.773116Z', 'finished_at': '2026-06-15T08:25:47.833207Z', 'project_id': 'cf45b63d300c', 'project_name': 'Desktop runtime smoke updated', 'tokenizer_job_id': '6d69a39587444e1a8b8e716c7a0120ff', 'tokenizer_name': 'desktop-smoke-wordpiece', 'model_config': {'context_length': 16, 'vocab_size': 64, 'n_embd': 16, 'weight_tying': True, 'blocks': [{'components': [{'norm': {'type': 'layernorm'}}, {'attention': {'n_head': 4, 'n_kv_head': 4}}, {'norm': {'type': 'layernorm'}}, {'mlp': {'multiplier': 2.0, 'sequence': [{'linear': {'bias': True}}, {'activation': {'type': 'relu'}}, {'linear': {'bias': True}}]}}]}]}, 'training_config': {'max_steps': 1, 'total_batch_size': 8, 'micro_batch_size': 1, 'seq_len': 8, 'sample_every': 1, 'sampler': {'prompts': [{'prompt': 'hello', 'max_tokens': 2, 'temperature': 0.7, 'top_k': 4}]}, 'save_every': 1, 'optimizer': {'lr': 0.001, 'weight_decay': 0.0, 'betas': [0.9, 0.95], 'eps': 1e-08}, 'lr_scheduler': {'type': 'sequential', 'schedulers': [{'type': 'constant', 'steps': 1, 'factor': 1.0}]}}, 'dataloader_config': {'datasets': [{'name': 'text', 'config': None, 'split': 'train', 'streaming': True, 'text_columns': ['text'], 'text_joiner': '\n', 'weight': 1.0, 'filters': None, 'columns': None, 'data_files': {'train': '/var/folders/dq/2t71w9pd3jx50vh3kp15_dt40000gn/T/LLM Studio smoke unicode-ł-am8ziq_8/smoke-input.txt'}, 'normalization': None, 'record_separator': None, 'shuffle': None}], 'add_bos': False, 'add_eos': True, 'bos_token': None, 'eos_token': '<|endoftext|>', 'pad_token': None, 'drop_last': True, 'token_dtype': 'int64', 'pretokenize_batch_size': 1000, 'cache_dir': None, 'mixing': {'seed': 42, 'exhausted_policy': 'stop'}, 'normalization': {'normalize_newlines': True, 'collapse_whitespace': False, 'strip': True, 'lowercase': False, 'drop_empty': True}, 'record_separator': '', 'shuffle': False, 'node_split': False, 'node_rank': None, 'node_world_size': None}, 'resolved_runtime': {'device': 'mps', 'device_type': 'mps', 'micro_batch_size': 1, 'tokens_per_micro_step': 8, 'tokens_per_world_step': 8, 'grad_accum_steps': 1, 'max_batch_size_from_total': 1, 'max_batch_size_from_memory': 203640, 'max_allowed_batch_size': 1, 'ddp': False, 'ddp_rank': 0, 'ddp_world_size': 1}, 'memory_estimate': {'device': 'mps', 'seq_len': 8, 'attention_backend': 'math', 'safety_margin': 0.9, 'usable_free_bytes': 4509705830, 'model_resident_bytes': 12896, 'max_step_tokens': 1629120, 'max_batch_size': 203640, 'estimated_peak_additional_bytes': 4509703456, 'estimated_peak_total_bytes': 4509716352, 'configured_step_tokens': 8, 'configured_peak_additional_bytes': 402712104, 'configured_peak_total_bytes': 402725000, 'configured_fits': True, 'snapshot': {'device': 'mps', 'free_bytes': 5010784256, 'total_bytes': 5010800640, 'allocated_bytes': 0, 'reserved_bytes': 16384}, 'breakdown': {'model_parameter_bytes': 12896, 'model_buffer_bytes': 0, 'gradient_bytes': 12896, 'optimizer_state_bytes': 25792, 'ddp_bucket_bytes': 0, 'rope_cache_bytes': 64, 'fixed_workspace_bytes': 268435456, 'fixed_misc_bytes': 134217728, 'input_target_bytes_per_token': 16, 'activation_bytes_per_token': 1408, 'attention_bytes_per_token': 256, 'logits_bytes_per_token': 512, 'dynamic_misc_bytes_per_token': 329, 'fixed_bytes': 402691936, 'dynamic_bytes_per_token': 2521}}, 'artifact_dir': '/private/var/folders/dq/2t71w9pd3jx50vh3kp15_dt40000gn/T/LLM Studio smoke unicode-ł-am8ziq_8/data/training/jobs/80dde6bc419c477780e9e5a7d4cd598a', 'artifact_bundle_file': None, 'stats_path': '/private/var/folders/dq/2t71w9pd3jx50vh3kp15_dt40000gn/T/LLM Studio smoke unicode-ł-am8ziq_8/data/training/jobs/80dde6bc419c477780e9e5a7d4cd598a/stats.jsonl', 'samples_path': '/private/var/folders/dq/2t71w9pd3jx50vh3kp15_dt40000gn/T/LLM Studio smoke unicode-ł-am8ziq_8/data/training/jobs/80dde6bc419c477780e9e5a7d4cd598a/samples.jsonl', 'stdout_path': '/private/var/folders/dq/2t71w9pd3jx50vh3kp15_dt40000gn/T/LLM Studio smoke unicode-ł-am8ziq_8/data/training/jobs/80dde6bc419c477780e9e5a7d4cd598a/stdout.log', 'stderr_path': '/private/var/folders/dq/2t71w9pd3jx50vh3kp15_dt40000gn/T/LLM Studio smoke unicode-ł-am8ziq_8/data/training/jobs/80dde6bc419c477780e9e5a7d4cd598a/stderr.log', 'last_step': 0, 'max_steps': 0, 'elapsed_seconds': 0.0, 'eta_seconds': None, 'latest_loss': None, 'latest_grad_norm': None, 'latest_lr': None, 'latest_tokens_per_sec': None, 'checkpoint_count': 0, 'sample_count': 0, 'error': 'RuntimeError: MPS backend out of memory (MPS allocated: 0 bytes, other allocations: 16.00 KiB, max allowed: 7.93 GiB). Tried to allocate 4.00 KiB on shared pool. Use PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0 to disable upper limit for memory allocations (may cause system failure).', 'process_id': 17897, 'output_size_bytes': 20222, 'executor_kind': 'local', 'executor_status': 'failed', 'runpod_pod_id': None, 'runpod_pod_name': None, 'runpod_network_volume_id': None, 'runpod_data_center_id': None, 'runpod_gpu_type_id': None, 'runpod_gpu_count': 1, 'runpod_cloud_type': None, 'runpod_interruptible': False, 'runpod_cost_per_hr': None, 'runpod_public_ip': None, 'runpod_port_mappings': None, 'runpod_agent_base_url': None, 'runpod_last_heartbeat_at': None, 'runpod_last_sync_at': None, 'runpod_cleanup_policy': {'pod': 'delete_after_sync', 'network_volume': 'keep'}, 'remote_workspace_path': None, 'remote_error': None}
+2026-06-15T08:25:55.5748750Z INFO:     Application shutdown complete.
+2026-06-15T08:25:55.5749230Z INFO:     Finished server process [17711]
+2026-06-15T08:25:55.5749460Z 
+2026-06-15T08:25:55.5954110Z ##[error]Process completed with exit code 1.
+2026-06-15T08:25:55.6261570Z Post job cleanup.
+2026-06-15T08:25:56.0753880Z [command]/opt/homebrew/bin/git version
+2026-06-15T08:25:56.0867670Z git version 2.54.0
+2026-06-15T08:25:56.0902190Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/9c21ff5d-434d-4546-acdb-f377c0c45fde/.gitconfig'
+2026-06-15T08:25:56.0915000Z Temporarily overriding HOME='/Users/runner/work/_temp/9c21ff5d-434d-4546-acdb-f377c0c45fde' before making global git config changes
+2026-06-15T08:25:56.0916100Z Adding repository directory to the temporary git global config as a safe directory
+2026-06-15T08:25:56.0918760Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/LLMBuilder/LLMBuilder
+2026-06-15T08:25:56.0992800Z Removing SSH command configuration
+2026-06-15T08:25:56.0998900Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-06-15T08:25:56.1067170Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-06-15T08:25:56.2165180Z Removing HTTP extra header
+2026-06-15T08:25:56.2166160Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-06-15T08:25:56.2273530Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-06-15T08:25:56.3084530Z Removing includeIf entries pointing to credentials config files
+2026-06-15T08:25:56.3090570Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-06-15T08:25:56.3140790Z includeif.gitdir:/Users/runner/work/LLMBuilder/LLMBuilder/.git.path
+2026-06-15T08:25:56.3141670Z includeif.gitdir:/Users/runner/work/LLMBuilder/LLMBuilder/.git/worktrees/*.path
+2026-06-15T08:25:56.3142150Z includeif.gitdir:/github/workspace/.git.path
+2026-06-15T08:25:56.3142540Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-06-15T08:25:56.3152270Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/Users/runner/work/LLMBuilder/LLMBuilder/.git.path
+2026-06-15T08:25:56.3198530Z /Users/runner/work/_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:25:56.3301040Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/Users/runner/work/LLMBuilder/LLMBuilder/.git.path /Users/runner/work/_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:25:56.3308770Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/Users/runner/work/LLMBuilder/LLMBuilder/.git/worktrees/*.path
+2026-06-15T08:25:56.3384770Z /Users/runner/work/_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:25:56.3394420Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/Users/runner/work/LLMBuilder/LLMBuilder/.git/worktrees/*.path /Users/runner/work/_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:25:56.3501940Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-06-15T08:25:56.3562680Z /github/runner_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:25:56.3569080Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:25:56.3663890Z [command]/opt/homebrew/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-06-15T08:25:56.3725450Z /github/runner_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:25:56.3734760Z [command]/opt/homebrew/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config
+2026-06-15T08:25:56.3798870Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-06-15T08:25:56.4533980Z Removing credentials config '/Users/runner/work/_temp/git-credentials-f64c9055-c62e-4713-8ae5-ea49fe09900d.config'
+2026-06-15T08:25:56.4738990Z Cleaning up orphan processes

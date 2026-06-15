@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import stat
 
 import pytest
 
@@ -31,9 +32,11 @@ def test_immutable_tree_snapshot_detects_content_metadata_and_structure_changes(
         smoke_runtime.assert_immutable_tree_unchanged(runtime, snapshot)
 
     resource.write_text("original", encoding="utf-8")
-    resource.chmod(0o600)
-    with pytest.raises(AssertionError, match=r"changed=.*resource\.txt"):
-        smoke_runtime.assert_immutable_tree_unchanged(runtime, snapshot)
+    original_mode = stat.S_IMODE(resource.stat().st_mode)
+    resource.chmod(original_mode & ~(stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH))
+    if stat.S_IMODE(resource.stat().st_mode) != original_mode:
+        with pytest.raises(AssertionError, match=r"changed=.*resource\.txt"):
+            smoke_runtime.assert_immutable_tree_unchanged(runtime, snapshot)
 
     (runtime / "added.txt").write_text("added", encoding="utf-8")
     with pytest.raises(AssertionError, match=r"added=.*added\.txt"):

@@ -33,12 +33,15 @@ jobs:
           - os: macos-14
             target: macos-aarch64
             shell_binary: apps/llm-studio/desktop/src-tauri/target/release/llm_studio_desktop
+            runtime_build_args: ""
           - os: windows-2022
             target: windows-x86_64
             shell_binary: apps/llm-studio/desktop/src-tauri/target/release/llm_studio_desktop.exe
+            runtime_build_args: --development-cpu-torch
           - os: ubuntu-22.04
             target: linux-x86_64
             shell_binary: apps/llm-studio/desktop/src-tauri/target/release/llm_studio_desktop
+            runtime_build_args: --development-cpu-torch
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -90,7 +93,7 @@ jobs:
         run: python scripts/desktop/validate_api_contract_fixtures.py
       - name: Build and smoke target-native characterization runtime
         run: |
-          python scripts/desktop/build_runtime.py --portable --install-dependencies --allow-unlocked-development --output "build/desktop/runtime/${{ matrix.target }}"
+          python scripts/desktop/build_runtime.py --portable --install-dependencies --allow-unlocked-development ${{ matrix.runtime_build_args }} --output "build/desktop/runtime/${{ matrix.target }}"
           python scripts/desktop/smoke_runtime.py "build/desktop/runtime/${{ matrix.target }}" --performance-report "build/desktop/release/performance-characterization-${{ matrix.target }}.json"
           python scripts/desktop/audit_dependencies.py --python "build/desktop/runtime/${{ matrix.target }}/${{ runner.os == 'Windows' && 'python/Scripts/python.exe' || 'python/bin/python' }}"
           python scripts/desktop/release_manifest.py "build/desktop/runtime/${{ matrix.target }}/manifest.json" --output "build/desktop/release/${{ matrix.target }}"

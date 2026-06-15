@@ -30,7 +30,7 @@ and are not represented as complete.
 
 - Authoritative local command: `make -C apps/llm-studio
   desktop-verify-nonbrowser` passed after the final source changes.
-- API: `python -m pytest -q` passed, **262 tests**, with one upstream
+- API: `python -m pytest -q` passed, **268 tests**, with one upstream
   Starlette/httpx deprecation warning.
 - Frontend: `npm run lint`, `npm run typecheck`, and `npm run build:desktop`
   passed; static-output validation found all six routes and no configured
@@ -102,6 +102,16 @@ and are not represented as complete.
   provenance. Staging correctly rejects it as non-release. Its payload audit
   records **80 upstream wheel/example home-path findings**, which require a
   reviewed release wheelhouse/binary triage rather than broad suppression.
+- Refreshed target-native CI exposed and now has focused regression coverage for
+  Windows SQLite handle lifetime, native CPU-memory discovery without `psutil`,
+  process-group test portability, exact newline fixtures, and Windows command
+  runner bytes. It also exposed an unreliable macOS CI MPS smoke selection and
+  accidental Linux CUDA runtime composition. The smoke workload now selects CPU
+  through the same validated device resolvers used by preflight, local
+  inference, and the training subprocess, while Windows/Linux unlocked
+  characterization builds select the official CPU-only PyTorch wheel channel
+  and record it in provenance. A fresh target-native CI rerun remains required
+  evidence.
 - Release audit generation produced a path-redacted `release-manifest.json` and
   `SHA256SUMS`; focused tests cover hashes, symlinks, duplicate names, unsafe
   output paths, and atomic output.
@@ -526,7 +536,7 @@ The approved RFC may refine names, but the shell/backend boundary must remain ex
 - [ ] Record the initial local-compute support promise per platform, including the exact PyTorch build/channel and whether GPU acceleration is supported or intentionally excluded. PARTIAL: platform/compute promise is documented; exact reviewed target PyTorch locks/channels remain a release decision.
 - [*] Record the full/offline installer decision as the required first release channel; document thin-runtime delivery as deferred unless all optional-channel gates are completed. Evidence: ADR/RFC/release pipeline.
 - [*] Create a dedicated reproducible Python development/test environment and install `apps/llm-studio/api/requirements-dev.txt`. Evidence: API `.venv` runs the full suite/runtime tooling and `pip check` passes.
-- [*] Run and capture the API baseline with `python -m pytest -q` from `apps/llm-studio/api`. Evidence: current full suite passes 262 tests.
+- [*] Run and capture the API baseline with `python -m pytest -q` from `apps/llm-studio/api`. Evidence: current full suite passes 268 tests.
 - [*] Run and capture `npm run lint`, `npm run typecheck`, `npm run test:regression`, and `npm run build:desktop` from `apps/llm-studio/web`. Evidence: all passed; 69 regression tests and six validated routes.
 - [*] Create an offline desktop-build baseline test and capture the current Google Fonts failure as a tracked issue. Evidence: remote Google fonts removed; offline/static build command and CI gate pass.
 - [ ] Capture baseline screenshots and interaction recordings for all six user routes using `docs/llm-studio-web-route-parity-checklist.md`. EXPLICITLY EXCLUDED: browser-driven checks per product-owner direction.
@@ -582,7 +592,7 @@ The approved RFC may refine names, but the shell/backend boundary must remain ex
 - [*] Add tests proving no mutable files are written beneath packaged runtime resources. Evidence: the real-sidecar smoke snapshots packaged contents, file hashes, modes, timestamps, directory structure, and symlink identities before imports and proves no drift after workflows/restart/shutdown; focused tests prove mutation detection and no symlink following.
 - [*] Add tests for fresh app-data initialization and existing-data migration. Evidence: schema/path/import migrations plus copy-first legacy default-database-name migration cover current-wins, custom paths, integrity failure cleanup, corrupt metadata, symlink rejection, and idempotency.
 - [*] Add tests for database rollback/recovery when a migration fails.
-- [*] Run the full API suite and package-layout characterization tests. Evidence: 262 tests passed plus linked and sanitized-portable real packaged-runtime smokes.
+- [*] Run the full API suite and package-layout characterization tests. Evidence: 268 tests passed plus linked and sanitized-portable real packaged-runtime smokes.
 - [ ] Phase 2 exit gate: the API and training/tokenizer modules run from a synthetic packaged layout and all mutable data lives under configured writable roots. PARTIAL: synthetic layout, configured-root tests, and immutable-resource smoke pass; Windows path evidence remains external.
 
 ## Phase 3: Harden Backend Lifecycle for a Supervised Desktop Runtime
@@ -711,7 +721,7 @@ The approved RFC may refine names, but the shell/backend boundary must remain ex
 - [*] Define a Python version and support lifecycle compatible with FastAPI, datasets, tokenizers, PyTorch, and every required target. Evidence: Python 3.12 baseline in ADR and CI.
 - [ ] Select the embedded/redistributable Python strategy for each platform and document licenses and redistribution obligations. BLOCKED EXTERNALLY: reviewed redistributable builds are not selected; generic venv construction is characterization-only.
 - [ ] Create platform-specific locked constraints or wheel manifests instead of relying on open-ended `>=` requirements during release builds. BLOCKED EXTERNALLY: reviewed target wheelhouses/constraints are still required.
-- [ ] Define the exact PyTorch package/channel per platform and compute support promise. PARTIAL: compute promise is documented; exact reviewed target package/channel remains part of locked-runtime work.
+- [ ] Define the exact PyTorch package/channel per platform and compute support promise. PARTIAL: compute promise is documented and unlocked Windows/Linux CI characterization selects the official CPU-only PyTorch channel; exact reviewed release target packages/channels remain part of locked-runtime work.
 - [ ] Build each runtime on its target OS/architecture; do not cross-build ML runtimes and assume equivalence. PARTIAL: macOS arm64 linked runtime passed; target-native CI matrix is defined but Windows/Linux evidence is external.
 - [*] Package `apps/llm-studio/api/app`, `apps/llm-studio/api/templates`, `model`, `tokenizer`, and `training`.
 - [*] Exclude repository-only data, tests, caches, `.pyc`, credentials, local artifacts, remote-agent implementation, Docker files, and unrelated sources unless explicitly needed. Evidence: source-copy filters plus portable-runtime sanitization remove dependency tests/caches/bytecode and build-only entry points before hashing.
@@ -726,7 +736,7 @@ The approved RFC may refine names, but the shell/backend boundary must remain ex
 - [*] Add runtime API smoke tests for health, model validation/analysis, tokenizer validation, and training preflight.
 - [*] Add a tiny deterministic tokenizer-job smoke test.
 - [*] Add a tiny deterministic local-training plus inference smoke test that completes within CI constraints.
-- [ ] Add CPU capability and macOS MPS characterization tests matching the approved matrix. PARTIAL: readiness and each retained packaged-runtime characterization report record CPU/MPS/CUDA capabilities; approved target characterization matrix remains external.
+- [ ] Add CPU capability and macOS MPS characterization tests matching the approved matrix. PARTIAL: the deterministic full smoke selects CPU through shared validated local-compute device resolvers, while readiness and each retained packaged-runtime characterization report record CPU/MPS/CUDA capabilities; a separate approved MPS workload characterization remains external.
 - [*] Add tests for clean offline launch with already-local fixtures. Evidence: runtime smoke uses local fixtures and no runtime dependency install.
 - [ ] Verify HTTPS/TLS requests use appropriate system/certifi trust behavior on each platform. BLOCKED: target-native corporate/TLS environments.
 - [*] Verify runtime paths containing spaces and non-ASCII characters. Evidence: real runtime smoke uses a Unicode/space temporary root.

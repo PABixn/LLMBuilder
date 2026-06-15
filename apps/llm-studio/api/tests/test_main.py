@@ -657,7 +657,7 @@ def test_tokenizer_endpoints_validate_and_file_stats(monkeypatch, tmp_path: Path
     sample_file = data_dir / "datasets" / "sample.txt"
     sample_file.parent.mkdir(parents=True, exist_ok=True)
     content = "ab\né🙂"
-    sample_file.write_text(content, encoding="utf-8")
+    sample_file.write_bytes(content.encode("utf-8"))
 
     monkeypatch.setenv("LLM_STUDIO_DATA_DIR", str(data_dir))
     config.reset_settings_cache()
@@ -797,7 +797,7 @@ def test_training_endpoints_validate_and_preflight(monkeypatch, tmp_path: Path) 
         )
         assert preflight.status_code == 200
         preflight_body = preflight.json()
-        assert preflight_body["valid"] is True
+        assert preflight_body["valid"] is True, preflight_body
         assert hf_token not in preflight.text
         assert preflight_body["compatibility"]["tokenizer_vocab_size"] == 3
         assert preflight_body["compatibility"]["model_vocab_size"] == 3
@@ -1060,7 +1060,7 @@ def test_training_job_endpoints_round_trip(monkeypatch, tmp_path: Path) -> None:
                 **payload,
             },
         )
-        assert create.status_code == 201
+        assert create.status_code == 201, create.text
         created = create.json()
         job_id = created["id"]
         assert created["name"] == "run-one"

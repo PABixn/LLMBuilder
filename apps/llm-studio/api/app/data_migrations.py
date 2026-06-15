@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import closing
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -248,14 +249,15 @@ def _copy_sqlite_database(source: Path, target: Path, *, data_root: Path) -> Non
     )
     temporary.unlink(missing_ok=True)
     try:
-        with sqlite3.connect(source) as source_connection:
-            with sqlite3.connect(temporary) as target_connection:
-                source_connection.backup(target_connection)
-                result = target_connection.execute("PRAGMA quick_check").fetchone()
-                if result != ("ok",):
-                    raise RuntimeError(
-                        f"Legacy database name migration integrity check failed: {source}"
-                    )
+        with closing(sqlite3.connect(source)) as source_connection, closing(
+            sqlite3.connect(temporary)
+        ) as target_connection:
+            source_connection.backup(target_connection)
+            result = target_connection.execute("PRAGMA quick_check").fetchone()
+            if result != ("ok",):
+                raise RuntimeError(
+                    f"Legacy database name migration integrity check failed: {source}"
+                )
         temporary.replace(target)
     except Exception:
         temporary.unlink(missing_ok=True)

@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.training_runs.executors.runpod.client import RunPodClientError
-from app.training_runs.routes import _stream_generation_events
+from app.training_runs.routes import _default_inference_device, _stream_generation_events
 from app.training_runs.schemas import TrainingGenerateRequest
 from app.training_models import TrainingExecutorKind, TrainingJobResponse, TrainingJobState, TrainingJobStatus
 
@@ -56,6 +56,13 @@ def test_training_public_routes_are_registered() -> None:
     }
 
     assert expected <= routes
+
+
+def test_inference_device_uses_validated_local_compute_override(monkeypatch) -> None:
+    monkeypatch.setenv("LLM_STUDIO_INFERENCE_DEVICE", "cpu")
+    monkeypatch.setattr("training.utils.torch.cuda.is_available", lambda: True)
+
+    assert _default_inference_device().type == "cpu"
 
 
 def test_runpod_catalog_exposes_selectable_gpu_choices() -> None:

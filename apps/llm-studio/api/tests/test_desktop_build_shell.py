@@ -93,4 +93,4 @@ def test_auditable_cargo_runner_wraps_cargo_on_windows(
     runner = build_shell_module.write_auditable_cargo_runner(tmp_path, windows=True)
 
     assert runner.suffix == ".cmd"
-    assert runner.read_text(encoding="ascii") == "@echo off\ncargo auditable %*\n"
+    assert runner.read_bytes() == b"@echo off\r\ncargo auditable %*\r\n"

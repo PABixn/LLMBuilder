@@ -171,6 +171,48 @@ def test_legacy_database_name_migration_removes_partial_target_after_invalid_sou
     assert not (settings.data_dir / "legacy-database-name-migration.json").exists()
 
 
+def test_legacy_database_name_migration_closes_database_handles(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    settings = _settings(monkeypatch, tmp_path)
+    legacy = settings.data_dir / "db" / "tokenizer_studio.db"
+    _sqlite_database(legacy, "legacy")
+    real_connect = sqlite3.connect
+    tracked_connections: list[Any] = []
+
+    class TrackedConnection:
+        def __init__(self, path: Path) -> None:
+            self.connection = real_connect(path)
+            self.closed = False
+            tracked_connections.append(self)
+
+        def backup(self, target: "TrackedConnection") -> None:
+            self.connection.backup(target.connection)
+
+        def execute(self, statement: str):
+            return self.connection.execute(statement)
+
+        def close(self) -> None:
+            self.connection.close()
+            self.closed = True
+
+    monkeypatch.setattr(
+        data_migrations.sqlite3,
+        "connect",
+        lambda path: TrackedConnection(path),
+    )
+
+    data_migrations._copy_sqlite_database(
+        legacy,
+        settings.tokenizer_database_path,
+        data_root=settings.data_dir,
+    )
+
+    assert len(tracked_connections) == 2
+    assert all(connection.closed for connection in tracked_connections)
+
+
 def test_legacy_database_name_migration_rejects_corrupt_marker(
     monkeypatch,
     tmp_path: Path,

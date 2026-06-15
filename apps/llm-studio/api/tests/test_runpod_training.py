@@ -997,9 +997,9 @@ def test_remote_agent_exposes_container_diagnostic_logs(monkeypatch, tmp_path: P
     workspace = tmp_path / "workspace"
     logs_dir = workspace / "logs"
     logs_dir.mkdir(parents=True)
-    (logs_dir / "startup.log").write_text("startup ready\n", encoding="utf-8")
-    (logs_dir / "agent.log").write_text("agent ready\n", encoding="utf-8")
-    (logs_dir / "runner.log").write_text("runner ready\n", encoding="utf-8")
+    (logs_dir / "startup.log").write_bytes(b"startup ready\n")
+    (logs_dir / "agent.log").write_bytes(b"agent ready\n")
+    (logs_dir / "runner.log").write_bytes(b"runner ready\n")
     monkeypatch.setenv("LLM_STUDIO_REMOTE_WORKSPACE", str(workspace))
     monkeypatch.setenv("LLM_STUDIO_REMOTE_JOB_ID", job_id)
     monkeypatch.setenv("LLM_STUDIO_REMOTE_AGENT_TOKEN", "token")

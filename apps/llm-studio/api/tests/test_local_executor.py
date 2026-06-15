@@ -86,13 +86,13 @@ def test_local_executor_constructs_training_runner_command(monkeypatch, tmp_path
     class FakePopen:
         pid = 1234
 
-        def __init__(self, command, *, cwd, stdout, stderr, env, start_new_session):  # noqa: ANN001
+        def __init__(self, command, *, cwd, stdout, stderr, env, **process_group_options):  # noqa: ANN001
             captured["command"] = command
             captured["cwd"] = cwd
             captured["stdout_closed_during_call"] = stdout.closed
             captured["stderr_closed_during_call"] = stderr.closed
             captured["env"] = env
-            captured["start_new_session"] = start_new_session
+            captured["process_group_options"] = process_group_options
 
         def poll(self) -> None:
             return None
@@ -123,7 +123,12 @@ def test_local_executor_constructs_training_runner_command(monkeypatch, tmp_path
     assert captured["cwd"] == IMPORT_ROOT
     assert captured["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
     assert captured["env"]["PYTHONUNBUFFERED"] == "1"
-    assert captured["start_new_session"] is True
+    if os.name == "nt":
+        assert captured["process_group_options"] == {
+            "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP
+        }
+    else:
+        assert captured["process_group_options"] == {"start_new_session": True}
     assert captured["stdout_closed_during_call"] is False
     assert captured["stderr_closed_during_call"] is False
 
@@ -138,7 +143,7 @@ def test_local_executor_injects_hf_credentials_only_into_process_environment(
     class FakePopen:
         pid = 1234
 
-        def __init__(self, _command, *, cwd, stdout, stderr, env, start_new_session):  # noqa: ANN001
+        def __init__(self, _command, *, cwd, stdout, stderr, env, **_process_group_options):  # noqa: ANN001
             captured["env"] = env
 
         def poll(self) -> None:

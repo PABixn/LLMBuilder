@@ -104,6 +104,8 @@ def smoke_built_runtime(runtime: Path, timeout: float) -> dict[str, object]:
             "LLM_STUDIO_STARTUP_HANDSHAKE_PATH": str(handshake),
             "LLM_STUDIO_PARENT_PID": str(os.getpid()),
             "LLM_STUDIO_SERVE_WEB": "1",
+            "LLM_STUDIO_INFERENCE_DEVICE": "cpu",
+            "LLM_STUDIO_TRAINING_DEVICE": "cpu",
             "LLM_STUDIO_WEB_DIST_DIR": str(web_dist),
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONPATH": str(source),

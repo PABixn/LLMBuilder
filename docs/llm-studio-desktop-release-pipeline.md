@@ -150,6 +150,13 @@ post-sanitization Python probes disable bytecode writes.
 Only an exact, fully SHA-256-hashed lock plus an offline reviewed wheelhouse can
 produce a manifest with `build_mode=portable`. Explicit unlocked network builds
 are marked `portable-unlocked-development` and are rejected by staging.
+Windows and Linux unlocked CI characterization builds additionally pass
+`--development-cpu-torch`, which installs PyTorch from the official CPU-only
+wheel channel and constrains the remaining open-ended requirements to that
+selected wheel. The option is rejected for reviewed release builds, and its
+channel is recorded in runtime provenance. This keeps characterization aligned
+with the v1 Windows/Linux CPU support promise without weakening the requirement
+for reviewed target locks and wheelhouses.
 `stage_runtime.py` rejects linked-development runtimes, release symlinks, target
 mismatches, unsafe manifest paths, missing files, and checksum mismatches.
 
@@ -171,6 +178,11 @@ Cargo Audit. The target-native release shell is built with pinned
 `cargo-auditable` metadata and scanned as a completed binary. CI uploads each
 target's non-browser performance-characterization report as retained evidence;
 the reports do not establish release thresholds without review.
+The deterministic tokenizer/training/inference smoke workload explicitly runs
+on CPU so transient accelerator availability cannot invalidate the baseline
+workflow. Readiness and retained characterization reports still record CPU,
+MPS, and CUDA capabilities; accelerator workload qualification remains a
+separate target-specific release gate.
 
 Channels promote in order: `alpha` -> `beta` -> `stable`. Promotion requires:
 

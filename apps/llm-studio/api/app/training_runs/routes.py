@@ -60,6 +60,7 @@ from model.loader import LLMConfig
 from model.model import ConfigurableGPT
 from training.dataloader_config import TrainingDataloaderConfig
 from training.training_config import TrainingConfig
+from training.utils import resolve_inference_device_type
 
 training_api = APIRouter(prefix="/api/v1/training", tags=["training-workspace"])
 logger = logging.getLogger("llm_studio.training_routes")
@@ -683,8 +684,4 @@ def _torch_load_state_dict(path: Path, device: torch.device) -> dict[str, torch.
 
 
 def _default_inference_device() -> torch.device:
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
+    return torch.device(resolve_inference_device_type())

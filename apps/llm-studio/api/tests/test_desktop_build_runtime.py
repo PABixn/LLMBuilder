@@ -58,6 +58,82 @@ def test_unlocked_portable_runtime_is_explicitly_non_release() -> None:
         )
         == "portable-unlocked-development"
     )
+    assert (
+        build_runtime.validate_build_options(
+            portable=True,
+            install_dependencies=True,
+            wheelhouse=None,
+            lock=None,
+            allow_unlocked_development=True,
+            development_cpu_torch=True,
+        )
+        == "portable-unlocked-development"
+    )
+
+
+def test_development_cpu_torch_is_rejected_outside_unlocked_characterization(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(SystemExit, match="requires --allow-unlocked-development"):
+        build_runtime.validate_build_options(
+            portable=True,
+            install_dependencies=True,
+            wheelhouse=None,
+            lock=None,
+            allow_unlocked_development=False,
+            development_cpu_torch=True,
+        )
+
+    wheelhouse = tmp_path / "wheelhouse"
+    wheelhouse.mkdir()
+    (wheelhouse / "package.whl").write_bytes(b"wheel")
+    lock = tmp_path / "lock.txt"
+    lock.write_text("package==1.0 --hash=sha256:abc\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="incompatible with reviewed release inputs"):
+        build_runtime.validate_build_options(
+            portable=True,
+            install_dependencies=True,
+            wheelhouse=wheelhouse,
+            lock=lock,
+            allow_unlocked_development=False,
+            development_cpu_torch=True,
+        )
+
+
+def test_unlocked_cpu_torch_install_pins_requirements_to_selected_cpu_wheel(
+    monkeypatch,
+) -> None:
+    calls: list[list[str]] = []
+    captured_constraint: list[str] = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        if "-c" in command:
+            return subprocess.CompletedProcess(command, 0, stdout="2.9.1+cpu\n")
+        if "--constraint" in command:
+            constraint = Path(command[command.index("--constraint") + 1])
+            captured_constraint.append(constraint.read_text(encoding="utf-8"))
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(build_runtime.subprocess, "run", fake_run)
+
+    build_runtime.install_unlocked_development_dependencies(
+        Path("/runtime/python"),
+        cpu_torch=True,
+    )
+
+    assert calls[0][-3:] == [
+        "--index-url",
+        build_runtime.PYTORCH_CPU_INDEX_URL,
+        build_runtime.PYTORCH_RUNTIME_REQUIREMENT,
+    ]
+    assert calls[1][1:3] == ["-c", "import importlib.metadata; print(importlib.metadata.version('torch'))"]
+    assert "--constraint" in calls[2]
+    assert calls[2][-2:] == [
+        "--requirement",
+        str(build_runtime.API_DIR / "requirements.txt"),
+    ]
+    assert captured_constraint == ["torch==2.9.1+cpu\n"]
 
 
 def test_release_dependency_inputs_reject_unhashed_lock_and_symlink(tmp_path: Path) -> None:

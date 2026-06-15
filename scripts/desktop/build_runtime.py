@@ -13,12 +13,15 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 import venv
 
 ROOT = Path(__file__).resolve().parents[2]
 API_DIR = ROOT / "apps" / "llm-studio" / "api"
 DEFAULT_BUILD_ROOT = ROOT / "build" / "desktop" / "runtime"
 DEFAULT_SIZE_POLICY = ROOT / "scripts" / "desktop" / "runtime-size-policy.json"
+PYTORCH_CPU_INDEX_URL = "https://download.pytorch.org/whl/cpu"
+PYTORCH_RUNTIME_REQUIREMENT = "torch>=2.2.0"
 SOURCE_TREES = (
     (API_DIR / "app", Path("source/apps/llm-studio/api/app")),
     (API_DIR / "templates", Path("source/apps/llm-studio/api/templates")),
@@ -73,6 +76,14 @@ def parse_args() -> argparse.Namespace:
         help="Allow explicit non-release network resolution for target characterization only.",
     )
     parser.add_argument(
+        "--development-cpu-torch",
+        action="store_true",
+        help=(
+            "Install PyTorch from its CPU-only channel for an explicitly unlocked, "
+            "non-release characterization runtime."
+        ),
+    )
+    parser.add_argument(
         "--size-policy",
         type=Path,
         default=DEFAULT_SIZE_POLICY,
@@ -91,6 +102,7 @@ def main() -> None:
         wheelhouse=args.wheelhouse,
         lock=args.lock,
         allow_unlocked_development=args.allow_unlocked_development,
+        development_cpu_torch=args.development_cpu_torch,
     )
     target = f"{normalized_platform()}-{normalized_architecture()}"
     size_limit = load_size_limit(args.size_policy, build_mode=build_mode, target=target)
@@ -111,6 +123,7 @@ def main() -> None:
         wheelhouse=args.wheelhouse,
         lock=args.lock,
         allow_unlocked_development=args.allow_unlocked_development,
+        development_cpu_torch=args.development_cpu_torch,
     )
     runtime_python = output / python_relative
     dependencies = dependency_versions(runtime_python)
@@ -125,6 +138,11 @@ def main() -> None:
         "git_tree_state": "dirty" if git_value("status", "--porcelain") else "clean",
         "builder_platform": platform.platform(),
         "builder_python": platform.python_version(),
+        **(
+            {"development_torch_channel": "pytorch-cpu"}
+            if args.development_cpu_torch
+            else {}
+        ),
         **dependency_inputs,
     }
     write_json(output / "sbom.json", build_sbom(dependencies, provenance))
@@ -274,6 +292,7 @@ def create_python_runtime(
     wheelhouse: Path | None,
     lock: Path | None,
     allow_unlocked_development: bool,
+    development_cpu_torch: bool,
 ) -> Path:
     if portable:
         runtime_dir = output / "python"
@@ -295,10 +314,15 @@ def create_python_runtime(
                     ]
                 )
             elif allow_unlocked_development:
-                command.extend(["--requirement", str(API_DIR / "requirements.txt")])
+                install_unlocked_development_dependencies(
+                    runtime_python,
+                    cpu_torch=development_cpu_torch,
+                )
+                command = []
             else:
                 raise AssertionError("Portable dependency inputs were not validated.")
-            subprocess.run(command, check=True)
+            if command:
+                subprocess.run(command, check=True)
             subprocess.run([str(runtime_python), "-m", "pip", "check"], check=True)
             remove_runtime_package_manager(runtime_python)
             sanitize_portable_runtime(runtime_dir, runtime_python)
@@ -315,6 +339,62 @@ def create_python_runtime(
             "Use --portable for a copied target-native environment."
         ) from error
     return relative
+
+
+def install_unlocked_development_dependencies(
+    runtime_python: Path,
+    *,
+    cpu_torch: bool,
+) -> None:
+    pip_install = [
+        str(runtime_python),
+        "-m",
+        "pip",
+        "install",
+        "--disable-pip-version-check",
+        "--no-compile",
+    ]
+    requirements = str(API_DIR / "requirements.txt")
+    if not cpu_torch:
+        subprocess.run([*pip_install, "--requirement", requirements], check=True)
+        return
+
+    subprocess.run(
+        [
+            *pip_install,
+            "--index-url",
+            PYTORCH_CPU_INDEX_URL,
+            PYTORCH_RUNTIME_REQUIREMENT,
+        ],
+        check=True,
+    )
+    installed_version = subprocess.run(
+        [
+            str(runtime_python),
+            "-c",
+            "import importlib.metadata; print(importlib.metadata.version('torch'))",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=immutable_python_environment(),
+    ).stdout.strip()
+    if not installed_version:
+        raise RuntimeError("CPU-only PyTorch installation did not report an installed version.")
+
+    with tempfile.TemporaryDirectory(prefix="llm-studio-torch-constraint-") as temporary:
+        constraint = Path(temporary) / "torch-constraint.txt"
+        constraint.write_text(f"torch=={installed_version}\n", encoding="utf-8")
+        subprocess.run(
+            [
+                *pip_install,
+                "--constraint",
+                str(constraint),
+                "--requirement",
+                requirements,
+            ],
+            check=True,
+        )
 
 
 def remove_runtime_package_manager(runtime_python: Path) -> None:
@@ -517,9 +597,16 @@ def validate_build_options(
     wheelhouse: Path | None,
     lock: Path | None,
     allow_unlocked_development: bool,
+    development_cpu_torch: bool = False,
 ) -> str:
     if not portable:
-        if install_dependencies or wheelhouse or lock or allow_unlocked_development:
+        if (
+            install_dependencies
+            or wheelhouse
+            or lock
+            or allow_unlocked_development
+            or development_cpu_torch
+        ):
             raise SystemExit(
                 "Portable dependency options require --portable. "
                 "Linked-development runtimes use the selected interpreter unchanged."
@@ -531,11 +618,15 @@ def validate_build_options(
         raise SystemExit("--wheelhouse and --lock must be provided together.")
     if wheelhouse is not None and lock is not None:
         validate_release_dependency_inputs(wheelhouse, lock)
-        if allow_unlocked_development:
+        if allow_unlocked_development or development_cpu_torch:
             raise SystemExit(
-                "--allow-unlocked-development is incompatible with reviewed release inputs."
+                "Unlocked development options are incompatible with reviewed release inputs."
             )
         return "portable"
+    if development_cpu_torch and not allow_unlocked_development:
+        raise SystemExit(
+            "--development-cpu-torch requires --allow-unlocked-development."
+        )
     if not allow_unlocked_development:
         raise SystemExit(
             "Release-portable runtimes require --wheelhouse and --lock. "

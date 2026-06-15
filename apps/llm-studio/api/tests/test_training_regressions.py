@@ -4,6 +4,7 @@ import json
 import math
 from pathlib import Path
 
+import pytest
 import torch
 import model.model as model_module
 
@@ -12,6 +13,8 @@ from model.model import CausalSelfAttention, ConfigurableGPT
 from tokenizer.dataloader import build_dataset
 from training.dataloader import build_training_dataset
 from training.dataloader_config import load_training_dataloader_config
+from training import memory_estimator
+from training import utils as training_utils
 
 
 class _Encoding:
@@ -49,6 +52,36 @@ class _CharTokenizer:
                 continue
             chars.append(token)
         return "".join(chars)
+
+
+def test_cpu_memory_info_uses_native_windows_fallback_without_psutil(monkeypatch) -> None:
+    monkeypatch.setattr(
+        memory_estimator,
+        "_psutil_memory_info",
+        lambda: (_ for _ in ()).throw(ImportError("psutil unavailable")),
+    )
+    monkeypatch.setattr(memory_estimator.os.path, "exists", lambda _path: False)
+    monkeypatch.setattr(memory_estimator.sys, "platform", "win32")
+    monkeypatch.setattr(memory_estimator, "_windows_memory_info", lambda: (16_000, 8_000))
+
+    assert memory_estimator._cpu_memory_info() == (16_000, 8_000)
+
+
+def test_local_compute_device_overrides_are_shared_and_validated(monkeypatch) -> None:
+    monkeypatch.setattr(training_utils.torch.cuda, "is_available", lambda: True)
+    monkeypatch.setenv(training_utils.TRAINING_DEVICE_ENV, "cpu")
+    assert training_utils.resolve_training_device_type() == "cpu"
+    monkeypatch.setenv(training_utils.INFERENCE_DEVICE_ENV, "cpu")
+    assert training_utils.resolve_inference_device_type() == "cpu"
+
+    monkeypatch.setenv(training_utils.TRAINING_DEVICE_ENV, "invalid")
+    with pytest.raises(RuntimeError, match="must be one of"):
+        training_utils.resolve_training_device_type()
+
+    monkeypatch.setattr(training_utils.torch.cuda, "is_available", lambda: False)
+    monkeypatch.setenv(training_utils.TRAINING_DEVICE_ENV, "cuda")
+    with pytest.raises(RuntimeError, match="CUDA is unavailable"):
+        training_utils.resolve_training_device_type()
 
 
 def _tiny_model_config(vocab_size: int) -> dict[str, object]:
