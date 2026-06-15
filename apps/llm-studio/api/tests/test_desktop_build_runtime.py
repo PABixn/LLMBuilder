@@ -19,6 +19,27 @@ build_runtime = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(build_runtime)
 
 
+def test_python_executable_resolution_supports_path_command_names(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    python = tmp_path / "python3"
+    python.write_text("#!/bin/sh\n", encoding="ascii")
+    python.chmod(0o755)
+    monkeypatch.setattr(build_runtime.shutil, "which", lambda command: str(python))
+
+    assert build_runtime.resolve_python_executable(Path("python3")) == python.resolve()
+
+
+def test_python_executable_resolution_rejects_missing_commands(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(build_runtime.shutil, "which", lambda _command: None)
+
+    with pytest.raises(SystemExit, match="unavailable on PATH"):
+        build_runtime.resolve_python_executable(Path("missing-python"))
+
+
 def test_release_portable_runtime_requires_hashed_lock_and_wheelhouse(tmp_path: Path) -> None:
     with pytest.raises(SystemExit, match="require --wheelhouse and --lock"):
         build_runtime.validate_build_options(

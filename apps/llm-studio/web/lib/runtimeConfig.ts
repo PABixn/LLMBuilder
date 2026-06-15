@@ -1,6 +1,7 @@
 import {
   bootstrapDesktopRuntime,
   isDesktopShell,
+  requestDesktopRuntime,
   retryDesktopRuntime,
   type DesktopRuntimeBootstrap,
 } from "./desktopBridge";
@@ -106,15 +107,65 @@ export function runtimeApiUrl(path: string): string {
   return `${currentConfig.apiBaseUrl}${normalizedPath}`;
 }
 
-export function runtimeFetch(path: string, init?: RequestInit): Promise<Response> {
+export async function runtimeFetch(path: string, init?: RequestInit): Promise<Response> {
   if (currentConfig.environment === "desktop" && !currentConfig.runtimeToken) {
     throw new RuntimeUnavailableError("Desktop runtime token is unavailable.");
+  }
+  if (currentConfig.environment === "desktop") {
+    return desktopRuntimeFetch(path, init);
   }
   return fetch(runtimeApiUrl(path), {
     ...init,
     headers: runtimeHeaders(init?.headers),
     cache: "no-store",
   });
+}
+
+async function desktopRuntimeFetch(path: string, init?: RequestInit): Promise<Response> {
+  if (init?.signal?.aborted) {
+    throw abortError();
+  }
+  const headers = new Headers(init?.headers ?? {});
+  headers.delete("X-LLM-Studio-Token");
+  const body = await serializeDesktopRequestBody(init?.body, headers);
+  const response = await requestDesktopRuntime({
+    method: init?.method?.toUpperCase() || "GET",
+    path: runtimeApiUrl(path).slice(currentConfig.apiBaseUrl.length),
+    headers: Object.fromEntries(headers.entries()),
+    body: Array.from(body),
+  });
+  if (init?.signal?.aborted) {
+    throw abortError();
+  }
+  const responseBody =
+    response.status === 204 || response.status === 205 || response.status === 304
+      ? null
+      : new Uint8Array(response.body);
+  return new Response(responseBody, {
+    status: response.status,
+    headers: response.headers,
+  });
+}
+
+async function serializeDesktopRequestBody(
+  body: BodyInit | null | undefined,
+  headers: Headers
+): Promise<Uint8Array> {
+  if (body == null) {
+    return new Uint8Array();
+  }
+  const materialized = new Response(body);
+  const contentType = materialized.headers.get("Content-Type");
+  if (contentType && !headers.has("Content-Type")) {
+    headers.set("Content-Type", contentType);
+  }
+  return new Uint8Array(await materialized.arrayBuffer());
+}
+
+function abortError(): Error {
+  const error = new Error("The LLM Studio request was cancelled.");
+  error.name = "AbortError";
+  return error;
 }
 
 export async function runtimeRequest(path: string, init?: RequestInit): Promise<Response> {

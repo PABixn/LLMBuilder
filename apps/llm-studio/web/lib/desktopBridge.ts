@@ -41,6 +41,12 @@ export type DesktopRuntimeStatus = {
   start_attempts: number;
 };
 
+export type DesktopRuntimeHttpResponse = {
+  status: number;
+  headers: Record<string, string>;
+  body: number[];
+};
+
 declare global {
   interface Window {
     __TAURI__?: {
@@ -79,6 +85,15 @@ export function bootstrapDesktopRuntime(): Promise<DesktopRuntimeBootstrap> {
 
 export function retryDesktopRuntime(): Promise<DesktopRuntimeBootstrap> {
   return invokeDesktop<DesktopRuntimeBootstrap>("retry_runtime");
+}
+
+export function requestDesktopRuntime(request: {
+  method: string;
+  path: string;
+  headers: Record<string, string>;
+  body: number[];
+}): Promise<DesktopRuntimeHttpResponse> {
+  return invokeDesktop<DesktopRuntimeHttpResponse>("runtime_request", { request });
 }
 
 export function cancelDesktopRuntimeStart(): Promise<void> {

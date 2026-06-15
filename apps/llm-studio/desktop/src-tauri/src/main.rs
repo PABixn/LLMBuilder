@@ -32,6 +32,7 @@ const MAX_DIAGNOSTIC_STORAGE_ENTRIES: usize = 100_000;
 const MAX_DIAGNOSTIC_STORAGE_SCAN: Duration = Duration::from_secs(3);
 const MAX_START_ATTEMPTS: u32 = 5;
 const RETRY_COOLDOWN: Duration = Duration::from_secs(2);
+const RUNTIME_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
 
 type SharedSupervisor = Arc<Mutex<Supervisor>>;
 type StartupCancellation = Arc<AtomicBool>;
@@ -170,6 +171,23 @@ struct RuntimeStatus {
     start_attempts: u32,
 }
 
+#[derive(Debug, Deserialize)]
+struct RuntimeHttpRequest {
+    method: String,
+    path: String,
+    #[serde(default)]
+    headers: BTreeMap<String, String>,
+    #[serde(default)]
+    body: Vec<u8>,
+}
+
+#[derive(Debug, Serialize)]
+struct RuntimeHttpResponse {
+    status: u16,
+    headers: BTreeMap<String, String>,
+    body: Vec<u8>,
+}
+
 #[derive(Serialize)]
 struct Diagnostics {
     schema_version: u32,
@@ -273,6 +291,31 @@ async fn runtime_bootstrap(
     })
     .await
     .map_err(|error| format!("Runtime bootstrap worker failed: {error}"))?
+}
+
+#[tauri::command]
+async fn runtime_request(
+    request: RuntimeHttpRequest,
+    state: tauri::State<'_, SharedSupervisor>,
+) -> Result<RuntimeHttpResponse, String> {
+    let (api_base_url, token) = {
+        let mut supervisor = lock_supervisor(&state)?;
+        let Some(backend) = supervisor.backend.as_mut() else {
+            return Err("The local runtime is unavailable.".to_string());
+        };
+        if !backend_is_ready(backend) {
+            return Err("The local runtime is not ready.".to_string());
+        }
+        (
+            backend.bootstrap.api_base_url.clone(),
+            backend.bootstrap.runtime_token.clone(),
+        )
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        forward_runtime_request(&api_base_url, &token, request)
+    })
+    .await
+    .map_err(|error| format!("Runtime request worker failed: {error}"))?
 }
 
 #[tauri::command]
@@ -586,6 +629,7 @@ fn main() {
         .manage(Arc::new(AtomicBool::new(false)))
         .invoke_handler(tauri::generate_handler![
             runtime_bootstrap,
+            runtime_request,
             retry_runtime,
             cancel_runtime_start,
             runtime_status,
@@ -1214,6 +1258,77 @@ fn authenticated_json(url: &str, token: &str) -> Result<serde_json::Value, Strin
     response
         .into_json()
         .map_err(|error| format!("Runtime returned invalid JSON: {error}"))
+}
+
+fn forward_runtime_request(
+    api_base_url: &str,
+    token: &str,
+    request: RuntimeHttpRequest,
+) -> Result<RuntimeHttpResponse, String> {
+    let method = validate_runtime_request_method(&request.method)?;
+    let path = validate_runtime_request_path(&request.path)?;
+    let mut forwarded = ureq::request(method, &format!("{api_base_url}{path}"))
+        .set("X-LLM-Studio-Token", token)
+        .timeout(RUNTIME_REQUEST_TIMEOUT);
+    for (name, value) in request.headers {
+        let normalized = name.to_ascii_lowercase();
+        if matches!(normalized.as_str(), "accept" | "content-type") {
+            forwarded = forwarded.set(&name, &value);
+        }
+    }
+    let result = if request.body.is_empty() {
+        forwarded.call()
+    } else {
+        forwarded.send_bytes(&request.body)
+    };
+    let response = match result {
+        Ok(response) => response,
+        Err(ureq::Error::Status(_, response)) => response,
+        Err(error) => return Err(format!("Runtime request failed: {error}")),
+    };
+    let status = response.status();
+    let headers = response
+        .headers_names()
+        .into_iter()
+        .filter_map(|name| {
+            response
+                .header(&name)
+                .map(|value| (name.to_ascii_lowercase(), value.to_string()))
+        })
+        .collect();
+    let mut body = Vec::new();
+    response
+        .into_reader()
+        .read_to_end(&mut body)
+        .map_err(|error| format!("Failed to read runtime response: {error}"))?;
+    Ok(RuntimeHttpResponse {
+        status,
+        headers,
+        body,
+    })
+}
+
+fn validate_runtime_request_method(method: &str) -> Result<&str, String> {
+    match method {
+        "GET" | "POST" | "PUT" | "DELETE" => Ok(method),
+        _ => Err("Runtime request method is not allowed.".to_string()),
+    }
+}
+
+fn validate_runtime_request_path(path: &str) -> Result<&str, String> {
+    if !path.starts_with('/')
+        || path.starts_with("//")
+        || path.contains(['\\', '#', '\r', '\n'])
+        || path
+            .split('?')
+            .next()
+            .unwrap_or(path)
+            .split('/')
+            .any(|segment| matches!(segment, "." | ".."))
+    {
+        return Err("Runtime request path is not allowed.".to_string());
+    }
+    Ok(path)
 }
 
 fn stop_supervisor(state: &SharedSupervisor) -> Result<(), String> {
@@ -2077,6 +2192,79 @@ mod tests {
         ] {
             assert!(validate_api_artifact_path(path).is_err(), "{path}");
         }
+    }
+
+    #[test]
+    fn runtime_proxy_paths_and_methods_are_narrowly_scoped() {
+        for method in ["GET", "POST", "PUT", "DELETE"] {
+            assert_eq!(validate_runtime_request_method(method).unwrap(), method);
+        }
+        for method in ["", "PATCH", "OPTIONS", "get"] {
+            assert!(validate_runtime_request_method(method).is_err(), "{method}");
+        }
+        for path in [
+            "/projects",
+            "/training/jobs/job_123?limit=10",
+            "/tokenizer/config/templates",
+        ] {
+            assert_eq!(validate_runtime_request_path(path).unwrap(), path);
+        }
+        for path in [
+            "",
+            "projects",
+            "//example.com/projects",
+            "/projects/../outside",
+            "/projects#fragment",
+            "/projects\r\nX-Evil: value",
+        ] {
+            assert!(validate_runtime_request_path(path).is_err(), "{path:?}");
+        }
+    }
+
+    #[test]
+    fn runtime_proxy_forwards_only_safe_headers_and_preserves_error_responses() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0_u8; 4096];
+            let count = stream.read(&mut request).unwrap();
+            let request = String::from_utf8_lossy(&request[..count]).to_ascii_lowercase();
+            assert!(request.starts_with("post /api/v1/projects http/1.1"));
+            assert!(request.contains("x-llm-studio-token: proxy-token"));
+            assert!(request.contains("content-type: application/json"));
+            assert!(!request.contains("x-unsafe-header"));
+            assert!(request.ends_with(r#"{"name":"test"}"#));
+            let body = br#"{"detail":"invalid project"}"#;
+            let response = format!(
+                "HTTP/1.1 422 Unprocessable Entity\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.write_all(body).unwrap();
+        });
+        let response = forward_runtime_request(
+            &format!("http://{address}/api/v1"),
+            "proxy-token",
+            RuntimeHttpRequest {
+                method: "POST".to_string(),
+                path: "/projects".to_string(),
+                headers: BTreeMap::from([
+                    ("Content-Type".to_string(), "application/json".to_string()),
+                    ("X-Unsafe-Header".to_string(), "blocked".to_string()),
+                ]),
+                body: br#"{"name":"test"}"#.to_vec(),
+            },
+        )
+        .unwrap();
+        server.join().unwrap();
+
+        assert_eq!(response.status, 422);
+        assert_eq!(
+            response.headers.get("content-type").map(String::as_str),
+            Some("application/json")
+        );
+        assert_eq!(response.body, br#"{"detail":"invalid project"}"#);
     }
 
     #[test]

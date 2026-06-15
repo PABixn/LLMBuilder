@@ -100,6 +100,7 @@ def main() -> None:
     args = parse_args()
     output = args.output.expanduser().resolve()
     ensure_build_output_is_safe(output)
+    source_python = resolve_python_executable(args.python)
     build_mode = validate_build_options(
         portable=args.portable,
         install_dependencies=args.install_dependencies,
@@ -121,7 +122,7 @@ def main() -> None:
 
     python_relative = create_python_runtime(
         output,
-        args.python.resolve(),
+        source_python,
         portable=args.portable,
         install_dependencies=args.install_dependencies,
         wheelhouse=args.wheelhouse,
@@ -192,6 +193,20 @@ def main() -> None:
     total_bytes = sum(path.stat().st_size for path in output.rglob("*") if path.is_file())
     print(f"Built {provenance['build_mode']} runtime: {output}")
     print(f"Files: {len(file_hashes) + 1}; size: {total_bytes / 1024 / 1024:.1f} MiB")
+
+
+def resolve_python_executable(value: Path) -> Path:
+    expanded = value.expanduser()
+    if expanded.parent == Path("."):
+        resolved = shutil.which(str(expanded))
+        if resolved is None:
+            raise SystemExit(f"Python executable is unavailable on PATH: {value}")
+        path = Path(resolved).resolve()
+    else:
+        path = expanded.resolve()
+    if not path.is_file() or not os.access(path, os.X_OK):
+        raise SystemExit(f"Python executable is missing or not executable: {path}")
+    return path
 
 
 def load_size_limit(

@@ -1,4 +1,4 @@
-.PHONY: help api api-prod web web-build install-api install-web install api-compile api-test api-smoke web-typecheck check desktop-check desktop-versions desktop-check-api-contract desktop-web-quality desktop-build-web-offline desktop-build-runtime desktop-build-release-runtime desktop-smoke-runtime desktop-test-shell desktop-build-shell desktop-audit-dependencies desktop-verify-nonbrowser desktop-test-e2e desktop-dev desktop-package desktop-release-manifest desktop-audit-payload
+.PHONY: help api api-prod web web-build install-api install-web install install-desktop api-compile api-test api-smoke web-typecheck check desktop-check desktop-versions desktop-check-api-contract desktop-web-quality desktop-build-web-offline desktop-build-runtime desktop-build-release-runtime desktop-smoke-runtime desktop-test-shell desktop-build-shell desktop-audit-dependencies desktop-verify-nonbrowser desktop-test-e2e desktop-dev desktop-package desktop-release-manifest desktop-audit-payload
 
 ROOT_DIR := $(abspath $(CURDIR)/../..)
 API_DIR := $(CURDIR)/api
@@ -22,6 +22,7 @@ help:
 	@echo "  make install-api   - Install API Python requirements"
 	@echo "  make install-web   - Install web npm dependencies"
 	@echo "  make install       - Install both API and web dependencies"
+	@echo "  make install-desktop - Install locked desktop shell npm dependencies"
 	@echo "  make api-compile   - Syntax-check API modules with py_compile"
 	@echo "  make api-test      - Run API pytest suite"
 	@echo "  make api-smoke     - Smoke-check model + tokenizer endpoints"
@@ -65,6 +66,9 @@ install-web:
 	cd $(WEB_DIR) && npm install
 
 install: install-api install-web
+
+install-desktop:
+	cd $(DESKTOP_DIR) && npm ci
 
 api-compile:
 	cd $(API_DIR) && $(PYTHON_BIN) -m compileall -q app

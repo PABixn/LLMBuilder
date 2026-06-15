@@ -67,7 +67,9 @@ dependency panic-location strings from leaking local build paths and lets the
 native-binary vulnerability gate inspect every included crate.
 
 The default runtime target is linked-development mode for fast local testing.
-It is never a release artifact.
+It is never a release artifact. Bare interpreter command names such as
+`python3` are resolved through `PATH` before the runtime output is replaced, so
+the Makefile fallback works without creating broken repository-relative links.
 
 Browser-driven checks are intentionally excluded from this execution and from
 the default CI workflow by product-owner direction. Static output validation,

@@ -9,11 +9,12 @@ memory-only per-launch token through `runtime_bootstrap`.
 Development:
 
 ```bash
+make -C apps/llm-studio install-desktop
 make -C apps/llm-studio desktop-check
+make -C apps/llm-studio desktop-build-runtime
 make -C apps/llm-studio desktop-dev
 ```
 
-Set `LLM_STUDIO_RUNTIME_DIR` to a validated runtime built by
-`scripts/desktop/build_runtime.py`. Production bundles receive that runtime as a
-Tauri resource.
-
+`desktop-dev` uses the target-native linked development runtime produced by
+`desktop-build-runtime`. Production bundles receive a reviewed portable runtime
+as a Tauri resource.

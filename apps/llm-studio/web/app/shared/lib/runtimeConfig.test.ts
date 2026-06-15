@@ -172,6 +172,103 @@ test("desktop runtime bootstrap and retry use narrow commands without persistenc
   }
 });
 
+test("desktop runtime requests use the native bridge without exposing the token", async () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const calls: Array<{ command: string; args?: Record<string, unknown> }> = [];
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      __TAURI__: {
+        core: {
+          invoke: async (command: string, args?: Record<string, unknown>) => {
+            calls.push({ command, args });
+            return {
+              status: 200,
+              headers: { "content-type": "application/json" },
+              body: Array.from(new TextEncoder().encode('{"projects":[]}')),
+            };
+          },
+        },
+      },
+    },
+  });
+  __setRuntimeConfigForTests({
+    environment: "desktop",
+    apiBaseUrl: "http://127.0.0.1:43123/api/v1",
+    runtimeToken: "memory-only-secret",
+    capabilities: {
+      native_save: false,
+      open_logs: false,
+      open_data: false,
+      reveal_artifact: false,
+      diagnostics_export: false,
+    },
+    versions: {},
+  });
+
+  try {
+    const response = await runtimeRequest("/projects", {
+      headers: { "X-LLM-Studio-Token": "must-not-cross-ipc" },
+    });
+    assert.deepEqual(await response.json(), { projects: [] });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0]?.command, "runtime_request");
+    const request = calls[0]?.args?.request as {
+      path: string;
+      headers: Record<string, string>;
+    };
+    assert.equal(request.path, "/projects");
+    assert.equal(request.headers["x-llm-studio-token"], undefined);
+  } finally {
+    __resetRuntimeConfigForTests();
+    if (previousWindow) {
+      Object.defineProperty(globalThis, "window", previousWindow);
+    } else {
+      Reflect.deleteProperty(globalThis, "window");
+    }
+  }
+});
+
+test("desktop native transport preserves no-content responses", async () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      __TAURI__: {
+        core: {
+          invoke: async () => ({ status: 204, headers: {}, body: [] }),
+        },
+      },
+    },
+  });
+  __setRuntimeConfigForTests({
+    environment: "desktop",
+    apiBaseUrl: "http://127.0.0.1:43123/api/v1",
+    runtimeToken: "memory-only-secret",
+    capabilities: {
+      native_save: false,
+      open_logs: false,
+      open_data: false,
+      reveal_artifact: false,
+      diagnostics_export: false,
+    },
+    versions: {},
+  });
+
+  try {
+    const response = await runtimeRequest("/projects/project_123", { method: "DELETE" });
+    assert.equal(response.status, 204);
+    assert.equal(await response.text(), "");
+  } finally {
+    __resetRuntimeConfigForTests();
+    if (previousWindow) {
+      Object.defineProperty(globalThis, "window", previousWindow);
+    } else {
+      Reflect.deleteProperty(globalThis, "window");
+    }
+  }
+});
+
 test("failed desktop retry clears stale runtime connectivity and can recover", async () => {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   let retryFails = true;

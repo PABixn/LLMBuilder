@@ -140,6 +140,11 @@ review. CI retains one report per target-native characterization runtime.
   `https://tauri.localhost`; no desktop localhost regex.
 - Tauri CSP allows bundled assets and loopback API connections only. It prohibits
   frames, objects, remote scripts, and a null CSP.
+- Desktop frontend API requests cross the authenticated `runtime_request` Tauri
+  command instead of relying on WebView loopback `fetch`, which WKWebView can
+  reject for custom-scheme pages. The shell accepts only relative runtime paths,
+  four API methods, and the `Accept` and `Content-Type` request headers, then
+  injects the memory-only runtime token before forwarding to its owned backend.
 - Pasted RunPod keys remain API-process memory only. They are not included in
   diagnostics or persistence.
 - Proxy/custom-CA behavior follows explicitly preserved OS environment variables:
@@ -150,7 +155,7 @@ review. CI retains one report per target-native characterization runtime.
 
 Allowed application commands:
 
-- `runtime_bootstrap`, `retry_runtime`, `active_jobs`
+- `runtime_bootstrap`, `runtime_request`, `retry_runtime`, `active_jobs`
 - `runtime_status`, `cancel_runtime_start`
 - `save_file`, `save_api_artifact`, `reveal_api_artifact`
 - `open_logs_folder`, `open_data_folder`
