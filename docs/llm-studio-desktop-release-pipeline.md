@@ -61,7 +61,8 @@ Release shell builds run through `scripts/desktop/build_shell.py`, which preserv
 explicit Rust compiler flags while remapping workspace and developer-home source
 paths. It invokes Tauri through a temporary cross-platform Cargo runner backed
 by pinned `cargo-auditable` 0.7.4, so the actual release binary embeds complete
-dependency metadata while retaining path remapping. This prevents Rust
+dependency metadata while retaining path remapping. The builder resolves the
+platform-native npm executable explicitly, including `npm.cmd` on Windows. This prevents Rust
 dependency panic-location strings from leaking local build paths and lets the
 native-binary vulnerability gate inspect every included crate.
 
@@ -191,6 +192,9 @@ target-native release shell without bundling an unsafe characterization runtime.
 The Windows shell owns its kill-on-close Job Object through Rust's
 `OwnedHandle`, so the handle is safe in Tauri's shared supervisor state and
 closes on every drop path, including unexpected backend removal.
+Runtime manifest paths use normalized portable forward-slash relative syntax;
+rooted, drive-relative, UNC, backslash, dot, parent, empty, and repeated
+separator forms fail closed consistently on every host.
 Each target-native characterization runtime is scanned with pip-audit after its
 build-only package manager is removed, and the Rust lock is scanned with
 Cargo Audit. The target-native release shell is built with pinned

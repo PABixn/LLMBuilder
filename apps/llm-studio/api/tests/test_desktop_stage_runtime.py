@@ -68,18 +68,47 @@ def test_stage_validation_rejects_development_runtime_and_hash_mismatch(tmp_path
 def test_stage_validation_rejects_unsafe_manifest_paths_and_release_symlinks(
     tmp_path: Path,
 ) -> None:
-    runtime = make_runtime(tmp_path / "unsafe")
-    manifest_path = runtime / "manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["required_files"] = ["../outside"]
-    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    with pytest.raises(SystemExit, match="unsafe path"):
-        stage_runtime.validate_runtime_for_staging(runtime, allow_development_runtime=False)
+    for index, unsafe_path in enumerate(
+        [
+            "",
+            ".",
+            "../outside",
+            "source/../outside",
+            "/etc/passwd",
+            "//server/share",
+            r"\server\share",
+            r"C:\secret",
+            "C:/secret",
+            "C:secret",
+            "source\\secret",
+            "source//secret",
+            "source/./secret",
+        ]
+    ):
+        runtime = make_runtime(tmp_path / f"unsafe-{index}")
+        manifest_path = runtime / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["required_files"] = [unsafe_path]
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        with pytest.raises(SystemExit, match="unsafe path"):
+            stage_runtime.validate_runtime_for_staging(runtime, allow_development_runtime=False)
 
     runtime = make_runtime(tmp_path / "symlink")
     (runtime / "source" / "linked.txt").symlink_to(runtime / "source" / "required.txt")
     with pytest.raises(SystemExit, match="contains symlinks"):
         stage_runtime.validate_runtime_for_staging(runtime, allow_development_runtime=False)
+
+
+def test_stage_validation_rejects_nonportable_runtime_entrypoints(tmp_path: Path) -> None:
+    for index, field in enumerate(("python_executable", "source_root")):
+        runtime = make_runtime(tmp_path / f"unsafe-{field}-{index}")
+        manifest_path = runtime / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest[field] = r"C:\outside"
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        with pytest.raises(SystemExit, match="unsafe path"):
+            stage_runtime.validate_runtime_for_staging(runtime, allow_development_runtime=False)
 
 
 def test_stage_validation_recomputes_release_size_and_requires_approved_threshold(

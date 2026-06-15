@@ -76,6 +76,33 @@ def test_release_environment_parses_legacy_rustflags(build_shell_module) -> None
     assert "RUSTFLAGS" not in environment
 
 
+def test_shell_build_resolves_platform_native_npm_command(
+    build_shell_module,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested: list[str] = []
+
+    def fake_which(command: str) -> str:
+        requested.append(command)
+        return f"/resolved/{command}"
+
+    monkeypatch.setattr(build_shell_module.shutil, "which", fake_which)
+
+    assert build_shell_module.resolve_npm_command(windows=False) == "/resolved/npm"
+    assert build_shell_module.resolve_npm_command(windows=True) == "/resolved/npm.cmd"
+    assert requested == ["npm", "npm.cmd"]
+
+
+def test_shell_build_fails_closed_when_npm_is_unavailable(
+    build_shell_module,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(build_shell_module.shutil, "which", lambda _command: None)
+
+    with pytest.raises(SystemExit, match="npm.cmd"):
+        build_shell_module.resolve_npm_command(windows=True)
+
+
 def test_auditable_cargo_runner_wraps_cargo_on_posix(
     build_shell_module,
     tmp_path: Path,

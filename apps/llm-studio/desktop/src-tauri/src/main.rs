@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::env;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -1383,17 +1383,17 @@ fn configure_clean_environment(command: &mut Command) {
 }
 
 fn runtime_path(root: &Path, relative: &str) -> Result<PathBuf, String> {
-    let path = Path::new(relative);
-    if path.is_absolute()
-        || path
-            .components()
-            .any(|component| matches!(component, Component::ParentDir | Component::Prefix(_)))
-    {
+    let segments = relative.split('/').collect::<Vec<_>>();
+    if segments.iter().any(|segment| {
+        segment.is_empty() || matches!(*segment, "." | "..") || segment.contains(['\\', ':'])
+    }) {
         return Err(format!(
             "Runtime manifest contains an unsafe path: {relative}"
         ));
     }
-    Ok(root.join(path))
+    Ok(segments
+        .iter()
+        .fold(root.to_path_buf(), |path, segment| path.join(segment)))
 }
 
 fn ensure_runtime_path_is_contained(root: &Path, candidate: &Path) -> Result<(), String> {
@@ -2316,8 +2316,23 @@ mod tests {
     #[test]
     fn runtime_paths_reject_absolute_and_parent_paths() {
         let root = Path::new("/runtime");
-        assert!(runtime_path(root, "../secret").is_err());
-        assert!(runtime_path(root, "/etc/passwd").is_err());
+        for unsafe_path in [
+            "",
+            ".",
+            "../secret",
+            "source/../secret",
+            "/etc/passwd",
+            "//server/share",
+            r"\server\share",
+            r"C:\secret",
+            "C:/secret",
+            "C:secret",
+            "source\\secret",
+            "source//secret",
+            "source/./secret",
+        ] {
+            assert!(runtime_path(root, unsafe_path).is_err(), "{unsafe_path}");
+        }
         assert_eq!(
             runtime_path(root, "source/model/model.py").unwrap(),
             root.join("source/model/model.py")

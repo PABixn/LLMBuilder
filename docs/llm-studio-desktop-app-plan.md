@@ -132,7 +132,15 @@ and are not represented as complete.
   API feature, and the raw pointer `HANDLE` made Tauri's shared supervisor state
   non-`Send`. Job Objects are now held as `OwnedHandle`, which restores
   thread-safe state and guarantees kill-on-close cleanup when any backend owner
-  is dropped; target-native Windows rerun evidence remains required.
+  is dropped. The next Windows rerun compiled and exercised that path, then
+  exposed host-dependent manifest path validation: Windows interpreted a
+  Unix-rooted path as drive-relative. Runtime paths are now required to use
+  normalized portable forward-slash relative syntax at shell, staging, and
+  payload-audit trust boundaries. Review of the commands after that failing test
+  also exposed the release-shell builder invoking bare `npm` through Python on
+  Windows, where the executable is `npm.cmd`; the builder now resolves the
+  platform-native command explicitly. Target-native Windows rerun evidence
+  remains required.
 - Release audit generation produced a path-redacted `release-manifest.json` and
   `SHA256SUMS`; focused tests cover hashes, symlinks, duplicate names, unsafe
   output paths, and atomic output.

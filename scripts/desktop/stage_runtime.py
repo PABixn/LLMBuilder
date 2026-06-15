@@ -70,6 +70,10 @@ def validate_runtime_for_staging(runtime: Path, *, allow_development_runtime: bo
         failures,
         require_release_threshold=build_mode == "portable" and not allow_development_runtime,
     )
+    for field in ("python_executable", "source_root"):
+        value = manifest.get(field)
+        if value is not None:
+            safe_runtime_path(runtime, value)
     for relative in manifest.get("required_files", []):
         path = safe_runtime_path(runtime, relative)
         if not path.is_file():
@@ -176,10 +180,17 @@ def validate_runtime_size(
 
 
 def safe_runtime_path(runtime: Path, relative: str) -> Path:
-    path = Path(relative)
-    if path.is_absolute() or ".." in path.parts:
+    if not isinstance(relative, str) or not is_portable_manifest_path(relative):
         raise SystemExit(f"Runtime manifest contains unsafe path: {relative}")
-    return runtime / path
+    return runtime.joinpath(*relative.split("/"))
+
+
+def is_portable_manifest_path(relative: str) -> bool:
+    segments = relative.split("/")
+    return bool(relative) and all(
+        segment not in {"", ".", ".."} and "\\" not in segment and ":" not in segment
+        for segment in segments
+    )
 
 
 def sha256(path: Path) -> str:

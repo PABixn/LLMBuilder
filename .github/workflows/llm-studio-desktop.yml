@@ -104,11 +104,15 @@ jobs:
           name: desktop-characterization-${{ matrix.target }}
           path: build/desktop/release/performance-characterization-${{ matrix.target }}.json
           if-no-files-found: error
-      - name: Rust format, lint, and tests
-        run: |
-          npm run fmt:check --prefix apps/llm-studio/desktop
-          npm run clippy --prefix apps/llm-studio/desktop
-          npm test --prefix apps/llm-studio/desktop
-          python scripts/desktop/build_shell.py --no-bundle
-          python scripts/desktop/audit_dependencies.py --skip-python --cargo-binary "${{ matrix.shell_binary }}"
-          python scripts/desktop/audit_release_payload.py "${{ matrix.shell_binary }}"
+      - name: Check Rust formatting
+        run: npm run fmt:check --prefix apps/llm-studio/desktop
+      - name: Lint Rust shell
+        run: npm run clippy --prefix apps/llm-studio/desktop
+      - name: Test Rust shell
+        run: npm test --prefix apps/llm-studio/desktop
+      - name: Build release shell
+        run: python scripts/desktop/build_shell.py --no-bundle
+      - name: Audit release shell dependencies
+        run: python scripts/desktop/audit_dependencies.py --skip-python --cargo-binary "${{ matrix.shell_binary }}"
+      - name: Audit release shell payload
+        run: python scripts/desktop/audit_release_payload.py "${{ matrix.shell_binary }}"

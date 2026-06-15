@@ -152,6 +152,17 @@ def verify_runtime_manifest(runtime: Path, findings: list[dict[str, str]]) -> No
     except (OSError, json.JSONDecodeError) as exc:
         findings.append({"kind": "invalid-runtime-manifest", "path": runtime.name, "detail": str(exc)})
         return
+    for field in ("python_executable", "source_root"):
+        value = manifest.get(field)
+        if value is not None and (
+            not isinstance(value, str) or not is_portable_manifest_path(value)
+        ):
+            findings.append(
+                {
+                    "kind": "unsafe-runtime-manifest-path",
+                    "path": f"{runtime.name}/{field}",
+                }
+            )
     for relative, expected in manifest.get("file_hashes", {}).items():
         candidate = safe_manifest_path(runtime, str(relative))
         display = f"{runtime.name}/{relative}"
@@ -164,16 +175,23 @@ def verify_runtime_manifest(runtime: Path, findings: list[dict[str, str]]) -> No
 
 
 def safe_manifest_path(runtime: Path, relative: str) -> Path | None:
-    path = Path(relative)
-    if path.is_absolute() or ".." in path.parts:
+    if not is_portable_manifest_path(relative):
         return None
-    candidate = runtime / path
+    candidate = runtime.joinpath(*relative.split("/"))
     try:
         resolved = candidate.resolve()
         resolved.relative_to(runtime.resolve())
     except (OSError, ValueError):
         return None
     return candidate
+
+
+def is_portable_manifest_path(relative: str) -> bool:
+    segments = relative.split("/")
+    return bool(relative) and all(
+        segment not in {"", ".", ".."} and "\\" not in segment and ":" not in segment
+        for segment in segments
+    )
 
 
 def deduplicate_findings(findings: list[dict[str, str]]) -> None:

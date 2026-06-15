@@ -7,6 +7,7 @@ import argparse
 import os
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 import tempfile
 from typing import Mapping
@@ -30,7 +31,7 @@ def main() -> None:
     args = parse_args()
     with tempfile.TemporaryDirectory(prefix="llm-studio-cargo-runner-") as temporary:
         runner = write_auditable_cargo_runner(Path(temporary))
-        command = ["npm", "run", "build", "--", "--runner", str(runner)]
+        command = [resolve_npm_command(), "run", "build", "--", "--runner", str(runner)]
         if args.no_bundle:
             command.append("--no-bundle")
         subprocess.run(
@@ -39,6 +40,15 @@ def main() -> None:
             env=release_build_environment(os.environ),
             check=True,
         )
+
+
+def resolve_npm_command(*, windows: bool | None = None) -> str:
+    windows = os.name == "nt" if windows is None else windows
+    command = "npm.cmd" if windows else "npm"
+    executable = shutil.which(command)
+    if executable is None:
+        raise SystemExit(f"Required shell build command is unavailable: {command}")
+    return executable
 
 
 def write_auditable_cargo_runner(directory: Path, *, windows: bool | None = None) -> Path:

@@ -52,6 +52,63 @@ def test_release_payload_audit_finds_secrets_development_files_and_hash_drift(
     assert "runtime-hash-mismatch" in kinds
 
 
+def test_release_payload_audit_rejects_nonportable_manifest_paths(tmp_path: Path) -> None:
+    unsafe_paths = [
+        "",
+        ".",
+        "../outside",
+        "source/../outside",
+        "/etc/passwd",
+        "//server/share",
+        r"\server\share",
+        r"C:\secret",
+        "C:/secret",
+        "C:secret",
+        "source\\secret",
+        "source//secret",
+        "source/./secret",
+    ]
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    (runtime / "manifest.json").write_text(
+        json.dumps({"file_hashes": {path: "0" * 64 for path in unsafe_paths}}),
+        encoding="utf-8",
+    )
+
+    report = audit_release_payload.audit_payloads([runtime])
+
+    assert len(report["findings"]) == len(unsafe_paths)
+    assert {finding["kind"] for finding in report["findings"]} == {
+        "unsafe-runtime-manifest-path"
+    }
+
+
+def test_release_payload_audit_rejects_nonportable_runtime_entrypoints(
+    tmp_path: Path,
+) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    (runtime / "manifest.json").write_text(
+        json.dumps(
+            {
+                "file_hashes": {},
+                "python_executable": r"C:\outside\python.exe",
+                "source_root": 42,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = audit_release_payload.audit_payloads([runtime])
+
+    assert {
+        (finding["kind"], finding["path"]) for finding in report["findings"]
+    } == {
+        ("unsafe-runtime-manifest-path", "runtime/python_executable"),
+        ("unsafe-runtime-manifest-path", "runtime/source_root"),
+    }
+
+
 def test_release_payload_audit_finds_symlink_and_developer_path(tmp_path: Path) -> None:
     payload = tmp_path / "payload"
     payload.mkdir()
