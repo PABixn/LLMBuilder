@@ -69,6 +69,45 @@ def test_python_audit_does_not_accept_last_affected_torch_version() -> None:
     ]
 
 
+def test_python_audit_merges_duplicate_blockers_by_vulnerability_identity() -> None:
+    payload = {
+        "dependencies": [
+            {
+                "name": "setuptools",
+                "version": "70.2.0",
+                "vulns": [
+                    {
+                        "id": "PYSEC-2025-49",
+                        "aliases": ["CVE-2025-47273"],
+                        "fix_versions": ["78.1.1"],
+                    },
+                    {
+                        "id": "PYSEC-2025-49",
+                        "aliases": ["GHSA-5rjg-fvgr-3xxf", "CVE-2025-47273"],
+                        "fix_versions": ["78.1.1"],
+                    },
+                ],
+            }
+        ]
+    }
+
+    accepted, blocking = audit_dependencies.classify_python_findings(
+        payload,
+        {"pip_audit_accepted_findings": []},
+    )
+
+    assert accepted == []
+    assert blocking == [
+        {
+            "package": "setuptools",
+            "version": "70.2.0",
+            "id": "PYSEC-2025-49",
+            "aliases": ["CVE-2025-47273", "GHSA-5rjg-fvgr-3xxf"],
+            "fix_versions": ["78.1.1"],
+        }
+    ]
+
+
 def test_python_site_packages_preserves_virtualenv_identity() -> None:
     assert audit_dependencies.python_site_packages(Path(sys.executable)) == Path(
         sysconfig.get_paths()["purelib"]

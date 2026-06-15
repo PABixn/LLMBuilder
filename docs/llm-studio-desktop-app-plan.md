@@ -117,8 +117,13 @@ and are not represented as complete.
   audit now derives and verifies a complete exact installed inventory, audits
   only policy/provenance-approved local versions under their public version, and
   fails closed for unknown local versions, manifest drift, or incomplete scanner
-  coverage. The same rerun exposed macOS cold-runner races in fake-sidecar crash
-  and invalid-handshake tests; test-specific startup budgets and cleanup now
+  coverage. The next rerun proved the complete macOS workflow and exposed the
+  PyTorch CPU index selecting vulnerable `setuptools==70.2.0` on Windows and
+  Linux. Unlocked CPU characterization now explicitly replaces it with a fixed
+  PyTorch-compatible `setuptools>=78.1.1,<82`, and repeated scanner records for
+  the same vulnerability are merged without losing aliases or fix versions.
+  The same rerun exposed macOS cold-runner races in fake-sidecar crash and
+  invalid-handshake tests; test-specific startup budgets and cleanup now
   preserve the intended assertions without weakening production timeouts.
   Review also corrected the stale shell data-schema-2 declaration to canonical
   schema 3 and fixed Windows child leakage if Job Object assignment fails. A

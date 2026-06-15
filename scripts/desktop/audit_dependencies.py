@@ -451,7 +451,7 @@ def classify_python_findings(
                     "reviewed_on": str(entry["reviewed_on"]),
                 }
             )
-    return deduplicate_findings(accepted), deduplicate_findings(blocking)
+    return deduplicate_findings(accepted), merge_python_blocking_findings(blocking)
 
 
 def accepted_policy_entry(
@@ -580,6 +580,32 @@ def deduplicate_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]
             seen.add(key)
             unique.append(finding)
     return unique
+
+
+def merge_python_blocking_findings(
+    findings: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for finding in findings:
+        key = (
+            canonicalize_name(str(finding["package"])),
+            str(finding["version"]),
+            str(finding["id"]),
+        )
+        if key not in merged:
+            merged[key] = {
+                **finding,
+                "aliases": sorted(set(finding.get("aliases", []))),
+                "fix_versions": sorted(set(finding.get("fix_versions", []))),
+            }
+            continue
+        merged[key]["aliases"] = sorted(
+            set(merged[key]["aliases"]) | set(finding.get("aliases", []))
+        )
+        merged[key]["fix_versions"] = sorted(
+            set(merged[key]["fix_versions"]) | set(finding.get("fix_versions", []))
+        )
+    return list(merged.values())
 
 
 def display_path(path: Path) -> str:

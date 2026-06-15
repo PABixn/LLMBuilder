@@ -129,11 +129,14 @@ def test_unlocked_cpu_torch_install_pins_requirements_to_selected_cpu_wheel(
     ]
     assert calls[1][1:3] == ["-c", "import importlib.metadata; print(importlib.metadata.version('torch'))"]
     assert "--constraint" in calls[2]
-    assert calls[2][-2:] == [
+    assert calls[2][-3:] == [
+        build_runtime.PYTORCH_SAFE_SETUPTOOLS_REQUIREMENT,
         "--requirement",
         str(build_runtime.API_DIR / "requirements.txt"),
     ]
-    assert captured_constraint == ["torch==2.9.1+cpu\n"]
+    assert captured_constraint == [
+        "torch==2.9.1+cpu\nsetuptools>=78.1.1,<82\n"
+    ]
 
 
 def test_release_dependency_inputs_reject_unhashed_lock_and_symlink(tmp_path: Path) -> None:

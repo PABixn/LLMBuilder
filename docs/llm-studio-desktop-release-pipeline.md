@@ -162,10 +162,14 @@ are marked `portable-unlocked-development` and are rejected by staging.
 Windows and Linux unlocked CI characterization builds additionally pass
 `--development-cpu-torch`, which installs PyTorch from the official CPU-only
 wheel channel and constrains the remaining open-ended requirements to that
-selected wheel. The option is rejected for reviewed release builds, and its
-channel is recorded in runtime provenance. This keeps characterization aligned
-with the v1 Windows/Linux CPU support promise without weakening the requirement
-for reviewed target locks and wheelhouses.
+selected wheel. Because that channel can supply a stale transitive `setuptools`
+wheel, the subsequent PyPI resolution explicitly requires
+`setuptools>=78.1.1,<82`: the lower bound excludes CVE-2025-47273 while the upper
+bound preserves PyTorch's declared compatibility contract. The option and this
+dynamic characterization-only resolution are rejected for reviewed release
+builds, and the channel is recorded in runtime provenance. This keeps
+characterization aligned with the v1 Windows/Linux CPU support promise without
+weakening the requirement for reviewed target locks and wheelhouses.
 `stage_runtime.py` rejects linked-development runtimes, release symlinks, target
 mismatches, incompatible manifest/API/data schema contracts, unsafe manifest
 paths, missing files, and checksum mismatches. Runtime smoke also verifies that

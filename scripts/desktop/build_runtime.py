@@ -22,6 +22,7 @@ DEFAULT_BUILD_ROOT = ROOT / "build" / "desktop" / "runtime"
 DEFAULT_SIZE_POLICY = ROOT / "scripts" / "desktop" / "runtime-size-policy.json"
 PYTORCH_CPU_INDEX_URL = "https://download.pytorch.org/whl/cpu"
 PYTORCH_RUNTIME_REQUIREMENT = "torch>=2.2.0"
+PYTORCH_SAFE_SETUPTOOLS_REQUIREMENT = "setuptools>=78.1.1,<82"
 RUNTIME_MANIFEST_SCHEMA_VERSION = 1
 API_CONTRACT_VERSION = "1"
 DATA_SCHEMA_VERSION = "3"
@@ -387,12 +388,16 @@ def install_unlocked_development_dependencies(
 
     with tempfile.TemporaryDirectory(prefix="llm-studio-torch-constraint-") as temporary:
         constraint = Path(temporary) / "torch-constraint.txt"
-        constraint.write_text(f"torch=={installed_version}\n", encoding="utf-8")
+        constraint.write_text(
+            f"torch=={installed_version}\n{PYTORCH_SAFE_SETUPTOOLS_REQUIREMENT}\n",
+            encoding="utf-8",
+        )
         subprocess.run(
             [
                 *pip_install,
                 "--constraint",
                 str(constraint),
+                PYTORCH_SAFE_SETUPTOOLS_REQUIREMENT,
                 "--requirement",
                 requirements,
             ],
