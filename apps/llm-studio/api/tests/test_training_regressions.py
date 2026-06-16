@@ -13,6 +13,7 @@ from model.model import CausalSelfAttention, ConfigurableGPT
 from tokenizer.dataloader import build_dataset
 from training.dataloader import build_training_dataset
 from training.dataloader_config import load_training_dataloader_config
+from training import local_text_data
 from training import memory_estimator
 from training import utils as training_utils
 
@@ -188,6 +189,27 @@ def test_training_local_text_dataset_adds_eos_once_per_file(tmp_path: Path) -> N
     assert eos_id is not None
     assert token_stream.count(eos_id) == 1
     assert token_stream[-1] == eos_id
+
+
+def test_training_default_shake_dataset_resolves_from_packaged_dataset_base(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source_root = tmp_path / "source"
+    api_root = source_root / "apps" / "llm-studio" / "api"
+    starter_dataset = api_root / "datasets" / "shake.txt"
+    starter_dataset.parent.mkdir(parents=True)
+    starter_dataset.write_text("starter text", encoding="utf-8")
+    monkeypatch.setattr(local_text_data, "API_ROOT", api_root)
+
+    paths = local_text_data.resolve_local_data_files(
+        {"train": "datasets/shake.txt"},
+        split="train",
+        relative_base=source_root,
+    )
+
+    assert len(paths) == 1
+    assert paths[0] == starter_dataset.resolve()
 
 
 def test_training_local_text_paths_loaded_from_runpod_bundle_resolve_under_job_root(tmp_path: Path) -> None:

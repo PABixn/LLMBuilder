@@ -40,6 +40,18 @@ def test_python_executable_resolution_rejects_missing_commands(
         build_runtime.resolve_python_executable(Path("missing-python"))
 
 
+def test_runtime_includes_only_reviewed_starter_dataset() -> None:
+    starter_files = [
+        relative.as_posix()
+        for _source, relative in build_runtime.STARTER_DATASET_FILES
+    ]
+    required_files = build_runtime.required_runtime_files(Path("python/bin/python"))
+
+    assert starter_files == ["source/apps/llm-studio/api/datasets/shake.txt"]
+    assert starter_files[0] in required_files
+    assert all("/uploads/" not in path for path in starter_files)
+
+
 def test_release_portable_runtime_requires_hashed_lock_and_wheelhouse(tmp_path: Path) -> None:
     with pytest.raises(SystemExit, match="require --wheelhouse and --lock"):
         build_runtime.validate_build_options(

@@ -4,6 +4,7 @@ import glob
 from pathlib import Path
 from typing import Any
 
+from ...runtime_paths import api_root
 from ..schemas import TrainingIssue
 from .assets import IMPORT_ROOT
 from .config_validation import issue
@@ -61,7 +62,24 @@ def resolve_data_path(raw_path: str) -> Path:
     candidate = Path(raw_path).expanduser()
     if candidate.is_absolute():
         return candidate
+    packaged_dataset = resolve_packaged_dataset_path(candidate)
+    if packaged_dataset is not None:
+        return packaged_dataset
     return IMPORT_ROOT / candidate
+
+
+def resolve_packaged_dataset_path(candidate: Path) -> Path | None:
+    if not candidate.parts or candidate.parts[0] != "datasets":
+        return None
+
+    resolved = api_root() / candidate
+    if has_glob_magic(candidate.as_posix()):
+        if glob.glob(str(resolved), recursive=True):
+            return resolved
+        return None
+    if resolved.exists():
+        return resolved
+    return None
 
 
 def has_glob_magic(value: str) -> bool:

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+API_ROOT = REPO_ROOT / "apps" / "llm-studio" / "api"
 
 
 def flatten_selected_data_files(value: Any, *, split: str | None = None) -> list[str]:
@@ -58,11 +59,27 @@ def resolve_local_data_files(
 
 def _relative_base_candidates(relative_base: Path | Sequence[Path] | None) -> list[Path]:
     if relative_base is None:
-        return [REPO_ROOT]
+        return _with_packaged_dataset_base([REPO_ROOT])
     if isinstance(relative_base, Path):
-        return [relative_base]
+        return _with_packaged_dataset_base([relative_base])
     candidates = [Path(item) for item in relative_base]
-    return candidates or [REPO_ROOT]
+    return _with_packaged_dataset_base(candidates or [REPO_ROOT])
+
+
+def _with_packaged_dataset_base(candidates: Sequence[Path]) -> list[Path]:
+    bases = [Path(item) for item in candidates]
+    if API_ROOT.is_dir():
+        bases.append(API_ROOT)
+
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for base in bases:
+        normalized = base.resolve()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        unique.append(normalized)
+    return unique
 
 
 def _resolve_matches(candidate: Path, *, raw_path: str, base_dirs: Sequence[Path]) -> list[Path]:

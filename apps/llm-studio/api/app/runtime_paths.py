@@ -18,6 +18,7 @@ class RuntimeResources:
     source_root: Path
     api_root: Path
     template_dir: Path
+    dataset_dir: Path
     model_dir: Path
     tokenizer_dir: Path
     training_dir: Path
@@ -35,6 +36,7 @@ class RuntimeResources:
             self.template_dir / "tokenizer_config_schema.json",
             self.template_dir / "dataloader_config.json",
             self.template_dir / "dataloader_config_schema.json",
+            self.dataset_dir / "shake.txt",
             self.training_dir / "training_config.json",
             self.training_dir / "training_config_schema.json",
             self.training_dir / "dataloader_config.json",
@@ -54,6 +56,7 @@ def runtime_resources() -> RuntimeResources:
         source_root=source_root,
         api_root=api_root,
         template_dir=api_root / "templates",
+        dataset_dir=api_root / "datasets",
         model_dir=source_root / "model",
         tokenizer_dir=source_root / "tokenizer",
         training_dir=source_root / "training",

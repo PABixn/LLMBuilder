@@ -33,6 +33,12 @@ SOURCE_TREES = (
     (ROOT / "tokenizer", Path("source/tokenizer")),
     (ROOT / "training", Path("source/training")),
 )
+STARTER_DATASET_FILES = (
+    (
+        API_DIR / "datasets" / "shake.txt",
+        Path("source/apps/llm-studio/api/datasets/shake.txt"),
+    ),
+)
 IGNORE_NAMES = {
     ".DS_Store",
     ".git",
@@ -118,6 +124,8 @@ def main() -> None:
 
     for source, relative in SOURCE_TREES:
         copy_tree(source, output / relative)
+    for source, relative in STARTER_DATASET_FILES:
+        copy_file(source, output / relative)
     shutil.copy2(API_DIR / "requirements.txt", output / "source/apps/llm-studio/api/requirements.txt")
 
     python_relative = create_python_runtime(
@@ -478,6 +486,13 @@ def copy_tree(source: Path, destination: Path) -> None:
     shutil.copytree(source, destination, ignore=copy_ignore)
 
 
+def copy_file(source: Path, destination: Path) -> None:
+    if not source.is_file():
+        raise SystemExit(f"Required source file is missing: {source}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+
+
 def copy_ignore(_directory: str, names: list[str]) -> set[str]:
     return {
         name
@@ -558,6 +573,7 @@ def required_runtime_files(
         "source/apps/llm-studio/api/templates/tokenizer_config_schema.json",
         "source/apps/llm-studio/api/templates/dataloader_config.json",
         "source/apps/llm-studio/api/templates/dataloader_config_schema.json",
+        "source/apps/llm-studio/api/datasets/shake.txt",
         "source/model/model.py",
         "source/tokenizer/loader.py",
         "source/training/training_config.json",

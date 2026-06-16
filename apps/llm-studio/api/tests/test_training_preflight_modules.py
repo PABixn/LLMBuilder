@@ -11,7 +11,12 @@ from app.training_runs.preflight.compatibility import (
     collect_missing_special_tokens,
 )
 from app.training_runs.preflight.config_validation import validation_issues
-from app.training_runs.preflight.local_files import flatten_data_files, has_glob_magic, validate_local_data_files
+from app.training_runs.preflight.local_files import (
+    flatten_data_files,
+    has_glob_magic,
+    resolve_data_path,
+    validate_local_data_files,
+)
 from app.training_runs.preflight.runtime_summary import default_training_device
 from app.training_runs.preflight.scheduler_fixes import (
     add_scheduler_step_fix,
@@ -131,6 +136,14 @@ def test_local_file_helpers_validate_nested_missing_paths(tmp_path: Path) -> Non
     assert has_glob_magic("data/*.txt") is True
     assert [issue.code for issue in issues] == ["local_dataset_file_missing"]
     assert "missing.txt" in issues[0].message
+
+
+def test_default_shake_dataset_resolves_to_runtime_resource() -> None:
+    resolved = resolve_data_path("datasets/shake.txt")
+
+    assert resolved.name == "shake.txt"
+    assert resolved.is_file()
+    assert "apps/llm-studio/api/datasets/shake.txt" in resolved.as_posix()
 
 
 def test_compatibility_helpers_report_token_and_shape_issues() -> None:
